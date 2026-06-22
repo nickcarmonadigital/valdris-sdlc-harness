@@ -29,10 +29,17 @@ Local runner daemon / worktree watcher
 - repos
 - harness packs
 - source-truth rules
+- lane families
+- production-readiness layer assessments
+- cloud/platform service maps
+- QA plans and break-it results
 - red-zone rules
 - tasks
 - sessions
 - session events
+- node states
+- skip reasons
+- failure recovery paths
 - artifacts
 - artifact versions
 - gates
@@ -40,6 +47,8 @@ Local runner daemon / worktree watcher
 - approvals
 - graph snapshots
 - worktrees
+- self-heal reports
+- self-heal PRs
 
 ## MVP deployment
 
@@ -52,3 +61,13 @@ Local runner daemon / worktree watcher
 ## Control principle
 
 The workflow engine owns control flow. The model proposes actions or writes artifacts. The harness validates whether required gates are satisfied.
+
+## Mode principle
+
+The product has three presentation modes:
+
+- **Blueprint** — static topology/lane taxonomy; no live-run claim.
+- **Live Run** — real connector/MCP/CLI/API events only.
+- **Replay** — durable historical run packet/events/artifacts.
+
+No UI or doc should imply Claude, Codex, or Hermes traversed a run unless real emitted events or stored replay data exist.

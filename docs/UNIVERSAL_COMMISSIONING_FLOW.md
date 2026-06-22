@@ -41,14 +41,16 @@ That is the **project-specific adapter** for Utari. The universal product should
 
 These stay the same across repos:
 
-1. Stage flow: `intake → route → investigate → design → implement → redzone → prove → handoff`.
-2. Artifact model: every stage writes or verifies a required artifact.
-3. Gate types: pre-flight, revision, escalation, abort.
+1. Stage flow: `intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`.
+2. Artifact model: every stage writes/verifies a required artifact or records a skip reason.
+3. Gate types: pre-flight, revision, escalation, abort, QA/break-it, live-smoke, self-heal.
 4. Red Zone model: high-risk mutations need human approval.
 5. Proof rule: no artifact, no gate pass; no proof, no done.
 6. Agent connector contract: Claude Code/Codex/Hermes emit events and write artifacts.
-7. Run packet: task, session, events, proof, approvals, handoff.
-8. Answer contract: bottom line, why, proof, fix/plan, your call.
+7. Run packet: task, session, mode, events, proof, approvals, skipped nodes, failures, handoff.
+8. Blueprint / Live Run / Replay separation: no fake telemetry.
+9. Answer contract: bottom line, why, proof, risk, fix/plan, your call.
+10. Production readiness layer pack: 13 full-stack production layers become required/skipped checks.
 
 ### Project adapter
 
@@ -62,8 +64,13 @@ Generated per repo/team:
 6. Validation commands.
 7. Red Zone actions and approval owner.
 8. Enabled lanes and custom lanes.
-9. ADR policy.
-10. Integration map: GitHub, Linear/Jira, Vercel/AWS/Supabase/etc.
+9. System design triggers and ADR policy.
+10. Production Readiness Layer Pack defaults and skip policy.
+11. Cloud/platform provider/service map, IaC policy, observability, cost/rollback policy.
+12. QA plan, break-it QA, and live-smoke criteria.
+13. Blueprint / Live Run / Replay telemetry policy.
+14. Harness self-healing PR policy.
+15. Integration map: GitHub, Linear/Jira, Vercel/AWS/Supabase/etc.
 
 ## Commissioning interview question bank
 
@@ -111,6 +118,26 @@ Question groups:
    - Enabled lanes.
    - Custom lanes.
    - ADR policy.
+9. **System design**
+   - System design triggers.
+   - Design requirements.
+   - ADR-required decisions.
+10. **Production readiness**
+   - 13 production layers.
+   - Required/skipped layer policy.
+   - Production-impacting proof.
+11. **Cloud / platform engineering**
+   - Providers and services.
+   - IaC/manual policy.
+   - Observability proof.
+   - Cost/scaling/rollback policy.
+12. **QA and release**
+   - QA plan policy.
+   - Let's-break-it QA.
+   - Live smoke criteria.
+13. **Modes and self-healing**
+   - Blueprint / Live Run / Replay separation.
+   - Self-heal PR policy and target areas.
 
 ## Agent install shape
 

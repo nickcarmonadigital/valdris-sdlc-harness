@@ -71,7 +71,7 @@ export function HarnessTelemetryApp() {
         </div>
 
         <section className="scenarioList" aria-label="Run scenarios">
-          <div className="sidebarLabel">Replay a run path</div>
+          <div className="sidebarLabel">Blueprint / replay paths</div>
           {scenarios.map((item) => (
             <button
               className={`scenarioButton ${item.id === scenario.id ? "selected" : ""}`}
@@ -79,7 +79,7 @@ export function HarnessTelemetryApp() {
               onClick={() => switchScenario(item.id)}
               type="button"
             >
-              <span>{item.workType.toUpperCase()}</span>
+              <span>{item.mode.toUpperCase()} · {item.workType.toUpperCase()}</span>
               <strong>{item.label}</strong>
               <small>{item.subtitle}</small>
             </button>
@@ -98,23 +98,21 @@ export function HarnessTelemetryApp() {
 
         <section className="sidebarNote">
           <p className="eyebrow">Core guarantee</p>
-          <p>Every node must end as passed, failed, pending, or skipped with a visible reason. No silent missing steps.</p>
+          <p>Every node must end as passed, failed, pending, needs approval, or skipped with a visible reason. No fake live telemetry.</p>
         </section>
       </aside>
 
       <section className="telemetryMain">
         <header className="telemetryHero">
           <div>
-            <p className="eyebrow">N8N-style Flow Monitor · connector-first</p>
-            <h1>Watch Claude, Codex, or Hermes move through the harness node by node.</h1>
+            <p className="eyebrow">N8N-style Flow Monitor · Blueprint / Live Run / Replay separated</p>
+            <h1>Trace the full Agentic SDLC: system design, production layers, cloud/platform, QA, proof, and self-healing.</h1>
             <p>
-              This is the visual layer for the SDLC harness: commissioning, Graphify, Matt Pocock-style skill packs, gates,
-              artifacts, skip reasons, failures, and handoff. The coding still happens in Claude Code/Codex/Hermes — this app
-              shows whether the run actually followed the operating path.
+              This visual layer shows the universal SDLC harness topology and replay samples. Live Run mode only lights up from real Claude Code/Codex/Hermes connector events; Blueprint mode is static, and Replay mode is historical event data.
             </p>
           </div>
           <div className="heroCallout">
-            <span>Selected path</span>
+            <span>Selected path · {scenario.mode}</span>
             <strong>{scenario.label}</strong>
             <small>{scenario.subtitle}</small>
           </div>
@@ -131,12 +129,12 @@ export function HarnessTelemetryApp() {
         <section className="flowMonitor" aria-label="Harness workflow monitor">
           <div className="flowMonitorHeader">
             <div>
-              <span className="tinyLabel">Live topology</span>
-              <strong>Commission → front door → skills → gates → handoff</strong>
+              <span className="tinyLabel">{scenario.mode} topology</span>
+              <strong>Commission → front door → route/design → production layers → gates → self-heal</strong>
             </div>
             <div className="signalPills">
-              <span>Graphify visible</span>
-              <span>Skill load visible</span>
+              <span>Production layers visible</span>
+              <span>Break-it QA visible</span>
               <span>Why skipped visible</span>
               <span>Failed node visible</span>
             </div>
@@ -251,23 +249,23 @@ export function HarnessTelemetryApp() {
         <section className="operatingModel">
           <article>
             <span>1</span>
-            <h3>Connector observes the boundary</h3>
-            <p>Claude Code/Codex/Hermes emits node, gate, artifact, approval, and block events. We do not scrape an IDE or private chain-of-thought.</p>
+            <h3>Mode labels prevent fake telemetry</h3>
+            <p>Blueprint explains topology, Live Run uses real connector events, and Replay plays durable run packets. The UI says which one you are seeing.</p>
           </article>
           <article>
             <span>2</span>
-            <h3>Graphify is a visible node</h3>
-            <p>If a run claims architecture or blast radius, the Graphify/code-graph step is shown. If skipped, the reason is recorded.</p>
+            <h3>Production layers are first-class</h3>
+            <p>Frontend, backend, DB, auth, hosting, cloud, CI/CD, security, rate limits, cache, scaling, logs, and recovery are classified per run.</p>
           </article>
           <article>
             <span>3</span>
-            <h3>Skills are explicit</h3>
-            <p>The Matt Pocock-style skill pack selected for the run is visible: /debug, /grill-with-docs, /to-prd, or architecture refactor.</p>
+            <h3>Cloud/platform is not just code</h3>
+            <p>AWS/Azure/GCP work requires service maps, IAM/secrets, networking, observability, cost risk, rollback, and live smoke proof.</p>
           </article>
           <article>
             <span>4</span>
             <h3>Finish-line checks the ledger</h3>
-            <p>Done is only allowed when every required node is passed or intentionally skipped with a reason the operator can inspect.</p>
+            <p>Done is only allowed when every required node is passed or intentionally skipped with a reason the operator can inspect; process gaps route to self-heal PRs.</p>
           </article>
         </section>
       </section>

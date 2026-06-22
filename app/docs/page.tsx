@@ -1,4 +1,9 @@
 const docs = [
+  ["SDLC Lane Taxonomy", "v0.2 parent/child taxonomy: SDLC backbone, system design, cloud/platform, QA, self-heal."],
+  ["Production Readiness Layer Pack", "The 13 real full-stack layers as required/skipped harness checks."],
+  ["Cloud / Platform Engineering", "AWS/cloud service maps, IAM/secrets, deploy proof, rollback, observability, cost risk."],
+  ["QA, Live Smoke, and Self-Healing", "Normal QA, let's-break-it QA, live smoke, and self-healing PR loop."],
+  ["Blueprint / Live Run / Replay Modes", "No fake telemetry: static topology, real connector events, and historical replay stay separate."],
   ["Product Direction", "Connector-first, not-an-IDE product correction."],
   ["Connector Model", "Codex, Claude Code, and Hermes adapter contract."],
   ["Claude Code Connector", "Local bridge + slash-command path for real Claude Code runs."],
@@ -16,7 +21,8 @@ export default function DocsPage() {
       <p className="eyebrow">Docs-first MVP</p>
       <h1>Build the connector control plane before the full app.</h1>
       <p className="lede">
-        These docs define the product correction: connect to existing coding agents, show the harness flow visually, and make gate artifacts block completion.
+        These docs define the v0.2 product correction: SDLC stays the parent backbone, production readiness becomes a lane pack,
+        cloud/platform work gets first-class gates, QA includes break-it/live-smoke proof, and Blueprint/Live/Replay modes prevent fake telemetry.
       </p>
       <section className="docsGrid">
         {docs.map(([title, copy]) => (

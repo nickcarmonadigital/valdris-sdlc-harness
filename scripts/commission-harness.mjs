@@ -4,7 +4,36 @@ import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
+
+const DEFAULT_LANE_FAMILIES = [
+  "intake-classify",
+  "product-app-sdlc",
+  "system-design",
+  "cloud-platform-engineering",
+  "data-integrations",
+  "security-compliance",
+  "qa-release",
+  "reliability-observability",
+  "handoff",
+  "harness-self-healing",
+];
+
+const PRODUCTION_LAYERS = [
+  "frontend",
+  "backend-api-logic",
+  "database-storage",
+  "auth-permissions-rls",
+  "hosting-deployment",
+  "cloud-compute",
+  "cicd-version-control",
+  "security",
+  "rate-limiting",
+  "caching-cdn",
+  "load-balancing-scaling",
+  "error-tracking-logs-observability",
+  "availability-recovery-dr",
+];
 
 const QUESTION_GROUPS = [
   {
@@ -24,7 +53,7 @@ const QUESTION_GROUPS = [
       { id: "project_name", label: "Project/product name?", defaultFrom: "projectName" },
       { id: "users", label: "Who are the real users/customers?", default: "internal users" },
       { id: "production_definition", label: "What does production mean here?", default: "main branch / deployed customer-facing environment" },
-      { id: "worst_agent_failure", label: "What is the worst plausible agent-caused failure?", default: "breaking production or corrupting customer data" },
+      { id: "worst_agent_failure", label: "What is the worst plausible agent-caused failure?", default: "breaking production, leaking secrets, corrupting customer data, or making false live-run claims" },
     ],
   },
   {
@@ -42,8 +71,8 @@ const QUESTION_GROUPS = [
     questions: [
       { id: "repo_role", label: "Is this repo frontend, backend, monorepo, infra, docs, or mixed?", defaultFrom: "detectedRepoRole" },
       { id: "safe_edit_paths", label: "Which paths are safe for routine agent edits?", default: "src/, app/, components/, lib/, tests/, docs/" },
-      { id: "review_required_paths", label: "Which paths require human review before merge?", default: "migrations/, infra/, auth, billing, secrets, deploy workflows" },
-      { id: "code_graph", label: "Should a code graph / Graphify scan be required before architecture work?", default: "yes when available" },
+      { id: "review_required_paths", label: "Which paths require human review before merge?", default: "migrations/, infra/, auth, billing, secrets, deploy workflows, cloud/provider config" },
+      { id: "code_graph", label: "Should a code graph / Graphify scan be required before architecture work?", default: "yes when available; otherwise pin code anchors" },
     ],
   },
   {
@@ -67,14 +96,14 @@ const QUESTION_GROUPS = [
       { id: "test_command", label: "Test command?", defaultFrom: "detectedTest" },
       { id: "build_command", label: "Build command?", defaultFrom: "detectedBuild" },
       { id: "smoke_command", label: "Smoke/e2e command?", default: "manual or project-specific" },
-      { id: "done_definition", label: "What does done require?", default: "required commands pass, artifact proof exists, human handoff is clear" },
+      { id: "done_definition", label: "What does done require?", default: "required commands pass, required artifacts exist, skipped nodes have reasons, human handoff is clear" },
     ],
   },
   {
     id: "red_zone",
     title: "Red Zone / approval boundaries",
     questions: [
-      { id: "red_zone_actions", label: "Which actions require explicit human approval?", default: "push, merge, deploy, production data writes, secrets/env changes, auth, billing, destructive ops, provider config" },
+      { id: "red_zone_actions", label: "Which actions require explicit human approval?", default: "push, merge, deploy, production data writes, secrets/env changes, auth, billing, destructive ops, provider config, cloud resource mutation" },
       { id: "approval_owner", label: "Who can approve Red Zone actions?", default: "primary human/operator" },
       { id: "read_only_allowed", label: "Are read-only investigations allowed without asking?", default: "yes" },
     ],
@@ -83,9 +112,56 @@ const QUESTION_GROUPS = [
     id: "lanes",
     title: "Work lanes",
     questions: [
-      { id: "enabled_lanes", label: "Which lanes should this repo use?", default: "engineering-default, incidents, docs-product, infra, data, security" },
+      { id: "enabled_lanes", label: "Which lanes should this repo use?", default: "engineering-default, system-design, production-readiness, cloud-platform, qa-release, incidents, docs-product, infra, data, security" },
       { id: "custom_lanes", label: "Any repo-specific lanes?", default: "none" },
-      { id: "adr_policy", label: "When should an ADR/decision record be required?", default: "hard-to-reverse architecture, data, security, provider, or deployment decisions" },
+      { id: "adr_policy", label: "When should an ADR/decision record be required?", default: "hard-to-reverse architecture, data, security, provider, cloud/platform, or deployment decisions" },
+    ],
+  },
+  {
+    id: "system_design",
+    title: "System design",
+    questions: [
+      { id: "system_design_triggers", label: "When must the System Design lane activate?", default: "new architecture, scaling, APIs, data modeling, service boundaries, reliability tradeoffs, hard-to-reverse decisions, ambiguous product behavior" },
+      { id: "design_requirements", label: "Which design requirements matter most?", default: "latency, throughput, SLO/SLA, scale assumptions, data integrity, security, failure modes" },
+      { id: "adr_required_for", label: "What decisions require ADRs?", default: "API contracts, data model changes, queue/workers, provider changes, auth/security, cloud/deploy topology" },
+    ],
+  },
+  {
+    id: "production_readiness",
+    title: "Production readiness layer pack",
+    questions: [
+      { id: "production_layers", label: "Which production layers should be checked per run?", default: PRODUCTION_LAYERS.join(", ") },
+      { id: "production_layer_skip_policy", label: "How should irrelevant production layers be handled?", default: "mark skipped with explicit reason; never silently omit" },
+      { id: "production_readiness_proof", label: "What proof should production-impacting work attach?", default: "layer assessment, tests, deploy/health check, logs/request IDs, rollback path, smoke proof" },
+    ],
+  },
+  {
+    id: "cloud_platform",
+    title: "Cloud / platform engineering",
+    questions: [
+      { id: "cloud_providers", label: "Cloud/platform providers in scope?", default: "AWS/Azure/GCP/Vercel/Supabase as applicable" },
+      { id: "cloud_services", label: "Key cloud services this repo may touch?", default: "ECS/Lambda/EC2/S3/RDS/VPC/IAM/CloudWatch/Route53/load balancers/queues/workers" },
+      { id: "iac_model", label: "How are cloud resources managed?", default: "IaC preferred; console/manual changes require approval and runbook notes" },
+      { id: "observability_model", label: "What proves observability after deploy?", default: "logs, metrics/traces, dashboards, alerts, request IDs, CloudWatch/provider links" },
+      { id: "cost_rollback_policy", label: "How should agents handle cost/scaling/rollback risk?", default: "flag spend/scaling changes, record rollback path, require approval for paid/prod resource mutation" },
+    ],
+  },
+  {
+    id: "qa_release",
+    title: "QA and release",
+    questions: [
+      { id: "qa_plan_policy", label: "When is a QA plan required?", default: "feature, bug, refactor, integration, data, auth/security, cloud/platform, voice/runtime, or production-impacting work" },
+      { id: "break_it_qa_policy", label: "What does let’s-break-it QA require?", default: "edge cases, malformed inputs, auth negative cases, stale data, latency/retries, concurrency, provider failures, rollback path" },
+      { id: "live_smoke_criteria", label: "When is live/preview/staging smoke required?", default: "deployed behavior, provider/webhook/voice/worker/runtime, cloud/platform, auth/data, or anything local tests cannot simulate" },
+    ],
+  },
+  {
+    id: "modes_self_healing",
+    title: "Modes and self-healing",
+    questions: [
+      { id: "telemetry_mode_policy", label: "How should Blueprint, Live Run, and Replay be separated?", default: "Blueprint is static topology, Live Run uses real connector events, Replay uses stored run packets; never imply fake live telemetry" },
+      { id: "self_heal_allowed", label: "Can agents propose/open self-healing PRs for harness gaps?", default: "propose by default; open only if repo policy allows" },
+      { id: "self_heal_pr_target", label: "Where should self-heal PRs change the harness?", default: "adapter, lane docs, gates, prompts/front doors, connector scripts, commissioning questions, validation/Red Zone docs" },
     ],
   },
 ];
@@ -140,7 +216,15 @@ function detectRepo(repo) {
   if (exists(repo, "vite.config.ts") || exists(repo, "vite.config.js")) frameworks.push("Vite");
   if (hasPython) frameworks.push("Python");
   if (exists(repo, ".github/workflows")) frameworks.push("GitHub Actions");
-  const role = [exists(repo, "app") || exists(repo, "pages") || exists(repo, "components") ? "frontend" : null, hasPython ? "backend/python" : null, exists(repo, "infra") ? "infra" : null, exists(repo, "docs") ? "docs" : null]
+  if (exists(repo, "Dockerfile") || exists(repo, "docker-compose.yml")) frameworks.push("Docker");
+  if (exists(repo, "infra") || exists(repo, "terraform") || exists(repo, "cdk.json")) frameworks.push("IaC/infra");
+  const role = [
+    exists(repo, "app") || exists(repo, "pages") || exists(repo, "components") ? "frontend" : null,
+    hasPython ? "backend/python" : null,
+    exists(repo, "api") || exists(repo, "server") ? "backend/api" : null,
+    exists(repo, "infra") || exists(repo, "terraform") || exists(repo, "cdk.json") ? "infra/platform" : null,
+    exists(repo, "docs") ? "docs" : null,
+  ]
     .filter(Boolean)
     .join(" + ") || "mixed/unknown";
   return {
@@ -236,48 +320,105 @@ function write(file, content) {
 }
 
 function renderAgents(answers) {
-  return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. Route to the smallest matching lane.\n4. Create or update a run packet before risky, ambiguous, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts and a human-readable handoff.\n`;
+  return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. Route to the smallest matching lane family.\n4. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
 }
 
 function renderClaude(answers) {
-  return `# ${answers.project_name} Claude Code Harness\n\nYou are inside a Universal Agentic SDLC Harness commissioned repo.\n\n## Required flow\n\n\`intake -> route -> investigate -> design -> implement -> redzone -> prove -> handoff\`\n\nAsk commissioning questions only when \`project-adapter.json\` is missing or incomplete. Once the adapter exists, use it as repo-specific context and avoid re-asking stable facts.\n\n## Required artifacts\n\n- \`run/intake.json\`\n- \`run/route.json\`\n- \`design/anchors.json\` for plans that cite code\n- \`approvals/redzone.json\` when Red Zone applies\n- \`proof/proof.json\` before done\n- \`handoff/final.md\` for the final answer\n\n## Response contract\n\nUse: Bottom line, Why, Proof, Fix/Plan, Your call. Keep process narration out of the final answer.\n`;
+  return `# ${answers.project_name} Claude Code Harness\n\nYou are inside a Universal Agentic SDLC Harness commissioned repo.\n\n## Required flow\n\n\`intake -> route -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`\n\nAsk commissioning questions only when \`project-adapter.json\` is missing or incomplete. Once the adapter exists, use it as repo-specific context and avoid re-asking stable facts.\n\n## Mode rule\n\nSeparate Blueprint, Live Run, and Replay. Do not imply live telemetry unless real connector/MCP/CLI/API/watched-artifact events exist.\n\n## Required artifacts\n\n- \`run/intake.json\`\n- \`run/route.json\`\n- \`design/system_design.md\` when architecture/product/infra tradeoffs matter\n- \`production/layer-assessment.json\` for production-impacting work\n- \`cloud/service-map.json\` for cloud/platform work, or \`cloud/skip.json\` with reason\n- \`design/anchors.json\` for plans that cite code\n- \`approvals/redzone.json\` when Red Zone applies\n- \`qa/qa-plan.md\` when validation scope matters\n- \`qa/break-it-results.md\` for feature/bug/refactor/security/cloud/integration work, or skip reason\n- \`proof/proof.json\` before done\n- \`smoke/smoke_proof.json\` for deployed/provider/runtime behavior, or skip reason\n- \`self_heal/self_heal_report.md\` if the harness/process failed\n- \`handoff/final.md\` for the final answer\n\n## Response contract\n\nUse: Bottom line, Why, Proof, Risk, Fix/Plan, Your call. Keep process narration out of the final answer.\n`;
 }
 
 function renderMap(answers, detected) {
-  return `# ${answers.project_name} Harness Map\n\nGenerated by Universal Agentic SDLC Harness commissioning v${VERSION}.\n\n## Product identity\n\n- Users/customers: ${answers.users}\n- Production means: ${answers.production_definition}\n- Worst agent failure: ${answers.worst_agent_failure}\n\n## Detected repo shape\n\n- Repo path: \`${detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${detected.frameworks.length ? detected.frameworks.join(", ") : "none detected"}\n- Package manager: ${detected.packageManager}\n\n## Universal flow\n\n\`request -> intake -> route -> lane context -> artifact gates -> proof -> handoff\`\n\n## Enabled lanes\n\n${splitList(answers.enabled_lanes).map((lane) => `- ${lane}`).join("\n")}\n\nCustom lanes: ${answers.custom_lanes}.\n`;
+  return `# ${answers.project_name} Harness Map\n\nGenerated by Universal Agentic SDLC Harness commissioning v${VERSION}.\n\n## Product identity\n\n- Users/customers: ${answers.users}\n- Production means: ${answers.production_definition}\n- Worst agent failure: ${answers.worst_agent_failure}\n\n## Detected repo shape\n\n- Repo path: \`${detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${detected.frameworks.length ? detected.frameworks.join(", ") : "none detected"}\n- Package manager: ${detected.packageManager}\n\n## Universal flow\n\n\`request -> intake -> route -> system design -> production readiness -> implementation -> QA/proof/smoke -> handoff -> self-heal\`\n\n## Lane families\n\n${DEFAULT_LANE_FAMILIES.map((lane) => `- ${lane}`).join("\n")}\n\n## Enabled lanes\n\n${splitList(answers.enabled_lanes).map((lane) => `- ${lane}`).join("\n")}\n\nCustom lanes: ${answers.custom_lanes}.\n\n## Production Readiness Layer Pack\n\n${splitList(answers.production_layers).map((lane) => `- ${lane}`).join("\n")}\n`;
 }
 
 function renderContext(answers) {
-  return `# ${answers.project_name} Context Router\n\nUse this after \`00_MAP.md\`. Pick the smallest matching lane and load only the docs needed for that risk area.\n\n## Router\n\n| If the request is about | Use lane | Gate emphasis |\n|---|---|---|\n| Normal bug, feature, UI, backend, API, PR | engineering-default | design anchors + proof |\n| Production/user-facing incident | incidents | runtime evidence + Red Zone |\n| Data, schema, migrations, auth/RLS | data | migration/schema proof + Red Zone |\n| Infra, deploy, secrets, provider dashboards | infra/provider-config | approval + deploy proof |\n| Docs, process, harness changes | docs-product | coherence + review |\n| Security, billing, auth, permissions | security | human approval + security checklist |\n\n## Safe edit paths\n\n${answers.safe_edit_paths}\n\n## Review-required paths\n\n${answers.review_required_paths}\n\n## Branch/deploy model\n\n- Default work branch: ${answers.default_work_branch}\n- Staging: ${answers.staging_branch}\n- Production: ${answers.production_branch}\n- Merge/deploy owner: ${answers.merge_owner}\n- Deployment proof: ${answers.deployment_proof}\n\n## ADR policy\n\n${answers.adr_policy}\n`;
+  return `# ${answers.project_name} Context Router\n\nUse this after \`00_MAP.md\`. Pick the smallest matching lane and load only the docs needed for that risk area.\n\n## Router\n\n| If the request is about | Use lane | Gate emphasis |\n|---|---|---|\n| Normal bug, feature, UI, backend, API, PR | engineering-default | design anchors + proof |\n| New architecture, API/data model, scale, tradeoffs | system-design | SDD/ADR + anchors |\n| Production readiness, deployability, real full-stack layers | production-readiness | layer assessment + skip reasons |\n| AWS/Azure/GCP/Vercel/Supabase infra, deploy, IAM, secrets | cloud-platform | service map + approval + rollback/live smoke |\n| Production/user-facing incident | incidents | runtime evidence + Red Zone |\n| Data, schema, migrations, auth/RLS | data | migration/schema proof + Red Zone |\n| Security, billing, auth, permissions | security | human approval + security checklist |\n| QA, release, regression, smoke | qa-release | QA plan + break-it + live smoke |\n| Docs, process, harness changes | docs-product | coherence + review + no fake telemetry |\n\n## Safe edit paths\n\n${answers.safe_edit_paths}\n\n## Review-required paths\n\n${answers.review_required_paths}\n\n## Branch/deploy model\n\n- Default work branch: ${answers.default_work_branch}\n- Staging: ${answers.staging_branch}\n- Production: ${answers.production_branch}\n- Merge/deploy owner: ${answers.merge_owner}\n- Deployment proof: ${answers.deployment_proof}\n\n## System design triggers\n\n${answers.system_design_triggers}\n\n## ADR policy\n\n${answers.adr_policy}\n`;
 }
 
 function renderValidation(answers) {
-  return `# Validation Commands\n\nAgents must run the relevant commands and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\nDone definition: ${answers.done_definition}.\n`;
+  return `# Validation Commands\n\nAgents must run the relevant commands and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason. Failed nodes need a recovery path.\n`;
 }
 
 function renderRedZone(answers) {
   return `# Red Zone Rules\n\nRead-only investigation allowed without asking: ${answers.read_only_allowed}.\n\nExplicit human approval owner: ${answers.approval_owner}.\n\nApproval required before:\n\n${splitList(answers.red_zone_actions).map((action) => `- ${action}`).join("\n")}\n\nIf an action is ambiguous, treat it as Red Zone and ask.\n`;
 }
 
+function renderProductionReadiness(answers) {
+  return `# Production Readiness Layers\n\nFor every run, classify which production layers are touched. Relevant layers become required gates; irrelevant layers are skipped with reasons.\n\n${splitList(answers.production_layers).map((layer) => `- ${layer}`).join("\n")}\n\n## Skip policy\n\n${answers.production_layer_skip_policy}\n\n## Required proof\n\n${answers.production_readiness_proof}\n`;
+}
+
+function renderCloudPlatform(answers) {
+  return `# Cloud / Platform Engineering\n\n## Providers\n\n${answers.cloud_providers}\n\n## Services in scope\n\n${answers.cloud_services}\n\n## IaC / manual policy\n\n${answers.iac_model}\n\n## Observability proof\n\n${answers.observability_model}\n\n## Cost / rollback policy\n\n${answers.cost_rollback_policy}\n\n## Required node pack\n\n- cloud-intake\n- aws-service-map\n- iam-secrets-check\n- networking-check\n- iac-diff-check\n- deploy-plan\n- observability-proof\n- cost-risk-check\n- rollback-plan\n- live-smoke\n- runbook-update\n`;
+}
+
+function renderQaSmoke(answers) {
+  return `# QA and Live Smoke\n\n## QA plan policy\n\n${answers.qa_plan_policy}\n\n## Let's-break-it QA\n\n${answers.break_it_qa_policy}\n\nRequired artifact: \`qa/break-it-results.md\`.\n\n## Live smoke criteria\n\n${answers.live_smoke_criteria}\n\nRequired artifact when applicable: \`smoke/smoke_proof.json\`.\n`;
+}
+
+function renderModes(answers) {
+  return `# Blueprint / Live Run / Replay Modes\n\n${answers.telemetry_mode_policy}\n\n## Rule\n\n- Blueprint explains topology only.\n- Live Run uses real connector/MCP/CLI/API/watched-artifact events.\n- Replay uses stored run packets/events/artifacts.\n\nNever imply fake live telemetry.\n`;
+}
+
+function renderSelfHealing(answers) {
+  return `# Harness Self-Healing Loop\n\nCan agents propose/open self-healing PRs: ${answers.self_heal_allowed}.\n\nSelf-heal PR target areas: ${answers.self_heal_pr_target}.\n\n## When to trigger\n\nTrigger self-heal when a run exposes:\n\n- repo adapter gap\n- lane procedure gap\n- gate policy gap\n- connector/telemetry bug\n- docs/onboarding gap\n- missing validation command\n- missing Red Zone rule\n- missing production-readiness layer\n\nRequired artifact: \`self_heal/self_heal_report.md\`.\n`;
+}
+
 function renderRunTemplate(answers) {
-  return `# Run Packet Template\n\nProject: ${answers.project_name}\n\n## Required artifacts\n\n- run/intake.json\n- run/route.json\n- design/anchors.json when design cites code\n- approvals/redzone.json when Red Zone applies\n- proof/proof.json before done\n- handoff/final.md\n\n## Final handoff shape\n\nBottom line\nWhy\nProof\nFix/Plan\nYour call\n`;
+  return `# Run Packet Template\n\nProject: ${answers.project_name}\n\n## Required artifacts\n\n- run/mode.json\n- run/intake.json\n- run/route.json\n- design/system_design.md when design/architecture matters\n- production/layer-assessment.json for production-impacting work\n- cloud/service-map.json for cloud/platform work, or cloud/skip.json with reason\n- design/anchors.json when design cites code\n- approvals/redzone.json when Red Zone applies\n- qa/qa-plan.md when validation scope matters\n- qa/break-it-results.md or explicit skip reason\n- proof/proof.json before done\n- smoke/smoke_proof.json or explicit skip reason\n- self_heal/self_heal_report.md when process/harness gap is found\n- handoff/final.md\n\n## Final handoff shape\n\nBottom line\nWhy\nProof\nRisk\nFix/Plan\nYour call\nSkipped nodes / reasons\n`;
 }
 
 function renderReview(adapter) {
   const answers = adapter.answers;
-  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\` or \`CLAUDE.md\`, route by \`CONTEXT.md\`, and block done on proof artifacts.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
+  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\` or \`CLAUDE.md\`, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.2 additions\n\n- System Design lane triggers: ${answers.system_design_triggers}\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
 }
 
 function generatePack(args, detected, answers) {
   const out = path.resolve(args.out);
   const adapter = {
-    schema: "uash.project-adapter.v1",
+    schema: "uash.project-adapter.v2",
     generatedAt: new Date().toISOString(),
     generatorVersion: VERSION,
     detected,
     answers,
+    laneFamilies: DEFAULT_LANE_FAMILIES,
     lanes: splitList(answers.enabled_lanes),
     redZoneActions: splitList(answers.red_zone_actions),
+    productionReadiness: {
+      layers: splitList(answers.production_layers),
+      skipPolicy: answers.production_layer_skip_policy,
+      proof: answers.production_readiness_proof,
+    },
+    systemDesign: {
+      triggers: answers.system_design_triggers,
+      requirements: answers.design_requirements,
+      adrRequiredFor: answers.adr_required_for,
+    },
+    cloudPlatform: {
+      providers: answers.cloud_providers,
+      services: splitList(answers.cloud_services),
+      iacModel: answers.iac_model,
+      observability: answers.observability_model,
+      costRollback: answers.cost_rollback_policy,
+    },
+    qaRelease: {
+      qaPlanPolicy: answers.qa_plan_policy,
+      breakItQaPolicy: answers.break_it_qa_policy,
+      liveSmokeCriteria: answers.live_smoke_criteria,
+    },
+    telemetryModes: {
+      policy: answers.telemetry_mode_policy,
+      modes: ["blueprint", "live", "replay"],
+    },
+    selfHealing: {
+      allowed: answers.self_heal_allowed,
+      target: answers.self_heal_pr_target,
+    },
+    nodeStateContract: {
+      states: ["passed", "active", "failed", "skipped", "pending", "needs_approval"],
+      skippedRequiresReason: true,
+      failedRequiresRecoveryPath: true,
+      finishLineRequiresAllPassedOrSkipped: true,
+    },
     validation: {
       install: answers.install_command,
       lint: answers.lint_command,
@@ -297,6 +438,11 @@ function generatePack(args, detected, answers) {
   write(path.join(out, "CONTEXT.md"), renderContext(answers));
   write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers));
   write(path.join(out, "docs/Red Zone Rules.md"), renderRedZone(answers));
+  write(path.join(out, "docs/Production Readiness Layers.md"), renderProductionReadiness(answers));
+  write(path.join(out, "docs/Cloud Platform Engineering.md"), renderCloudPlatform(answers));
+  write(path.join(out, "docs/QA and Live Smoke.md"), renderQaSmoke(answers));
+  write(path.join(out, "docs/Modes Blueprint Live Replay.md"), renderModes(answers));
+  write(path.join(out, "docs/Self-Healing Loop.md"), renderSelfHealing(answers));
   write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
   write(path.join(out, "commissioning-review.md"), renderReview(adapter));
   return { out, adapter };

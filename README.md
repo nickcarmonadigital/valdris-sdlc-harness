@@ -36,10 +36,11 @@ The zip’s reusable value is the **operating pattern**, not the Utari-specific 
 - Next.js/Vercel-ready application shell.
 - Interactive run queue, selected-run inspector, metrics, create-run form, and action controls.
 - Visual workflow board with animated agent chips.
-- N8N-style Flow Monitor that shows Graphify, Matt Pocock-style skill packs, gate status, failed nodes, and skip reasons for every run.
+- N8N-style Flow Monitor that shows Graphify, skill packs, gate status, failed nodes, skip reasons, production-readiness layers, QA/break-it, and self-healing for every run.
+- Explicit **Blueprint / Live Run / Replay** mode model so demo topology never pretends to be real telemetry.
 - Local bridge at `http://127.0.0.1:8787` for agent runtime events.
 - On-prem JSONL event adapter; no Supabase required for v0.
-- Local commissioning CLI that generates `project-adapter.json`, front doors, validation docs, red-zone docs, and a run template.
+- Local commissioning CLI that generates `project-adapter.json`, front doors, validation docs, red-zone docs, production readiness docs, cloud/platform docs, QA/live-smoke docs, self-heal docs, and a run template.
 
 ## What this repo is not
 
@@ -74,6 +75,11 @@ CLAUDE.md
 CONTEXT.md
 docs/Validation Commands.md
 docs/Red Zone Rules.md
+docs/Production Readiness Layers.md
+docs/Cloud Platform Engineering.md
+docs/QA and Live Smoke.md
+docs/Self-Healing Loop.md
+docs/Modes Blueprint Live Replay.md
 runs/_run-template/README.md
 commissioning-review.md
 ```

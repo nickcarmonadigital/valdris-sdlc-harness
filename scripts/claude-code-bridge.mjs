@@ -10,27 +10,42 @@ const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
 const DATA_DIR = path.resolve(process.env.UASH_DATA_DIR || path.join(os.homedir(), ".uash", "runs"));
 const SERVICE = "uash-claude-code-bridge";
 
-const baseArtifacts = [
-  ["run/intake.json", "Intake"],
-  ["run/route.json", "Route"],
-  ["rca/rca.json", "Investigate"],
-  ["design/anchors.json", "Design"],
-  ["session/events.jsonl", "Implement"],
-  ["approvals/redzone.json", "Red Zone"],
-  ["proof/proof.json", "Prove"],
-  ["handoff/final.md", "Handoff"],
-].map(([artifactPath, label]) => ({ path: artifactPath, label, required: true, present: artifactPath === "run/intake.json" }));
-
 const artifactByNode = {
   intake: "run/intake.json",
   route: "run/route.json",
-  investigate: "rca/rca.json",
-  design: "design/anchors.json",
+  "system-design": "design/system_design.md",
+  "production-readiness": "production/layer-assessment.json",
+  "cloud-platform": "cloud/service-map.json",
   implement: "session/events.jsonl",
   redzone: "approvals/redzone.json",
+  "qa-break-it": "qa/break-it-results.md",
   prove: "proof/proof.json",
+  "live-smoke": "smoke/smoke_proof.json",
+  "self-heal": "self_heal/self_heal_report.md",
   handoff: "handoff/final.md",
 };
+
+const labelByNode = {
+  intake: "Intake",
+  route: "Route",
+  "system-design": "System Design",
+  "production-readiness": "Production Layers",
+  "cloud-platform": "Cloud / Platform",
+  implement: "Implement",
+  redzone: "Red Zone",
+  "qa-break-it": "Break-it QA",
+  prove: "Proof Gate",
+  "live-smoke": "Live Smoke",
+  "self-heal": "Self-Heal",
+  handoff: "Handoff",
+};
+
+const baseArtifacts = Object.entries(artifactByNode).map(([nodeId, artifactPath]) => ({
+  path: artifactPath,
+  label: labelByNode[nodeId] || nodeId,
+  required: true,
+  present: artifactPath === "run/intake.json",
+}));
 
 function runDir(runId) {
   return path.join(DATA_DIR, sanitize(runId));
@@ -91,6 +106,8 @@ function createMinimalRun(runId, event = {}) {
     agent: event.actor === "codex" || event.actor === "hermes" ? event.actor : "claude-code",
     status: "running",
     risk: "medium",
+    mode: event.runMode || "live",
+    eventSource: event.eventSource || "bridge",
     currentNodeId: event.nodeId || "intake",
     createdAt: now,
     updatedAt: now,
@@ -111,19 +128,30 @@ function normalizeEvent(runId, event) {
     artifact: event.artifact || artifactByNode[nodeId],
     message: event.message || `${event.type || "node.entered"} ${nodeId}`,
     status: event.status || "ok",
+    runMode: event.runMode,
+    eventSource: event.eventSource,
+    nodeState: event.nodeState,
+    skipReason: event.skipReason,
+    failureReason: event.failureReason,
+    recoveryPath: event.recoveryPath,
+    approvalOwner: event.approvalOwner,
+    approvalScope: event.approvalScope,
+    selfHealPrUrl: event.selfHealPrUrl,
   };
 }
 
 function applyEvent(run, event) {
   const updated = {
     ...run,
+    mode: event.runMode || run.mode || "live",
+    eventSource: event.eventSource || run.eventSource || "bridge",
     currentNodeId: event.nodeId || run.currentNodeId,
     updatedAt: nowIso(),
     events: [...(run.events || []), event],
   };
 
-  if (event.type === "approval.requested") updated.status = "approval";
-  else if (event.type === "run.blocked" || event.status === "blocked") updated.status = "blocked";
+  if (event.type === "approval.requested" || event.status === "needs_approval") updated.status = "approval";
+  else if (event.type === "run.blocked" || event.type === "node.failed" || event.status === "blocked" || event.status === "failed") updated.status = "blocked";
   else if (event.type === "run.completed") updated.status = "complete";
   else updated.status = "running";
 
@@ -131,10 +159,46 @@ function applyEvent(run, event) {
     updated.approvals = Array.from(new Set([...(updated.approvals || []), "redzone"]));
   }
 
-  if (event.artifact) {
-    updated.artifacts = (updated.artifacts || baseArtifacts).map((artifact) =>
-      artifact.path === event.artifact ? { ...artifact, present: event.status !== "blocked" } : artifact,
-    );
+  if (event.artifact || event.nodeId) {
+    const targetArtifact = artifactByNode[event.nodeId] || event.artifact;
+    const hasTarget = (updated.artifacts || baseArtifacts).some((artifact) => artifact.path === targetArtifact);
+    const artifacts = hasTarget
+      ? updated.artifacts || baseArtifacts
+      : [
+          ...(updated.artifacts || baseArtifacts),
+          {
+            path: targetArtifact,
+            label: labelByNode[event.nodeId] || event.nodeId || targetArtifact,
+            required: true,
+            present: false,
+          },
+        ];
+
+    updated.artifacts = artifacts.map((artifact) => {
+      if (artifact.path !== targetArtifact) return artifact;
+      if (event.type === "node.skipped" || event.status === "skipped") {
+        return {
+          ...artifact,
+          present: false,
+          skipped: true,
+          failed: false,
+          skipReason: event.skipReason || event.message,
+          evidenceArtifact: event.artifact,
+        };
+      }
+      if (event.type === "node.failed" || event.status === "failed" || event.status === "blocked") {
+        return {
+          ...artifact,
+          present: false,
+          skipped: false,
+          failed: true,
+          failureReason: event.failureReason || event.message,
+          recoveryPath: event.recoveryPath,
+          evidenceArtifact: event.artifact,
+        };
+      }
+      return { ...artifact, present: true, skipped: false, failed: false, evidenceArtifact: event.artifact };
+    });
   }
 
   return updated;

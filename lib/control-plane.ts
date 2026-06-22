@@ -1,17 +1,28 @@
 export type AgentRuntime = "claude-code" | "codex" | "hermes";
 export type RunStatus = "queued" | "running" | "blocked" | "approval" | "complete";
 export type RiskLevel = "low" | "medium" | "red-zone";
+export type RunMode = "blueprint" | "live" | "replay";
+export type EventSource = "static-blueprint" | "browser-local" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet";
 
 export type AppEventType =
   | "run.created"
+  | "run.mode_set"
   | "agent.connected"
   | "node.entered"
+  | "node.skipped"
+  | "node.failed"
   | "gate.fired"
   | "artifact.written"
   | "approval.requested"
   | "approval.granted"
+  | "approval.denied"
   | "run.blocked"
-  | "run.completed";
+  | "run.completed"
+  | "self_heal.detected"
+  | "self_heal.pr_opened";
+
+export type AppEventStatus = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval";
+export type NodeTerminalState = "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
 
 export type AppEvent = {
   id: string;
@@ -21,7 +32,16 @@ export type AppEvent = {
   nodeId: string;
   artifact?: string;
   message: string;
-  status: "ok" | "warn" | "blocked";
+  status: AppEventStatus;
+  runMode?: RunMode;
+  eventSource?: EventSource;
+  nodeState?: NodeTerminalState;
+  skipReason?: string;
+  failureReason?: string;
+  recoveryPath?: string;
+  approvalOwner?: string;
+  approvalScope?: string;
+  selfHealPrUrl?: string;
 };
 
 export type RunArtifact = {
@@ -29,6 +49,11 @@ export type RunArtifact = {
   label: string;
   required: boolean;
   present: boolean;
+  skipped?: boolean;
+  skipReason?: string;
+  failed?: boolean;
+  failureReason?: string;
+  recoveryPath?: string;
 };
 
 export type AppRun = {
@@ -41,6 +66,8 @@ export type AppRun = {
   agent: AgentRuntime;
   status: RunStatus;
   risk: RiskLevel;
+  mode: RunMode;
+  eventSource: EventSource;
   currentNodeId: string;
   createdAt: string;
   updatedAt: string;
@@ -64,84 +91,124 @@ export const workflowNodes: WorkflowNode[] = [
     id: "intake",
     label: "Intake",
     lane: "trigger",
-    description: "Capture ask, repo, runtime, risk, and work type.",
+    description: "Capture ask, repo, runtime, risk, environment, and work type.",
     requiredArtifact: "run/intake.json",
-    x: 5,
-    y: 12,
+    x: 4,
+    y: 8,
   },
   {
     id: "route",
     label: "Route",
     lane: "harness",
-    description: "Choose lane, source of truth, gate set, and run packet.",
+    description: "Choose lane family, source of truth, gate set, and run packet.",
     requiredArtifact: "run/route.json",
-    x: 28,
-    y: 12,
+    x: 22,
+    y: 8,
   },
   {
-    id: "investigate",
-    label: "Investigate",
-    lane: "evidence",
-    description: "Pull evidence before allowing cause or code claims.",
-    requiredArtifact: "rca/rca.json",
-    x: 52,
-    y: 12,
+    id: "system-design",
+    label: "System Design",
+    lane: "design",
+    description: "Capture requirements, constraints, API/data/failure tradeoffs, and ADR needs.",
+    requiredArtifact: "design/system_design.md",
+    x: 40,
+    y: 8,
   },
   {
-    id: "design",
-    label: "Design",
-    lane: "plan",
-    description: "Anchor the code path, ADRs, acceptance, and blast radius.",
-    requiredArtifact: "design/anchors.json",
-    x: 75,
-    y: 12,
+    id: "production-readiness",
+    label: "Production Layers",
+    lane: "production",
+    description: "Classify the 13 production-readiness layers as required or skipped with reasons.",
+    requiredArtifact: "production/layer-assessment.json",
+    x: 58,
+    y: 8,
+  },
+  {
+    id: "cloud-platform",
+    label: "Cloud / Platform",
+    lane: "platform",
+    description: "Service map, IAM/secrets, networking, IaC/deploy, observability, cost, rollback.",
+    requiredArtifact: "cloud/service-map.json",
+    x: 76,
+    y: 8,
   },
   {
     id: "implement",
     label: "Implement",
     lane: "runtime",
-    description: "Claude Code/Codex/Hermes works in its own runtime.",
+    description: "Claude Code/Codex/Hermes works in its own runtime while emitting events.",
     requiredArtifact: "session/events.jsonl",
-    x: 75,
-    y: 55,
+    x: 76,
+    y: 43,
   },
   {
     id: "redzone",
     label: "Red Zone",
     lane: "control",
-    description: "Pause for high-risk deploy, provider, auth, data, or billing moves.",
+    description: "Pause for high-risk deploy, provider, auth, data, billing, or destructive actions.",
     requiredArtifact: "approvals/redzone.json",
-    x: 52,
-    y: 55,
+    x: 58,
+    y: 43,
+  },
+  {
+    id: "qa-break-it",
+    label: "Break-it QA",
+    lane: "qa",
+    description: "Try edge cases, malformed input, auth boundaries, provider failures, concurrency.",
+    requiredArtifact: "qa/break-it-results.md",
+    x: 40,
+    y: 43,
   },
   {
     id: "prove",
-    label: "Prove",
+    label: "Proof Gate",
     lane: "validation",
-    description: "Proof gate, evals, smoke, and finish-line validator.",
+    description: "Run validation commands and attach proof before done can pass.",
     requiredArtifact: "proof/proof.json",
-    x: 28,
-    y: 55,
+    x: 22,
+    y: 43,
+  },
+  {
+    id: "live-smoke",
+    label: "Live Smoke",
+    lane: "release",
+    description: "Prove changed route/API/job/provider/voice path in target environment when required.",
+    requiredArtifact: "smoke/smoke_proof.json",
+    x: 4,
+    y: 43,
+  },
+  {
+    id: "self-heal",
+    label: "Self-Heal",
+    lane: "learn",
+    description: "If the harness/process failed, create a self-heal artifact and PR path.",
+    requiredArtifact: "self_heal/self_heal_report.md",
+    x: 4,
+    y: 70,
   },
   {
     id: "handoff",
     label: "Handoff",
     lane: "ship",
-    description: "Answer Contract, evidence packet, and next decision.",
+    description: "Answer Contract, evidence packet, skipped nodes, risks, and next decision.",
     requiredArtifact: "handoff/final.md",
-    x: 5,
-    y: 55,
+    x: 22,
+    y: 70,
   },
 ];
 
 export const workflowEdges = [
   ["intake", "route"],
-  ["route", "investigate"],
-  ["investigate", "design"],
-  ["design", "implement"],
+  ["route", "system-design"],
+  ["system-design", "production-readiness"],
+  ["production-readiness", "cloud-platform"],
+  ["cloud-platform", "implement"],
   ["implement", "redzone"],
-  ["redzone", "prove"],
-  ["prove", "handoff"],
+  ["redzone", "qa-break-it"],
+  ["qa-break-it", "prove"],
+  ["prove", "live-smoke"],
+  ["live-smoke", "self-heal"],
+  ["self-heal", "handoff"],
 ] as const;
 
 export const baseArtifacts: RunArtifact[] = workflowNodes.map((node) => ({
@@ -153,22 +220,32 @@ export const baseArtifacts: RunArtifact[] = workflowNodes.map((node) => ({
 
 export const demoRuns: AppRun[] = [
   {
-    id: "RUN-1042",
-    title: "Fix clone KB miss",
-    task: "Investigate why a clone says it does not know content that exists in the KB.",
+    id: "RUN-2042",
+    title: "Production readiness pack merge",
+    task: "Merge the 13-layer production readiness pack, system design, QA/break-it, and self-healing into the universal harness model.",
     repo: "nickcarmonadigital/valdris-sdlc-harness",
     branch: "main",
-    lane: "agent-runtime",
+    lane: "production-readiness",
     agent: "claude-code",
     status: "blocked",
     risk: "medium",
-    currentNodeId: "prove",
-    createdAt: "2026-06-18T22:31:00.000Z",
-    updatedAt: "2026-06-18T22:42:00.000Z",
+    mode: "replay",
+    eventSource: "local-jsonl",
+    currentNodeId: "qa-break-it",
+    createdAt: "2026-06-22T22:31:00.000Z",
+    updatedAt: "2026-06-22T22:42:00.000Z",
     approvals: [],
     artifacts: baseArtifacts.map((artifact) => ({
       ...artifact,
-      present: ["run/intake.json", "run/route.json", "rca/rca.json", "design/anchors.json", "session/events.jsonl"].includes(artifact.path),
+      present: [
+        "run/intake.json",
+        "run/route.json",
+        "design/system_design.md",
+        "production/layer-assessment.json",
+        "session/events.jsonl",
+      ].includes(artifact.path),
+      skipped: artifact.path === "cloud/service-map.json",
+      skipReason: artifact.path === "cloud/service-map.json" ? "No cloud resource, secret, IAM, network, deploy, or provider setting changed in this docs/model run." : undefined,
     })),
     events: [
       {
@@ -180,25 +257,29 @@ export const demoRuns: AppRun[] = [
         artifact: "run/intake.json",
         message: "Run packet opened from app intake.",
         status: "ok",
+        runMode: "replay",
+        eventSource: "local-jsonl",
       },
       {
         id: "evt-2",
-        type: "agent.connected",
+        type: "run.mode_set",
         at: "22:32",
-        actor: "claude-code",
+        actor: "harness",
         nodeId: "route",
         artifact: "run/route.json",
-        message: "Claude Code connector attached; lane=agent-runtime.",
+        message: "Mode is Replay: historical seed data, not fake live telemetry.",
         status: "ok",
+        runMode: "replay",
+        eventSource: "local-jsonl",
       },
       {
         id: "evt-3",
-        type: "gate.fired",
+        type: "artifact.written",
         at: "22:35",
-        actor: "harness",
-        nodeId: "investigate",
-        artifact: "rca/rca.json",
-        message: "RCA gate opened and runtime evidence attached.",
+        actor: "claude-code",
+        nodeId: "system-design",
+        artifact: "design/system_design.md",
+        message: "System design lane captured SDLC-as-parent taxonomy and ADR trigger rules.",
         status: "ok",
       },
       {
@@ -206,40 +287,57 @@ export const demoRuns: AppRun[] = [
         type: "artifact.written",
         at: "22:38",
         actor: "claude-code",
-        nodeId: "design",
-        artifact: "design/anchors.json",
-        message: "Design anchors written before implementation.",
+        nodeId: "production-readiness",
+        artifact: "production/layer-assessment.json",
+        message: "Production Readiness Layer Pack classified frontend/backend/data/auth/cloud/ops/recovery surfaces.",
         status: "ok",
       },
       {
         id: "evt-5",
-        type: "run.blocked",
+        type: "node.skipped",
+        at: "22:40",
+        actor: "harness",
+        nodeId: "cloud-platform",
+        artifact: "cloud/skip.json",
+        message: "Cloud/platform node skipped with explicit reason.",
+        status: "skipped",
+        skipReason: "No deploy, cloud resource, secret, IAM, network, or provider setting changed.",
+        nodeState: "skipped",
+      },
+      {
+        id: "evt-6",
+        type: "node.failed",
         at: "22:42",
         actor: "harness",
-        nodeId: "prove",
-        artifact: "proof/proof.json",
-        message: "Cannot mark done: proof/proof.json is missing.",
-        status: "blocked",
+        nodeId: "qa-break-it",
+        artifact: "qa/break-it-results.md",
+        message: "Break-it QA artifact missing; finish-line remains blocked.",
+        status: "failed",
+        failureReason: "qa/break-it-results.md has not been written for the update run.",
+        recoveryPath: "Run break-it checklist against docs/UI copy, attach results, then rerun finish-line.",
+        nodeState: "failed",
       },
     ],
   },
   {
-    id: "RUN-1043",
-    title: "Codex connector spike",
-    task: "Prototype file/event bridge for Codex app runs without making this product an IDE.",
+    id: "RUN-2043",
+    title: "AWS deploy lane approval",
+    task: "Prototype AWS/cloud platform lane checks for service maps, IAM/secrets, observability, cost, rollback, and live smoke.",
     repo: "nickcarmonadigital/valdris-sdlc-harness",
     branch: "main",
-    lane: "connector-runtime",
+    lane: "cloud-platform",
     agent: "codex",
-    status: "running",
-    risk: "low",
-    currentNodeId: "implement",
-    createdAt: "2026-06-18T22:51:00.000Z",
-    updatedAt: "2026-06-18T22:59:00.000Z",
+    status: "approval",
+    risk: "red-zone",
+    mode: "blueprint",
+    eventSource: "static-blueprint",
+    currentNodeId: "redzone",
+    createdAt: "2026-06-22T22:51:00.000Z",
+    updatedAt: "2026-06-22T22:59:00.000Z",
     approvals: [],
     artifacts: baseArtifacts.map((artifact) => ({
       ...artifact,
-      present: ["run/intake.json", "run/route.json", "rca/rca.json", "design/anchors.json"].includes(artifact.path),
+      present: ["run/intake.json", "run/route.json", "design/system_design.md", "production/layer-assessment.json", "cloud/service-map.json", "session/events.jsonl"].includes(artifact.path),
     })),
     events: [
       {
@@ -249,43 +347,42 @@ export const demoRuns: AppRun[] = [
         actor: "human",
         nodeId: "intake",
         artifact: "run/intake.json",
-        message: "Connector spike run opened.",
+        message: "Cloud/platform blueprint run opened.",
         status: "ok",
+        runMode: "blueprint",
+        eventSource: "static-blueprint",
       },
       {
         id: "evt-b",
-        type: "agent.connected",
+        type: "artifact.written",
         at: "22:53",
         actor: "codex",
-        nodeId: "route",
-        artifact: "run/route.json",
-        message: "Codex connector route selected.",
+        nodeId: "cloud-platform",
+        artifact: "cloud/service-map.json",
+        message: "AWS service map node lists IAM/secrets, networking, deploy, observability, cost, and rollback checks.",
         status: "ok",
       },
       {
         id: "evt-c",
-        type: "node.entered",
+        type: "approval.requested",
         at: "22:59",
-        actor: "codex",
-        nodeId: "implement",
-        artifact: "session/events.jsonl",
-        message: "Codex runtime is active; app is only observing the run.",
-        status: "ok",
+        actor: "harness",
+        nodeId: "redzone",
+        artifact: "approvals/redzone.json",
+        message: "Red Zone approval required before production deploy or cloud mutation.",
+        status: "needs_approval",
+        approvalOwner: "primary human/operator",
+        approvalScope: "cloud resource mutation / deploy",
+        nodeState: "needs_approval",
       },
     ],
   },
 ];
 
-const nextByNode: Record<string, string | undefined> = {
-  intake: "route",
-  route: "investigate",
-  investigate: "design",
-  design: "implement",
-  implement: "redzone",
-  redzone: "prove",
-  prove: "handoff",
-  handoff: undefined,
-};
+const nextByNode: Record<string, string | undefined> = Object.fromEntries(
+  workflowEdges.map(([from, to]) => [from, to]),
+);
+nextByNode.handoff = undefined;
 
 export function nextNodeId(currentNodeId: string): string | undefined {
   return nextByNode[currentNodeId];
@@ -295,34 +392,56 @@ export function artifactForNode(nodeId: string): string {
   return workflowNodes.find((node) => node.id === nodeId)?.requiredArtifact ?? "run/unknown.json";
 }
 
+export function nodeIdForArtifact(path: string): string | undefined {
+  return workflowNodes.find((node) => node.requiredArtifact === path)?.id;
+}
+
 export function labelForAgent(agent: AgentRuntime): string {
   return agent === "claude-code" ? "Claude Code" : agent === "codex" ? "Codex" : "Hermes";
 }
 
-export function computeNodeState(run: AppRun, nodeId: string): "waiting" | "active" | "passed" | "blocked" | "approval" {
+export function computeNodeState(run: AppRun, nodeId: string): "waiting" | "active" | "passed" | "blocked" | "approval" | "skipped" | "failed" {
+  const artifact = artifactForNode(nodeId);
+  const item = run.artifacts.find((artifactItem) => artifactItem.path === artifact);
+  if (item?.failed) return "failed";
+  if (item?.skipped) return "skipped";
   if (run.currentNodeId === nodeId && run.status === "blocked") return "blocked";
   if (run.currentNodeId === nodeId && run.status === "approval") return "approval";
   if (run.currentNodeId === nodeId && run.status !== "complete") return "active";
-  const artifact = artifactForNode(nodeId);
-  const present = run.artifacts.some((item) => item.path === artifact && item.present);
-  if (present) return "passed";
+  if (item?.present) return "passed";
   return "waiting";
 }
 
 export function missingArtifacts(run: AppRun): RunArtifact[] {
-  return run.artifacts.filter((artifact) => artifact.required && !artifact.present);
+  return run.artifacts.filter((artifact) => artifact.required && !artifact.present && !artifact.skipped);
 }
 
-export function createEvent(run: AppRun, type: AppEventType, nodeId: string, message: string, status: AppEvent["status"] = "ok"): AppEvent {
-  const artifact = artifactForNode(nodeId);
+export function createEvent(
+  run: AppRun,
+  type: AppEventType,
+  nodeId: string,
+  message: string,
+  status: AppEventStatus = "ok",
+  extra: Partial<AppEvent> = {},
+): AppEvent {
+  const artifact = extra.artifact ?? artifactForNode(nodeId);
   return {
     id: `${run.id}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     type,
     at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    actor: type.includes("approval") ? "human" : type === "gate.fired" || type === "run.blocked" || type === "run.completed" ? "harness" : run.agent,
+    actor: extra.actor ?? run.agent,
     nodeId,
     artifact,
     message,
     status,
+    runMode: run.mode,
+    eventSource: run.eventSource,
+    nodeState: extra.nodeState,
+    skipReason: extra.skipReason,
+    failureReason: extra.failureReason,
+    recoveryPath: extra.recoveryPath,
+    approvalOwner: extra.approvalOwner,
+    approvalScope: extra.approvalScope,
+    selfHealPrUrl: extra.selfHealPrUrl,
   };
 }

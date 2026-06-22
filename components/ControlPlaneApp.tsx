@@ -10,6 +10,7 @@ import {
   labelForAgent,
   missingArtifacts,
   nextNodeId,
+  nodeIdForArtifact,
   type AgentRuntime,
   type AppRun,
   type RiskLevel,
@@ -19,7 +20,20 @@ import {
 
 const STORAGE_KEY = "uash.control-plane.runs.v1";
 const BRIDGE_URL = "http://127.0.0.1:8787";
-const lanes = ["engineering-default", "agent-runtime", "connector-runtime", "support-triage", "incidents", "data-supabase"];
+const lanes = [
+  "engineering-default",
+  "system-design",
+  "production-readiness",
+  "cloud-platform",
+  "security-compliance",
+  "qa-release",
+  "reliability-observability",
+  "agent-runtime",
+  "connector-runtime",
+  "support-triage",
+  "incidents",
+  "data-supabase",
+];
 
 const nodeById = Object.fromEntries(workflowNodes.map((node) => [node.id, node]));
 
@@ -55,7 +69,7 @@ export function ControlPlaneApp() {
     task: "",
     repo: "nickcarmonadigital/valdris-sdlc-harness",
     branch: "main",
-    lane: "connector-runtime",
+    lane: "production-readiness",
     agent: "claude-code" as AgentRuntime,
     risk: "medium" as RiskLevel,
   });
@@ -111,6 +125,8 @@ export function ControlPlaneApp() {
       agent: form.agent,
       status: "queued",
       risk: form.risk,
+      mode: "live",
+      eventSource: "browser-local",
       currentNodeId: "intake",
       createdAt,
       updatedAt: createdAt,
@@ -190,22 +206,77 @@ export function ControlPlaneApp() {
       approvals: Array.from(new Set([...run.approvals, "redzone"])),
       updatedAt: nowIso(),
       artifacts: run.artifacts.map((item) => (item.path === "approvals/redzone.json" ? { ...item, present: true } : item)),
-      events: [...run.events, createEvent(run, "approval.granted", "redzone", "Human approval granted for Red Zone stage.")],
+      events: [...run.events, createEvent(run, "approval.granted", "redzone", "Human approval granted for Red Zone stage.", "ok", { actor: "human" })],
     }));
+  }
+
+  function skipCurrentNode() {
+    updateSelected((run) => {
+      const artifact = artifactForNode(run.currentNodeId);
+      const reason = `Skipped by operator/harness: ${nodeById[run.currentNodeId]?.label ?? run.currentNodeId} is not relevant to this run.`;
+      return {
+        ...run,
+        updatedAt: nowIso(),
+        artifacts: run.artifacts.map((item) => (item.path === artifact ? { ...item, skipped: true, skipReason: reason, present: false } : item)),
+        events: [
+          ...run.events,
+          createEvent(run, "node.skipped", run.currentNodeId, reason, "skipped", { actor: "harness", skipReason: reason, nodeState: "skipped" }),
+        ],
+      };
+    });
+  }
+
+  function failCurrentNode() {
+    updateSelected((run) => {
+      const artifact = artifactForNode(run.currentNodeId);
+      const failureReason = `${nodeById[run.currentNodeId]?.label ?? run.currentNodeId} failed or lacks required evidence.`;
+      const recoveryPath = "Attach the missing artifact/evidence, rerun the gate, or record an explicit skip reason if not relevant.";
+      return {
+        ...run,
+        status: "blocked",
+        updatedAt: nowIso(),
+        artifacts: run.artifacts.map((item) => (item.path === artifact ? { ...item, failed: true, failureReason, recoveryPath } : item)),
+        events: [
+          ...run.events,
+          createEvent(run, "node.failed", run.currentNodeId, failureReason, "failed", { actor: "harness", failureReason, recoveryPath, nodeState: "failed" }),
+        ],
+      };
+    });
+  }
+
+  function openSelfHealPr() {
+    updateSelected((run) => {
+      const message = "Self-heal required: update the harness pack/docs/gates/adapter because this run exposed a process gap.";
+      return {
+        ...run,
+        currentNodeId: "self-heal",
+        updatedAt: nowIso(),
+        artifacts: run.artifacts.map((item) => (item.path === "self_heal/self_heal_report.md" ? { ...item, present: true } : item)),
+        events: [
+          ...run.events,
+          createEvent(run, "self_heal.detected", "self-heal", message, "warn", { actor: "harness", artifact: "self_heal/self_heal_report.md" }),
+          createEvent(run, "self_heal.pr_opened", "self-heal", "Self-heal PR proposed/opened for the harness gap.", "ok", { actor: "harness", artifact: "self_heal/pr.json" }),
+        ],
+      };
+    });
   }
 
   function finishRun() {
     updateSelected((run) => {
       const absent = missingArtifacts(run);
       if (absent.length) {
+        const blockedNode = nodeIdForArtifact(absent[0]?.path ?? "") ?? run.currentNodeId;
         return {
           ...run,
           status: "blocked",
-          currentNodeId: absent[0]?.path === "proof/proof.json" ? "prove" : run.currentNodeId,
+          currentNodeId: blockedNode,
           updatedAt: nowIso(),
           events: [
             ...run.events,
-            createEvent(run, "run.blocked", absent[0]?.path === "proof/proof.json" ? "prove" : run.currentNodeId, `Cannot complete: missing ${absent.map((item) => item.path).join(", ")}.`, "blocked"),
+            createEvent(run, "run.blocked", blockedNode, `Cannot complete: missing ${absent.map((item) => item.path).join(", ")}.`, "blocked", {
+              actor: "harness",
+              recoveryPath: "Write the missing artifacts or skip irrelevant nodes with explicit reasons before finishing.",
+            }),
           ],
         };
       }
@@ -283,7 +354,7 @@ export function ControlPlaneApp() {
 
   async function copyClaudePrompt() {
     if (!selectedRun) return;
-    const prompt = `Use the Valdris SDLC Harness for this run.\n\nRUN_ID=${selectedRun.id}\nBRIDGE_URL=${BRIDGE_URL}\nREPO=${selectedRun.repo}\nBRANCH=${selectedRun.branch}\nLANE=${selectedRun.lane}\nAGENT=${labelForAgent(selectedRun.agent)}\n\nTask:\n${selectedRun.task}\n\nRules:\n1. Do not shortcut the harness.\n2. Before each stage, emit a bridge event.\n3. Write or name each required artifact path.\n4. If a Red Zone action appears, stop and request approval.\n5. Finish only after proof/proof.json exists and passes.\n\nEmit examples from the project root that contains the connector scripts:\nnode scripts/uash-emit-event.mjs ${selectedRun.id} agent.connected route "Claude Code attached to the Valdris SDLC Harness run" --artifact run/route.json --status ok --actor claude-code\nnode scripts/uash-emit-event.mjs ${selectedRun.id} gate.fired investigate "RCA gate fired; gathering runtime evidence before cause" --artifact rca/rca.json --status ok --actor harness\nnode scripts/uash-emit-event.mjs ${selectedRun.id} artifact.written design "Design anchors written" --artifact design/anchors.json --status ok --actor claude-code\nnode scripts/uash-emit-event.mjs ${selectedRun.id} approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status warn --actor harness\nnode scripts/uash-emit-event.mjs ${selectedRun.id} run.blocked prove "Missing proof/proof.json" --artifact proof/proof.json --status blocked --actor harness\n\nNow start at Intake, route the lane, and continue node by node.`;
+    const prompt = `Use the Valdris SDLC Harness for this run.\n\nRUN_ID=${selectedRun.id}\nBRIDGE_URL=${BRIDGE_URL}\nREPO=${selectedRun.repo}\nBRANCH=${selectedRun.branch}\nLANE=${selectedRun.lane}\nAGENT=${labelForAgent(selectedRun.agent)}\n\nTask:\n${selectedRun.task}\n\nRules:\n1. Do not shortcut the harness.\n2. Before each stage, emit a bridge event.\n3. Write or name each required artifact path.\n4. If a node is not relevant, emit node.skipped with a skip reason.\n5. If a node fails, emit node.failed with failureReason and recoveryPath.\n6. If a Red Zone action appears, stop and request approval.\n7. Finish only after all required nodes are passed or skipped with reasons.\n\nEmit examples from the project root that contains the connector scripts:\nnode scripts/uash-emit-event.mjs ${selectedRun.id} agent.connected route "Claude Code attached to the Valdris SDLC Harness run" --artifact run/route.json --status ok --actor claude-code --mode live --source bridge\nnode scripts/uash-emit-event.mjs ${selectedRun.id} artifact.written production-readiness "Production layer assessment written" --artifact production/layer-assessment.json --status ok --actor claude-code\nnode scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "Cloud/platform skipped" --artifact cloud/skip.json --status skipped --actor harness --skip-reason "No cloud resource, deploy, secret, IAM, or network change"\nnode scripts/uash-emit-event.mjs ${selectedRun.id} node.failed qa-break-it "Break-it QA failed" --artifact qa/break-it-results.md --status failed --actor harness --failure-reason "Tenant-boundary negative test failed" --recovery-path "Fix policy and rerun negative authz test"\nnode scripts/uash-emit-event.mjs ${selectedRun.id} approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --approval-owner "primary operator" --approval-scope "cloud/provider mutation"\nnode scripts/uash-emit-event.mjs ${selectedRun.id} self_heal.pr_opened self-heal "Self-heal PR opened/proposed" --artifact self_heal/pr.json --status ok --actor harness\n\nNow start at Intake, route the lane, and continue node by node.`;
     await navigator.clipboard.writeText(prompt);
     setPromptCopied(true);
     window.setTimeout(() => setPromptCopied(false), 1400);
@@ -339,13 +410,14 @@ export function ControlPlaneApp() {
       <section className="appMain">
         <header className="appHeader">
           <div>
-            <p className="eyebrow">Legit app mode · local-first v0</p>
+            <p className="eyebrow">Legit app mode · Blueprint / Live / Replay separated</p>
             <h1>Agentic SDLC Control Plane</h1>
-            <p>Operate runs, connectors, gates, artifacts, approvals, and the workflow graph. This is the app surface — not a marketing page.</p>
+            <p>Operate runs, connectors, gates, production layers, QA proof, self-healing, artifacts, approvals, and the workflow graph. This is the app surface — not a marketing page.</p>
           </div>
           <div className="headerActions">
             <span className="modePill">No Supabase</span>
-            <span className="modePill">Browser + JSONL</span>
+            <span className="modePill">{selectedRun.mode ?? "live"}</span>
+            <span className="modePill">{selectedRun.eventSource ?? "browser-local"}</span>
             <a className="ghostButton" href="/docs">Docs</a>
           </div>
         </header>
@@ -432,7 +504,10 @@ export function ControlPlaneApp() {
             <div className="actionBar">
               <button className="primaryButton" onClick={advanceRun} type="button">Advance stage</button>
               <button className="secondaryButton" onClick={writeCurrentArtifact} type="button">Write current artifact</button>
+              <button className="secondaryButton" onClick={skipCurrentNode} type="button">Skip with reason</button>
               <button className="secondaryButton" onClick={approveRedZone} type="button">Approve Red Zone</button>
+              <button className="dangerButton" onClick={failCurrentNode} type="button">Fail node</button>
+              <button className="secondaryButton" onClick={openSelfHealPr} type="button">Self-heal PR</button>
               <button className="dangerButton" onClick={finishRun} type="button">Finish-line check</button>
             </div>
           </article>
@@ -497,10 +572,10 @@ export function ControlPlaneApp() {
             </div>
             <div className="artifactRows">
               {selectedRun.artifacts.map((artifact) => (
-                <div className={`artifactRow ${artifact.present ? "present" : "missing"}`} key={artifact.path}>
-                  <span>{artifact.present ? "✓" : "×"}</span>
+                <div className={`artifactRow ${artifact.failed ? "failed" : artifact.skipped ? "skipped" : artifact.present ? "present" : "missing"}`} key={artifact.path}>
+                  <span>{artifact.failed ? "!" : artifact.skipped ? "↷" : artifact.present ? "✓" : "×"}</span>
                   <code>{artifact.path}</code>
-                  <small>{artifact.label}</small>
+                  <small>{artifact.failureReason ?? artifact.skipReason ?? artifact.label}</small>
                 </div>
               ))}
             </div>
@@ -536,7 +611,8 @@ export function ControlPlaneApp() {
 npm run bridge:claude
 
 # Terminal 2, inside Claude Code / your repo
-node scripts/uash-emit-event.mjs ${selectedRun.id} node.entered investigate "entered investigate" --artifact rca/rca.json --actor claude-code`}</pre>
+node scripts/uash-emit-event.mjs ${selectedRun.id} node.entered system-design "entered system design" --artifact design/system_design.md --actor claude-code
+node scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness`}</pre>
             <div className="formActions">
               <button className="secondaryButton" onClick={checkBridge} type="button">Check bridge</button>
               <button className="secondaryButton" onClick={syncSelectedToBridge} type="button">Sync run to bridge</button>
