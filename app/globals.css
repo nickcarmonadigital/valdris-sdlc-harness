@@ -1,0 +1,209 @@
+:root {
+  --bg: #071014;
+  --panel: #0d191f;
+  --panel-2: #13232b;
+  --card: #f6f2e8;
+  --ink: #0d191f;
+  --muted: #7f928e;
+  --line: rgba(146, 212, 222, 0.24);
+  --cyan: #42e8ff;
+  --green: #7ef6a0;
+  --yellow: #f4d35e;
+  --red: #ff6b6b;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: #edf7f6; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+a { color: inherit; text-decoration: none; }
+code { font-family: "SFMono-Regular", Consolas, monospace; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+
+.appShell { min-height: 100vh; display: grid; grid-template-columns: 290px 1fr; background: #071014; color: #edf7f6; }
+.appSidebar { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: 1px solid var(--line); background: linear-gradient(180deg, #0a151a, #071014); padding: 20px; display: flex; flex-direction: column; gap: 20px; }
+.brandBlock { display: flex; align-items: center; gap: 12px; }
+.brandMark { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; color: #041014; background: var(--cyan); font-weight: 1000; }
+.brandBlock strong, .brandBlock small { display: block; }
+.brandBlock small { color: var(--muted); margin-top: 2px; }
+.newRunButton, .primaryButton, .secondaryButton, .ghostButton, .dangerButton { border: 0; border-radius: 13px; padding: 11px 13px; font-weight: 900; transition: transform 150ms ease, border-color 150ms ease, background 150ms ease; }
+.newRunButton:hover, .primaryButton:hover, .secondaryButton:hover, .ghostButton:hover, .dangerButton:hover { transform: translateY(-1px); }
+.newRunButton, .primaryButton { background: var(--cyan); color: #041014; }
+.secondaryButton { background: rgba(255,255,255,0.07); color: #edf7f6; border: 1px solid var(--line); }
+.ghostButton { background: transparent; color: #edf7f6; border: 1px solid var(--line); display: inline-flex; align-items: center; justify-content: center; }
+.dangerButton { background: rgba(255,107,107,0.14); color: #ffd7d7; border: 1px solid rgba(255,107,107,0.42); }
+.sideNav { display: grid; gap: 8px; }
+.sideNav a { color: #b8cac7; border: 1px solid transparent; border-radius: 12px; padding: 10px 11px; font-weight: 800; }
+.sideNav a.active, .sideNav a:hover { color: #edf7f6; background: rgba(255,255,255,0.045); border-color: var(--line); }
+.sidebarLabel { color: var(--muted); text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.68rem; font-weight: 1000; margin-bottom: 8px; }
+.runList { display: grid; gap: 9px; }
+.runListItem { width: 100%; text-align: left; border: 1px solid rgba(146,212,222,0.12); border-radius: 16px; padding: 12px; background: rgba(255,255,255,0.025); color: #edf7f6; display: grid; gap: 4px; }
+.runListItem.selected { border-color: var(--cyan); background: rgba(66,232,255,0.08); }
+.runListItem span { color: var(--cyan); font-size: 0.76rem; font-weight: 900; }
+.runListItem strong { line-height: 1.2; }
+.runListItem small { color: var(--muted); }
+.appMain { min-width: 0; padding: 24px clamp(18px, 3vw, 42px) 54px; display: grid; gap: 20px; }
+.appHeader { display: flex; justify-content: space-between; gap: 22px; align-items: flex-start; border: 1px solid var(--line); border-radius: 22px; padding: 18px 20px; background: radial-gradient(circle at 10% 0%, rgba(66,232,255,0.11), transparent 32%), rgba(255,255,255,0.035); }
+.appHeader h1 { margin: 5px 0 8px; font-size: clamp(1.8rem, 3vw, 3rem); line-height: 1; letter-spacing: -0.045em; }
+.appHeader p:not(.eyebrow) { color: #b8cac7; max-width: 860px; line-height: 1.6; margin: 0; }
+.headerActions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; min-width: 210px; }
+.modePill, .runBadge { border: 1px solid var(--line); background: rgba(255,255,255,0.04); border-radius: 999px; padding: 8px 10px; color: #d9fffb; font-size: 0.76rem; font-weight: 900; }
+.metricGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.metricGrid article { border: 1px solid var(--line); border-radius: 20px; padding: 16px; background: rgba(255,255,255,0.035); }
+.metricGrid span { color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 900; }
+.metricGrid strong { display: block; margin-top: 8px; font-size: 2.2rem; letter-spacing: -0.04em; }
+.createPanel { border: 1px solid var(--line); border-radius: 24px; padding: 20px; background: var(--card); color: var(--ink); display: grid; gap: 16px; }
+.createPanel h2 { margin: 4px 0 0; font-size: clamp(1.4rem, 3vw, 2.4rem); letter-spacing: -0.04em; }
+.createPanel .eyebrow { color: #0b6f7c; }
+.createPanel form { display: grid; gap: 12px; }
+.createPanel label { display: grid; gap: 6px; color: #2b3a38; font-weight: 900; }
+.createPanel input, .createPanel textarea, .createPanel select { width: 100%; border: 1px solid rgba(13,25,31,0.18); border-radius: 12px; padding: 11px; background: #fffdf8; color: var(--ink); }
+.createPanel textarea { min-height: 92px; resize: vertical; }
+.formGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.formActions, .actionBar { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+.workspaceGrid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr); gap: 14px; }
+.runDetailPanel, .inspectorPanel, .visualWorkspace, .artifactPanel, .eventPanel, .connectorPanel { border: 1px solid var(--line); border-radius: 24px; padding: 18px; background: rgba(255,255,255,0.035); }
+.panelHeader.big { align-items: flex-start; }
+.panelHeader.big h2 { margin: 4px 0 0; font-size: clamp(1.5rem, 3vw, 2.8rem); letter-spacing: -0.05em; }
+.statusDot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: var(--muted); }
+.statusDot.running { background: var(--cyan); box-shadow: 0 0 18px rgba(66,232,255,0.55); }
+.statusDot.blocked { background: var(--red); box-shadow: 0 0 18px rgba(255,107,107,0.45); }
+.statusDot.approval { background: var(--yellow); box-shadow: 0 0 18px rgba(244,211,94,0.4); }
+.statusDot.complete { background: var(--green); }
+.taskText { color: #b8cac7; line-height: 1.6; }
+.detailRows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+.detailRows span { display: grid; gap: 3px; color: var(--muted); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 900; }
+.detailRows b { color: #edf7f6; text-transform: none; letter-spacing: 0; font-size: 0.88rem; overflow-wrap: anywhere; }
+.inspectorPanel p, .connectorPanel p { color: #b8cac7; line-height: 1.55; }
+.inspectorPanel code { display: inline-block; color: var(--cyan); background: rgba(66,232,255,0.08); padding: 6px 8px; border-radius: 8px; }
+.missingBox { margin-top: 16px; display: flex; justify-content: space-between; gap: 14px; align-items: center; border: 1px solid var(--line); border-radius: 16px; padding: 12px; }
+.missingBox span { color: var(--muted); font-weight: 900; }
+.missingBox strong { font-size: 2rem; }
+.visualWorkspace { padding: 0; overflow: hidden; }
+.appCanvasHeader { border-bottom: 1px solid var(--line); }
+.appCanvas { min-height: 570px; }
+.appGraphNode { width: clamp(142px, 14vw, 184px); }
+.appGraphNode.approval { border-color: var(--yellow); box-shadow: 0 0 36px rgba(244,211,94,0.16); }
+.lowerGrid { display: grid; grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1fr) minmax(280px, 0.8fr); gap: 14px; align-items: start; }
+.artifactRows { display: grid; gap: 8px; }
+.artifactRow { display: grid; grid-template-columns: 24px 1fr auto; gap: 9px; align-items: center; border: 1px solid rgba(146,212,222,0.12); border-radius: 14px; padding: 10px; }
+.artifactRow.present { border-color: rgba(126,246,160,0.36); }
+.artifactRow.missing { border-color: rgba(255,107,107,0.3); }
+.artifactRow span { font-weight: 1000; color: var(--green); }
+.artifactRow.missing span { color: var(--red); }
+.artifactRow code { color: var(--cyan); overflow-wrap: anywhere; }
+.artifactRow small { color: var(--muted); font-weight: 800; }
+.appEventList { max-height: 490px; overflow: auto; padding-right: 4px; }
+.appEventList code { display: inline-block; color: var(--cyan); margin-top: 6px; font-size: 0.73rem; }
+.connectorPanel pre { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 16px; background: rgba(7,16,20,0.7); padding: 13px; color: var(--cyan); overflow: auto; }
+.bridgeState { border-radius: 999px; padding: 6px 9px; border: 1px solid var(--line); font-size: 0.76rem; }
+.bridgeState.connected { border-color: rgba(126,246,160,0.62); color: var(--green); }
+.bridgeState.offline { border-color: rgba(255,107,107,0.62); color: var(--red); }
+.bridgeMessage { border: 1px solid rgba(146,212,222,0.16); border-radius: 14px; padding: 10px 11px; color: #d9fffb; background: rgba(255,255,255,0.035); margin: 10px 0; line-height: 1.45; }
+
+.shell { min-height: 100vh; display: grid; grid-template-columns: minmax(340px, 420px) 1fr; }
+.flowPanel { border-right: 1px solid var(--line); background: linear-gradient(180deg, #0b171c, #071014); padding: 28px 24px; position: sticky; top: 0; height: 100vh; overflow: auto; }
+.flowHeader { display: grid; gap: 6px; margin-bottom: 26px; }
+.eyebrow { margin: 0; color: var(--cyan); text-transform: uppercase; letter-spacing: 0.14em; font-size: 0.72rem; font-weight: 800; }
+.flowHeader h2, .hero h1, .operatorConsole h2 { margin: 0; }
+.runId { color: var(--muted); font-family: monospace; }
+.flowRail { display: grid; gap: 0; }
+.flowStep { display: grid; grid-template-columns: 42px 1fr; gap: 14px; min-height: 112px; }
+.nodeWrap { display: grid; justify-items: center; grid-template-rows: 34px 1fr; }
+.node { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 900; border: 1px solid var(--line); background: var(--panel-2); }
+.connector { width: 2px; height: 100%; background: var(--line); }
+.flowStep.complete .node { background: rgba(126, 246, 160, 0.18); border-color: var(--green); color: var(--green); }
+.flowStep.active .node { background: rgba(66, 232, 255, 0.18); border-color: var(--cyan); color: var(--cyan); box-shadow: 0 0 24px rgba(66, 232, 255, 0.25); }
+.flowStep.blocked .node { background: rgba(255, 107, 107, 0.16); border-color: var(--red); color: var(--red); }
+.stepCard { background: rgba(255,255,255,0.035); border: 1px solid var(--line); border-radius: 18px; padding: 14px; margin-bottom: 14px; }
+.stepTopline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stepTopline h3 { margin: 0; font-size: 0.98rem; }
+.stepTopline span { color: var(--muted); font-size: 0.76rem; text-transform: uppercase; font-weight: 800; }
+.stepCard p { color: #b8cac7; margin: 8px 0 12px; line-height: 1.4; }
+.stepCard code { color: var(--cyan); background: rgba(66,232,255,0.08); padding: 4px 7px; border-radius: 7px; font-size: 0.78rem; }
+
+.mainPanel { padding: 28px clamp(24px, 5vw, 72px) 64px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; color: #b8cac7; font-size: 0.9rem; margin-bottom: 70px; }
+.topbar span { font-weight: 800; color: #edf7f6; }
+.hero { max-width: 980px; }
+.hero h1 { font-size: clamp(2.7rem, 6vw, 6.6rem); line-height: 0.92; letter-spacing: -0.07em; max-width: 1050px; }
+.lede { color: #b8cac7; max-width: 760px; font-size: 1.2rem; line-height: 1.65; margin: 28px 0; }
+.ctaRow { display: flex; flex-wrap: wrap; gap: 14px; }
+.primaryCta, .secondaryCta { border-radius: 999px; padding: 13px 18px; font-weight: 900; }
+.primaryCta { background: var(--cyan); color: #041014; }
+.secondaryCta { border: 1px solid var(--line); color: #edf7f6; }
+.connectorGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 54px 0; }
+.connectorCard, .consoleCard { background: var(--card); color: var(--ink); border-radius: 22px; padding: 22px; box-shadow: 0 22px 80px rgba(0,0,0,0.24); }
+.connectorTopline { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.connectorTopline h3 { margin: 0; }
+.connectorTopline span, .consoleCard span { font-size: 0.72rem; font-weight: 900; color: #48625d; text-transform: uppercase; letter-spacing: 0.1em; }
+.connectorCard p, .consoleCard p { color: #41514f; line-height: 1.55; }
+.operatorConsole { border: 1px solid var(--line); border-radius: 28px; padding: 28px; display: grid; grid-template-columns: 1.3fr 0.8fr; gap: 24px; background: rgba(255,255,255,0.035); }
+.operatorConsole p { color: #b8cac7; line-height: 1.65; }
+.consoleCard strong { display: block; font-size: 1.4rem; margin: 8px 0; }
+.agentOpsSection { margin: 56px 0; display: grid; gap: 18px; }
+.sectionHeading { max-width: 980px; }
+.sectionHeading h2 { margin: 8px 0 12px; font-size: clamp(2rem, 4vw, 4.6rem); line-height: 0.95; letter-spacing: -0.06em; }
+.sectionHeading p { color: #b8cac7; line-height: 1.65; max-width: 840px; }
+.opsBoard { border: 1px solid var(--line); border-radius: 30px; overflow: hidden; background: radial-gradient(circle at 22% 18%, rgba(66,232,255,0.14), transparent 28%), rgba(255,255,255,0.035); box-shadow: 0 30px 110px rgba(0,0,0,0.26); }
+.canvasHeader { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 18px 20px; border-bottom: 1px solid var(--line); background: rgba(7,16,20,0.72); }
+.canvasHeader strong { display: block; margin-top: 3px; }
+.tinyLabel { color: var(--muted); text-transform: uppercase; letter-spacing: 0.13em; font-weight: 900; font-size: 0.68rem; }
+.signalPills { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.signalPills span { border: 1px solid var(--line); color: #d9fffb; border-radius: 999px; padding: 7px 10px; font-size: 0.78rem; font-weight: 800; background: rgba(255,255,255,0.035); }
+.workflowCanvas { position: relative; height: min(62vw, 560px); min-height: 420px; overflow: hidden; background-image: linear-gradient(rgba(146,212,222,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(146,212,222,0.06) 1px, transparent 1px); background-size: 34px 34px; }
+.edgeLayer { position: absolute; inset: 0; width: 100%; height: 100%; }
+.edgeLayer path { fill: none; stroke: rgba(146,212,222,0.3); stroke-width: 0.42; stroke-dasharray: 2 2; }
+.graphNode { position: absolute; width: clamp(128px, 16vw, 180px); min-height: 128px; transform: translate(0, 0); border: 1px solid var(--line); border-radius: 20px; padding: 14px; background: rgba(13,25,31,0.92); backdrop-filter: blur(12px); box-shadow: 0 24px 70px rgba(0,0,0,0.28); transition: border-color 250ms ease, box-shadow 250ms ease, transform 250ms ease; }
+.graphNode.running { border-color: var(--cyan); box-shadow: 0 0 36px rgba(66,232,255,0.2); transform: translateY(-3px); }
+.graphNode.active { border-color: var(--cyan); box-shadow: 0 0 36px rgba(66,232,255,0.2); transform: translateY(-3px); }
+.graphNode.passed { border-color: rgba(126,246,160,0.74); }
+.graphNode.blocked { border-color: var(--red); box-shadow: 0 0 36px rgba(255,107,107,0.16); }
+.graphNodeTop { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 900; }
+.graphNodeTop b { color: #edf7f6; }
+.graphNode h3 { margin: 13px 0 4px; font-size: 1.08rem; }
+.graphNode p { margin: 0 0 10px; color: #b8cac7; font-size: 0.82rem; line-height: 1.35; }
+.graphNode code { color: var(--cyan); background: rgba(66,232,255,0.08); padding: 4px 6px; border-radius: 7px; font-size: 0.68rem; overflow-wrap: anywhere; }
+.agentToken { position: absolute; z-index: 4; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #041014; font-weight: 1000; border: 3px solid rgba(7,16,20,0.9); box-shadow: 0 14px 38px rgba(0,0,0,0.32); transition: left 650ms ease, top 650ms ease; }
+.agentToken span { transform: translateY(-1px); }
+.agentToken.claude-code { background: #f4d35e; }
+.agentToken.codex { background: #42e8ff; }
+.agentToken.hermes { background: #7ef6a0; }
+.opsGrid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr); gap: 16px; }
+.eventStream, .artifactLedger { border: 1px solid var(--line); border-radius: 24px; background: rgba(255,255,255,0.035); padding: 18px; }
+.panelHeader { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.panelHeader strong { font-size: 0.86rem; }
+.eventList { display: grid; gap: 10px; }
+.eventRow { display: grid; grid-template-columns: 54px 1fr; gap: 12px; border: 1px solid rgba(146,212,222,0.15); border-radius: 16px; padding: 11px; background: rgba(7,16,20,0.52); }
+.eventRow > span { color: var(--muted); font-family: monospace; font-size: 0.78rem; }
+.eventRow b { font-size: 0.85rem; }
+.eventRow p { margin: 4px 0 0; color: #b8cac7; line-height: 1.42; }
+.eventRow.warn { border-color: rgba(244,211,94,0.48); }
+.eventRow.blocked { border-color: rgba(255,107,107,0.54); }
+.artifactLedger p { color: #b8cac7; line-height: 1.55; margin-top: 0; }
+.artifactLedger ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 9px; }
+.artifactLedger li { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(146,212,222,0.12); padding-bottom: 9px; color: #b8cac7; }
+.artifactLedger code { color: var(--cyan); }
+.docsPage { min-height: 100vh; padding: 48px clamp(24px, 7vw, 96px); background: var(--bg); }
+.docsPage h1 { margin: 12px 0 18px; max-width: 920px; font-size: clamp(2.3rem, 5vw, 5rem); line-height: 0.95; letter-spacing: -0.06em; }
+.backLink { display: inline-flex; color: #b8cac7; margin-bottom: 28px; }
+.docsGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 34px; max-width: 980px; }
+.docsGrid h2 { margin-top: 0; }
+
+@media (max-width: 960px) {
+  .appShell { grid-template-columns: 1fr; }
+  .appSidebar { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .appHeader, .workspaceGrid, .lowerGrid { grid-template-columns: 1fr; flex-direction: column; }
+  .metricGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .formGrid { grid-template-columns: 1fr; }
+  .detailRows { grid-template-columns: 1fr; }
+  .appCanvas { min-height: 760px; }
+  .appGraphNode { width: 150px; }
+  .shell { grid-template-columns: 1fr; }
+  .flowPanel { position: relative; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+  .connectorGrid, .operatorConsole, .opsGrid { grid-template-columns: 1fr; }
+  .canvasHeader { align-items: flex-start; flex-direction: column; }
+  .workflowCanvas { min-height: 720px; }
+  .graphNode { width: 156px; }
+  .graphNode:nth-of-type(2n) { margin-left: 8px; }
+  .topbar { margin-bottom: 40px; }
+}
