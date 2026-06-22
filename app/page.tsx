@@ -1,5 +1,5 @@
-import { ControlPlaneApp } from "../components/ControlPlaneApp";
+import { HarnessTelemetryApp } from "../components/HarnessTelemetryApp";
 
 export default function Home() {
-  return <ControlPlaneApp />;
+  return <HarnessTelemetryApp />;
 }

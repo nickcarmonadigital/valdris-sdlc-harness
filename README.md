@@ -36,6 +36,7 @@ The zip’s reusable value is the **operating pattern**, not the Utari-specific 
 - Next.js/Vercel-ready application shell.
 - Interactive run queue, selected-run inspector, metrics, create-run form, and action controls.
 - Visual workflow board with animated agent chips.
+- N8N-style Flow Monitor that shows Graphify, Matt Pocock-style skill packs, gate status, failed nodes, and skip reasons for every run.
 - Local bridge at `http://127.0.0.1:8787` for agent runtime events.
 - On-prem JSONL event adapter; no Supabase required for v0.
 - Local commissioning CLI that generates `project-adapter.json`, front doors, validation docs, red-zone docs, and a run template.

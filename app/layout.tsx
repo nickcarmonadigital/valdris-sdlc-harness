@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Universal Harness Control Plane",
+  title: "Valdris SDLC Harness Flow Monitor",
   description:
-    "A local-first agentic SDLC control-plane application for Claude Code, Codex, Hermes, workflow gates, artifacts, and run telemetry.",
+    "A non-IDE visual flow monitor for Claude Code, Codex, Hermes, Graphify, skill packs, workflow gates, artifacts, skip reasons, and run telemetry.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
