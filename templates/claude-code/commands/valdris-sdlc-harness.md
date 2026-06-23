@@ -176,9 +176,15 @@ If a PR is opened/proposed:
 node scripts/uash-emit-event.mjs "$RUN_ID" self_heal.pr_opened self-heal "Self-heal PR opened/proposed" --artifact self_heal/pr.json --status ok --actor harness
 ```
 
+If no harness/process gap was found:
+
+```bash
+node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped self-heal "Self-heal skipped" --artifact self_heal/self_heal_report.md --status skipped --actor harness --skip-reason "No harness/process gap found in this run"
+```
+
 ### 12. Handoff
 
-Only after required proof exists and irrelevant nodes have skip reasons:
+Only after required proof exists and irrelevant nodes have skip reasons. The bridge rejects `run.completed` when required artifacts are missing, failed, or skipped without reasons:
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" run.completed handoff "All required artifacts are present or skipped with reasons; Answer Contract handoff ready" --artifact handoff/final.md --status ok --actor harness

@@ -140,6 +140,38 @@ function normalizeEvent(runId, event) {
   };
 }
 
+function eventContractProblems(event) {
+  const problems = [];
+  if ((event.type === "node.skipped" || event.status === "skipped") && !event.skipReason) {
+    problems.push("node.skipped events must include skipReason");
+  }
+  if (event.type === "node.failed" || event.status === "failed") {
+    if (!event.failureReason) problems.push("node.failed events must include failureReason");
+    if (!event.recoveryPath) problems.push("node.failed events must include recoveryPath");
+  }
+  if ((event.type === "approval.requested" || event.status === "needs_approval") && (!event.approvalOwner || !event.approvalScope)) {
+    problems.push("approval.requested events must include approvalOwner and approvalScope");
+  }
+  return problems;
+}
+
+function finishLineProblems(run) {
+  const problems = [];
+  for (const artifact of run.artifacts || []) {
+    if (!artifact.required) continue;
+    if (artifact.failed) {
+      problems.push(`${artifact.path} failed${artifact.recoveryPath ? `; recovery: ${artifact.recoveryPath}` : ""}`);
+      continue;
+    }
+    if (artifact.skipped) {
+      if (!artifact.skipReason) problems.push(`${artifact.path} skipped without a reason`);
+      continue;
+    }
+    if (!artifact.present) problems.push(`${artifact.path} missing or not skipped`);
+  }
+  return problems;
+}
+
 function applyEvent(run, event) {
   const updated = {
     ...run,
@@ -256,7 +288,32 @@ async function handle(req, res) {
         run = createMinimalRun(runId, body);
       }
       const event = normalizeEvent(runId, body);
+      const contractProblems = eventContractProblems(event);
+      if (contractProblems.length) {
+        return send(res, 400, { ok: false, error: "event_contract_violation", problems: contractProblems });
+      }
+
       const nextRun = applyEvent(run, event);
+      if (event.type === "run.completed") {
+        const problems = finishLineProblems(nextRun);
+        if (problems.length) {
+          const blockedEvent = normalizeEvent(runId, {
+            type: "run.blocked",
+            nodeId: "prove",
+            artifact: "proof/proof.json",
+            status: "blocked",
+            actor: "harness",
+            message: `Finish line blocked: ${problems.join("; ")}`,
+            failureReason: "Finish-line contract unsatisfied.",
+            recoveryPath: "Attach required artifacts or emit node.skipped with explicit reasons, then retry run.completed.",
+          });
+          const blockedRun = applyEvent(run, blockedEvent);
+          await writeRun(blockedRun);
+          await appendFile(path.join(runDir(runId), "events.jsonl"), JSON.stringify(blockedEvent) + "\n");
+          return send(res, 409, { ok: false, error: "finish_line_blocked", problems, run: blockedRun, event: blockedEvent });
+        }
+      }
+
       await writeRun(nextRun);
       await appendFile(path.join(runDir(runId), "events.jsonl"), JSON.stringify(event) + "\n");
       return send(res, 200, { ok: true, run: nextRun, event });

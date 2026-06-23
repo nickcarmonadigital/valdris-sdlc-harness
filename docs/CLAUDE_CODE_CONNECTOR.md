@@ -68,7 +68,8 @@ https://valdris-sdlc-harness.vercel.app
    - click **Copy Claude prompt**
 4. Paste that prompt into Claude Code, or install the slash-command template below.
 5. Claude Code emits events as it moves through the Valdris SDLC Harness flow.
-6. The app pulls those events and updates:
+6. The bridge rejects `run.completed` if required artifacts are missing, failed, or skipped without reasons.
+7. The app pulls those events and updates:
    - current node
    - agent chip position
    - event stream

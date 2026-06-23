@@ -118,6 +118,7 @@ Rules:
 - `needs_approval` requires `approvalOwner` and `approvalScope`.
 - `passed` requires an artifact/proof when the node is required.
 - Finish-line can only pass when all required nodes are passed or explicitly skipped with reasons.
+- The local bridge enforces this by rejecting `run.completed` with `finish_line_blocked` when artifacts are missing, nodes failed, or skip/failure metadata is incomplete.
 
 ## Event examples
 
@@ -173,7 +174,13 @@ Examples:
 
 ## Storage boundary
 
-v0 supports local JSONL:
+v0 supports local JSONL via the bridge:
+
+```text
+~/.uash/runs/<run-id>/events.jsonl
+```
+
+The older in-repo demo adapter can also read:
 
 ```text
 data/runs/<run-id>/events.jsonl

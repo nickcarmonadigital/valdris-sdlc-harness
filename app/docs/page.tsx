@@ -7,6 +7,7 @@ const docs = [
   ["Product Direction", "Connector-first, not-an-IDE product correction."],
   ["Connector Model", "Codex, Claude Code, and Hermes adapter contract."],
   ["Claude Code Connector", "Local bridge + slash-command path for real Claude Code runs."],
+  ["Codex Connector", "AGENTS.md front door + Codex runtime prompt for harness-controlled runs."],
   ["Connector Event Contract", "The shared runtime-event schema that powers the visual board."],
   ["Visual Flow UI", "Left-side workflow telemetry / n8n-style run visualizer."],
   ["On-Prem Run Visualizer", "Filesystem JSONL adapter for local/private installs without Supabase."],

@@ -34,6 +34,8 @@ The zip’s reusable value is the **operating pattern**, not the Utari-specific 
 ## What this repo is
 
 - Next.js/Vercel-ready application shell.
+- Agent-consumable SDLC engineering harness front doors for Claude Code (`CLAUDE.md`) and Codex/general agents (`AGENTS.md`).
+- Generated Claude slash-command and Codex runtime prompt templates for starting harness-controlled work.
 - Interactive run queue, selected-run inspector, metrics, create-run form, and action controls.
 - Visual workflow board with animated agent chips.
 - N8N-style Flow Monitor that shows Graphify, skill packs, gate status, failed nodes, skip reasons, production-readiness layers, QA/break-it, and self-healing for every run.
@@ -59,6 +61,7 @@ npm run typecheck
 npm run build
 npm run commission:questions
 npm run commission -- --repo /path/to/repo --project-name "Example" --out ./generated-harness
+npm run verify:harness
 npm run simulate:agent
 npm run bridge:claude
 npm run dev
@@ -71,9 +74,11 @@ project-adapter.json
 project.yaml
 AGENTS.md
 CLAUDE.md
+.claude/commands/valdris-sdlc-harness.md
 00_MAP.md
 CONTEXT.md
 docs/Validation Commands.md
+docs/Codex Runtime Prompt.md
 docs/Red Zone Rules.md
 docs/Production Readiness Layers.md
 docs/Cloud Platform Engineering.md
@@ -90,6 +95,7 @@ Build local commissioning + connector simulation before a full hosted platform:
 
 ```bash
 npm run commission -- --repo /path/to/repo --project-name "Example" --out ./generated-harness
+npm run verify:harness
 npm run bridge:claude
 npm run dev
 ```

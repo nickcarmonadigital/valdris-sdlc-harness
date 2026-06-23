@@ -11,6 +11,7 @@ Read:
 3. `docs/UNIVERSAL_CORE_FROM_ZIP.md`
 4. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
 5. `docs/CLAUDE_CODE_CONNECTOR.md`
+6. `docs/CODEX_CONNECTOR.md`
 
 ## Non-negotiable product boundary
 
@@ -23,6 +24,7 @@ When modifying code, prove the result with:
 ```bash
 npm run typecheck
 npm run build
+npm run verify:harness
 ```
 
 When modifying commissioning behavior, also run:

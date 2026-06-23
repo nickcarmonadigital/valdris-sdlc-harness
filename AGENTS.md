@@ -11,6 +11,8 @@ Before planning or editing, read:
 3. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
 4. `docs/ARCHITECTURE.md`
 5. `docs/CONNECTOR_EVENT_CONTRACT.md`
+6. `docs/CLAUDE_CODE_CONNECTOR.md`
+7. `docs/CODEX_CONNECTOR.md`
 
 ## Product rule
 
@@ -21,11 +23,17 @@ This is not an IDE and not a prompt library by itself. It is the control plane, 
 ```text
 commission repo/team
 → generate project-specific adapter
-→ install AGENTS.md / CLAUDE.md front doors
+→ install AGENTS.md / CLAUDE.md / Claude slash-command / Codex prompt front doors
 → run external coding agent
 → stream events/artifacts/gates
 → block done until required proof exists
 ```
+
+## Claude/Codex entrypoints
+
+- Claude Code: read `CLAUDE.md`; generated target packs include `.claude/commands/valdris-sdlc-harness.md`.
+- Codex/general agents: read `AGENTS.md`; generated target packs include `docs/Codex Runtime Prompt.md`.
+- Live telemetry requires real bridge/MCP/CLI/API/watched-artifact events. Never claim a live run from static docs or demo data.
 
 ## Universal vs project-specific
 
@@ -60,10 +68,11 @@ Run before claiming done:
 ```bash
 npm run typecheck
 npm run build
+npm run verify:harness
 npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 ```
 
-Verify `/tmp/valdris-commissioned/project-adapter.json` parses and required generated front doors exist.
+Verify `/tmp/valdris-commissioned/project-adapter.json` parses and required generated front doors exist: `AGENTS.md`, `CLAUDE.md`, `.claude/commands/valdris-sdlc-harness.md`, and `docs/Codex Runtime Prompt.md`.
 
 ## Answer style
 

@@ -176,10 +176,10 @@ Generated `AGENTS.md` should tell Codex:
 1. **Local commissioning CLI** - implemented now as `npm run commission`.
 2. **Repo scanner** - currently detects package manager, scripts, frameworks, repo role; extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
 3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, map/router, validation/red-zone docs, run template, review packet.
-4. **Claude/Codex command templates** - next: add generic slash-command and Codex skill templates that call the local bridge.
+4. **Claude/Codex command templates** - implemented now: generated Claude slash command plus Codex runtime prompt/front door.
 5. **Gate script portability** - next: port the uploaded harness `_core/scripts/*` into reusable generator templates.
 6. **UI commissioning surface** - next: render the question groups in the web app and store adapter drafts.
-7. **Connector event enforcement** - next: make the bridge reject `run.completed` if required artifacts are missing.
+7. **Connector event enforcement** - implemented now in the local bridge: missing proof/artifacts, missing skip reasons, and missing failure recovery paths block `run.completed`.
 
 ## Acceptance criteria for the universal product
 
@@ -187,6 +187,7 @@ A repo is commissioned only when:
 
 - `project-adapter.json` exists and validates.
 - `AGENTS.md` and/or `CLAUDE.md` are generated.
+- Claude slash-command and Codex runtime prompt front doors are generated.
 - Validation commands are explicit.
 - Red Zone owner and approval-required actions are explicit.
 - Source-of-truth order is explicit.
@@ -198,4 +199,5 @@ A repo is commissioned only when:
 ```bash
 npm run commission -- --repo /root/valdris-sdlc-harness --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 node -e "JSON.parse(require('fs').readFileSync('/tmp/valdris-commissioned/project-adapter.json','utf8')); console.log('adapter ok')"
+npm run verify:harness
 ```

@@ -11,6 +11,7 @@
     "commission": "node scripts/commission-harness.mjs",
     "commission:questions": "node scripts/commission-harness.mjs --print-questions",
     "simulate:agent": "node scripts/simulate-agent-run.mjs",
+    "verify:harness": "node scripts/verify-harness.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
     "bridge:emit": "node scripts/uash-emit-event.mjs"
   },
