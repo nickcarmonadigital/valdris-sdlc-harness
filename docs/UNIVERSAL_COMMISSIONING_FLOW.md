@@ -41,7 +41,7 @@ That is the **project-specific adapter** for Utari. The universal product should
 
 These stay the same across repos:
 
-1. Stage flow: `intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`.
+1. Stage flow: `intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`.
 2. Artifact model: every stage writes/verifies a required artifact or records a skip reason.
 3. Gate types: pre-flight, revision, escalation, abort, QA/break-it, live-smoke, self-heal.
 4. Red Zone model: high-risk mutations need human approval.

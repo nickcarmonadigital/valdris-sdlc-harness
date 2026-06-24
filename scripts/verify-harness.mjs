@@ -109,6 +109,11 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
   await postEvent(port, runId, baseEvent("artifact.written", "intake", "intake artifact", { artifact: "run/intake.json", actor: "codex" }));
   await writeArtifact(artifactRoot, "run/route.json", JSON.stringify({ lane: "verification" }));
   await postEvent(port, runId, baseEvent("artifact.written", "route", "route artifact", { artifact: "run/route.json", actor: "codex" }));
+  await writeArtifact(artifactRoot, "graph/graph.json", JSON.stringify({ schema: "uash.graphify.compat.v0.1", nodes: [{ path: "package.json" }], edges: [], graphifyCompatible: true }));
+  await postEvent(port, runId, baseEvent("artifact.written", "graphify", "graphify/code graph artifact", { artifact: "graph/graph.json", actor: "codex" }));
+  await writeArtifact(artifactRoot, "graph/freshness.json", JSON.stringify({ schema: "uash.graph-freshness.v0.1", graphPath: "graph/graph.json" }));
+  await writeArtifact(artifactRoot, "design/anchors.json", JSON.stringify({ schema: "uash.design-anchors.v0.1", anchors: [{ path: "run/route.json", reason: "verification anchor" }] }));
+  await postEvent(port, runId, baseEvent("artifact.written", "design-anchors", "design anchors artifact", { artifact: "design/anchors.json", actor: "codex" }));
   await postEvent(port, runId, baseEvent("node.skipped", "system-design", "system design skipped", { status: "skipped", skipReason: "No architecture/API/data-model decision in this verification run" }));
   await writeArtifact(artifactRoot, "production/layer-assessment.json", JSON.stringify({ layers: 13 }));
   await postEvent(port, runId, baseEvent("artifact.written", "production-readiness", "production layer artifact", { artifact: "production/layer-assessment.json", actor: "codex" }));
@@ -146,7 +151,8 @@ try {
 
   const adapter = JSON.parse(await readFile(path.join(generatedOut, "project-adapter.json"), "utf8"));
   assert(adapter.schema === "uash.project-adapter.v2", "adapter schema mismatch");
-  assert(adapter.generatorVersion === "0.3.0", "generator version mismatch");
+  assert(adapter.generatorVersion === "0.4.0", "generator version mismatch");
+  assert(adapter.codeGraph?.requiredArtifacts?.includes("graph/graph.json"), "Graphify/code graph adapter missing");
   assert(adapter.productionReadiness.layers.length === 13, "production readiness layer count mismatch");
   assert(adapter.telemetryModes.modes.includes("live"), "live telemetry mode missing");
   assert(adapter.nodeStateContract.skippedRequiresReason, "skip-reason rule missing");
@@ -155,7 +161,14 @@ try {
   await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Codex Runtime Prompt.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Graphify Code Graph.md"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "uash-emit-event.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "graphify-scan.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "graphify-gate.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "anchor-gate.mjs"), "utf8");
+  await run(node, ["scripts/graphify-scan.mjs", "--repo", "."], { cwd: generatedOut });
+  await run(node, ["scripts/graphify-gate.mjs", "--repo", ".", "--allow-stale"], { cwd: generatedOut });
+  await run(node, ["scripts/anchor-gate.mjs", "--repo", "."], { cwd: generatedOut });
 
   await mkdir(pyTarget, { recursive: true });
   await writeFile(path.join(pyTarget, "pyproject.toml"), "[project]\nname = \"sample\"\nversion = \"0.0.1\"\n", "utf8");
@@ -174,7 +187,8 @@ try {
 
   const health = await waitForHealth(port);
   assert(health.ok, "bridge health did not return ok");
-  assert(health.contractVersion === "uash.connector-events.v0.3", "bridge contract version mismatch");
+  assert(health.contractVersion === "uash.connector-events.v0.4", "bridge contract version mismatch");
+  assert(health.nodeIds.includes("graphify") && health.nodeIds.includes("design-anchors"), "Graphify/design anchor nodes missing from bridge health");
 
   await run(node, [
     "scripts/uash-emit-event.mjs",
@@ -274,12 +288,15 @@ try {
     JSON.stringify(
       {
         commissioningQuestionGroups: questionGroups.length,
-        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "scripts/uash-emit-event.mjs"],
+        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Graphify Code Graph.md", "scripts/uash-emit-event.mjs", "scripts/graphify-scan.mjs"],
         adapterSchema: adapter.schema,
         generatorVersion: adapter.generatorVersion,
         productionLayers: adapter.productionReadiness.layers.length,
         bridgeHealth: health.service,
         bridgeContractVersion: health.contractVersion,
+        graphifyFlowNode: true,
+        graphifyGeneratedScripts: true,
+        graphifyGateSmoke: true,
         generatedEmitterSmoke: true,
         strictEventValidation: true,
         artifactRootRequired: true,

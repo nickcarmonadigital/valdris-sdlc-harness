@@ -208,7 +208,7 @@ Strict-valid payload:
 Supported node IDs:
 
 ```text
-intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## What we can and cannot observe

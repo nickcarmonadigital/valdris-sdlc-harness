@@ -1,4 +1,4 @@
-# Connector Event Contract v0.3
+# Connector Event Contract v0.4
 
 The connector contract lets Claude Code, Codex, Hermes, or any future agent runtime appear on the visual board without turning this product into an IDE.
 
@@ -46,7 +46,7 @@ agent runtime
 
 ## Strict event schema
 
-The v0.3 local bridge is intentionally strict. Events missing required fields are rejected with `event_contract_violation`.
+The v0.4 local bridge is intentionally strict. Events missing required fields are rejected with `event_contract_violation`.
 
 ```ts
 type RunMode = "blueprint" | "live" | "replay";
@@ -67,6 +67,8 @@ type Status = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval
 type NodeId =
   | "intake"
   | "route"
+  | "graphify"
+  | "design-anchors"
   | "system-design"
   | "production-readiness"
   | "cloud-platform"
@@ -102,10 +104,10 @@ type RunEvent = {
 
 ## Workflow node IDs
 
-Base v0.3 bridge flow:
+Base v0.4 bridge flow:
 
 ```text
-intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 Cloud/platform expansion nodes are documented lane-detail concepts, but the current local bridge only accepts the base node IDs above. Expansion nodes should be represented inside `cloud/service-map.json` or future adapter schemas until the bridge adds adapter-defined nodes.

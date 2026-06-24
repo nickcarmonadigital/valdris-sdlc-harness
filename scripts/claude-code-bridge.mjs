@@ -9,11 +9,13 @@ const PORT = Number(process.env.UASH_BRIDGE_PORT || 8787);
 const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
 const DATA_DIR = path.resolve(process.env.UASH_DATA_DIR || path.join(os.homedir(), ".uash", "runs"));
 const SERVICE = "uash-claude-code-bridge";
-const CONTRACT_VERSION = "uash.connector-events.v0.3";
+const CONTRACT_VERSION = "uash.connector-events.v0.4";
 
 const artifactByNode = {
   intake: "run/intake.json",
   route: "run/route.json",
+  graphify: "graph/graph.json",
+  "design-anchors": "design/anchors.json",
   "system-design": "design/system_design.md",
   "production-readiness": "production/layer-assessment.json",
   "cloud-platform": "cloud/service-map.json",
@@ -29,6 +31,8 @@ const artifactByNode = {
 const labelByNode = {
   intake: "Intake",
   route: "Route",
+  graphify: "Graphify",
+  "design-anchors": "Code Anchors",
   "system-design": "System Design",
   "production-readiness": "Production Layers",
   "cloud-platform": "Cloud / Platform",

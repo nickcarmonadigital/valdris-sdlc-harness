@@ -121,7 +121,25 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "harness",
     description: "Choose lane family, source of truth, gate set, and run packet.",
     requiredArtifact: "run/route.json",
-    x: 22,
+    x: 18,
+    y: 8,
+  },
+  {
+    id: "graphify",
+    label: "Graphify",
+    lane: "graph",
+    description: "Build or refresh the code graph before codebase, architecture, refactor, or debugging claims.",
+    requiredArtifact: "graph/graph.json",
+    x: 32,
+    y: 8,
+  },
+  {
+    id: "design-anchors",
+    label: "Code Anchors",
+    lane: "graph",
+    description: "Pin current code files/symbols and blast radius so the agent reasons from real repo structure.",
+    requiredArtifact: "design/anchors.json",
+    x: 46,
     y: 8,
   },
   {
@@ -130,7 +148,7 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "design",
     description: "Capture requirements, constraints, API/data/failure tradeoffs, and ADR needs.",
     requiredArtifact: "design/system_design.md",
-    x: 40,
+    x: 60,
     y: 8,
   },
   {
@@ -139,7 +157,7 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "production",
     description: "Classify the 13 production-readiness layers as required or skipped with reasons.",
     requiredArtifact: "production/layer-assessment.json",
-    x: 58,
+    x: 76,
     y: 8,
   },
   {
@@ -149,7 +167,7 @@ export const workflowNodes: WorkflowNode[] = [
     description: "Service map, IAM/secrets, networking, IaC/deploy, observability, cost, rollback.",
     requiredArtifact: "cloud/service-map.json",
     x: 76,
-    y: 8,
+    y: 43,
   },
   {
     id: "implement",
@@ -157,7 +175,7 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "runtime",
     description: "Claude Code/Codex/Hermes works in its own runtime while emitting events.",
     requiredArtifact: "session/events.jsonl",
-    x: 76,
+    x: 60,
     y: 43,
   },
   {
@@ -166,7 +184,7 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "control",
     description: "Pause for high-risk deploy, provider, auth, data, billing, or destructive actions.",
     requiredArtifact: "approvals/redzone.json",
-    x: 58,
+    x: 46,
     y: 43,
   },
   {
@@ -175,7 +193,7 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "qa",
     description: "Try edge cases, malformed input, auth boundaries, provider failures, concurrency.",
     requiredArtifact: "qa/break-it-results.md",
-    x: 40,
+    x: 32,
     y: 43,
   },
   {
@@ -184,7 +202,7 @@ export const workflowNodes: WorkflowNode[] = [
     lane: "validation",
     description: "Run validation commands and attach proof before done can pass.",
     requiredArtifact: "proof/proof.json",
-    x: 22,
+    x: 18,
     y: 43,
   },
   {
@@ -218,7 +236,9 @@ export const workflowNodes: WorkflowNode[] = [
 
 export const workflowEdges = [
   ["intake", "route"],
-  ["route", "system-design"],
+  ["route", "graphify"],
+  ["graphify", "design-anchors"],
+  ["design-anchors", "system-design"],
   ["system-design", "production-readiness"],
   ["production-readiness", "cloud-platform"],
   ["cloud-platform", "implement"],
@@ -259,6 +279,8 @@ export const demoRuns: AppRun[] = [
       present: [
         "run/intake.json",
         "run/route.json",
+        "graph/graph.json",
+        "design/anchors.json",
         "design/system_design.md",
         "production/layer-assessment.json",
         "session/events.jsonl",
@@ -290,6 +312,26 @@ export const demoRuns: AppRun[] = [
         status: "ok",
         runMode: "replay",
         eventSource: "local-jsonl",
+      },
+      {
+        id: "evt-2g",
+        type: "artifact.written",
+        at: "22:33",
+        actor: "harness",
+        nodeId: "graphify",
+        artifact: "graph/graph.json",
+        message: "Graphify/code-graph scan pinned current repo topology before SDLC model changes.",
+        status: "ok",
+      },
+      {
+        id: "evt-2a",
+        type: "artifact.written",
+        at: "22:34",
+        actor: "harness",
+        nodeId: "design-anchors",
+        artifact: "design/anchors.json",
+        message: "Code anchors captured the files/symbols used for design and blast-radius claims.",
+        status: "ok",
       },
       {
         id: "evt-3",
@@ -356,7 +398,7 @@ export const demoRuns: AppRun[] = [
     approvals: [],
     artifacts: baseArtifacts.map((artifact) => ({
       ...artifact,
-      present: ["run/intake.json", "run/route.json", "design/system_design.md", "production/layer-assessment.json", "cloud/service-map.json", "session/events.jsonl"].includes(artifact.path),
+      present: ["run/intake.json", "run/route.json", "graph/graph.json", "design/anchors.json", "design/system_design.md", "production/layer-assessment.json", "cloud/service-map.json", "session/events.jsonl"].includes(artifact.path),
     })),
     events: [
       {
@@ -370,6 +412,26 @@ export const demoRuns: AppRun[] = [
         status: "ok",
         runMode: "blueprint",
         eventSource: "static-blueprint",
+      },
+      {
+        id: "evt-b0",
+        type: "artifact.written",
+        at: "22:52",
+        actor: "harness",
+        nodeId: "graphify",
+        artifact: "graph/graph.json",
+        message: "Graphify/code-graph scan required before cloud/platform architecture claims.",
+        status: "ok",
+      },
+      {
+        id: "evt-b1",
+        type: "artifact.written",
+        at: "22:52",
+        actor: "harness",
+        nodeId: "design-anchors",
+        artifact: "design/anchors.json",
+        message: "Anchors pin cloud/platform files and blast-radius assumptions before approval.",
+        status: "ok",
       },
       {
         id: "evt-b",

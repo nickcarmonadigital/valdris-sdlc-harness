@@ -12,6 +12,8 @@
     "commission:questions": "node scripts/commission-harness.mjs --print-questions",
     "simulate:agent": "node scripts/simulate-agent-run.mjs",
     "verify:harness": "node scripts/verify-harness.mjs",
+    "graphify:scan": "node scripts/graphify-scan.mjs",
+    "graphify:gate": "node scripts/graphify-gate.mjs && node scripts/anchor-gate.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
     "bridge:emit": "node scripts/uash-emit-event.mjs"
   },
