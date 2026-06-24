@@ -1,4 +1,4 @@
-# Codex Connector v0
+# Codex Connector v0.3
 
 This repo is ready for Codex as a repo-level SDLC engineering harness, not as an IDE wrapper.
 
@@ -56,14 +56,41 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.en
   --source bridge
 ```
 
+## Red Zone approval events
+
+Agents may request approval, but only a human approval event may grant or deny it.
+
+```bash
+UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone \
+  "Red Zone approval required" \
+  --artifact approvals/redzone.json \
+  --status needs_approval \
+  --actor codex \
+  --mode live \
+  --source bridge \
+  --approval-owner "primary operator" \
+  --approval-scope "redzone"
+
+UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone \
+  "Human approved scoped Red Zone action" \
+  --artifact approvals/redzone.json \
+  --status ok \
+  --actor human \
+  --mode live \
+  --source bridge \
+  --approval-owner "primary operator" \
+  --approval-scope "redzone"
+```
+
 ## Finish-line enforcement
 
 The bridge rejects early completion:
 
-- missing required artifact → blocked
+- missing or unverified required artifact → blocked
 - skipped node without `skipReason` → blocked
 - failed node without recovery path → blocked
 - Red Zone approval missing when requested → remains approval/blocked
+- `self_heal.detected` without later `self_heal.pr_opened` or `self_heal.pr_proposed` → blocked
 
 Use `npm run verify:harness` to prove this behavior locally.
 

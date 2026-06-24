@@ -19,16 +19,17 @@ export type AppEventType =
   | "run.blocked"
   | "run.completed"
   | "self_heal.detected"
-  | "self_heal.pr_opened";
+  | "self_heal.pr_opened"
+  | "self_heal.pr_proposed";
 
-export type AppEventStatus = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval";
+export type AppEventStatus = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval" | "passed";
 export type NodeTerminalState = "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
 
 export type AppEvent = {
   id: string;
   type: AppEventType;
   at: string;
-  actor: AgentRuntime | "human" | "harness";
+  actor: AgentRuntime | "human" | "harness" | "system";
   nodeId: string;
   artifact?: string;
   message: string;
@@ -54,6 +55,24 @@ export type RunArtifact = {
   failed?: boolean;
   failureReason?: string;
   recoveryPath?: string;
+  verification?: {
+    checked?: boolean;
+    exists?: boolean;
+    source?: string;
+    path?: string;
+    realPath?: string;
+    size?: number;
+    mtimeMs?: number;
+  };
+};
+
+export type ApprovalRecord = {
+  scope: string;
+  owner: string;
+  status: "pending" | "granted" | "denied";
+  nodeId?: string;
+  eventId?: string;
+  updatedAt?: string;
 };
 
 export type AppRun = {
@@ -72,7 +91,7 @@ export type AppRun = {
   createdAt: string;
   updatedAt: string;
   artifacts: RunArtifact[];
-  approvals: string[];
+  approvals: Array<string | ApprovalRecord>;
   events: AppEvent[];
 };
 
@@ -398,6 +417,17 @@ export function nodeIdForArtifact(path: string): string | undefined {
 
 export function labelForAgent(agent: AgentRuntime): string {
   return agent === "claude-code" ? "Claude Code" : agent === "codex" ? "Codex" : "Hermes";
+}
+
+export function hasGrantedApproval(run: AppRun, scope: string): boolean {
+  return run.approvals.some((approval) =>
+    typeof approval === "string" ? approval === scope : approval.scope === scope && approval.status === "granted",
+  );
+}
+
+export function addGrantedApproval(run: AppRun, scope: string, owner = "human"): Array<string | ApprovalRecord> {
+  if (hasGrantedApproval(run, scope)) return run.approvals;
+  return [...run.approvals, { scope, owner, status: "granted", updatedAt: new Date().toISOString() }];
 }
 
 export function computeNodeState(run: AppRun, nodeId: string): "waiting" | "active" | "passed" | "blocked" | "approval" | "skipped" | "failed" {

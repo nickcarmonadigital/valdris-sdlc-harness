@@ -7,6 +7,8 @@ import {
   computeNodeState,
   createEvent,
   demoRuns,
+  hasGrantedApproval,
+  addGrantedApproval,
   labelForAgent,
   missingArtifacts,
   nextNodeId,
@@ -160,10 +162,10 @@ export function ControlPlaneApp() {
       }
 
       const artifact = artifactForNode(next);
-      const isRedZonePause = next === "redzone" && run.risk === "red-zone" && !run.approvals.includes("redzone");
+      const isRedZonePause = next === "redzone" && run.risk === "red-zone" && !hasGrantedApproval(run, "redzone");
       const type = isRedZonePause
         ? "approval.requested"
-        : next === "investigate" || next === "prove" || next === "redzone"
+        : next === "prove" || next === "redzone"
           ? "gate.fired"
           : next === "handoff"
             ? "run.completed"
@@ -203,10 +205,10 @@ export function ControlPlaneApp() {
     updateSelected((run) => ({
       ...run,
       status: "running",
-      approvals: Array.from(new Set([...run.approvals, "redzone"])),
+      approvals: addGrantedApproval(run, "redzone", "human"),
       updatedAt: nowIso(),
       artifacts: run.artifacts.map((item) => (item.path === "approvals/redzone.json" ? { ...item, present: true } : item)),
-      events: [...run.events, createEvent(run, "approval.granted", "redzone", "Human approval granted for Red Zone stage.", "ok", { actor: "human" })],
+      events: [...run.events, createEvent(run, "approval.granted", "redzone", "Human approval granted for Red Zone stage.", "ok", { actor: "human", approvalOwner: "human", approvalScope: "redzone" })],
     }));
   }
 

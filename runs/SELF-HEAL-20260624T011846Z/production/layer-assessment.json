@@ -1,0 +1,56 @@
+{
+  "artifact": "production/layer-assessment.json",
+  "touched_layers": [
+    "backend-api-logic",
+    "ci-cd-version-control",
+    "error-tracking-logs-observability"
+  ],
+  "required_proof": [
+    "npm run typecheck",
+    "npm run build",
+    "npm run verify:harness",
+    "negative bridge tests"
+  ],
+  "skipped_layers": [
+    {
+      "layer": "frontend",
+      "reason": "No active UI route changes in this loop."
+    },
+    {
+      "layer": "database-storage",
+      "reason": "No database/storage backend added in this loop."
+    },
+    {
+      "layer": "auth-permissions-rls",
+      "reason": "No auth/RLS code changed in this loop."
+    },
+    {
+      "layer": "hosting-deployment",
+      "reason": "No deploy target changed."
+    },
+    {
+      "layer": "cloud-compute",
+      "reason": "No cloud resources changed."
+    },
+    {
+      "layer": "security",
+      "reason": "Security posture improved locally by stricter event validation; no external security boundary changed."
+    },
+    {
+      "layer": "rate-limiting",
+      "reason": "Local bridge still development-only; rate limiting remains future work."
+    },
+    {
+      "layer": "caching-cdn",
+      "reason": "No caching/CDN surface changed."
+    },
+    {
+      "layer": "load-balancing-scaling",
+      "reason": "No traffic topology changed."
+    },
+    {
+      "layer": "availability-recovery-dr",
+      "reason": "No availability/DR surface changed."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -9,7 +9,7 @@ const node = process.execPath;
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: root, env: { ...process.env, ...(options.env || {}) }, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, { cwd: options.cwd || root, env: { ...process.env, ...(options.env || {}) }, stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => (stdout += chunk));
@@ -38,31 +38,101 @@ async function waitForHealth(port, timeoutMs = 8000) {
   throw lastError || new Error("bridge health check timed out");
 }
 
-async function postEvent(port, runId, event, expectedStatus = 200) {
-  const response = await fetch(`http://127.0.0.1:${port}/runs/${encodeURIComponent(runId)}/events`, {
+async function stopProcess(child) {
+  if (!child || child.killed) return;
+  await new Promise((resolve) => {
+    const timeout = setTimeout(resolve, 1500);
+    child.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+    child.kill("SIGTERM");
+  });
+}
+
+async function postJson(url, body, expectedStatus = 200) {
+  const response = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(event),
+    body: JSON.stringify(body),
   });
   const text = await response.text();
-  let body;
+  let parsed;
   try {
-    body = JSON.parse(text);
+    parsed = JSON.parse(text);
   } catch {
-    body = { raw: text };
+    parsed = { raw: text };
   }
   if (response.status !== expectedStatus) {
-    throw new Error(`expected ${expectedStatus} for ${event.type}, got ${response.status}: ${text}`);
+    throw new Error(`expected ${expectedStatus}, got ${response.status}: ${text}`);
   }
-  return body;
+  return parsed;
+}
+
+async function postRun(port, run, expectedStatus = 200) {
+  return postJson(`http://127.0.0.1:${port}/runs`, run, expectedStatus);
+}
+
+async function postEvent(port, runId, event, expectedStatus = 200) {
+  return postJson(`http://127.0.0.1:${port}/runs/${encodeURIComponent(runId)}/events`, event, expectedStatus);
 }
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function assertProblem(body, text, label) {
+  assert((body.problems || []).some((problem) => String(problem).includes(text)), `${label}: expected problem containing ${text}, got ${JSON.stringify(body.problems)}`);
+}
+
+function baseEvent(type, nodeId, message, overrides = {}) {
+  return {
+    type,
+    nodeId,
+    status: overrides.status || "ok",
+    actor: overrides.actor || "harness",
+    message,
+    runMode: overrides.runMode || "live",
+    eventSource: overrides.eventSource || "bridge",
+    ...overrides,
+  };
+}
+
+async function writeArtifact(rootDir, relativePath, content = "{}\n") {
+  const fullPath = path.join(rootDir, relativePath);
+  await mkdir(path.dirname(fullPath), { recursive: true });
+  await writeFile(fullPath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
+}
+
+async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
+  await writeArtifact(artifactRoot, "run/intake.json", JSON.stringify({ ok: true }));
+  await postEvent(port, runId, baseEvent("artifact.written", "intake", "intake artifact", { artifact: "run/intake.json", actor: "codex" }));
+  await writeArtifact(artifactRoot, "run/route.json", JSON.stringify({ lane: "verification" }));
+  await postEvent(port, runId, baseEvent("artifact.written", "route", "route artifact", { artifact: "run/route.json", actor: "codex" }));
+  await postEvent(port, runId, baseEvent("node.skipped", "system-design", "system design skipped", { status: "skipped", skipReason: "No architecture/API/data-model decision in this verification run" }));
+  await writeArtifact(artifactRoot, "production/layer-assessment.json", JSON.stringify({ layers: 13 }));
+  await postEvent(port, runId, baseEvent("artifact.written", "production-readiness", "production layer artifact", { artifact: "production/layer-assessment.json", actor: "codex" }));
+  await postEvent(port, runId, baseEvent("node.skipped", "cloud-platform", "cloud skipped", { status: "skipped", artifact: "cloud/skip.json", skipReason: "No cloud/IAM/deploy/provider change in this verification run" }));
+  await writeArtifact(artifactRoot, "session/events.jsonl", "{\"event\":\"implementation-proof\"}\n");
+  await postEvent(port, runId, baseEvent("artifact.written", "implement", "implementation event ledger", { artifact: "session/events.jsonl", actor: "codex" }));
+  if (!options.leaveRedzoneOpen) {
+    await postEvent(port, runId, baseEvent("node.skipped", "redzone", "red zone skipped", { status: "skipped", artifact: "approvals/redzone.json", skipReason: "No production/secrets/billing/auth/data/destructive action" }));
+  }
+  await postEvent(port, runId, baseEvent("node.skipped", "qa-break-it", "break-it QA skipped", { status: "skipped", artifact: "qa/break-it-results.md", skipReason: "Verification checks connector contract only; no product behavior changed" }));
+  await writeArtifact(artifactRoot, "proof/proof.json", JSON.stringify({ commands: ["verify:harness"], exitCode: 0 }));
+  await postEvent(port, runId, baseEvent("artifact.written", "prove", "proof artifact", { artifact: "proof/proof.json" }));
+  await postEvent(port, runId, baseEvent("node.skipped", "live-smoke", "live smoke skipped", { status: "skipped", artifact: "smoke/skip.json", skipReason: "No deployed/provider/runtime behavior changed" }));
+  if (!options.leaveSelfHealOpen) {
+    await postEvent(port, runId, baseEvent("node.skipped", "self-heal", "self-heal skipped", { status: "skipped", artifact: "self_heal/self_heal_report.md", skipReason: "No harness gap detected by this verification run" }));
+  }
+  await writeArtifact(artifactRoot, "handoff/final.md", "# Final handoff\n\nVerification complete.\n");
+  await postEvent(port, runId, baseEvent("artifact.written", "handoff", "handoff artifact", { artifact: "handoff/final.md" }));
+}
+
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-"));
 const generatedOut = path.join(tempRoot, "commissioned");
+const pyTarget = path.join(tempRoot, "pyproject-only");
+const pyPack = path.join(tempRoot, "py-pack");
 const dataDir = path.join(tempRoot, "runs");
 const port = 18000 + Math.floor(Math.random() * 20000);
 let bridge;
@@ -72,19 +142,11 @@ try {
   const questionGroups = JSON.parse(questions.stdout);
   assert(questionGroups.length >= 12, `expected at least 12 commissioning groups, got ${questionGroups.length}`);
 
-  await run(node, [
-    "scripts/commission-harness.mjs",
-    "--repo",
-    ".",
-    "--project-name",
-    "Valdris SDLC Harness",
-    "--out",
-    generatedOut,
-    "--yes",
-  ]);
+  await run(node, ["scripts/commission-harness.mjs", "--repo", ".", "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes"]);
 
   const adapter = JSON.parse(await readFile(path.join(generatedOut, "project-adapter.json"), "utf8"));
   assert(adapter.schema === "uash.project-adapter.v2", "adapter schema mismatch");
+  assert(adapter.generatorVersion === "0.3.0", "generator version mismatch");
   assert(adapter.productionReadiness.layers.length === 13, "production readiness layer count mismatch");
   assert(adapter.telemetryModes.modes.includes("live"), "live telemetry mode missing");
   assert(adapter.nodeStateContract.skippedRequiresReason, "skip-reason rule missing");
@@ -93,6 +155,13 @@ try {
   await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Codex Runtime Prompt.md"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "uash-emit-event.mjs"), "utf8");
+
+  await mkdir(pyTarget, { recursive: true });
+  await writeFile(path.join(pyTarget, "pyproject.toml"), "[project]\nname = \"sample\"\nversion = \"0.0.1\"\n", "utf8");
+  await run(node, ["scripts/commission-harness.mjs", "--repo", pyTarget, "--project-name", "PyProject Only", "--out", pyPack, "--yes"]);
+  const pyAdapter = JSON.parse(await readFile(path.join(pyPack, "project-adapter.json"), "utf8"));
+  assert(!String(pyAdapter.validation.install).includes("requirements.txt"), "pyproject-only install command should not reference requirements.txt");
 
   bridge = spawn(node, ["scripts/claude-code-bridge.mjs"], {
     cwd: root,
@@ -105,43 +174,97 @@ try {
 
   const health = await waitForHealth(port);
   assert(health.ok, "bridge health did not return ok");
+  assert(health.contractVersion === "uash.connector-events.v0.3", "bridge contract version mismatch");
 
-  await postEvent(
-    port,
-    "VERIFY-BAD-SKIP",
-    { type: "node.skipped", nodeId: "cloud-platform", status: "skipped", actor: "harness", message: "bad skip missing reason" },
-    400,
-  );
+  await run(node, [
+    "scripts/uash-emit-event.mjs",
+    "VERIFY-GENERATED-EMITTER",
+    "node.entered",
+    "intake",
+    "generated emitter smoke",
+    "--artifact",
+    "run/intake.json",
+    "--status",
+    "ok",
+    "--actor",
+    "codex",
+  ], { cwd: generatedOut, env: { UASH_BRIDGE_URL: `http://127.0.0.1:${port}` } });
 
-  const blocked = await postEvent(
-    port,
-    "VERIFY-BLOCKED",
-    { type: "run.completed", nodeId: "handoff", artifact: "handoff/final.md", status: "ok", actor: "harness", message: "try to finish too early" },
-    409,
-  );
-  assert(blocked.error === "finish_line_blocked", "early completion was not blocked");
-  assert(blocked.problems.some((problem) => problem.includes("proof/proof.json")), "blocked run did not cite missing proof");
+  const missingFields = await postEvent(port, "VERIFY-MISSING-FIELDS", { type: "node.entered", nodeId: "intake" }, 400);
+  assert(missingFields.error === "event_contract_violation", "missing fields did not return event_contract_violation");
+  assertProblem(missingFields, "event.actor is required", "missing fields");
+
+  const missingMessage = await postEvent(port, "VERIFY-MISSING-MESSAGE", baseEvent("node.entered", "intake", undefined, { message: undefined }), 400);
+  assertProblem(missingMessage, "event.message is required", "missing message");
+
+  const unknownEvent = await postEvent(port, "VERIFY-UNKNOWN-EVENT", { type: "made.up", nodeId: "intake", status: "ok", actor: "alien", runMode: "pretend", eventSource: "bogus", message: "bad" }, 400);
+  assert(unknownEvent.error === "event_contract_violation", "unknown event did not return event_contract_violation");
+  assertProblem(unknownEvent, "unknown event.type", "unknown event");
+
+  const badSkip = await postEvent(port, "VERIFY-BAD-SKIP", baseEvent("node.skipped", "cloud-platform", "bad skip missing reason", { status: "skipped" }), 400);
+  assertProblem(badSkip, "node.skipped events must include skipReason", "bad skip");
+
+  const directComplete = await postRun(port, { id: "VERIFY-INJECTED-COMPLETE", status: "complete" }, 409);
+  assert(directComplete.error === "run_creation_cannot_complete", "direct complete was not rejected");
+
+  const maliciousComplete = await postRun(port, { id: "VERIFY-MALICIOUS-COMPLETE", status: "complete", artifacts: [{ path: "proof/proof.json", required: false, present: true }] }, 409);
+  assert(maliciousComplete.error === "run_creation_cannot_complete", "malicious complete was not rejected");
+
+  const earlyBlocked = await postEvent(port, "VERIFY-EARLY-COMPLETE", baseEvent("run.completed", "handoff", "try to finish too early", { artifact: "handoff/final.md" }), 409);
+  assert(earlyBlocked.error === "finish_line_blocked", "event-level early completion was not blocked");
+  assertProblem(earlyBlocked, "proof/proof.json", "early completion");
+
+  await postRun(port, { id: "VERIFY-NO-ARTIFACT-ROOT" });
+  const noRootArtifact = await postEvent(port, "VERIFY-NO-ARTIFACT-ROOT", baseEvent("artifact.written", "prove", "proof claim without artifactRoot", { artifact: "proof/proof.json" }), 400);
+  assert(noRootArtifact.error === "artifact_verification_failed", "artifact write without artifactRoot was not rejected");
+  assertProblem(noRootArtifact, "artifactRoot", "no artifactRoot");
+
+  const missingArtifactRoot = path.join(tempRoot, "missing-artifact-root");
+  await mkdir(missingArtifactRoot, { recursive: true });
+  await postRun(port, { id: "VERIFY-MISSING-FILE", artifactRoot: missingArtifactRoot });
+  const missingFile = await postEvent(port, "VERIFY-MISSING-FILE", baseEvent("artifact.written", "prove", "proof claim without file", { artifact: "proof/proof.json" }), 400);
+  assert(missingFile.error === "artifact_verification_failed", "missing artifact file was not rejected");
+
+  const symlinkRoot = path.join(tempRoot, "symlink-root");
+  await mkdir(path.join(symlinkRoot, "proof"), { recursive: true });
+  await symlink("/etc/passwd", path.join(symlinkRoot, "proof", "proof.json"));
+  await postRun(port, { id: "VERIFY-SYMLINK-ESCAPE", artifactRoot: symlinkRoot });
+  const symlinkBlocked = await postEvent(port, "VERIFY-SYMLINK-ESCAPE", baseEvent("artifact.written", "prove", "symlink proof", { artifact: "proof/proof.json" }), 400);
+  assertProblem(symlinkBlocked, "symlink", "symlink escape");
+
+  const redzoneRunId = "VERIFY-REDZONE-NO-GRANT";
+  const redzoneRoot = path.join(tempRoot, redzoneRunId);
+  await postRun(port, { id: redzoneRunId, artifactRoot: redzoneRoot });
+  await satisfyCoreArtifacts(port, redzoneRunId, redzoneRoot, { leaveRedzoneOpen: true });
+  await postEvent(port, redzoneRunId, baseEvent("approval.requested", "redzone", "red zone approval requested", { status: "needs_approval", approvalOwner: "Nick", approvalScope: "redzone" }));
+  const agentGrant = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "agent tried to grant red zone", { actor: "codex", approvalOwner: "Nick", approvalScope: "redzone" }), 400);
+  assertProblem(agentGrant, "actor human", "agent grant");
+  const redzoneBlocked = await postEvent(port, redzoneRunId, baseEvent("run.completed", "handoff", "try completion without approval", { artifact: "handoff/final.md" }), 409);
+  assertProblem(redzoneBlocked, "approval pending", "redzone completion");
+
+  const grantNoPending = await postEvent(port, "VERIFY-GRANT-NO-PENDING", baseEvent("approval.granted", "redzone", "human grant without request", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 409);
+  assert(grantNoPending.error === "event_state_violation", "grant without pending approval did not return state violation");
+
+  const selfHealRunId = "VERIFY-SELF-HEAL-NO-PR";
+  const selfHealRoot = path.join(tempRoot, selfHealRunId);
+  await postRun(port, { id: selfHealRunId, artifactRoot: selfHealRoot });
+  await satisfyCoreArtifacts(port, selfHealRunId, selfHealRoot, { leaveSelfHealOpen: true });
+  await writeArtifact(selfHealRoot, "self_heal/self_heal_report.md", "# Gap\n\nDetected.\n");
+  await postEvent(port, selfHealRunId, baseEvent("artifact.written", "self-heal", "self-heal report", { artifact: "self_heal/self_heal_report.md" }));
+  await postEvent(port, selfHealRunId, baseEvent("self_heal.detected", "self-heal", "harness gap detected"));
+  await postEvent(port, selfHealRunId, baseEvent("node.skipped", "self-heal", "self-heal skip after detection should not resolve", { status: "skipped", artifact: "self_heal/self_heal_report.md", skipReason: "PR not opened" }));
+  const selfHealBlocked = await postEvent(port, selfHealRunId, baseEvent("run.completed", "handoff", "try completion without self-heal PR", { artifact: "handoff/final.md" }), 409);
+  assertProblem(selfHealBlocked, "self-heal detected", "self-heal completion");
 
   const runId = `VERIFY-PASS-${Date.now()}`;
-  const okEvents = [
-    { type: "node.entered", nodeId: "intake", artifact: "run/intake.json", status: "ok", actor: "codex", message: "Codex started intake", runMode: "live", eventSource: "bridge" },
-    { type: "agent.connected", nodeId: "route", artifact: "run/route.json", status: "ok", actor: "codex", message: "Codex attached to harness route" },
-    { type: "node.skipped", nodeId: "system-design", artifact: "design/system_design.md", status: "skipped", actor: "harness", message: "system design skipped", skipReason: "No architecture/API/data-model/hard-to-reverse decision in this verification run" },
-    { type: "artifact.written", nodeId: "production-readiness", artifact: "production/layer-assessment.json", status: "ok", actor: "codex", message: "production layers assessed" },
-    { type: "node.skipped", nodeId: "cloud-platform", artifact: "cloud/skip.json", status: "skipped", actor: "harness", message: "cloud skipped", skipReason: "No cloud/IAM/deploy/provider change in this verification run" },
-    { type: "node.entered", nodeId: "implement", artifact: "session/events.jsonl", status: "ok", actor: "codex", message: "implementation node entered" },
-    { type: "node.skipped", nodeId: "redzone", artifact: "approvals/redzone.json", status: "skipped", actor: "harness", message: "red zone skipped", skipReason: "No production/secrets/billing/auth/data/destructive action" },
-    { type: "node.skipped", nodeId: "qa-break-it", artifact: "qa/break-it-results.md", status: "skipped", actor: "harness", message: "break-it QA skipped", skipReason: "Verification checks connector contract only; no product behavior changed" },
-    { type: "gate.fired", nodeId: "prove", artifact: "proof/proof.json", status: "ok", actor: "harness", message: "proof attached: verify-harness assertions passed" },
-    { type: "node.skipped", nodeId: "live-smoke", artifact: "smoke/skip.json", status: "skipped", actor: "harness", message: "live smoke skipped", skipReason: "No deployed/provider/runtime behavior changed" },
-    { type: "node.skipped", nodeId: "self-heal", artifact: "self_heal/self_heal_report.md", status: "skipped", actor: "harness", message: "self-heal skipped", skipReason: "No harness gap detected by this verification run" },
-    { type: "run.completed", nodeId: "handoff", artifact: "handoff/final.md", status: "ok", actor: "harness", message: "finish line passed with proof and skip reasons" },
-  ];
-
-  let finalBody;
-  for (const event of okEvents) finalBody = await postEvent(port, runId, event, 200);
+  const artifactRoot = path.join(tempRoot, runId);
+  await postRun(port, { id: runId, artifactRoot, title: "Verification pass", task: "Verify hardened harness contract" });
+  await satisfyCoreArtifacts(port, runId, artifactRoot);
+  const finalBody = await postEvent(port, runId, baseEvent("run.completed", "handoff", "finish line passed with verified artifacts and skip reasons", { artifact: "handoff/final.md" }), 200);
   assert(finalBody.run.status === "complete", "verified run did not complete");
   assert(finalBody.run.events.some((event) => event.actor === "codex"), "Codex actor event missing from verified run");
+  const proofArtifact = finalBody.run.artifacts.find((artifact) => artifact.path === "proof/proof.json");
+  assert(proofArtifact?.verification?.checked && proofArtifact.verification.exists, "proof artifact was not file-verified");
 
   const eventsJsonl = await readFile(path.join(dataDir, runId, "events.jsonl"), "utf8");
   assert(eventsJsonl.includes("run.completed"), "events.jsonl missing run.completed");
@@ -151,10 +274,22 @@ try {
     JSON.stringify(
       {
         commissioningQuestionGroups: questionGroups.length,
-        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md"],
+        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "scripts/uash-emit-event.mjs"],
         adapterSchema: adapter.schema,
+        generatorVersion: adapter.generatorVersion,
         productionLayers: adapter.productionReadiness.layers.length,
         bridgeHealth: health.service,
+        bridgeContractVersion: health.contractVersion,
+        generatedEmitterSmoke: true,
+        strictEventValidation: true,
+        artifactRootRequired: true,
+        artifactFileVerification: true,
+        symlinkEscapeBlocked: true,
+        redZoneCompletionBlocked: true,
+        agentApprovalGrantBlocked: true,
+        selfHealCompletionBlocked: true,
+        selfHealSkipAfterDetectionBlocked: true,
+        directCompletionInjectionBlocked: true,
         earlyCompletionBlocked: true,
         verifiedRun: runId,
         eventCount: finalBody.run.events.length,
@@ -164,6 +299,6 @@ try {
     ),
   );
 } finally {
-  if (bridge && !bridge.killed) bridge.kill("SIGTERM");
+  await stopProcess(bridge);
   await rm(tempRoot, { recursive: true, force: true });
 }

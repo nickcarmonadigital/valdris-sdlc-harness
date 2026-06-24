@@ -3,8 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { fileURLToPath } from "node:url";
 
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_LANE_FAMILIES = [
   "intake-classify",
@@ -210,7 +212,9 @@ function detectRepo(repo) {
   const packageManager = exists(repo, "pnpm-lock.yaml") ? "pnpm" : exists(repo, "yarn.lock") ? "yarn" : exists(repo, "package-lock.json") ? "npm" : "npm";
   const run = packageManager === "npm" ? "npm run" : `${packageManager}`;
   const npmExec = packageManager === "npm" ? "npm install" : `${packageManager} install`;
-  const hasPython = exists(repo, "pyproject.toml") || exists(repo, "requirements.txt");
+  const hasRequirements = exists(repo, "requirements.txt");
+  const hasPyproject = exists(repo, "pyproject.toml");
+  const hasPython = hasPyproject || hasRequirements;
   const frameworks = [];
   if (exists(repo, "next.config.ts") || exists(repo, "next.config.js")) frameworks.push("Next.js");
   if (exists(repo, "vite.config.ts") || exists(repo, "vite.config.js")) frameworks.push("Vite");
@@ -233,7 +237,13 @@ function detectRepo(repo) {
     frameworks,
     scripts,
     detectedRepoRole: role,
-    detectedInstall: packageJson ? npmExec : hasPython ? "python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt" : "project-specific",
+    detectedInstall: packageJson
+      ? npmExec
+      : hasRequirements
+        ? "python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt"
+        : hasPyproject
+          ? "python3 -m venv .venv && . .venv/bin/activate && pip install -e ."
+          : "project-specific",
     detectedLint: has("lint") ? `${run} lint` : "project-specific",
     detectedTypecheck: has("typecheck") ? `${run} typecheck` : exists(repo, "tsconfig.json") ? "npx tsc --noEmit" : "project-specific",
     detectedTest: has("test") ? `${run} test` : hasPython ? "pytest" : "project-specific",
@@ -328,11 +338,11 @@ function renderClaude(answers) {
 }
 
 function renderClaudeCommand(answers) {
-  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until proof exists and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge\n\`\`\`\n\nIf \`scripts/uash-emit-event.mjs\` is not present in the target repo, run the command from the Valdris SDLC Harness repo or copy the script into the target repo.\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until proof exists and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone"\n\`\`\`\n\nOnly a human approval event may grant/deny approval:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderCodexPrompt(answers) {
-  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n5. Never claim done until proof exists and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."]\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n5. Never claim done until proof exists and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  [--artifact-root "$PWD"] \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."]\n\`\`\`\n\n## Red Zone approval events\n\nAgents may request approval, but only a human approval event may grant or deny it.\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" \\\n  --artifact approvals/redzone.json \\\n  --status needs_approval \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" \\\n  --artifact approvals/redzone.json \\\n  --status ok \\\n  --actor human \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderMap(answers, detected) {
@@ -356,7 +366,7 @@ function renderProductionReadiness(answers) {
 }
 
 function renderCloudPlatform(answers) {
-  return `# Cloud / Platform Engineering\n\n## Providers\n\n${answers.cloud_providers}\n\n## Services in scope\n\n${answers.cloud_services}\n\n## IaC / manual policy\n\n${answers.iac_model}\n\n## Observability proof\n\n${answers.observability_model}\n\n## Cost / rollback policy\n\n${answers.cost_rollback_policy}\n\n## Required node pack\n\n- cloud-intake\n- aws-service-map\n- iam-secrets-check\n- networking-check\n- iac-diff-check\n- deploy-plan\n- observability-proof\n- cost-risk-check\n- rollback-plan\n- live-smoke\n- runbook-update\n`;
+  return `# Cloud / Platform Engineering\n\n## Providers\n\n${answers.cloud_providers}\n\n## Services in scope\n\n${answers.cloud_services}\n\n## IaC / manual policy\n\n${answers.iac_model}\n\n## Observability proof\n\n${answers.observability_model}\n\n## Cost / rollback policy\n\n${answers.cost_rollback_policy}\n\n## Cloud/platform subchecks\n\nThese are subchecks inside the base bridge node \`cloud-platform\`; record their results in \`cloud/service-map.json\` or related cloud artifacts. Do not emit them as bridge \`nodeId\` values unless a future adapter explicitly registers custom nodes.\n\n- cloud-intake\n- aws-service-map\n- iam-secrets-check\n- networking-check\n- iac-diff-check\n- deploy-plan\n- observability-proof\n- cost-risk-check\n- rollback-plan\n- live-smoke\n- runbook-update\n`;
 }
 
 function renderQaSmoke(answers) {
@@ -377,7 +387,7 @@ function renderRunTemplate(answers) {
 
 function renderReview(adapter) {
   const answers = adapter.answers;
-  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\`, \`CLAUDE.md\`, the Claude slash command, or the Codex runtime prompt, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.2 additions\n\n- System Design lane triggers: ${answers.system_design_triggers}\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
+  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\`, \`CLAUDE.md\`, the Claude slash command, or the Codex runtime prompt, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.3 hardening additions\n\n- System Design lane triggers: ${answers.system_design_triggers}\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
 }
 
 function generatePack(args, detected, answers) {
@@ -454,6 +464,11 @@ function generatePack(args, detected, answers) {
   write(path.join(out, "docs/Modes Blueprint Live Replay.md"), renderModes(answers));
   write(path.join(out, "docs/Self-Healing Loop.md"), renderSelfHealing(answers));
   write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
+  const emitterSource = path.join(SCRIPT_DIR, "uash-emit-event.mjs");
+  const emitterTarget = path.join(out, "scripts/uash-emit-event.mjs");
+  mkdirp(path.dirname(emitterTarget));
+  fs.copyFileSync(emitterSource, emitterTarget);
+  fs.chmodSync(emitterTarget, 0o755);
   write(path.join(out, "commissioning-review.md"), renderReview(adapter));
   return { out, adapter };
 }

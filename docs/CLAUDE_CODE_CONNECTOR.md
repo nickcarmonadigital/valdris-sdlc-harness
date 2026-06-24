@@ -1,4 +1,4 @@
-# Claude Code Connector v0
+# Claude Code Connector v0.3
 
 This is the practical answer to: “If I open Claude Code on my Mac, how does this application connect to it?”
 
@@ -24,7 +24,7 @@ We do **not** scrape Claude’s UI or try to read private thoughts. We instrumen
 
 - when Claude enters a harness node
 - when a gate fires
-- when an artifact is written
+- when an artifact is written and verified
 - when Red Zone approval is needed
 - when finish-line proof blocks completion
 
@@ -52,14 +52,27 @@ It stores local run state at:
 ~/.uash/runs/<RUN_ID>/events.jsonl
 ```
 
-## App flow
+## Current strict bridge rules
 
-1. Open the app:
+The v0.3 bridge rejects fake or incomplete events.
+
+Required event fields:
 
 ```text
-https://valdris-sdlc-harness.vercel.app
+type, actor, message, status, runMode, eventSource, nodeId
 ```
 
+Artifact proof rule:
+
+```text
+artifact.written requires a real file under artifactRoot.
+```
+
+The CLI emitter sends `artifactRoot` automatically as the current working directory unless `--artifact-root` is supplied.
+
+## App flow
+
+1. Open the app.
 2. Create or select a run.
 3. In the Connector Bridge panel:
    - click **Check bridge**
@@ -68,7 +81,7 @@ https://valdris-sdlc-harness.vercel.app
    - click **Copy Claude prompt**
 4. Paste that prompt into Claude Code, or install the slash-command template below.
 5. Claude Code emits events as it moves through the Valdris SDLC Harness flow.
-6. The bridge rejects `run.completed` if required artifacts are missing, failed, or skipped without reasons.
+6. The bridge rejects `run.completed` if required artifacts are missing, unverified, failed, skipped without reasons, waiting on approval, or waiting on self-heal PR/proposal.
 7. The app pulls those events and updates:
    - current node
    - agent chip position
@@ -85,17 +98,24 @@ node scripts/uash-emit-event.mjs RUN-1042 agent.connected route \
   "Claude Code attached to the Valdris SDLC Harness run" \
   --artifact run/route.json \
   --status ok \
-  --actor claude-code
+  --actor claude-code \
+  --mode live \
+  --source bridge
 ```
 
-Another example:
+Artifact proof example:
 
 ```bash
-node scripts/uash-emit-event.mjs RUN-1042 gate.fired investigate \
-  "RCA gate fired; gathering runtime evidence before cause" \
-  --artifact rca/rca.json \
+mkdir -p proof
+printf '{"commands":["npm run verify:harness"],"exitCode":0}\n' > proof/proof.json
+node scripts/uash-emit-event.mjs RUN-1042 artifact.written prove \
+  "Proof artifact written after validation passed" \
+  --artifact proof/proof.json \
   --status ok \
-  --actor harness
+  --actor harness \
+  --mode live \
+  --source bridge \
+  --artifact-root "$PWD"
 ```
 
 Blocking proof example:
@@ -105,7 +125,39 @@ node scripts/uash-emit-event.mjs RUN-1042 run.blocked prove \
   "Missing proof/proof.json" \
   --artifact proof/proof.json \
   --status blocked \
-  --actor harness
+  --actor harness \
+  --mode live \
+  --source bridge \
+  --failure-reason "Proof artifact missing" \
+  --recovery-path "Run validation, write proof/proof.json, emit artifact.written, retry completion"
+```
+
+Red Zone approval request example:
+
+```bash
+node scripts/uash-emit-event.mjs RUN-1042 approval.requested redzone \
+  "Red Zone approval required" \
+  --artifact approvals/redzone.json \
+  --status needs_approval \
+  --actor harness \
+  --mode live \
+  --source bridge \
+  --approval-owner "primary operator" \
+  --approval-scope "redzone"
+```
+
+Only a human approval event may grant/deny approval:
+
+```bash
+node scripts/uash-emit-event.mjs RUN-1042 approval.granted redzone \
+  "Human approved scoped Red Zone action" \
+  --artifact approvals/redzone.json \
+  --status ok \
+  --actor human \
+  --mode live \
+  --source bridge \
+  --approval-owner "primary operator" \
+  --approval-scope "redzone"
 ```
 
 ## Claude Code slash command path
@@ -116,7 +168,7 @@ Create this in the target repo:
 .claude/commands/valdris-sdlc-harness.md
 ```
 
-Use the template at:
+Use the generated commissioned pack or the template at:
 
 ```text
 templates/claude-code/commands/valdris-sdlc-harness.md
@@ -138,23 +190,25 @@ The bridge accepts:
 POST /runs/:id/events
 ```
 
-Payload:
+Strict-valid payload:
 
 ```json
 {
   "type": "gate.fired",
-  "nodeId": "investigate",
-  "artifact": "rca/rca.json",
+  "nodeId": "prove",
+  "artifact": "proof/proof.json",
   "status": "ok",
   "actor": "harness",
-  "message": "RCA gate fired; runtime evidence attached."
+  "runMode": "live",
+  "eventSource": "bridge",
+  "message": "Proof gate fired; validation evidence expected."
 }
 ```
 
 Supported node IDs:
 
 ```text
-intake → route → investigate → design → implement → redzone → prove → handoff
+intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## What we can and cannot observe
@@ -163,8 +217,8 @@ intake → route → investigate → design → implement → redzone → prove 
 |---|---|
 | stage entered | Claude’s private hidden reasoning |
 | gate fired | every internal token/thought |
-| artifact written | uninstrumented UI-only actions |
-| approval requested | real runtime state unless emitted/watched |
+| verified artifact written | uninstrumented UI-only actions |
+| approval requested/granted/denied | real runtime state unless emitted/watched |
 | run blocked/completed | arbitrary Mac process state without a connector |
 
 So the clean implementation is **instrumented workflow telemetry**, not UI scraping.

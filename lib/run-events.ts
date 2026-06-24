@@ -1,6 +1,6 @@
 export type AgentRuntime = "claude-code" | "codex" | "hermes";
 export type RunMode = "blueprint" | "live" | "replay";
-export type EventSource = "static-blueprint" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet";
+export type EventSource = "static-blueprint" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet" | "browser-local";
 
 export type RunEventType =
   | "run.created"
@@ -17,7 +17,8 @@ export type RunEventType =
   | "run.blocked"
   | "run.completed"
   | "self_heal.detected"
-  | "self_heal.pr_opened";
+  | "self_heal.pr_opened"
+  | "self_heal.pr_proposed";
 
 export type VisualNodeState = "waiting" | "running" | "passed" | "blocked" | "skipped" | "failed" | "approval";
 
@@ -35,13 +36,13 @@ export type RunEvent = {
   id: string;
   type: RunEventType;
   ts: string;
-  actor: AgentRuntime | "human" | "harness";
+  actor: AgentRuntime | "human" | "harness" | "system";
   runMode?: RunMode;
   eventSource?: EventSource;
   nodeId?: string;
   artifact?: string;
   message: string;
-  status?: "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval";
+  status?: "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval" | "passed";
   skipReason?: string;
   failureReason?: string;
   recoveryPath?: string;

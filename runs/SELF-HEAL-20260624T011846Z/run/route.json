@@ -1,0 +1,11 @@
+{
+  "lane": "harness-self-healing",
+  "secondary_lanes": [
+    "connector-contract",
+    "production-readiness",
+    "qa-release",
+    "docs-product"
+  ],
+  "risk": "medium",
+  "red_zone": "local repo edits only; no deploy, secrets, billing, prod data, or cloud changes"
+}

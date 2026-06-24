@@ -1,0 +1,13 @@
+{
+  "request": "Work in a loop using the harness to fix itself",
+  "operator": "Nick Carmona",
+  "agent": "Val/Hermes",
+  "definition_of_done": [
+    "bridge rejects invalid events",
+    "Red Zone pending approvals block completion",
+    "self-heal detected requires PR/proposal before completion",
+    "generated target packs include a usable emitter path",
+    "verify:harness covers discovered bypasses",
+    "typecheck/build/verify pass"
+  ]
+}

@@ -1,0 +1,4 @@
+{
+  "skipped": true,
+  "reason": "No Red Zone action: no push/deploy/secret/billing/prod-data/cloud mutation."
+}

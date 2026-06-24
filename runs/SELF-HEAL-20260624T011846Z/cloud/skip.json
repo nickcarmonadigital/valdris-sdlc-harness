@@ -1,0 +1,4 @@
+{
+  "skipped": true,
+  "reason": "No AWS/Azure/GCP/Vercel/Supabase/cloud/platform mutation in this self-heal loop."
+}

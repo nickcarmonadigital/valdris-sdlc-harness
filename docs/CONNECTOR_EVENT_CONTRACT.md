@@ -1,16 +1,16 @@
-# Connector Event Contract v0.2
+# Connector Event Contract v0.3
 
 The connector contract lets Claude Code, Codex, Hermes, or any future agent runtime appear on the visual board without turning this product into an IDE.
 
 ## Core principle
 
-The harness can only show what was explicitly emitted, written, or replayed. It cannot read hidden reasoning or internal IDE state.
+The harness can only show what was explicitly emitted, written, verified, or replayed. It cannot read hidden reasoning or internal IDE state.
 
 ```text
 agent runtime
 → MCP tool / CLI emitter / local daemon / watched artifact
 → event store
-→ node states + artifact ledger
+→ node states + verified artifact ledger
 → visual board
 → finish-line + self-healing logic
 ```
@@ -19,9 +19,9 @@ agent runtime
 
 | Mode | Meaning | Event source |
 |---|---|---|
-| `blueprint` / **Blueprint** | Static topology/lane explanation | `static-blueprint` |
-| `live` / **Live Run** | Current real run telemetry | `bridge`, `mcp`, `api`, `watched-artifact` |
-| `replay` / **Replay** | Historical event playback | `local-jsonl`, `database`, `run-packet` |
+| `blueprint` | Static topology/lane explanation | `static-blueprint` |
+| `live` | Current real run telemetry | `bridge`, `mcp`, `api`, `watched-artifact`, `browser-local` |
+| `replay` | Historical event playback | `local-jsonl`, `database`, `run-packet` |
 
 ## Core event types
 
@@ -34,49 +34,63 @@ agent runtime
 | `node.skipped` | Node was intentionally skipped with reason |
 | `node.failed` | Node failed with failure reason and recovery path |
 | `gate.fired` | Mechanical gate started or evaluated |
-| `artifact.written` | Required run artifact appeared |
+| `artifact.written` | Required run artifact exists and should be verified |
 | `approval.requested` | Human approval/Red Zone pause |
 | `approval.granted` | Human approved scoped Red Zone action |
 | `approval.denied` | Human denied scoped Red Zone action |
 | `run.blocked` | Completion is blocked by missing proof, failed gate, or approval |
 | `run.completed` | Required artifacts passed and answer contract can be produced |
 | `self_heal.detected` | Finish-line found a harness/process gap |
-| `self_heal.pr_opened` | A scoped PR was opened/proposed to fix the harness pack |
+| `self_heal.pr_opened` | A scoped PR was opened to fix the harness pack |
+| `self_heal.pr_proposed` | A scoped PR/patch artifact was proposed to fix the harness pack |
 
-## Event schema
+## Strict event schema
+
+The v0.3 local bridge is intentionally strict. Events missing required fields are rejected with `event_contract_violation`.
 
 ```ts
 type RunMode = "blueprint" | "live" | "replay";
-type EventSource = "static-blueprint" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet";
+type EventSource =
+  | "static-blueprint"
+  | "bridge"
+  | "mcp"
+  | "api"
+  | "watched-artifact"
+  | "local-jsonl"
+  | "database"
+  | "run-packet"
+  | "browser-local";
 type NodeState = "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
+type Actor = "claude-code" | "codex" | "hermes" | "human" | "harness" | "system";
+type Status = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval" | "passed";
+
+type NodeId =
+  | "intake"
+  | "route"
+  | "system-design"
+  | "production-readiness"
+  | "cloud-platform"
+  | "implement"
+  | "redzone"
+  | "qa-break-it"
+  | "prove"
+  | "live-smoke"
+  | "self-heal"
+  | "handoff";
 
 type RunEvent = {
-  id: string;
-  type:
-    | "run.created"
-    | "run.mode_set"
-    | "agent.connected"
-    | "node.entered"
-    | "node.skipped"
-    | "node.failed"
-    | "gate.fired"
-    | "artifact.written"
-    | "approval.requested"
-    | "approval.granted"
-    | "approval.denied"
-    | "run.blocked"
-    | "run.completed"
-    | "self_heal.detected"
-    | "self_heal.pr_opened";
-  ts: string;
-  actor: "claude-code" | "codex" | "hermes" | "human" | "harness";
-  runMode?: RunMode;
-  eventSource?: EventSource;
-  nodeId?: string;
+  id?: string;              // generated if omitted
+  type: string;             // must be one of the core event types above
+  ts?: string;              // generated if omitted
+  actor: Actor;
+  runMode: RunMode;
+  eventSource: EventSource;
+  nodeId: NodeId;
   nodeState?: NodeState;
   artifact?: string;
+  artifactRoot?: string;    // required on the run for artifact.written verification
   message: string;
-  status?: "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval";
+  status: Status;
   skipReason?: string;
   failureReason?: string;
   recoveryPath?: string;
@@ -88,17 +102,13 @@ type RunEvent = {
 
 ## Workflow node IDs
 
-Base flow:
+Base v0.3 bridge flow:
 
 ```text
 intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
-Cloud/platform expansion pack:
-
-```text
-cloud-intake → aws-service-map → iam-secrets-check → networking-check → iac-diff-check → deploy-plan → observability-proof → cost-risk-check → rollback-plan → live-smoke → runbook-update
-```
+Cloud/platform expansion nodes are documented lane-detail concepts, but the current local bridge only accepts the base node IDs above. Expansion nodes should be represented inside `cloud/service-map.json` or future adapter schemas until the bridge adds adapter-defined nodes.
 
 ## Node state rules
 
@@ -116,15 +126,19 @@ Rules:
 - `skipped` requires `skipReason`.
 - `failed` requires `failureReason` and `recoveryPath`.
 - `needs_approval` requires `approvalOwner` and `approvalScope`.
-- `passed` requires an artifact/proof when the node is required.
-- Finish-line can only pass when all required nodes are passed or explicitly skipped with reasons.
-- The local bridge enforces this by rejecting `run.completed` with `finish_line_blocked` when artifacts are missing, nodes failed, or skip/failure metadata is incomplete.
+- `approval.granted` and `approval.denied` must be emitted by `actor: "human"` and must match an existing pending approval.
+- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected.
+- `run.completed` can only pass when all required nodes are verified-present or explicitly skipped with reasons.
+- If `self_heal.detected` is emitted, a later `self_heal.pr_opened` or `self_heal.pr_proposed` is required before completion.
 
 ## Event examples
 
 ```json
 {
   "type": "node.skipped",
+  "actor": "harness",
+  "runMode": "live",
+  "eventSource": "bridge",
   "nodeId": "cloud-platform",
   "nodeState": "skipped",
   "status": "skipped",
@@ -137,24 +151,45 @@ Rules:
 ```json
 {
   "type": "node.failed",
+  "actor": "harness",
+  "runMode": "live",
+  "eventSource": "bridge",
   "nodeId": "qa-break-it",
   "nodeState": "failed",
   "status": "failed",
   "artifact": "qa/break-it-results.md",
   "failureReason": "Tenant-boundary negative test failed.",
-  "recoveryPath": "Fix RLS policy, rerun negative authz test, attach request IDs."
+  "recoveryPath": "Fix RLS policy, rerun negative authz test, attach request IDs.",
+  "message": "Break-it QA failed on tenant-boundary negative case."
 }
 ```
 
 ```json
 {
-  "type": "self_heal.pr_opened",
+  "type": "artifact.written",
+  "actor": "codex",
+  "runMode": "live",
+  "eventSource": "bridge",
+  "nodeId": "prove",
+  "status": "ok",
+  "artifact": "proof/proof.json",
+  "artifactRoot": "/path/to/repo-or-run-packet",
+  "message": "Proof artifact written after validation commands passed."
+}
+```
+
+```json
+{
+  "type": "self_heal.pr_proposed",
+  "actor": "harness",
+  "runMode": "live",
+  "eventSource": "bridge",
   "nodeId": "self-heal",
   "nodeState": "passed",
   "status": "ok",
   "artifact": "self_heal/pr.json",
-  "selfHealPrUrl": "https://github.com/org/repo/pull/123",
-  "message": "Opened PR to add a missing cloud/platform commissioning question."
+  "selfHealPrUrl": "file://self_heal/pr.json",
+  "message": "Proposed patch to add a missing cloud/platform commissioning question."
 }
 ```
 
@@ -165,12 +200,13 @@ The connector translates runtime-specific signals into this schema.
 Examples:
 
 - Claude Code hook sees `CLAUDE.md` loaded → `agent.connected`
-- Codex run starts in repo/worktree → `node.entered` at `implement`
+- Codex run starts in repo/worktree → `node.entered`
 - Gate script writes `proof/proof.json` → `artifact.written`
 - Red Zone script returns approval required → `approval.requested`
+- Human approves scoped Red Zone action → `approval.granted`
 - Finish-line validator sees missing proof → `run.blocked`
 - Finish-line validator sees harness gap → `self_heal.detected`
-- Harness patch PR is opened → `self_heal.pr_opened`
+- Harness patch PR is opened/proposed → `self_heal.pr_opened` / `self_heal.pr_proposed`
 
 ## Storage boundary
 

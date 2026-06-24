@@ -1,0 +1,31 @@
+{
+  "artifact": "proof/proof.json",
+  "run_id": "SELF-HEAL-20260624T011846Z",
+  "commands": [
+    {
+      "command": "node --check scripts/claude-code-bridge.mjs && node --check scripts/commission-harness.mjs && node --check scripts/uash-emit-event.mjs && node --check scripts/verify-harness.mjs",
+      "exit_code": 0,
+      "result": "syntax checks passed"
+    },
+    {
+      "command": "npm run verify:harness",
+      "exit_code": 0,
+      "result": "verification passed with strictEventValidation, artifactRootRequired, artifactFileVerification, symlinkEscapeBlocked, redZoneCompletionBlocked, agentApprovalGrantBlocked, selfHealCompletionBlocked, selfHealSkipAfterDetectionBlocked, directCompletionInjectionBlocked, earlyCompletionBlocked"
+    },
+    {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "result": "TypeScript passed"
+    },
+    {
+      "command": "npm run build",
+      "exit_code": 0,
+      "result": "Next.js production build passed; routes: /, /_not-found, /api/runs/demo/events, /docs"
+    }
+  ],
+  "independent_reviews": [
+    "bridge/security bypass second-pass review: PASS",
+    "verifier coverage second-pass review: PASS",
+    "Codex/generated docs final focused review: PASS"
+  ]
+}

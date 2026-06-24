@@ -17,6 +17,7 @@ Options:
   --approval-owner text
   --approval-scope text
   --self-heal-pr-url url
+  --artifact-root path (defaults to current working directory for local proof verification)
 
 Example:
   node scripts/uash-emit-event.mjs RUN-1042 node.skipped cloud-platform "Cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness`);
@@ -28,14 +29,15 @@ const options = {
   artifact: undefined,
   status: "ok",
   actor: "claude-code",
-  runMode: undefined,
-  eventSource: undefined,
+  runMode: "live",
+  eventSource: "bridge",
   skipReason: undefined,
   failureReason: undefined,
   recoveryPath: undefined,
   approvalOwner: undefined,
   approvalScope: undefined,
   selfHealPrUrl: undefined,
+  artifactRoot: process.cwd(),
 };
 
 const optionMap = {
@@ -50,6 +52,7 @@ const optionMap = {
   "--approval-owner": "approvalOwner",
   "--approval-scope": "approvalScope",
   "--self-heal-pr-url": "selfHealPrUrl",
+  "--artifact-root": "artifactRoot",
 };
 
 const messageParts = [];
@@ -86,6 +89,7 @@ const response = await fetch(url, {
     approvalOwner: options.approvalOwner,
     approvalScope: options.approvalScope,
     selfHealPrUrl: options.selfHealPrUrl,
+    artifactRoot: options.artifactRoot,
   }),
 });
 
