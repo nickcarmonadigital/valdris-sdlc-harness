@@ -4,9 +4,13 @@
 
 It commissions a repo/team, generates a project-specific harness pack, connects to Claude Code, Codex, Hermes, or future coding-agent runtimes, streams run events/artifacts, and blocks “done” until proof exists.
 
-![Valdris SDLC Harness control-plane overview](docs/assets/valdris-control-plane-overview.svg)
+## Start here: the visible lane map
 
-## Start here: the lanes
+![Work lanes map](docs/assets/mermaid/work-lanes-map.svg)
+
+This is the primary README visual. It shows how work enters the harness, gets routed into lanes, passes through shared stages, fires gates, and produces proof artifacts.
+
+## What the lane map means
 
 The harness is easiest to understand as **lanes → stages → gates → artifacts**.
 
@@ -29,6 +33,12 @@ The harness is easiest to understand as **lanes → stages → gates → artifac
 10. **Harness self-healing** — if the process failed, create a correction artifact/PR.
 
 ### Visual maps
+
+The diagrams below are rendered Mermaid assets so the README shows the architecture directly instead of hiding the useful map behind a link.
+
+![Whole repo operating map](docs/assets/mermaid/whole-repo-operating-map.svg)
+
+More maps:
 
 - **[Repo Mermaid Maps](docs/REPO_MERMAID_MAPS.md)** — rendered diagrams plus Mermaid source for the repo map, lane map, connector flow, 13-layer pack, and generated harness pack.
 - **[Generated Repo Map](docs/HARNESS_REPO_MAP.md)** — file-by-file responsibility map generated from the current repo.
@@ -148,7 +158,7 @@ These nodes are not just labels. Each node has an expected artifact path and con
 
 For serious product work, “done” cannot mean “the page loaded once.” The harness includes a **13-layer production readiness pack** so production-impacting runs can mark each layer as required, passed, failed, pending, or skipped with a reason.
 
-![Thirteen production readiness layers](docs/assets/production-readiness-13-layers.svg)
+![13-layer production readiness pack](docs/assets/mermaid/production-readiness-13-layer-pack.svg)
 
 | # | Layer | What proof should cover |
 |---:|---|---|
@@ -170,7 +180,7 @@ The current repo has the layer pack, commissioning questions, adapter generation
 
 ## Connector + proof gate model
 
-![Connector and proof-gate enforcement](docs/assets/connector-proof-gates.svg)
+![Connector event flow](docs/assets/mermaid/connector-event-flow.svg)
 
 The local bridge is a v0 connector/runtime boundary. It is intentionally strict:
 
@@ -196,6 +206,8 @@ Rule: **demo data must never pretend to be live telemetry.**
 
 ## What stays universal vs what becomes project-specific
 
+![Universal core vs project adapter](docs/assets/mermaid/universal-core-vs-project-adapter.svg)
+
 | Universal piece | What stays in the core | What generated adapters customize |
 |---|---|---|
 | Commissioning interview | question groups, schema, generator | project/team answers |
@@ -208,6 +220,8 @@ Rule: **demo data must never pretend to be live telemetry.**
 | Answer contract | bottom line, why, proof, fix, your call | tone and stakeholder style |
 
 ## Project commissioning output
+
+![Generated harness pack](docs/assets/mermaid/generated-harness-pack.svg)
 
 `npm run commission` scans a target repo, merges human answers, and generates a project-specific harness pack:
 
