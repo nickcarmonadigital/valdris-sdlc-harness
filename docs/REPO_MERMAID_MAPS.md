@@ -20,6 +20,11 @@ A raw diagram with every file would turn into spaghetti. These maps keep the rep
 
 ## 1. Whole repo operating map
 
+![Whole repo operating map](assets/mermaid/whole-repo-operating-map.svg)
+
+<details>
+<summary>Mermaid source</summary>
+
 ```mermaid
 flowchart TB
   classDef front fill:#082f49,stroke:#38bdf8,color:#e0f2fe,stroke-width:2px
@@ -129,11 +134,18 @@ flowchart TB
   class RUN_TEMPLATE,EVENTS,HANDOFF,GRAPH,ANCHORS evidence
 ```
 
+</details>
+
 ---
 
 ## 2. Universal core vs project adapter
 
 This is the public product shape: universal harness logic stays reusable, while each repo gets a generated adapter.
+
+![Universal core vs project adapter](assets/mermaid/universal-core-vs-project-adapter.svg)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart LR
@@ -184,11 +196,18 @@ flowchart LR
   class GATES,HANDOFF gate
 ```
 
+</details>
+
 ---
 
 ## 3. Work lanes map
 
 These are the lanes people should see first when asking, “where does my work go?”
+
+![Work lanes map](assets/mermaid/work-lanes-map.svg)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TB
@@ -246,11 +265,18 @@ flowchart TB
   class ARTIFACTS artifact
 ```
 
+</details>
+
 ---
 
 ## 4. Connector event flow
 
 The connector is what turns external agent work into harness-observable events.
+
+![Connector event flow](assets/mermaid/connector-event-flow.svg)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart LR
@@ -289,11 +315,18 @@ flowchart LR
   class HANDOFF store
 ```
 
+</details>
+
 ---
 
 ## 5. 13-layer production readiness pack
 
 The 13 layers are not the whole harness. They are a production-readiness pack that activates when a task touches real product, infra, deploy, users, data, security, or reliability.
+
+![13-layer production readiness pack](assets/mermaid/production-readiness-13-layer-pack.svg)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TB
@@ -342,11 +375,18 @@ flowchart TB
   class STATUS,PROOF,FINISH gate
 ```
 
+</details>
+
 ---
 
 ## 6. Generated harness pack
 
 This is what `npm run commission` creates for a target repo.
+
+![Generated harness pack](assets/mermaid/generated-harness-pack.svg)
+
+<details>
+<summary>Mermaid source</summary>
 
 ```mermaid
 flowchart TB
@@ -404,6 +444,8 @@ flowchart TB
   class VALIDATION,REDZONE,PROD,CLOUD,QA,MODES,SELF docs
   class EMITTER,GSCAN script
 ```
+
+</details>
 
 ---
 

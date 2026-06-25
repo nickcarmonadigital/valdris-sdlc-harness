@@ -6,11 +6,31 @@ It commissions a repo/team, generates a project-specific harness pack, connects 
 
 ![Valdris SDLC Harness control-plane overview](docs/assets/valdris-control-plane-overview.svg)
 
-## Start with the visual maps
+## Start here: the lanes
 
-If you are trying to understand the repo shape, start here:
+The harness is easiest to understand as **lanes → stages → gates → artifacts**.
 
-- **[Repo Mermaid Maps](docs/REPO_MERMAID_MAPS.md)** — whole-repo operating map, lane map, connector flow, 13-layer production readiness pack, and generated harness pack.
+- **Lanes** decide what kind of work this is: engineering, cloud, security, incident, QA, agent-runtime, support, etc.
+- **Stages** move the work through intake, route, graph scan, design, implementation, validation, and handoff.
+- **Gates** block fake completion: RCA, Graphify/anchor, Red Zone approval, proof, live smoke, finish-line, self-heal.
+- **Artifacts** prove the gate ran: `graph/graph.json`, `design/anchors.json`, `proof/proof.json`, `smoke/smoke_proof.json`, `handoff/final.md`.
+
+### Core lane families
+
+1. **Intake / classify** — capture the ask, affected users, repo, risk, and work type.
+2. **Product + app SDLC** — bug fixes, features, refactors, frontend/backend/product work.
+3. **System design** — architecture, APIs, scale, data models, tradeoffs, ADRs.
+4. **Cloud / platform engineering** — AWS/Vercel/Supabase/IAM/secrets/deploy/runtime infra.
+5. **Data + integrations** — DB, migrations, webhooks, queues, providers, sync paths.
+6. **Security + compliance** — auth, permissions, RLS, secrets, tenant boundaries.
+7. **QA + release** — acceptance, break-it QA, regression, smoke, release proof.
+8. **Reliability / observability** — logs, metrics, traces, alerts, rollback, incidents.
+9. **Handoff** — answer contract, proof paths, decision packet, next call.
+10. **Harness self-healing** — if the process failed, create a correction artifact/PR.
+
+### Visual maps
+
+- **[Repo Mermaid Maps](docs/REPO_MERMAID_MAPS.md)** — rendered diagrams plus Mermaid source for the repo map, lane map, connector flow, 13-layer pack, and generated harness pack.
 - **[Generated Repo Map](docs/HARNESS_REPO_MAP.md)** — file-by-file responsibility map generated from the current repo.
 
 ## What this is
@@ -70,18 +90,21 @@ The harness turns “I did it” into a verifiable run packet:
 
 ## Core flow
 
-```mermaid
-flowchart LR
-  A[Commission repo/team] --> B[Generate project adapter]
-  B --> C[Install agent front doors]
-  C --> D[Run Claude Code / Codex / Hermes]
-  D --> E[Connector bridge]
-  E --> F[Event + artifact ledger]
-  F --> G[Gate engine]
-  G --> H[Handoff]
-  G -->|blocked: missing proof| D
-  G -->|harness gap| I[Self-heal proposal / PR]
+```text
+commission repo/team
+→ generate project adapter
+→ install agent front doors
+→ run Claude Code / Codex / Hermes externally
+→ stream events + artifacts through connector bridge
+→ enforce gate engine
+→ handoff
+
+Blocked paths:
+- missing proof → return to runtime work
+- harness gap → self-heal proposal / PR
 ```
+
+See the rendered flow diagrams in [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAID_MAPS.md).
 
 ## Canonical SDLC node chain
 
