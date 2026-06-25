@@ -6,6 +6,13 @@ It commissions a repo/team, generates a project-specific harness pack, connects 
 
 ![Valdris SDLC Harness control-plane overview](docs/assets/valdris-control-plane-overview.svg)
 
+## Start with the visual maps
+
+If you are trying to understand the repo shape, start here:
+
+- **[Repo Mermaid Maps](docs/REPO_MERMAID_MAPS.md)** — whole-repo operating map, lane map, connector flow, 13-layer production readiness pack, and generated harness pack.
+- **[Generated Repo Map](docs/HARNESS_REPO_MAP.md)** — file-by-file responsibility map generated from the current repo.
+
 ## What this is
 
 This repo is the universal operating layer around AI coding agents:
