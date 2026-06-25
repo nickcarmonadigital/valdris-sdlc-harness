@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris SDLC Harness — Generated Harness Pack">
+  
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris SDLC Harness — Generated Harness Pack</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">Commissioning turns a normal repo into an AI-operable repo with front doors, rules, run packets, and helper scripts.</text>
+<g><g filter="url(#shadow)" opacity="1">
+    <rect x="220" y="150" width="190" height="72" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="221" y="151" width="188" height="24.48" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="315" y="180" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">target repo</text></g><path d="M 315 224 C 557.5 224, 557.5 310, 800 310" fill="none" stroke="#60a5fa" stroke-width="1.5" stroke-opacity="0.78" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="460" y="150" width="190" height="72" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="461" y="151" width="188" height="24.48" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="555" y="180" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">human answers</text></g><path d="M 555 224 C 677.5 224, 677.5 310, 800 310" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.78" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="700" y="150" width="190" height="72" rx="18" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="701" y="151" width="188" height="24.48" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="795" y="180" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Graphify scan</text></g><path d="M 795 224 C 797.5 224, 797.5 310, 800 310" fill="none" stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.78" marker-end="url(#arrowAmber)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="620" y="300" width="360" height="92" rx="18" fill="url(#amberFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="621" y="301" width="358" height="31.28" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="800" y="330" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="24" font-weight="800">commission-harness.mjs</text><text x="800" y="362" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">repo-specific operating kit generator</text></g><rect x="78" y="488" width="270" height="250" rx="22" fill="#020617" opacity="0.45" stroke="#38bdf8"/><text x="96" y="524" text-anchor="start" fill="#38bdf8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="850">Agent front doors</text><g>
+    <rect x="96" y="554" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="213" y="575" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">AGENTS.md</text>
+  </g><g>
+    <rect x="96" y="596" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="213" y="617" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">CLAUDE.md</text>
+  </g><g>
+    <rect x="96" y="638" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="213" y="659" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">.claude/commands/...</text>
+  </g><g>
+    <rect x="96" y="680" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="213" y="701" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="11" font-weight="800">Codex Runtime Prompt.md</text>
+  </g><path d="M 800 392 C 506.5 392, 506.5 478, 213 478" fill="none" stroke="#38bdf8" stroke-width="1.4" stroke-opacity="0.78" marker-end="url(#arrow)"/><rect x="388" y="488" width="270" height="250" rx="22" fill="#020617" opacity="0.45" stroke="#f59e0b"/><text x="406" y="524" text-anchor="start" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="850">Project adapter</text><g>
+    <rect x="406" y="554" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="523" y="575" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">project-adapter.json</text>
+  </g><g>
+    <rect x="406" y="596" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="523" y="617" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">project.yaml</text>
+  </g><g>
+    <rect x="406" y="638" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="523" y="659" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">00_MAP.md</text>
+  </g><g>
+    <rect x="406" y="680" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="523" y="701" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">CONTEXT.md</text>
+  </g><path d="M 800 392 C 661.5 392, 661.5 478, 523 478" fill="none" stroke="#f59e0b" stroke-width="1.4" stroke-opacity="0.78" marker-end="url(#arrowAmber)"/><rect x="698" y="488" width="270" height="250" rx="22" fill="#020617" opacity="0.45" stroke="#818cf8"/><text x="716" y="524" text-anchor="start" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="850">Operating docs</text><g>
+    <rect x="716" y="554" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="833" y="575" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">Validation Commands.md</text>
+  </g><g>
+    <rect x="716" y="596" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="833" y="617" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">Red Zone Rules.md</text>
+  </g><g>
+    <rect x="716" y="638" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="833" y="659" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="11" font-weight="800">Production Readiness Layers.md</text>
+  </g><g>
+    <rect x="716" y="680" width="234" height="32" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="833" y="701" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">QA and Live Smoke.md</text>
+  </g><path d="M 800 392 C 816.5 392, 816.5 478, 833 478" fill="none" stroke="#818cf8" stroke-width="1.4" stroke-opacity="0.78" marker-end="url(#arrow)"/><rect x="1008" y="488" width="236" height="250" rx="22" fill="#020617" opacity="0.45" stroke="#22c55e"/><text x="1026" y="524" text-anchor="start" fill="#22c55e" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="850">Run packet</text><g>
+    <rect x="1026" y="554" width="200" height="32" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="1126" y="575" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">runs/_run-template/</text>
+  </g><g>
+    <rect x="1026" y="596" width="200" height="32" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="1126" y="617" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="11" font-weight="800">commissioning-review.md</text>
+  </g><path d="M 800 392 C 963 392, 963 478, 1126 478" fill="none" stroke="#22c55e" stroke-width="1.4" stroke-opacity="0.78" marker-end="url(#arrow)"/><rect x="1268" y="488" width="236" height="250" rx="22" fill="#020617" opacity="0.45" stroke="#2dd4bf"/><text x="1286" y="524" text-anchor="start" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="850">Helper scripts</text><g>
+    <rect x="1286" y="554" width="200" height="32" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="1386" y="575" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">uash-emit-event.mjs</text>
+  </g><g>
+    <rect x="1286" y="596" width="200" height="32" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="1386" y="617" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">graphify-scan.mjs</text>
+  </g><path d="M 800 392 C 1093 392, 1093 478, 1386 478" fill="none" stroke="#2dd4bf" stroke-width="1.4" stroke-opacity="0.78" marker-end="url(#arrow)"/><text x="80" y="820" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="17" font-weight="750">Output shape: generated instructions + repo adapter + validation docs + evidence packet + connector helpers.</text></svg>

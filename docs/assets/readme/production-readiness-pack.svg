@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris SDLC Harness — 13-Layer Production Readiness Pack">
+  
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris SDLC Harness — 13-Layer Production Readiness Pack</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">A production-impacting run cannot be called done until touched layers are assessed with proof.</text>
+<g><g filter="url(#shadow)" opacity="1">
+    <rect x="560" y="126" width="480" height="74" rx="18" fill="url(#cyanFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="561" y="127" width="478" height="25.16" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="800" y="156" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">production-impacting run</text><text x="800" y="184" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">feature, deploy, data, auth, cloud, incident, or reliability</text><text x="800" y="202" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">work</text></g><line x1="800" y1="204" x2="800" y2="244" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="540" y="246" width="520" height="76" rx="18" fill="url(#amberFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="541" y="247" width="518" height="25.840000000000003" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="800" y="276" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">production readiness layer pack</text><text x="800" y="304" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">mark each layer required / passed / failed / pending / skipped with</text><text x="800" y="322" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">reason</text></g><rect x="80" y="382" width="390" height="236" rx="24" fill="#020617" opacity="0.44" stroke="#38bdf8" stroke-opacity="0.78"/><text x="104" y="420" text-anchor="start" fill="#38bdf8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="850">Product surface</text><g>
+    <rect x="104" y="448" width="330" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="269" y="469" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">01 Frontend</text>
+  </g><g>
+    <rect x="104" y="490" width="330" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="269" y="511" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">02 Backend / API</text>
+  </g><g>
+    <rect x="104" y="532" width="330" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="269" y="553" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">03 Database / storage</text>
+  </g><g>
+    <rect x="104" y="574" width="330" height="32" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="269" y="595" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">04 Auth / permissions / RLS</text>
+  </g><line x1="800" y1="324" x2="275" y2="368" stroke="#38bdf8" stroke-width="1.6" stroke-opacity="0.82" marker-end="url(#arrow)"/><rect x="510" y="382" width="500" height="356" rx="24" fill="#020617" opacity="0.44" stroke="#f59e0b" stroke-opacity="0.78"/><text x="534" y="420" text-anchor="start" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="850">Platform surface</text><g>
+    <rect x="534" y="448" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="644" y="469" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">05 Hosting / deployment</text>
+  </g><g>
+    <rect x="534" y="490" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="644" y="511" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">06 Cloud / compute</text>
+  </g><g>
+    <rect x="534" y="532" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="644" y="553" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">07 CI/CD / version control</text>
+  </g><g>
+    <rect x="534" y="574" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="644" y="595" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">08 Security</text>
+  </g><g>
+    <rect x="770" y="448" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="880" y="469" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">09 Rate limiting</text>
+  </g><g>
+    <rect x="770" y="490" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="880" y="511" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">10 Caching / CDN</text>
+  </g><g>
+    <rect x="770" y="532" width="220" height="32" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="880" y="553" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">11 Load balancing / scaling</text>
+  </g><line x1="800" y1="324" x2="760" y2="368" stroke="#f59e0b" stroke-width="1.6" stroke-opacity="0.82" marker-end="url(#arrowAmber)"/><rect x="1080" y="382" width="390" height="236" rx="24" fill="#020617" opacity="0.44" stroke="#2dd4bf" stroke-opacity="0.78"/><text x="1104" y="420" text-anchor="start" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="850">Operational survival</text><g>
+    <rect x="1104" y="448" width="330" height="32" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="1269" y="469" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">12 Logs / observability</text>
+  </g><g>
+    <rect x="1104" y="490" width="330" height="32" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="1269" y="511" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">13 Availability / recovery / DR</text>
+  </g><line x1="800" y1="324" x2="1275" y2="368" stroke="#2dd4bf" stroke-width="1.6" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="430" y="748" width="740" height="66" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="431" y="749" width="738" height="22.44" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="800" y="778" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="800">production/layer-assessment.json → finish-line gate</text><text x="800" y="807" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">status must be required/passed/failed/pending/skipped with reason</text></g><line x1="800" y1="724" x2="800" y2="746" stroke="#22c55e" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/></svg>

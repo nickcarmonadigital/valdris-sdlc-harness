@@ -14,6 +14,7 @@
     "verify:harness": "node scripts/verify-harness.mjs",
     "graphify:scan": "node scripts/graphify-scan.mjs",
     "graphify:gate": "node scripts/graphify-gate.mjs && node scripts/anchor-gate.mjs",
+    "render:readme-visuals": "node scripts/render-readme-visuals.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
     "bridge:emit": "node scripts/uash-emit-event.mjs"
   },

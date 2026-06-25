@@ -6,7 +6,7 @@ It commissions a repo/team, generates a project-specific harness pack, connects 
 
 ## Start here: the visible lane map
 
-![Work lanes map](docs/assets/mermaid/work-lanes-map.svg)
+![Work lanes map](docs/assets/readme/work-lanes-map.svg)
 
 This is the primary README visual. It shows how work enters the harness, gets routed into lanes, passes through shared stages, fires gates, and produces proof artifacts.
 
@@ -34,9 +34,9 @@ The harness is easiest to understand as **lanes → stages → gates → artifac
 
 ### Visual maps
 
-The diagrams below are rendered Mermaid assets so the README shows the architecture directly instead of hiding the useful map behind a link.
+The diagrams below are purpose-built README visuals, rendered as deterministic SVGs so the repo shows the architecture directly instead of hiding the useful map behind a link.
 
-![Whole repo operating map](docs/assets/mermaid/whole-repo-operating-map.svg)
+![Whole repo operating map](docs/assets/readme/repo-operating-map.svg)
 
 More maps:
 
@@ -67,7 +67,7 @@ It is built for the shape Nick has been pushing toward:
 
 ## Current product surface
 
-![Flow monitor screenshot](docs/assets/flow-monitor-screenshot.png)
+![Flow monitor dashboard](docs/assets/readme/flow-monitor-dashboard.svg)
 
 The current app renders an operator dashboard / visual flow monitor with:
 
@@ -158,7 +158,7 @@ These nodes are not just labels. Each node has an expected artifact path and con
 
 For serious product work, “done” cannot mean “the page loaded once.” The harness includes a **13-layer production readiness pack** so production-impacting runs can mark each layer as required, passed, failed, pending, or skipped with a reason.
 
-![13-layer production readiness pack](docs/assets/mermaid/production-readiness-13-layer-pack.svg)
+![13-layer production readiness pack](docs/assets/readme/production-readiness-pack.svg)
 
 | # | Layer | What proof should cover |
 |---:|---|---|
@@ -180,7 +180,7 @@ The current repo has the layer pack, commissioning questions, adapter generation
 
 ## Connector + proof gate model
 
-![Connector event flow](docs/assets/mermaid/connector-event-flow.svg)
+![Connector + proof gate overview](docs/assets/readme/connector-proof-gate-overview.svg)
 
 The local bridge is a v0 connector/runtime boundary. It is intentionally strict:
 
@@ -206,7 +206,7 @@ Rule: **demo data must never pretend to be live telemetry.**
 
 ## What stays universal vs what becomes project-specific
 
-![Universal core vs project adapter](docs/assets/mermaid/universal-core-vs-project-adapter.svg)
+![Universal core vs project adapter](docs/assets/readme/universal-core-project-adapter.svg)
 
 | Universal piece | What stays in the core | What generated adapters customize |
 |---|---|---|
@@ -221,7 +221,7 @@ Rule: **demo data must never pretend to be live telemetry.**
 
 ## Project commissioning output
 
-![Generated harness pack](docs/assets/mermaid/generated-harness-pack.svg)
+![Generated harness pack](docs/assets/readme/generated-harness-pack.svg)
 
 `npm run commission` scans a target repo, merges human answers, and generates a project-specific harness pack:
 

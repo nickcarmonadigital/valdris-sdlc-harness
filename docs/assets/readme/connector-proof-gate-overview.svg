@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris SDLC Harness — Connector + Proof Gate Overview">
+  
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris SDLC Harness — Connector + Proof Gate Overview</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">External agents only become trustworthy when they emit validated events and artifact evidence.</text>
+<rect x="64" y="136" width="300" height="340" rx="26" fill="#020617" opacity="0.46" stroke="#60a5fa"/><text x="92" y="176" text-anchor="start" fill="#60a5fa" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="850">External coding agents</text><g>
+    <rect x="96" y="216" width="236" height="42" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="214" y="242" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="800">Claude Code</text>
+  </g><g>
+    <rect x="96" y="276" width="236" height="42" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="214" y="302" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="800">Codex</text>
+  </g><g>
+    <rect x="96" y="336" width="236" height="42" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="214" y="362" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="800">Hermes</text>
+  </g><g>
+    <rect x="96" y="396" width="236" height="42" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="214" y="422" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="16" font-weight="800">future runtime</text>
+  </g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="400" y="238" width="176" height="116" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="401" y="239" width="174" height="39.440000000000005" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="488" y="268" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">CLI emitter / MCP</text><text x="488" y="288" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">/ API / watched</text><text x="488" y="308" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">artifact</text></g><line x1="576" y1="296" x2="600" y2="296" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="610" y="238" width="176" height="116" rx="18" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.4" opacity="0.96"/>
+    <rect x="611" y="239" width="174" height="39.440000000000005" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="698" y="268" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">local connector</text><text x="698" y="288" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">bridge</text></g><line x1="786" y1="296" x2="810" y2="296" stroke="#2dd4bf" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="820" y="238" width="176" height="116" rx="18" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="821" y="239" width="174" height="39.440000000000005" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="908" y="268" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">strict event</text><text x="908" y="288" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">validation</text></g><line x1="996" y1="296" x2="1020" y2="296" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrowAmber)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1030" y="238" width="176" height="116" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1031" y="239" width="174" height="39.440000000000005" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1118" y="268" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">event ledger +</text><text x="1118" y="288" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">run packet</text></g><line x1="1206" y1="296" x2="1230" y2="296" stroke="#22c55e" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1240" y="238" width="176" height="116" rx="18" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1241" y="239" width="174" height="39.440000000000005" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1328" y="268" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">proof gate engine</text></g><line x1="364" y1="306" x2="400" y2="296" stroke="#60a5fa" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="742" y="430" width="300" height="78" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="743" y="431" width="298" height="26.520000000000003" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="762" y="460" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">visual run monitor</text><text x="762" y="488" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">reads events, artifacts, skip/fail state</text></g><path d="M 1118 354 C 1004 354, 1004 430, 890 430" fill="none" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrow)"/><g>
+    <rect x="1128" y="476" width="340" height="38" rx="14" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.2" opacity="0.96"/>
+    <text x="1298" y="500" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="14" font-weight="800">reject: unknown node or bad schema</text>
+  </g><path d="M 1328 354 C 1228 354, 1228 495, 1128 495" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-opacity="0.78" marker-end="url(#arrow)"/><g>
+    <rect x="1128" y="532" width="340" height="38" rx="14" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.2" opacity="0.96"/>
+    <text x="1298" y="556" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="14" font-weight="800">block: finish-line not satisfied</text>
+  </g><path d="M 1328 354 C 1228 354, 1228 551, 1128 551" fill="none" stroke="#fb7185" stroke-width="1.2" stroke-opacity="0.78" marker-end="url(#arrow)"/><g>
+    <rect x="1128" y="588" width="340" height="38" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1298" y="612" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="14" font-weight="800">block: Red Zone needs human</text>
+  </g><path d="M 1328 354 C 1228 354, 1228 607, 1128 607" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-opacity="0.78" marker-end="url(#arrowAmber)"/><g>
+    <rect x="1128" y="644" width="340" height="38" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1298" y="668" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="14" font-weight="800">self-heal artifact or PR</text>
+  </g><path d="M 1328 354 C 1228 354, 1228 663, 1128 663" fill="none" stroke="#f59e0b" stroke-width="1.2" stroke-opacity="0.78" marker-end="url(#arrowAmber)"/><g>
+    <rect x="1128" y="700" width="340" height="38" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="1298" y="724" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="14" font-weight="800">proof-backed handoff</text>
+  </g><path d="M 1328 354 C 1228 354, 1228 719, 1128 719" fill="none" stroke="#22c55e" stroke-width="1.2" stroke-opacity="0.78" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="92" y="586" width="750" height="94" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="93" y="587" width="748" height="31.96" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="112" y="616" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="22" font-weight="800">Run packet ledger</text><text x="112" y="646" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">run/intake.json / graph/graph.json / design/anchors.json / proof/proof.json / smoke/smoke_proof.json</text><text x="112" y="664" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">/ handoff/final.md</text></g><text x="92" y="752" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="850">No agent can claim done until required events, artifacts, approvals, and smoke checks pass.</text></svg>

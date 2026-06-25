@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris SDLC Harness — Visual Flow Monitor">
+  
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris SDLC Harness — Visual Flow Monitor</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">Blueprint / Live Run / Replay modes keep static topology separate from real telemetry.</text>
+<rect x="64" y="122" width="1472" height="704" rx="28" fill="#030712" opacity="0.86" stroke="#334155" stroke-width="1.4" filter="url(#shadow)"/><text x="96" y="172" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="23" font-weight="850">Run board</text><g>
+    <rect x="220" y="148" width="105" height="30" rx="15" fill="#38bdf8" opacity="0.13" stroke="#38bdf8" stroke-opacity="0.75"/>
+    <text x="272.5" y="168" text-anchor="middle" fill="#38bdf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">Blueprint</text>
+  </g><g>
+    <rect x="338" y="148" width="105" height="30" rx="15" fill="#2dd4bf" opacity="0.13" stroke="#2dd4bf" stroke-opacity="0.75"/>
+    <text x="390.5" y="168" text-anchor="middle" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">Live Run</text>
+  </g><g>
+    <rect x="456" y="148" width="88" height="30" rx="15" fill="#818cf8" opacity="0.13" stroke="#818cf8" stroke-opacity="0.75"/>
+    <text x="500" y="168" text-anchor="middle" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">Replay</text>
+  </g><text x="1276" y="172" text-anchor="start" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="800">demo topology only</text><rect x="92" y="210" width="1000" height="402" rx="22" fill="#07111f" stroke="#1e293b"/><text x="116" y="246" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="17" font-weight="800">N8N-style SDLC swimlane</text><g>
+    <rect x="122" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="178" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">intake</text>
+  </g><line x1="234" y1="352" x2="240" y2="352" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="248" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="304" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">route</text>
+  </g><line x1="360" y1="352" x2="366" y2="352" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="374" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="430" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">graphify</text>
+  </g><line x1="486" y1="352" x2="492" y2="352" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="500" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="556" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="10.5" font-weight="800">design-anchors</text>
+  </g><line x1="612" y1="352" x2="618" y2="352" stroke="#22c55e" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="626" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="682" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="10.5" font-weight="800">system-design</text>
+  </g><line x1="738" y1="352" x2="744" y2="352" stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="752" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="808" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="10.5" font-weight="800">production-readiness</text>
+  </g><line x1="864" y1="352" x2="870" y2="352" stroke="#f59e0b" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="878" y="328" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="934" y="357" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="10.5" font-weight="800">cloud-platform</text>
+  </g><g>
+    <rect x="122" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="178" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">implement</text>
+  </g><line x1="234" y1="474" x2="240" y2="474" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="248" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.2" opacity="0.96"/>
+    <text x="304" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">redzone</text>
+  </g><line x1="360" y1="474" x2="366" y2="474" stroke="#fb7185" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="374" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="430" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="11.5" font-weight="800">qa-break-it</text>
+  </g><line x1="486" y1="474" x2="492" y2="474" stroke="#a78bfa" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="500" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.2" opacity="0.96"/>
+    <text x="556" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">prove</text>
+  </g><line x1="612" y1="474" x2="618" y2="474" stroke="#fb7185" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="626" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="682" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">live-smoke</text>
+  </g><line x1="738" y1="474" x2="744" y2="474" stroke="#2dd4bf" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="752" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="808" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">self-heal</text>
+  </g><line x1="864" y1="474" x2="870" y2="474" stroke="#f59e0b" stroke-width="1.5" stroke-opacity="0.82" marker-end="url(#arrow)"/><g>
+    <rect x="878" y="450" width="112" height="48" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="934" y="479" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">handoff</text>
+  </g><path d="M 934 384 C 528 384, 528 440, 122 440" fill="none" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrow)"/><rect x="1126" y="210" width="382" height="402" rx="22" fill="#0f172a" stroke="#334155"/><text x="1154" y="250" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="15" font-weight="800">Selected node</text><text x="1154" y="286" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="36" font-weight="900">prove</text><g>
+    <rect x="1282" y="258" width="102" height="30" rx="15" fill="#fb7185" opacity="0.13" stroke="#fb7185" stroke-opacity="0.75"/>
+    <text x="1333" y="278" text-anchor="middle" fill="#fb7185" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">blocked</text>
+  </g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1154" y="318" width="318" height="86" rx="18" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1155" y="319" width="316" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1174" y="348" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Required artifact</text><text x="1174" y="374" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">proof/proof.json must exist and pass</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1154" y="424" width="318" height="76" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1155" y="425" width="316" height="25.840000000000003" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1174" y="454" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Last event</text><text x="1174" y="480" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">node.entered from connector bridge</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1154" y="520" width="318" height="62" rx="18" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1155" y="521" width="316" height="21.080000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1174" y="550" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Gate result</text><text x="1174" y="576" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">finish-line not satisfied</text></g><rect x="92" y="646" width="1416" height="136" rx="22" fill="#07111f" stroke="#1e293b"/><text x="120" y="682" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="850">Event stream + artifact ledger</text><rect x="120" y="702" width="316" height="56" rx="14" fill="#020617" opacity="0.55" stroke="#22c55e" stroke-opacity="0.35"/><g>
+    <rect x="134" y="714" width="82" height="30" rx="15" fill="#818cf8" opacity="0.13" stroke="#818cf8" stroke-opacity="0.75"/>
+    <text x="175" y="734" text-anchor="middle" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">10:42:17</text>
+  </g><text x="230" y="734" text-anchor="start" fill="#22c55e" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="850">graphify</text><text x="134" y="772" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="700">wrote graph/graph.json</text><rect x="464" y="702" width="316" height="56" rx="14" fill="#020617" opacity="0.55" stroke="#22c55e" stroke-opacity="0.35"/><g>
+    <rect x="478" y="714" width="82" height="30" rx="15" fill="#818cf8" opacity="0.13" stroke="#818cf8" stroke-opacity="0.75"/>
+    <text x="519" y="734" text-anchor="middle" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">10:43:02</text>
+  </g><text x="574" y="734" text-anchor="start" fill="#22c55e" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="850">design-anchors</text><text x="478" y="772" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="700">wrote design/anchors.json</text><rect x="808" y="702" width="316" height="56" rx="14" fill="#020617" opacity="0.55" stroke="#fb7185" stroke-opacity="0.35"/><g>
+    <rect x="822" y="714" width="82" height="30" rx="15" fill="#818cf8" opacity="0.13" stroke="#818cf8" stroke-opacity="0.75"/>
+    <text x="863" y="734" text-anchor="middle" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">10:47:18</text>
+  </g><text x="918" y="734" text-anchor="start" fill="#fb7185" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="850">prove</text><text x="822" y="772" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="700">blocked: missing proof/proof.json</text><rect x="1152" y="702" width="316" height="56" rx="14" fill="#020617" opacity="0.55" stroke="#f59e0b" stroke-opacity="0.35"/><g>
+    <rect x="1166" y="714" width="82" height="30" rx="15" fill="#818cf8" opacity="0.13" stroke="#818cf8" stroke-opacity="0.75"/>
+    <text x="1207" y="734" text-anchor="middle" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">10:48:09</text>
+  </g><text x="1262" y="734" text-anchor="start" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="850">redzone</text><text x="1166" y="772" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="700">human approval required</text><text x="96" y="854" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="15" font-weight="700">This visual intentionally shows the control plane preventing fake completion — not a magical live dashboard.</text></svg>

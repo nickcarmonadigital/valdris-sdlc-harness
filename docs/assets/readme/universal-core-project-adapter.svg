@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris SDLC Harness — Universal Core vs Project Adapter">
+  
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris SDLC Harness — Universal Core vs Project Adapter</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">The product is universal; every repo gets a generated operating layer.</text>
+<g><g filter="url(#shadow)" opacity="1">
+    <rect x="80" y="180" width="230" height="78" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="81" y="181" width="228" height="26.520000000000003" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="195" y="210" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">team or operator</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="80" y="312" width="230" height="78" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="81" y="313" width="228" height="26.520000000000003" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="195" y="342" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">target repository</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="380" y="160" width="260" height="92" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="381" y="161" width="258" height="31.28" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="510" y="190" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">commissioning interview</text><text x="510" y="218" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">human answers + repo rules</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="380" y="300" width="260" height="92" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="381" y="301" width="258" height="31.28" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="510" y="330" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">Graphify repo scan</text><text x="510" y="358" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">code map + anchors</text></g><path d="M 310 218 C 345 218, 345 206, 380 206" fill="none" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrow)"/><path d="M 310 350 C 345 350, 345 346, 380 346" fill="none" stroke="#60a5fa" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrow)"/><rect x="710" y="128" width="330" height="408" rx="26" fill="#020617" opacity="0.44" stroke="#818cf8"/><text x="740" y="170" text-anchor="start" fill="#818cf8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="24" font-weight="900">Universal core</text><g>
+    <rect x="742" y="205" width="266" height="34" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="875" y="227" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">adapter schema</text>
+  </g><g>
+    <rect x="742" y="253" width="266" height="34" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="875" y="275" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">lane taxonomy</text>
+  </g><g>
+    <rect x="742" y="301" width="266" height="34" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="875" y="323" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">canonical stage flow</text>
+  </g><g>
+    <rect x="742" y="349" width="266" height="34" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="875" y="371" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">connector event contract</text>
+  </g><g>
+    <rect x="742" y="397" width="266" height="34" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="875" y="419" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">proof and approval gates</text>
+  </g><g>
+    <rect x="742" y="445" width="266" height="34" rx="14" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.2" opacity="0.96"/>
+    <text x="875" y="467" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">visual flow monitor</text>
+  </g><rect x="1110" y="128" width="330" height="360" rx="26" fill="#020617" opacity="0.44" stroke="#f59e0b"/><text x="1140" y="170" text-anchor="start" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="24" font-weight="900">Generated adapter</text><g>
+    <rect x="1142" y="205" width="266" height="36" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1275" y="228" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">source-of-truth order</text>
+  </g><g>
+    <rect x="1142" y="259" width="266" height="36" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1275" y="282" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">validation commands</text>
+  </g><g>
+    <rect x="1142" y="313" width="266" height="36" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1275" y="336" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">Red Zone owners</text>
+  </g><g>
+    <rect x="1142" y="367" width="266" height="36" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1275" y="390" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">enabled lanes</text>
+  </g><g>
+    <rect x="1142" y="421" width="266" height="36" rx="14" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.2" opacity="0.96"/>
+    <text x="1275" y="444" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">answer + handoff style</text>
+  </g><path d="M 640 208 C 675 208, 675 238, 710 238" fill="none" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrow)"/><path d="M 640 346 C 675 346, 675 360, 710 360" fill="none" stroke="#60a5fa" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrow)"/><line x1="1040" y1="320" x2="1110" y2="320" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrowAmber)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="392" y="624" width="280" height="102" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="393" y="625" width="278" height="34.68" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="412" y="654" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Project-specific harness</text><text x="412" y="677" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">pack</text><text x="412" y="704" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">AGENTS.md / CLAUDE.md / slash command</text><text x="412" y="721" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">/ Codex prompt / run packet template</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="720" y="624" width="280" height="102" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="721" y="625" width="278" height="34.68" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="740" y="654" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Claude/Codex/Hermes</text><text x="740" y="676" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">run</text><text x="740" y="702" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">external runtime, harness-visible</text><text x="740" y="719" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">events</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1048" y="624" width="280" height="102" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1049" y="625" width="278" height="34.68" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1068" y="654" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">proof-backed handoff</text><text x="1068" y="681" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">answers cite artifacts and gate</text><text x="1068" y="698" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">results</text></g><path d="M 1275 488 C 903.5 488, 903.5 624, 532 624" fill="none" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.78" marker-end="url(#arrowAmber)"/><line x1="672" y1="675" x2="720" y2="675" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><line x1="1000" y1="675" x2="1048" y2="675" stroke="#22c55e" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/></svg>
