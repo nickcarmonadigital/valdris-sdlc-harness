@@ -1,0 +1,72 @@
+<svg width="1600" height="820" viewBox="0 0 1600 820" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Connector and proof-gate enforcement</title>
+  <desc id="desc">Events from Claude Code, Codex, Hermes, or future agents pass through a local connector bridge. The bridge validates schema, node IDs, artifact paths, Red Zone approvals, self-heal state, and finish-line proof before completion.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#071016"/><stop offset="1" stop-color="#171717"/></linearGradient>
+    <linearGradient id="agent" x1="0" x2="1"><stop offset="0" stop-color="#0f172a"/><stop offset="1" stop-color="#1e293b"/></linearGradient>
+    <linearGradient id="gate" x1="0" x2="1"><stop offset="0" stop-color="#7c2d12"/><stop offset="1" stop-color="#b45309"/></linearGradient>
+    <linearGradient id="pass" x1="0" x2="1"><stop offset="0" stop-color="#134e4a"/><stop offset="1" stop-color="#0e7490"/></linearGradient>
+    <style>
+      .title { font: 900 54px Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #fff; letter-spacing: -1px; }
+      .sub { font: 500 22px Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #a9bdc7; }
+      .box { fill: url(#agent); stroke: #334155; stroke-width: 2; rx: 28; }
+      .gate { fill: url(#gate); stroke: #fdba74; stroke-width: 2; rx: 28; }
+      .pass { fill: url(#pass); stroke: #67e8f9; stroke-width: 2; rx: 28; }
+      .label { font: 850 28px Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #fff; }
+      .hint { font: 550 17px Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #cbd5e1; }
+      .tiny { font: 850 15px Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #071016; }
+      .arrow { stroke: #67e8f9; stroke-width: 5; fill: none; marker-end: url(#arrow); }
+      .arrowHot { stroke: #fbbf24; stroke-width: 5; fill: none; marker-end: url(#arrowHot); }
+    </style>
+    <marker id="arrow" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto"><path d="M0,0 L13,6.5 L0,13 Z" fill="#67e8f9"/></marker>
+    <marker id="arrowHot" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto"><path d="M0,0 L13,6.5 L0,13 Z" fill="#fbbf24"/></marker>
+  </defs>
+  <rect width="1600" height="820" fill="url(#bg)"/>
+  <text x="70" y="92" class="title">Connector + proof-gate enforcement</text>
+  <text x="72" y="132" class="sub">The harness does not trust confident text. Completion is blocked until event + artifact evidence exists.</text>
+
+  <rect x="80" y="220" width="310" height="136" class="box"/>
+  <text x="115" y="270" class="label">Agent runtime</text>
+  <text x="117" y="306" class="hint">Claude Code · Codex · Hermes</text>
+  <text x="117" y="332" class="hint">external editor stays external</text>
+
+  <rect x="490" y="220" width="310" height="136" class="pass"/>
+  <text x="525" y="270" class="label">Emit event</text>
+  <text x="527" y="306" class="hint">uash-emit-event.mjs</text>
+  <text x="527" y="332" class="hint">type · actor · node · artifact</text>
+
+  <rect x="900" y="220" width="310" height="136" class="gate"/>
+  <text x="935" y="270" class="label">Bridge validation</text>
+  <text x="937" y="306" class="hint">schema · known node · mode/source</text>
+  <text x="937" y="332" class="hint">artifact root + symlink escape block</text>
+
+  <rect x="1210" y="445" width="300" height="136" class="gate"/>
+  <text x="1245" y="495" class="label">Red Zone</text>
+  <text x="1247" y="531" class="hint">human approval required</text>
+  <text x="1247" y="557" class="hint">agents cannot grant themselves OK</text>
+
+  <rect x="805" y="445" width="300" height="136" class="gate"/>
+  <text x="840" y="495" class="label">Proof gate</text>
+  <text x="842" y="531" class="hint">proof/proof.json must exist</text>
+  <text x="842" y="557" class="hint">QA + smoke if relevant</text>
+
+  <rect x="400" y="445" width="300" height="136" class="gate"/>
+  <text x="435" y="495" class="label">Self-heal</text>
+  <text x="437" y="531" class="hint">gap detected?</text>
+  <text x="437" y="557" class="hint">proposal/PR artifact required</text>
+
+  <rect x="80" y="445" width="230" height="136" class="pass"/>
+  <text x="115" y="495" class="label">Handoff</text>
+  <text x="117" y="531" class="hint">final.md</text>
+  <text x="117" y="557" class="hint">proof paths + next call</text>
+
+  <path class="arrow" d="M390 288 L482 288"/>
+  <path class="arrow" d="M800 288 L892 288"/>
+  <path class="arrowHot" d="M1055 356 C 1088 410, 1215 399, 1300 445"/>
+  <path class="arrowHot" d="M1210 513 L1112 513"/>
+  <path class="arrowHot" d="M805 513 L707 513"/>
+  <path class="arrowHot" d="M400 513 L318 513"/>
+
+  <rect x="226" y="654" width="1148" height="58" rx="29" fill="#fde68a"/>
+  <text x="262" y="690" class="tiny">EARLY run.completed → rejected or finish_line_blocked until required artifacts passed/skipped with reasons.</text>
+</svg>
