@@ -222,6 +222,8 @@ commissioning-review.md
 
 For a deeper generated map, see [`docs/HARNESS_REPO_MAP.md`](docs/HARNESS_REPO_MAP.md).
 
+For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAID_MAPS.md).
+
 ## Current implementation status
 
 | Capability | Status | Evidence |
