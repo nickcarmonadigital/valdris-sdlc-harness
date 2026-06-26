@@ -35,7 +35,7 @@ If this script is not available in the target repo, tell the user to copy it fro
 ## Required node flow
 
 ```text
-intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## Mode rule
@@ -66,7 +66,21 @@ node scripts/uash-emit-event.mjs "$RUN_ID" agent.connected route "Claude Code at
 
 Name the lane family and work type. Examples: engineering-default, system-design, production-readiness, cloud-platform, qa-release, agent-runtime, incidents, support-triage, data-supabase, provider-config, voice-vapi.
 
-### 3. System Design
+### 3. Graphify / Code Graph
+
+For codebase, architecture, refactor, debugging, or cross-file implementation work, run or verify the code graph before design claims:
+
+```bash
+node scripts/graphify-scan.mjs --repo .
+node scripts/graphify-gate.mjs --repo .
+node scripts/anchor-gate.mjs --repo .
+node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written graphify "Graphify/code graph artifact written" --artifact graph/graph.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
+node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written design-anchors "Design anchors written for blast-radius reasoning" --artifact design/anchors.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
+```
+
+If this is docs-only/non-code work, emit explicit skips for both `graphify` and `design-anchors` with reasons.
+
+### 4. System Design
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written system-design "System design captured requirements, constraints, tradeoffs, and ADR triggers" --artifact design/system_design.md --status ok --actor claude-code
@@ -80,7 +94,7 @@ If it does not apply:
 node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped system-design "System design skipped" --artifact design/system_design.md --status skipped --actor harness --skip-reason "No architecture, API/data model, scaling, failure-mode, or hard-to-reverse decision in this run"
 ```
 
-### 4. Production Readiness Layer Pack
+### 5. Production Readiness Layer Pack
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written production-readiness "Production Readiness Layer Pack assessed" --artifact production/layer-assessment.json --status ok --actor claude-code
@@ -88,7 +102,7 @@ node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written production-readiness
 
 Classify touched/skipped layers: frontend, backend/API, DB/storage, auth/RLS, hosting/deploy, cloud/compute, CI/CD, security, rate limiting, caching/CDN, load balancing/scaling, logs/observability, availability/recovery.
 
-### 5. Cloud / Platform
+### 6. Cloud / Platform
 
 If AWS/Azure/GCP/Vercel/Supabase infra, deploy, IAM, secrets, networking, CI/CD, cost, observability, rollback, or provider config is touched:
 
@@ -102,15 +116,15 @@ If not:
 node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped cloud-platform "Cloud/platform skipped" --artifact cloud/skip.json --status skipped --actor harness --skip-reason "No cloud resource, deploy, secret, IAM, network, cost, observability, or provider setting changed"
 ```
 
-### 6. Implement
+### 7. Implement
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" node.entered implement "Implementation started in Claude Code runtime" --artifact session/events.jsonl --status ok --actor claude-code
 ```
 
-Keep edits narrow and tied to design anchors and production-layer assessment.
+Keep edits narrow and tied to design anchors, production-layer assessment, and the commissioned Good Looks Like / Code Quality / Enterprise Proof Bank docs.
 
-### 7. Red Zone
+### 8. Red Zone
 
 If the change touches auth, billing, data deletion, provider config, deployments, production secrets, migrations, cloud resource mutation, or customer data, stop:
 
@@ -126,7 +140,7 @@ If no Red Zone applies:
 node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped redzone "Red Zone skipped" --artifact approvals/redzone.json --status skipped --actor harness --skip-reason "No production, secrets, billing, auth, deploy, data mutation, or provider/cloud mutation in this run"
 ```
 
-### 8. QA / Let's Break It
+### 9. QA / Let's Break It
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written qa-break-it "Break-it QA results written" --artifact qa/break-it-results.md --status ok --actor claude-code
@@ -136,19 +150,19 @@ Try edge cases, malformed input, auth boundaries, stale data, latency, retries, 
 
 If skipped, emit `node.skipped` with reason.
 
-### 9. Prove
+### 10. Prove
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" gate.fired prove "Proof gate fired; validation must produce proof/proof.json" --artifact proof/proof.json --status ok --actor harness
 ```
 
-Run tests/evals/smoke checks. If proof is missing or failing:
+Run tests/evals/smoke checks. For AI/runtime/provider changes, include eval proof; for serious production work, cite the Enterprise Proof Bank dimensions. If proof is missing or failing:
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" node.failed prove "Proof gate failed" --artifact proof/proof.json --status failed --actor harness --failure-reason "proof/proof.json missing or validation failed" --recovery-path "Fix failing command, rerun validation, attach proof/proof.json"
 ```
 
-### 10. Live Smoke
+### 11. Live Smoke
 
 If deployed/provider/runtime behavior changed:
 
@@ -162,7 +176,7 @@ If not:
 node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped live-smoke "Live smoke skipped" --artifact smoke/skip.json --status skipped --actor harness --skip-reason "No deployed/provider/runtime behavior changed"
 ```
 
-### 11. Self-Heal
+### 12. Self-Heal
 
 If the run exposed a harness/process gap:
 
@@ -182,7 +196,7 @@ If no harness/process gap was found:
 node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped self-heal "Self-heal skipped" --artifact self_heal/self_heal_report.md --status skipped --actor harness --skip-reason "No harness/process gap found in this run"
 ```
 
-### 12. Handoff
+### 13. Handoff
 
 Only after required proof exists and irrelevant nodes have skip reasons. The bridge rejects `run.completed` when required artifacts are missing, failed, or skipped without reasons:
 

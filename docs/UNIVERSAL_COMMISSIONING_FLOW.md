@@ -74,70 +74,54 @@ Generated per repo/team:
 
 ## Commissioning interview question bank
 
-The first implementation lives in `scripts/commission-harness.mjs` and exposes the questions via:
+The implementation lives in `scripts/commission-harness.mjs` and exposes the executable question bank via:
 
 ```bash
 npm run commission:questions
 ```
 
-Question groups:
+Current expanded bank:
 
-1. **Person / team operating style**
-   - Primary operator.
-   - Preferred answer style.
-   - Autonomy level.
-   - Agent behavior to avoid.
-2. **Project identity**
-   - Product/project name.
-   - Users/customers.
-   - Production definition.
-   - Worst plausible agent failure.
-3. **Source of truth**
-   - Conflict precedence order.
-   - Issue tracker/work queue.
-   - Stable docs/knowledge base.
-4. **Repo and architecture**
-   - Repo role.
-   - Safe edit paths.
-   - Review-required paths.
-   - Whether code graph/Graphify scan is required.
-5. **Branch and deploy model**
-   - Default base branch.
-   - Staging branch/environment.
-   - Production branch/environment.
-   - Merge/deploy owner.
-   - Deployment proof.
-6. **Validation and proof**
-   - Install, lint, typecheck, test, build, smoke/e2e commands.
-   - Done definition.
-7. **Red Zone boundaries**
-   - Approval-required actions.
-   - Approval owner.
-   - Whether read-only investigation is allowed without asking.
-8. **Work lanes**
-   - Enabled lanes.
-   - Custom lanes.
-   - ADR policy.
-9. **System design**
-   - System design triggers.
-   - Design requirements.
-   - ADR-required decisions.
-10. **Production readiness**
-   - 13 production layers.
-   - Required/skipped layer policy.
-   - Production-impacting proof.
-11. **Cloud / platform engineering**
-   - Providers and services.
-   - IaC/manual policy.
-   - Observability proof.
-   - Cost/scaling/rollback policy.
-12. **QA and release**
-   - QA plan policy.
-   - Let's-break-it QA.
-   - Live smoke criteria.
-13. **Modes and self-healing**
-   - Blueprint / Live Run / Replay separation.
-   - Self-heal PR policy and target areas.
+- **30 question groups**
+- **150 questions**
+- **Full index:** [`docs/COMMISSIONING_QUESTION_BANK.md`](COMMISSIONING_QUESTION_BANK.md)
+
+The first 13 groups commission the base control-plane skeleton: operator style, project identity, source of truth, repo/architecture, branch/deploy, validation, Red Zone, lanes, system design, production readiness, cloud/platform, QA/release, and modes/self-healing.
+
+Groups 14–30 commission the missing “100%” operating-intelligence layer:
+
+1. Good looks like / foundation blueprint.
+2. Anti-spaghetti code quality guardrails.
+3. Enterprise proof banks / what good looks like.
+4. Eval gate.
+5. Trajectory evaluation.
+6. Context manifest / ICM.
+7. Skill registry / progressive disclosure.
+8. Memory substrate.
+9. Tool registry and hooks.
+10. Sandbox manager.
+11. Model routing.
+12. AI economics ledger.
+13. Background PR agents.
+14. MCP / A2A interoperability.
+15. Production-agent lifecycle.
+16. Team harness registry.
+17. Human-agent operating protocol.
+
+The product UX should not force users to answer 150 blank fields manually. Graphify/code scan should pre-fill code-derived facts, defaults should teach what good looks like, and humans should only confirm operating facts code cannot know.
+
+## Good-looks-like foundation model
+
+The recurring user problem is that teams often do not know what a proper foundation or non-spaghetti architecture looks like. Valdris solves this by generating explicit reference docs in every commissioned harness pack:
+
+- `docs/Good Looks Like Foundation.md`
+- `docs/Code Quality Guardrails.md`
+- `docs/Enterprise Proof Bank.md`
+- `docs/Operating Intelligence Layer.md`
+- `docs/Team Harness Registry.md`
+- `docs/Human Agent Protocol.md`
+
+See [`docs/GOOD_LOOKS_LIKE_FOUNDATION_MODEL.md`](GOOD_LOOKS_LIKE_FOUNDATION_MODEL.md) for the product pattern.
 
 ## Agent install shape
 

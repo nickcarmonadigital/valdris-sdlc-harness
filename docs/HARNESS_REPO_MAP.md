@@ -17,17 +17,24 @@ Current verified facts:
 {
   "graphify": {
     "ok": true,
-    "nodes": 22,
+    "nodes": 23,
     "edges": 5,
     "entrypoints": 8,
     "anchorCount": 8,
-    "commit": "79ecb6b871f8f7548d35b22598185b1f1ecf741c"
+    "commit": "a0d16f76ae89d40983ae8c6d7bb0d881b8f38d6b",
+    "dirty": true
   },
   "harnessVerifier": {
     "ok": true,
-    "generatorVersion": "0.4.0",
+    "generatorVersion": "0.5.0",
+    "commissioningQuestionGroups": 30,
+    "commissioningQuestions": 150,
     "bridgeContractVersion": "uash.connector-events.v0.4",
     "productionLayers": 13,
+    "foundationBlueprint": true,
+    "codeQualityGuardrails": true,
+    "enterpriseProofBank": true,
+    "operatingIntelligence": true,
     "graphifyFlowNode": true,
     "graphifyGeneratedScripts": true,
     "graphifyGateSmoke": true,
@@ -188,7 +195,7 @@ valdris-sdlc-harness/
 
 ## 4. Code graph / Graphify map
 
-Graphify-compatible scan currently sees 22 code nodes, 5 import edges, and 8 high-signal entrypoints.
+Graphify-compatible scan currently sees 23 code nodes, 5 import edges, and 8 high-signal entrypoints.
 
 ```mermaid
 flowchart TD
@@ -352,7 +359,9 @@ Current repo status: this layer pack is documented, included in commissioning, a
 |---|---:|---|---|
 | Universal SDLC stage flow | Built | `lib/run-events.ts`, `lib/control-plane.ts`, connector contract | Real core flow exists |
 | Graphify first-class node | Built + verified | `graphify`, `design-anchors`, `npm run graphify:*` | Real local code graph adapter exists |
-| Project commissioning generator | Built | `scripts/commission-harness.mjs`, verifier generated pack | Good MVP generator |
+| Project commissioning generator | Built + verified | `scripts/commission-harness.mjs`, verifier generated pack | Expanded to 30 groups / 150 questions with foundation + operating-intelligence fields |
+| Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs | Teaches target foundation and anti-spaghetti rules before feature work |
+| Operating-intelligence commissioning | Built structurally | adapter sections for evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, PR agents, MCP/A2A, lifecycle, team registry, human protocol | Questions/docs exist; executable gates remain next buildout |
 | Generated agent front doors | Built | `AGENTS.md`, `CLAUDE.md`, generated pack checks | Real front-door pattern |
 | Claude/Codex connector bridge | Built local v0 | `scripts/claude-code-bridge.mjs`, `uash-emit-event.mjs` | Local bridge works; MCP/hosted daemon later |
 | Strict event contract | Built + verified | `CONNECTOR_EVENT_CONTRACT.md`, verifier | Good hardening exists |
@@ -364,11 +373,11 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | 13 production layers | Built as pack/policy + adapter | `PRODUCTION_READINESS_LAYER_PACK.md`, verifier says 13 | Exists structurally; proof banks need work |
 | Cloud/platform lane | Built as lane/policy | docs + artifact path | Needs real provider adapters/scripts |
 | QA/break-it/live smoke | Partial | docs + artifacts + gate positions | Needs serious automated smoke/e2e harness |
-| Evals | Not yet built enough | research/docs mention lane-context evals | Needs `evals/` artifacts + scripts + UI nodes |
-| Observability | Policy/docs only | docs mention logs/metrics/traces | Needs actual observability proof gate/scripts |
-| Enterprise load/concurrency proof | Missing | no load gate script | Needs load/k6/artillery/Locust proof bank |
-| Game development domain pack | Missing | no game-specific pack | Needs serious game enterprise proof bank |
-| Website/web-app domain packs | Partial generic | production layers + web UI repo | Needs domain-specific packs/proof templates |
+| Evals | Partial / commissioned | `OPERATING_INTELLIGENCE_LAYER.md`, adapter eval fields | Needs executable `eval-gate` script + UI coverage |
+| Observability | Partial / policy | `ENTERPRISE_PROOF_BANK.md`, production layer pack | Needs actual observability proof gate/scripts |
+| Enterprise load/concurrency proof | Partial / policy | `ENTERPRISE_PROOF_BANK.md` scale/concurrency dimensions | Needs load/k6/artillery/Locust validator |
+| Game development domain pack | Partial / policy | serious game section in `ENTERPRISE_PROOF_BANK.md` | Needs dedicated game domain-pack artifact + gates |
+| Website/web-app domain packs | Partial generic | enterprise web/growth sections in `ENTERPRISE_PROOF_BANK.md` | Needs domain-specific templates + proof validators |
 | Understand-anything style repo explainer | Partial via Graphify + this doc | `graph/graph.json`, this file | Needs generated interactive repo-explainer view |
 
 ---
@@ -423,19 +432,19 @@ For a serious game/RPG like Shroudfront, proof should include layers like:
 - security/privacy/compliance if accounts/payments/minors/UGC exist
 - marketing-scale launch readiness: waitlist, analytics, attribution, funnel, CDN, incident runbook
 
-This is not currently encoded as a game domain pack. It should be added.
+This is now encoded as a root proof-bank policy section. It still needs a dedicated executable game domain-pack artifact and gates.
 
 ---
 
 ## 10. What is actually missing next
 
-Minimum buildout to make the harness match Nick's standard:
+Minimum remaining executable buildout to make the harness match Nick's full standard:
 
 ```text
-docs/ENTERPRISE_PROOF_BANK.md
-  - universal proof taxonomy
-  - scale tiers: prototype, production, enterprise, launch-surge
-  - mandatory evidence artifacts
+docs/domain-packs/ENTERPRISE_PROOF_BANK.md or registry entry
+  - promote the current root taxonomy into machine-readable domain packs
+  - add scale tiers: prototype, production, enterprise, launch-surge
+  - add mandatory evidence artifact schemas
 
 docs/domain-packs/GAME_DEVELOPMENT_ENTERPRISE.md
   - serious game/RPG proof bank
@@ -485,13 +494,12 @@ The repo has a real universal harness MVP:
 - visual monitor shell
 
 But it does not yet fully satisfy Nick's enterprise-scale proof-bank standard:
-- no load/concurrency gate
-- no eval gate
-- no observability gate implementation
-- no serious game domain pack
-- no enterprise web-app/website domain pack
-- no full proof-bank registry
+- load/concurrency proof is policy-only; no executable gate
+- eval proof is commissioned; no executable eval validator yet
+- observability proof is policy-only; no logs/metrics/traces gate implementation
+- serious game/web/website domain packs exist as root policy sections, not dedicated machine-readable packs
+- no full proof-bank registry/classifier yet
 - no hosted/daemon-grade connector runtime yet
 ```
 
-So the right next work is not another generic diagram. The next work is **Enterprise Proof Bank + Domain Packs**, then wire them into commissioning, gates, verifier, and visual board.
+So the right next work is not another generic diagram. The next work is turning the newly commissioned **Enterprise Proof Bank + Foundation/Quality + Operating Intelligence** specs into executable gates, semantic validators, and visual-board enforcement.

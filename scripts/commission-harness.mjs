@@ -5,7 +5,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_LANE_FAMILIES = [
@@ -13,11 +13,21 @@ const DEFAULT_LANE_FAMILIES = [
   "repo-intelligence-graphify",
   "product-app-sdlc",
   "system-design",
+  "architecture-quality-foundation",
+  "enterprise-proof-bank",
   "cloud-platform-engineering",
   "data-integrations",
   "security-compliance",
   "qa-release",
   "reliability-observability",
+  "evals-trajectory",
+  "context-skills-memory",
+  "tooling-sandbox-model-routing",
+  "ai-economics",
+  "background-pr-agents",
+  "interop-mcp-a2a",
+  "production-agent-lifecycle",
+  "team-governance",
   "handoff",
   "harness-self-healing",
 ];
@@ -165,6 +175,208 @@ const QUESTION_GROUPS = [
       { id: "telemetry_mode_policy", label: "How should Blueprint, Live Run, and Replay be separated?", default: "Blueprint is static topology, Live Run uses real connector events, Replay uses stored run packets; never imply fake live telemetry" },
       { id: "self_heal_allowed", label: "Can agents propose/open self-healing PRs for harness gaps?", default: "propose by default; open only if repo policy allows" },
       { id: "self_heal_pr_target", label: "Where should self-heal PRs change the harness?", default: "adapter, lane docs, gates, prompts/front doors, connector scripts, commissioning questions, validation/Red Zone docs" },
+    ],
+  },
+  {
+    id: "foundation_blueprint",
+    title: "Good looks like / foundation blueprint",
+    questions: [
+      { id: "target_architecture_style", label: "What architecture style should this system follow?", default: "modular monolith by default; service boundaries only where scale/team/runtime isolation proves they are needed" },
+      { id: "reference_architecture", label: "What reference architecture or golden path should agents compare against?", default: "thin UI, explicit API/service layer, typed domain modules, clear data access boundary, queue/worker boundary for async work, observable deploy path" },
+      { id: "foundation_layers", label: "What foundational layers must exist before serious feature velocity?", default: "auth, data model, API contracts, validation, tests, CI/CD, environment config, observability, rollback, security boundaries, runbooks, ownership" },
+      { id: "bad_foundation_signals", label: "What signals mean the foundation is weak or risky?", default: "business logic in UI/routes, no typed contracts, no migration policy, hidden provider coupling, no observability, no rollback, duplicated workflows, unclear ownership" },
+      { id: "golden_path", label: "What is the happy-path way to add a normal feature?", default: "issue -> Graphify/anchors -> design if needed -> typed boundary -> tests/evals -> proof -> PR/handoff" },
+      { id: "foundation_decision_owner", label: "Who decides if foundation work must happen before feature work?", default: "technical owner / architecture reviewer" },
+    ],
+  },
+  {
+    id: "code_quality_guardrails",
+    title: "Anti-spaghetti code quality guardrails",
+    questions: [
+      { id: "module_boundaries", label: "What are the core modules/domains and what owns each boundary?", default: "UI, API, domain/service logic, data access, provider adapters, jobs/workers, auth/security, observability" },
+      { id: "dependency_rules", label: "What dependency direction rules must code follow?", default: "UI calls API/actions; API calls services; services use repositories/adapters; domain logic does not import UI/provider SDKs directly" },
+      { id: "anti_spaghetti_rules", label: "Which code smells should block or trigger review?", default: "large god files, circular dependencies, duplicated business rules, untyped payloads, broad catch-and-ignore, silent fallbacks, mixed auth/data/provider/UI logic" },
+      { id: "complexity_budget", label: "What complexity budget should trigger refactor before more features?", default: "files over ~300 lines, functions over ~60 lines, modules with 5+ reasons to change, repeated logic in 3+ places, nested conditionals agents cannot explain" },
+      { id: "refactor_triggers", label: "When should agents stop and propose a refactor instead of adding more code?", default: "new change touches too many unrelated files, requires copy-paste, crosses unclear boundaries, adds another provider special case, or hides missing data" },
+      { id: "quality_gate_proof", label: "What proof shows the code stayed maintainable?", default: "small diff, boundary explanation, tests at correct layer, no new circular deps, no broad fallbacks, code review checklist, architecture note when boundaries changed" },
+    ],
+  },
+  {
+    id: "enterprise_proof_banks",
+    title: "Enterprise proof banks / what good looks like",
+    questions: [
+      { id: "domain_pack", label: "Which domain proof pack should this repo use?", default: "enterprise-web-app by default; optionally API, AI product, infra/data, growth website, serious game, voice/runtime, or custom" },
+      { id: "good_looks_like_artifacts", label: "What artifacts teach agents what good looks like?", default: "reference architecture, service map, data model, API contract, UI states, test strategy, observability plan, rollback/runbook, example high-quality PR" },
+      { id: "scale_bar", label: "What scale/concurrency bar should serious work assume?", default: "explicit capacity model or load test for production-impacting paths; do not assume small-app traffic unless approved" },
+      { id: "observability_bar", label: "What observability must exist for production work?", default: "structured logs, request/run IDs, metrics/traces when available, dashboard or provider links, alert/owner, smoke evidence" },
+      { id: "rollback_bar", label: "What rollback/recovery proof is required?", default: "rollback command or procedure, migration rollback/data recovery note, feature flag/disable path, incident owner" },
+    ],
+  },
+  {
+    id: "eval_gate",
+    title: "Eval gate",
+    questions: [
+      { id: "eval_required_for", label: "What changes require AI behavior evals, not just tests?", default: "prompts, RAG/retrieval, agent tools, model/provider routing, voice/runtime behavior, recommendations, policy decisions, safety-sensitive automation" },
+      { id: "eval_dataset_owner", label: "Who owns eval datasets/examples?", default: "product/AI owner plus domain reviewer" },
+      { id: "eval_acceptance_threshold", label: "What eval score blocks merge or deploy?", default: "project-specific; default block on critical regression, unsafe answer, tool misuse, or below agreed score threshold" },
+      { id: "eval_run_location", label: "Where should evals run?", default: "local during development and CI before merge for AI behavior changes" },
+      { id: "eval_artifacts", label: "What eval artifacts must be attached?", default: "evals/eval-plan.json, evals/results.json, failing examples, judge/config version, model/provider used" },
+    ],
+  },
+  {
+    id: "trajectory_gate",
+    title: "Trajectory evaluation",
+    questions: [
+      { id: "bad_agent_trajectory", label: "What agent behaviors count as a bad path even if the final output passes?", default: "skipped Graphify/context, wrong tool order, excessive retries, ignored failures, unverifiable claims, unsafe shortcuts, human approval bypass attempts" },
+      { id: "retry_loop_limit", label: "How many retries/loops are acceptable before escalation?", default: "3 focused attempts or 20 minutes without new evidence, then escalate with blocker packet" },
+      { id: "forbidden_tool_sequences", label: "Which tool/action sequences are forbidden?", default: "write before context/graph on cross-file work; deploy before proof; approval.granted by agent; destructive action without pending human approval" },
+      { id: "trajectory_scores", label: "What should the trajectory scorer grade?", default: "context loaded, tool selection, artifact sequence, recovery after failures, skip reasons, approval behavior, cost/retry discipline" },
+      { id: "trajectory_artifacts", label: "What trajectory evidence must be stored?", default: "trajectory/trace.jsonl, tool calls, context loads, approval events, retry/failure ledger, final trajectory score" },
+    ],
+  },
+  {
+    id: "context_manifest",
+    title: "Context manifest / ICM",
+    questions: [
+      { id: "always_load_context", label: "What context is always loaded?", default: "project adapter, source-truth order, repo map, current task/run packet, Red Zone rules, validation/proof rules" },
+      { id: "lane_context_rules", label: "What context is loaded only by lane/task?", default: "architecture docs for design, cloud/runbooks for infra, eval sets for AI changes, security policy for auth/billing/data" },
+      { id: "approval_required_context", label: "What context should never be loaded or used unless approved?", default: "secrets, production data, private customer data, billing/provider dashboards, sensitive logs" },
+      { id: "stale_context_policy", label: "How should stale or conflicting context be handled?", default: "check live system/git first, mark stale docs, cite source date, ask before Red Zone decisions" },
+      { id: "context_budget", label: "What is the token/context budget policy?", default: "load smallest sufficient lane context; summarize long docs; keep source links; fail if required context cannot fit or be retrieved" },
+      { id: "context_artifacts", label: "What context artifacts must exist?", default: "context/manifest.yaml, context/budget.json, context/sources.json, context/loaded.md" },
+    ],
+  },
+  {
+    id: "skill_registry",
+    title: "Skill registry / progressive disclosure",
+    questions: [
+      { id: "skill_inventory", label: "What skills/procedures exist for this team?", default: "debugging, feature build, incident, cloud deploy, data migration, security review, eval update, release, support triage" },
+      { id: "skill_owner_policy", label: "Who owns and reviews each skill?", default: "named technical owner per skill with review required for production-impacting skills" },
+      { id: "skill_activation_rules", label: "When should each skill activate?", default: "by lane, file path, risk class, work type, provider touched, or user command" },
+      { id: "skill_tool_permissions", label: "What tools is each skill allowed to use?", default: "least privilege by skill; Red Zone tools require human approval" },
+      { id: "skill_proof", label: "What proof does each skill need to produce?", default: "skill name/version, why selected, artifacts generated, commands run, eval/tests/smoke as applicable" },
+      { id: "skill_registry_artifacts", label: "How are skills versioned and reviewed?", default: "skills/registry.yaml plus per-skill manifest with owner, version, triggers, allowed tools, proof, evals" },
+    ],
+  },
+  {
+    id: "memory_substrate",
+    title: "Memory substrate",
+    questions: [
+      { id: "memory_should_remember", label: "What should agents remember across runs?", default: "stable project conventions, architecture decisions, recurring pitfalls, approved workflow preferences, durable integration facts" },
+      { id: "memory_never_remember", label: "What should never be remembered?", default: "secrets, tokens, private customer data, transient task status, stale issue IDs, unverified claims" },
+      { id: "memory_review_owner", label: "Who can review/edit/delete memory?", default: "project owner or delegated maintainer" },
+      { id: "memory_retention_policy", label: "What retention/TTL should memory have?", default: "durable facts persist; run/task details expire or stay in run packets, not long-term memory" },
+      { id: "memory_handoff_rule", label: "What memory use must be cited in handoff?", default: "cite retrieved memory/source when it materially affected a decision or risk claim" },
+      { id: "memory_eval_policy", label: "How do we test whether memory is helping or harming?", default: "memory regression examples, stale-memory checks, source provenance audit, human review for corrections" },
+    ],
+  },
+  {
+    id: "tool_registry_hooks",
+    title: "Tool registry and hooks",
+    questions: [
+      { id: "free_tools", label: "Which tools can agents use freely?", default: "read-only repo search/read, local tests/builds, safe file edits in approved paths, local docs generation" },
+      { id: "approval_tools", label: "Which tools require approval?", default: "push/merge/deploy, production data, secrets/env, billing, auth policy, cloud mutation, provider dashboards, destructive commands" },
+      { id: "forbidden_tools", label: "Which tools/actions are forbidden?", default: "secret exfiltration, prod destructive ops without scoped approval, bypassing CI/proof, claiming live telemetry from demo data" },
+      { id: "pre_tool_hooks", label: "What hooks run before tool use?", default: "risk classify, Red Zone check, context/Graphify prerequisite check, sandbox/permission check" },
+      { id: "post_edit_hooks", label: "What hooks run after file edits?", default: "format/lint/typecheck/test selection, graph freshness if cross-file, code smell scan, proof artifact update" },
+      { id: "tool_audit_log", label: "What tool usage must be logged?", default: "tool name, args summary, risk class, approval ID if any, output digest, artifacts written" },
+    ],
+  },
+  {
+    id: "sandbox_manager",
+    title: "Sandbox manager",
+    questions: [
+      { id: "execution_isolation", label: "Should each task run in a worktree, container, VM, or local repo?", default: "worktree per risky task; container/VM for untrusted or dependency-heavy runs; local repo for low-risk docs/read-only work" },
+      { id: "filesystem_roots", label: "What filesystem roots are allowed?", default: "repo root and generated run packet only; no home/secrets/prod paths without approval" },
+      { id: "network_policy", label: "Is network access allowed?", default: "read-only/public network by default; provider mutation/webhooks/prod endpoints require approval" },
+      { id: "secrets_policy", label: "Are secrets available? If yes, which and under what approval?", default: "no secrets by default; scoped ephemeral secrets only after Red Zone approval" },
+      { id: "sandbox_cleanup", label: "What cleanup happens after a run?", default: "preserve run packet/artifacts, clean temp files/worktrees when merged/closed, record leftover risk" },
+      { id: "sandbox_escape_proof", label: "What proves the sandbox was not escaped?", default: "artifact-root validation, path/symlink checks, command cwd log, allowed-root audit, denied access events" },
+    ],
+  },
+  {
+    id: "model_routing",
+    title: "Model routing",
+    questions: [
+      { id: "lane_model_policy", label: "Which model/provider should handle which lane?", default: "cheap/fast model for simple docs; stronger reasoning model for architecture, security, incident, eval, cross-file refactor, high-risk work" },
+      { id: "strong_model_required_for", label: "What tasks require the strongest model?", default: "hard-to-reverse architecture, security/auth/billing/data, production incidents, agent eval design, ambiguous multi-system debugging" },
+      { id: "cheap_model_allowed_for", label: "What tasks can use cheaper models?", default: "summaries, formatting, low-risk docs, simple deterministic edits after plan is approved" },
+      { id: "model_fallback_path", label: "What is the fallback path if a model fails?", default: "retry once, switch provider/model, reduce context, escalate with failure reason and cost impact" },
+      { id: "model_logging", label: "What model choices must be logged?", default: "provider/model, reason selected, cost/latency estimate, fallback/escalation, eval outcome when applicable" },
+      { id: "model_quality_gate", label: "What model/cost quality threshold blocks completion?", default: "model failed required eval, exceeded budget without approval, or used an unapproved model for Red Zone/security work" },
+    ],
+  },
+  {
+    id: "ai_economics",
+    title: "AI economics ledger",
+    questions: [
+      { id: "run_budget", label: "What budget applies per task/run/day/team?", default: "project-specific budget with approval for overage; track by run, lane, model, and human review time" },
+      { id: "token_tracking", label: "Should token usage be tracked?", default: "yes for all model calls when provider telemetry is available; estimate otherwise" },
+      { id: "human_review_tracking", label: "Should human review time be tracked?", default: "yes for high-risk/production work and background PR agents" },
+      { id: "retry_cost_limit", label: "What retry-loop cost is unacceptable?", default: "repeated failures without new evidence, high token burn with no passing proof, or loops past retry limit" },
+      { id: "spend_approval_policy", label: "What model/tool spend requires approval?", default: "large model batches, long-running agents, paid provider mutation, load tests, cloud resource changes" },
+      { id: "cost_handoff", label: "What cost report should appear in handoff?", default: "models/tools used, rough token/cost, retries, human review time, waste loops avoided, budget exceptions" },
+    ],
+  },
+  {
+    id: "background_pr_agents",
+    title: "Background PR agents",
+    questions: [
+      { id: "background_agents_allowed", label: "Can agents work asynchronously in the background?", default: "allowed for scoped issues with run packet, branch/worktree, budget, and reviewer" },
+      { id: "agent_branch_policy", label: "Can agents create branches?", default: "yes for approved scoped tasks; branch name must include run/issue ID" },
+      { id: "agent_pr_policy", label: "Can agents open PRs?", default: "yes when tests/proof/evals pass and PR includes run packet + risk/handoff" },
+      { id: "background_pr_reviewer", label: "Who reviews background-agent PRs?", default: "code owner plus domain/security/cloud reviewer when touched" },
+      { id: "background_pr_proof", label: "What proof must be attached before PR open?", default: "plan, diff summary, tests/evals/build, proof artifacts, cost, risk, rollback, screenshots/logs when useful" },
+      { id: "stale_agent_cleanup", label: "When should stale/failed agent branches be closed?", default: "no progress after SLA, failing proof with no recovery, superseded task, or human cancellation" },
+    ],
+  },
+  {
+    id: "interop_mcp_a2a",
+    title: "MCP / A2A interoperability",
+    questions: [
+      { id: "mcp_required", label: "Should this repo expose Valdris MCP tools?", default: "yes when external agents need live tool access; otherwise CLI bridge is acceptable for v0" },
+      { id: "mcp_tools", label: "Which uash.* tools should exist?", default: "uash.start_run, uash.enter_node, uash.write_artifact, uash.fire_gate, uash.request_approval, uash.finish_line_check" },
+      { id: "agent_runtimes", label: "What agent runtimes are allowed to connect?", default: "Claude Code, Codex, Hermes, OpenCode/Copilot if authenticated and policy-compatible" },
+      { id: "a2a_needed", label: "Do we need A2A agent cards/capability discovery?", default: "needed for multi-agent/vendor-interoperable deployments; optional for local single-runtime MVP" },
+      { id: "interop_auth_roots", label: "What auth/roots/tool permissions apply?", default: "least-privilege roots, scoped tokens, per-tool risk classes, Red Zone approval for mutation" },
+      { id: "live_event_definition", label: "What counts as a real live connector event?", default: "event emitted by bridge/MCP/API/CLI/watched artifact from an active run; never static docs/demo data" },
+    ],
+  },
+  {
+    id: "production_agent_lifecycle",
+    title: "Production-agent lifecycle",
+    questions: [
+      { id: "deploys_agents", label: "Does this team deploy agents, not just code?", default: "yes if prompts/tools/models/memory/evals run in production user workflows" },
+      { id: "agent_definition", label: "What is an agent definition here?", default: "prompt/instructions, model route, tools, skills, memory policy, eval suite, owner, deployment environment" },
+      { id: "agent_lifecycle_states", label: "What states exist for agents?", default: "draft, eval, canary, active, degraded, deprecated, rolled-back" },
+      { id: "agent_promotion_gate", label: "What eval gates promote an agent?", default: "offline eval pass, safety/behavior checks, cost threshold, canary/observability, human approval for high-risk agents" },
+      { id: "agent_observability", label: "What monitoring proves an agent is safe in production?", default: "success/failure rate, tool errors, user escalations, cost, latency, eval drift, incidents, sampled transcripts with privacy controls" },
+      { id: "agent_rollback_owner", label: "Who owns rollback?", default: "agent/runtime owner plus production on-call or product owner" },
+    ],
+  },
+  {
+    id: "team_harness_registry",
+    title: "Team harness registry",
+    questions: [
+      { id: "harness_owner", label: "Who owns the harness for this repo?", default: "technical owner / platform owner" },
+      { id: "prompt_owner", label: "Who owns prompts/front doors?", default: "AI/runtime owner with code owner review" },
+      { id: "eval_owner", label: "Who owns evals?", default: "AI/product owner plus domain reviewer" },
+      { id: "connector_owner", label: "Who owns connectors/MCP/bridge integrations?", default: "platform/runtime owner" },
+      { id: "harness_change_approval", label: "Who approves harness changes?", default: "harness owner; security/cloud owners for Red Zone policies" },
+      { id: "harness_drift_check", label: "What drift check detects stale harness docs/gates?", default: "scheduled verifier checks generator output, Graphify freshness, docs/adapters version, missing eval/skill/tool registry owners" },
+    ],
+  },
+  {
+    id: "human_agent_protocol",
+    title: "Human-agent operating protocol",
+    questions: [
+      { id: "decision_owner", label: "Who is the decision owner?", default: "primary operator unless a lane-specific owner is set" },
+      { id: "normal_pr_reviewer", label: "Who reviews normal PRs?", default: "code owner or technical maintainer" },
+      { id: "specialist_reviewers", label: "Who reviews security/auth/billing/cloud/data changes?", default: "security owner for auth/data/secrets, cloud owner for infra, billing owner for payments, product owner for customer-facing behavior" },
+      { id: "escalation_path", label: "What is the escalation path?", default: "agent -> primary operator -> lane owner -> decision owner; Red Zone blocks until human approval" },
+      { id: "blocked_agent_sla", label: "What is the SLA for blocked agents?", default: "15 minutes for local operator work, next business day for async team review unless incident/severity overrides" },
+      { id: "human_contact_channels", label: "What channels should agents use to ask humans?", default: "platform comments/PR, Linear/GitHub issue, Slack/Telegram/email as configured; record answer in run packet" },
+      { id: "approval_contract", label: "What does approval have to include?", default: "scope, run ID, artifact path, approver, expiry if temporary, risk accepted, exact action allowed" },
     ],
   },
 ];
@@ -331,7 +543,7 @@ function write(file, content) {
 }
 
 function renderAgents(answers) {
-  return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. Run or verify Graphify/code graph before codebase, architecture, refactor, debugging, or cross-file implementation work: \`node scripts/graphify-scan.mjs --repo . && node scripts/graphify-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .\` when scripts are available.\n4. For Codex live runs, also read \`docs/Codex Runtime Prompt.md\` when a RUN_ID/BRIDGE_URL is supplied.\n5. Route to the smallest matching lane family.\n6. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
+  return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. Read \`docs/Good Looks Like Foundation.md\`, \`docs/Code Quality Guardrails.md\`, and \`docs/Enterprise Proof Bank.md\` before architecture, infra, feature, or refactor work.\n4. Read \`docs/Operating Intelligence Layer.md\` before AI/runtime/tooling/model/eval/memory work.\n5. Run or verify Graphify/code graph before codebase, architecture, refactor, debugging, or cross-file implementation work: \`node scripts/graphify-scan.mjs --repo . && node scripts/graphify-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .\` when scripts are available.\n6. For Codex live runs, also read \`docs/Codex Runtime Prompt.md\` when a RUN_ID/BRIDGE_URL is supplied.\n7. Route to the smallest matching lane family.\n8. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
 }
 
 function renderClaude(answers) {
@@ -386,13 +598,37 @@ function renderSelfHealing(answers) {
   return `# Harness Self-Healing Loop\n\nCan agents propose/open self-healing PRs: ${answers.self_heal_allowed}.\n\nSelf-heal PR target areas: ${answers.self_heal_pr_target}.\n\n## When to trigger\n\nTrigger self-heal when a run exposes:\n\n- repo adapter gap\n- lane procedure gap\n- gate policy gap\n- connector/telemetry bug\n- docs/onboarding gap\n- missing validation command\n- missing Red Zone rule\n- missing production-readiness layer\n\nRequired artifact: \`self_heal/self_heal_report.md\`.\n`;
 }
 
+function renderGoodLooksLike(answers) {
+  return `# Good Looks Like / Foundation Blueprint\n\nThis document is the anti-spaghetti north star for the repo. Agents should compare proposed work against this baseline before adding more code.\n\n## Target architecture style\n\n${answers.target_architecture_style}\n\n## Reference architecture / golden path\n\n${answers.reference_architecture}\n\n## Foundation layers required before serious feature velocity\n\n${splitList(answers.foundation_layers).map((layer) => `- ${layer}`).join("\n")}\n\n## Weak-foundation warning signs\n\n${splitList(answers.bad_foundation_signals).map((signal) => `- ${signal}`).join("\n")}\n\n## Normal feature golden path\n\n${answers.golden_path}\n\n## Foundation decision owner\n\n${answers.foundation_decision_owner}\n\n## Rule\n\nIf feature work requires more spaghetti to ship, stop and propose a foundation fix first.\n`;
+}
+
+function renderCodeQualityGuardrails(answers) {
+  return `# Code Quality Guardrails\n\nUse this as the maintainability / anti-spaghetti review contract. A code smell is a hypothesis, not a verdict: prove impact, then make the smallest safe fix.\n\n## Module boundaries\n\n${answers.module_boundaries}\n\n## Dependency direction\n\n${answers.dependency_rules}\n\n## Smells that block or trigger review\n\n${splitList(answers.anti_spaghetti_rules).map((rule) => `- ${rule}`).join("\n")}\n\n## Complexity budget\n\n${answers.complexity_budget}\n\n## Refactor triggers\n\n${answers.refactor_triggers}\n\n## Maintainability proof\n\n${answers.quality_gate_proof}\n\n## Required review output\n\n- Boundary touched\n- Risk introduced or removed\n- Tests/proof at the right layer\n- Any duplication/fallback/circular dependency found\n- Smallest safe refactor if the boundary is degrading\n`;
+}
+
+function renderEnterpriseProofBank(answers) {
+  return `# Enterprise Proof Bank\n\nThis file answers: “what does good look like?” for production-grade work. Do not accept toy proof for serious builds.\n\n## Domain pack\n\n${answers.domain_pack}\n\n## Teaching artifacts\n\n${splitList(answers.good_looks_like_artifacts).map((artifact) => `- ${artifact}`).join("\n")}\n\n## Scale / concurrency bar\n\n${answers.scale_bar}\n\n## Observability bar\n\n${answers.observability_bar}\n\n## Rollback / recovery bar\n\n${answers.rollback_bar}\n\n## Universal proof dimensions\n\n- Functional correctness\n- Scale / concurrency\n- Reliability / recovery\n- Security / auth / data boundaries\n- Data integrity\n- Observability\n- Cost / FinOps\n- Performance\n- Domain-specific proof\n- Live smoke\n- Operator handoff\n`;
+}
+
+function renderOperatingIntelligence(answers) {
+  return `# Operating Intelligence Layer\n\nThis is the maturity layer above the basic control-plane skeleton: evals, trajectory, context, skills, memory, tools, sandboxing, model routing, economics, PR agents, interop, and production-agent lifecycle.\n\n## Eval gate\n\n- Required for: ${answers.eval_required_for}\n- Dataset owner: ${answers.eval_dataset_owner}\n- Blocking threshold: ${answers.eval_acceptance_threshold}\n- Run location: ${answers.eval_run_location}\n- Artifacts: ${answers.eval_artifacts}\n\n## Trajectory evaluation\n\n- Bad trajectory: ${answers.bad_agent_trajectory}\n- Retry/loop limit: ${answers.retry_loop_limit}\n- Forbidden sequences: ${answers.forbidden_tool_sequences}\n- Score dimensions: ${answers.trajectory_scores}\n- Artifacts: ${answers.trajectory_artifacts}\n\n## Context manifest / ICM\n\n- Always loaded: ${answers.always_load_context}\n- Lane/task context: ${answers.lane_context_rules}\n- Approval-required context: ${answers.approval_required_context}\n- Stale/conflict policy: ${answers.stale_context_policy}\n- Budget: ${answers.context_budget}\n- Artifacts: ${answers.context_artifacts}\n\n## Skill registry\n\n- Inventory: ${answers.skill_inventory}\n- Owners/review: ${answers.skill_owner_policy}\n- Activation: ${answers.skill_activation_rules}\n- Tool permissions: ${answers.skill_tool_permissions}\n- Proof: ${answers.skill_proof}\n- Registry artifacts: ${answers.skill_registry_artifacts}\n\n## Memory substrate\n\n- Remember: ${answers.memory_should_remember}\n- Never remember: ${answers.memory_never_remember}\n- Review owner: ${answers.memory_review_owner}\n- Retention: ${answers.memory_retention_policy}\n- Handoff rule: ${answers.memory_handoff_rule}\n- Eval policy: ${answers.memory_eval_policy}\n\n## Tool registry and hooks\n\n- Free tools: ${answers.free_tools}\n- Approval tools: ${answers.approval_tools}\n- Forbidden tools: ${answers.forbidden_tools}\n- Pre-tool hooks: ${answers.pre_tool_hooks}\n- Post-edit hooks: ${answers.post_edit_hooks}\n- Audit log: ${answers.tool_audit_log}\n\n## Sandbox manager\n\n- Isolation: ${answers.execution_isolation}\n- Filesystem roots: ${answers.filesystem_roots}\n- Network: ${answers.network_policy}\n- Secrets: ${answers.secrets_policy}\n- Cleanup: ${answers.sandbox_cleanup}\n- Escape proof: ${answers.sandbox_escape_proof}\n\n## Model routing\n\n- Lane model policy: ${answers.lane_model_policy}\n- Strong model required for: ${answers.strong_model_required_for}\n- Cheap model allowed for: ${answers.cheap_model_allowed_for}\n- Fallback: ${answers.model_fallback_path}\n- Logging: ${answers.model_logging}\n- Quality gate: ${answers.model_quality_gate}\n\n## AI economics\n\n- Run budget: ${answers.run_budget}\n- Token tracking: ${answers.token_tracking}\n- Human review tracking: ${answers.human_review_tracking}\n- Retry cost limit: ${answers.retry_cost_limit}\n- Spend approval: ${answers.spend_approval_policy}\n- Cost handoff: ${answers.cost_handoff}\n\n## Background PR agents\n\n- Allowed: ${answers.background_agents_allowed}\n- Branch policy: ${answers.agent_branch_policy}\n- PR policy: ${answers.agent_pr_policy}\n- Reviewer: ${answers.background_pr_reviewer}\n- Proof: ${answers.background_pr_proof}\n- Stale cleanup: ${answers.stale_agent_cleanup}\n\n## MCP / A2A interoperability\n\n- MCP required: ${answers.mcp_required}\n- MCP tools: ${answers.mcp_tools}\n- Allowed runtimes: ${answers.agent_runtimes}\n- A2A needed: ${answers.a2a_needed}\n- Auth/roots: ${answers.interop_auth_roots}\n- Live event definition: ${answers.live_event_definition}\n\n## Production-agent lifecycle\n\n- Deploys agents: ${answers.deploys_agents}\n- Agent definition: ${answers.agent_definition}\n- States: ${answers.agent_lifecycle_states}\n- Promotion gate: ${answers.agent_promotion_gate}\n- Observability: ${answers.agent_observability}\n- Rollback owner: ${answers.agent_rollback_owner}\n`;
+}
+
+function renderTeamHarnessRegistry(answers) {
+  return `# Team Harness Registry\n\n## Ownership\n\n- Harness owner: ${answers.harness_owner}\n- Prompt/front-door owner: ${answers.prompt_owner}\n- Eval owner: ${answers.eval_owner}\n- Connector owner: ${answers.connector_owner}\n- Harness change approval: ${answers.harness_change_approval}\n\n## Drift check\n\n${answers.harness_drift_check}\n\n## Registry rule\n\nPrompts, skills, evals, connectors, model routes, tools, and proof banks need owners, versions, review policy, and drift checks. If nobody owns a harness object, the agent should treat it as risky/stale.\n`;
+}
+
+function renderHumanAgentProtocol(answers) {
+  return `# Human-Agent Operating Protocol\n\n## Decision and review owners\n\n- Decision owner: ${answers.decision_owner}\n- Normal PR reviewer: ${answers.normal_pr_reviewer}\n- Specialist reviewers: ${answers.specialist_reviewers}\n\n## Escalation and SLA\n\n- Escalation path: ${answers.escalation_path}\n- Blocked-agent SLA: ${answers.blocked_agent_sla}\n- Contact channels: ${answers.human_contact_channels}\n\n## Approval contract\n\n${answers.approval_contract}\n\n## Rule\n\nApprovals are durable scoped objects, not vibes. Agents may request approval; they may not grant it to themselves.\n`;
+}
+
 function renderRunTemplate(answers) {
   return `# Run Packet Template\n\nProject: ${answers.project_name}\n\n## Required artifacts\n\n- run/mode.json\n- run/intake.json\n- run/route.json\n- graph/graph.json from Graphify/code-graph scan, or graph skip reason for docs-only/non-code work\n- graph/freshness.json proving graph commit/freshness\n- design/anchors.json for codebase claims and blast-radius reasoning\n- design/system_design.md when design/architecture matters\n- production/layer-assessment.json for production-impacting work\n- cloud/service-map.json for cloud/platform work, or cloud/skip.json with reason\n- approvals/redzone.json when Red Zone applies\n- qa/qa-plan.md when validation scope matters\n- qa/break-it-results.md or explicit skip reason\n- proof/proof.json before done\n- smoke/smoke_proof.json or explicit skip reason\n- self_heal/self_heal_report.md when process/harness gap is found\n- handoff/final.md\n\n## Final handoff shape\n\nBottom line\nWhy\nProof\nRisk\nFix/Plan\nYour call\nSkipped nodes / reasons\n`;
 }
 
 function renderReview(adapter) {
   const answers = adapter.answers;
-  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\`, \`CLAUDE.md\`, the Claude slash command, or the Codex runtime prompt, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.4 Graphify + hardening additions\n\n- Graphify/code graph policy: ${answers.code_graph}\n- System Design lane triggers: ${answers.system_design_triggers}\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
+  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\`, \`CLAUDE.md\`, the Claude slash command, or the Codex runtime prompt, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.5 commissioning + foundation additions\n\n- Commissioning question groups: ${adapter.commissioning.questionGroups}\n- Commissioning questions: ${adapter.commissioning.questionCount}\n- Graphify/code graph policy: ${answers.code_graph}\n- System Design lane triggers: ${answers.system_design_triggers}\n- Foundation blueprint: ${answers.reference_architecture}\n- Anti-spaghetti guardrails: ${answers.anti_spaghetti_rules}\n- Enterprise proof-bank domain pack: ${answers.domain_pack}\n- Operating intelligence: evals, trajectory, context, skills, memory, tools/hooks, sandbox, model routing, economics, PR agents, MCP/A2A, agent lifecycle\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
 }
 
 function generatePack(args, detected, answers) {
@@ -403,6 +639,11 @@ function generatePack(args, detected, answers) {
     generatorVersion: VERSION,
     detected,
     answers,
+    commissioning: {
+      questionGroups: QUESTION_GROUPS.length,
+      questionCount: questionList().length,
+      version: VERSION,
+    },
     laneFamilies: DEFAULT_LANE_FAMILIES,
     lanes: splitList(answers.enabled_lanes),
     redZoneActions: splitList(answers.red_zone_actions),
@@ -435,6 +676,142 @@ function generatePack(args, detected, answers) {
       qaPlanPolicy: answers.qa_plan_policy,
       breakItQaPolicy: answers.break_it_qa_policy,
       liveSmokeCriteria: answers.live_smoke_criteria,
+    },
+    foundationBlueprint: {
+      architectureStyle: answers.target_architecture_style,
+      referenceArchitecture: answers.reference_architecture,
+      foundationLayers: splitList(answers.foundation_layers),
+      badFoundationSignals: splitList(answers.bad_foundation_signals),
+      goldenPath: answers.golden_path,
+      decisionOwner: answers.foundation_decision_owner,
+    },
+    codeQualityGuardrails: {
+      moduleBoundaries: splitList(answers.module_boundaries),
+      dependencyRules: answers.dependency_rules,
+      antiSpaghettiRules: splitList(answers.anti_spaghetti_rules),
+      complexityBudget: answers.complexity_budget,
+      refactorTriggers: answers.refactor_triggers,
+      proof: answers.quality_gate_proof,
+    },
+    enterpriseProofBank: {
+      domainPack: answers.domain_pack,
+      goodLooksLikeArtifacts: splitList(answers.good_looks_like_artifacts),
+      scaleBar: answers.scale_bar,
+      observabilityBar: answers.observability_bar,
+      rollbackBar: answers.rollback_bar,
+    },
+    operatingIntelligence: {
+      evalGate: {
+        requiredFor: answers.eval_required_for,
+        datasetOwner: answers.eval_dataset_owner,
+        threshold: answers.eval_acceptance_threshold,
+        runLocation: answers.eval_run_location,
+        artifacts: splitList(answers.eval_artifacts),
+      },
+      trajectoryGate: {
+        badTrajectory: answers.bad_agent_trajectory,
+        retryLoopLimit: answers.retry_loop_limit,
+        forbiddenSequences: answers.forbidden_tool_sequences,
+        scoreDimensions: answers.trajectory_scores,
+        artifacts: splitList(answers.trajectory_artifacts),
+      },
+      contextManifest: {
+        alwaysLoad: answers.always_load_context,
+        laneRules: answers.lane_context_rules,
+        approvalRequired: answers.approval_required_context,
+        stalePolicy: answers.stale_context_policy,
+        budget: answers.context_budget,
+        artifacts: splitList(answers.context_artifacts),
+      },
+      skillRegistry: {
+        inventory: splitList(answers.skill_inventory),
+        ownerPolicy: answers.skill_owner_policy,
+        activationRules: answers.skill_activation_rules,
+        toolPermissions: answers.skill_tool_permissions,
+        proof: answers.skill_proof,
+        artifacts: splitList(answers.skill_registry_artifacts),
+      },
+      memory: {
+        remember: answers.memory_should_remember,
+        neverRemember: answers.memory_never_remember,
+        reviewOwner: answers.memory_review_owner,
+        retention: answers.memory_retention_policy,
+        handoffRule: answers.memory_handoff_rule,
+        evalPolicy: answers.memory_eval_policy,
+      },
+      toolRegistryHooks: {
+        freeTools: answers.free_tools,
+        approvalTools: answers.approval_tools,
+        forbiddenTools: answers.forbidden_tools,
+        preToolHooks: answers.pre_tool_hooks,
+        postEditHooks: answers.post_edit_hooks,
+        auditLog: answers.tool_audit_log,
+      },
+      sandboxManager: {
+        isolation: answers.execution_isolation,
+        filesystemRoots: answers.filesystem_roots,
+        networkPolicy: answers.network_policy,
+        secretsPolicy: answers.secrets_policy,
+        cleanup: answers.sandbox_cleanup,
+        escapeProof: answers.sandbox_escape_proof,
+      },
+      modelRouting: {
+        lanePolicy: answers.lane_model_policy,
+        strongModelRequiredFor: answers.strong_model_required_for,
+        cheapModelAllowedFor: answers.cheap_model_allowed_for,
+        fallbackPath: answers.model_fallback_path,
+        logging: answers.model_logging,
+        qualityGate: answers.model_quality_gate,
+      },
+      aiEconomics: {
+        runBudget: answers.run_budget,
+        tokenTracking: answers.token_tracking,
+        humanReviewTracking: answers.human_review_tracking,
+        retryCostLimit: answers.retry_cost_limit,
+        spendApprovalPolicy: answers.spend_approval_policy,
+        costHandoff: answers.cost_handoff,
+      },
+      backgroundPrAgents: {
+        allowed: answers.background_agents_allowed,
+        branchPolicy: answers.agent_branch_policy,
+        prPolicy: answers.agent_pr_policy,
+        reviewer: answers.background_pr_reviewer,
+        proof: answers.background_pr_proof,
+        staleCleanup: answers.stale_agent_cleanup,
+      },
+      interop: {
+        mcpRequired: answers.mcp_required,
+        mcpTools: splitList(answers.mcp_tools),
+        agentRuntimes: splitList(answers.agent_runtimes),
+        a2aNeeded: answers.a2a_needed,
+        authRoots: answers.interop_auth_roots,
+        liveEventDefinition: answers.live_event_definition,
+      },
+      productionAgentLifecycle: {
+        deploysAgents: answers.deploys_agents,
+        definition: answers.agent_definition,
+        states: splitList(answers.agent_lifecycle_states),
+        promotionGate: answers.agent_promotion_gate,
+        observability: answers.agent_observability,
+        rollbackOwner: answers.agent_rollback_owner,
+      },
+    },
+    teamHarnessRegistry: {
+      harnessOwner: answers.harness_owner,
+      promptOwner: answers.prompt_owner,
+      evalOwner: answers.eval_owner,
+      connectorOwner: answers.connector_owner,
+      changeApproval: answers.harness_change_approval,
+      driftCheck: answers.harness_drift_check,
+    },
+    humanAgentProtocol: {
+      decisionOwner: answers.decision_owner,
+      normalPrReviewer: answers.normal_pr_reviewer,
+      specialistReviewers: answers.specialist_reviewers,
+      escalationPath: answers.escalation_path,
+      blockedAgentSla: answers.blocked_agent_sla,
+      contactChannels: answers.human_contact_channels,
+      approvalContract: answers.approval_contract,
     },
     telemetryModes: {
       policy: answers.telemetry_mode_policy,
@@ -477,6 +854,12 @@ function generatePack(args, detected, answers) {
   write(path.join(out, "docs/QA and Live Smoke.md"), renderQaSmoke(answers));
   write(path.join(out, "docs/Modes Blueprint Live Replay.md"), renderModes(answers));
   write(path.join(out, "docs/Self-Healing Loop.md"), renderSelfHealing(answers));
+  write(path.join(out, "docs/Good Looks Like Foundation.md"), renderGoodLooksLike(answers));
+  write(path.join(out, "docs/Code Quality Guardrails.md"), renderCodeQualityGuardrails(answers));
+  write(path.join(out, "docs/Enterprise Proof Bank.md"), renderEnterpriseProofBank(answers));
+  write(path.join(out, "docs/Operating Intelligence Layer.md"), renderOperatingIntelligence(answers));
+  write(path.join(out, "docs/Team Harness Registry.md"), renderTeamHarnessRegistry(answers));
+  write(path.join(out, "docs/Human Agent Protocol.md"), renderHumanAgentProtocol(answers));
   write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
   for (const scriptName of ["uash-emit-event.mjs", "graphify-scan.mjs", "graphify-gate.mjs", "anchor-gate.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);

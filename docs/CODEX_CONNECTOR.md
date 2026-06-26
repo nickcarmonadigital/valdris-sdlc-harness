@@ -1,4 +1,4 @@
-# Codex Connector v0.3
+# Codex Connector v0.4
 
 This repo is ready for Codex as a repo-level SDLC engineering harness, not as an IDE wrapper.
 

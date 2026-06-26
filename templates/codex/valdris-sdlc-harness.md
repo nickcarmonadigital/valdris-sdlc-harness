@@ -17,17 +17,18 @@ If `RUN_ID` is missing, ask for it before changing files. Do not invent one.
 ## Required flow
 
 ```text
-intake → route → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## Rules
 
-1. Read `AGENTS.md`, `project-adapter.json`, `00_MAP.md`, `CONTEXT.md`, and `docs/Validation Commands.md` before planning.
-2. Emit a real bridge event for every node/gate/artifact/approval/skip/failure when `RUN_ID` and `BRIDGE_URL` are provided.
-3. Use `node.skipped` with `--skip-reason` for irrelevant nodes.
-4. Use `node.failed` with `--failure-reason` and `--recovery-path` for failed nodes.
-5. Stop for Red Zone approval before production deploys, secrets/env changes, auth/billing/customer data, destructive ops, provider config, or cloud resource mutation.
-6. Do not emit `run.completed` until proof exists and every required node is passed or skipped with a reason.
+1. Read `AGENTS.md`, `project-adapter.json`, `00_MAP.md`, `CONTEXT.md`, `docs/Validation Commands.md`, `docs/Good Looks Like Foundation.md`, `docs/Code Quality Guardrails.md`, and `docs/Enterprise Proof Bank.md` before planning.
+2. For codebase, architecture, refactor, debugging, or cross-file work, run or verify Graphify/code graph and design anchors before design claims.
+3. Emit a real bridge event for every node/gate/artifact/approval/skip/failure when `RUN_ID` and `BRIDGE_URL` are provided.
+4. Use `node.skipped` with `--skip-reason` for irrelevant nodes, including `graphify` and `design-anchors` on docs-only/non-code runs.
+5. Use `node.failed` with `--failure-reason` and `--recovery-path` for failed nodes.
+6. Stop for Red Zone approval before production deploys, secrets/env changes, auth/billing/customer data, destructive ops, provider config, or cloud resource mutation.
+7. Do not emit `run.completed` until proof exists and every required node is passed or skipped with a reason.
 
 ## Event command
 

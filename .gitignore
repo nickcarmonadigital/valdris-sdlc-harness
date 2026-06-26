@@ -9,3 +9,6 @@ coverage
 *.log
 tsconfig.tsbuildinfo
 data/runs/*/events.jsonl
+graph/
+design/
+.tmp/

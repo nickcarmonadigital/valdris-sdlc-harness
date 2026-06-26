@@ -241,6 +241,12 @@ docs/Cloud Platform Engineering.md
 docs/QA and Live Smoke.md
 docs/Self-Healing Loop.md
 docs/Modes Blueprint Live Replay.md
+docs/Good Looks Like Foundation.md
+docs/Code Quality Guardrails.md
+docs/Enterprise Proof Bank.md
+docs/Operating Intelligence Layer.md
+docs/Team Harness Registry.md
+docs/Human Agent Protocol.md
 runs/_run-template/README.md
 commissioning-review.md
 ```
@@ -259,6 +265,9 @@ commissioning-review.md
 | `scripts/graphify-scan.mjs` | local Graphify-compatible code graph generator |
 | `scripts/graphify-gate.mjs` | graph schema/freshness gate |
 | `scripts/anchor-gate.mjs` | design-anchor file citation gate |
+| `docs/ENTERPRISE_PROOF_BANK.md` | enterprise/domain proof-bank standard |
+| `docs/OPERATING_INTELLIGENCE_LAYER.md` | evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, MCP/A2A, lifecycle |
+| `docs/TEST_DAY_ACCEPTANCE_GATES.md` | acceptance gates for proving the harness update itself |
 | `docs/` | architecture, connector, production, QA, cloud, mode, lane docs |
 | `templates/` | generated Claude Code and Codex front-door templates |
 | `runs/` | example run packet/proof artifacts |
@@ -276,8 +285,12 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 | Run queue/control-plane shell | Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts` |
 | Blueprint / Live / Replay model | Built | docs + telemetry/event types |
 | Graphify first-class node | Built + verified | `graphify`, `design-anchors`, `npm run graphify:*` |
-| Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness` |
+| Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 30 groups / 150 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
+| Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
+| Operating-intelligence commissioning | Built structurally | eval, trajectory, context, skills, memory, tools, sandbox, model, economics, PR agents, MCP/A2A, lifecycle, registry, human protocol questions |
+| Enterprise proof-bank map | Built structurally | `docs/ENTERPRISE_PROOF_BANK.md`, generated Enterprise Proof Bank docs |
+| Test-day acceptance gates | Built structurally | `docs/TEST_DAY_ACCEPTANCE_GATES.md`, verifier command set |
 | Local connector bridge | Built + verified | `scripts/claude-code-bridge.mjs` |
 | Strict event contract | Built + verified | `docs/CONNECTOR_EVENT_CONTRACT.md`, verifier |
 | Artifact existence verification | Built + verified | bridge + adversarial verifier |
@@ -286,9 +299,9 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 | 13 production layers | Built structurally | docs, adapter schema, verifier count |
 | Cloud/platform lane | Built structurally | docs + node/artifact policy |
 | QA/break-it/live smoke | Partial | docs + node/gate positions; deeper automation next |
-| Enterprise load proof | Missing | future load/concurrency proof bank |
-| Observability proof gate | Missing / policy-only | future logs/metrics/traces validator |
-| AI/RAG eval gate | Missing | future eval artifact validator |
+| Enterprise load proof | Partial / policy-only | proof-bank standard exists; executable load gate is next |
+| Observability proof gate | Partial / policy-only | proof-bank standard exists; logs/metrics/traces validator is next |
+| AI/RAG eval gate | Partial / policy-only | eval artifacts are commissioned; executable eval validator is next |
 | Hosted multi-user backend | Future | local JSONL/run-packet first; DB later |
 
 ## Quick start

@@ -1,4 +1,4 @@
-# Claude Code Connector v0.3
+# Claude Code Connector v0.4
 
 This is the practical answer to: “If I open Claude Code on my Mac, how does this application connect to it?”
 
@@ -54,7 +54,7 @@ It stores local run state at:
 
 ## Current strict bridge rules
 
-The v0.3 bridge rejects fake or incomplete events.
+The v0.4 bridge rejects fake or incomplete events.
 
 Required event fields:
 

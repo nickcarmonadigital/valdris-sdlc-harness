@@ -240,9 +240,9 @@ function repoOperatingMap() {
   s += miniCard(80, 238, 248, 44, "AGENTS.md", colors.cyan);
   s += miniCard(80, 296, 248, 44, "CLAUDE.md", colors.cyan);
 
-  s += cluster(54, 392, 300, 358, "Operating docs", colors.indigo);
-  ["ARCHITECTURE.md", "CONNECTOR_EVENT_CONTRACT.md", "SDLC_LANE_TAXONOMY.md", "MODES_BLUEPRINT_LIVE_REPLAY.md", "PRODUCTION_READINESS_LAYERS.md", "HARNESS_REPO_MAP.md"].forEach((t, i) => {
-    s += miniCard(80, 444 + i * 48, 248, 36, t, colors.indigo, { size: 12 });
+  s += cluster(54, 392, 300, 486, "Operating docs", colors.indigo);
+  ["ARCHITECTURE.md", "CONNECTOR_EVENT_CONTRACT.md", "SDLC_LANE_TAXONOMY.md", "MODES_BLUEPRINT_LIVE_REPLAY.md", "PRODUCTION_READINESS_LAYER_PACK.md", "ENTERPRISE_PROOF_BANK.md", "OPERATING_INTELLIGENCE_LAYER.md", "TEST_DAY_ACCEPTANCE_GATES.md", "HARNESS_REPO_MAP.md"].forEach((t, i) => {
+    s += miniCard(80, 444 + i * 44, 248, 34, t, colors.indigo, { size: 10.5 });
   });
 
   s += cluster(414, 160, 330, 244, "Commissioning generator", colors.amber);

@@ -1,6 +1,6 @@
 {
   "name": "valdris-sdlc-harness",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Valdris SDLC Harness: commissioning, project adapters, proof gates, and workflow telemetry for Claude Code/Codex/Hermes.",
   "scripts": {

@@ -145,27 +145,64 @@ let bridge;
 try {
   const questions = await run(node, ["scripts/commission-harness.mjs", "--print-questions"]);
   const questionGroups = JSON.parse(questions.stdout);
-  assert(questionGroups.length >= 12, `expected at least 12 commissioning groups, got ${questionGroups.length}`);
+  assert(questionGroups.length >= 30, `expected at least 30 commissioning groups, got ${questionGroups.length}`);
 
   await run(node, ["scripts/commission-harness.mjs", "--repo", ".", "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes"]);
 
   const adapter = JSON.parse(await readFile(path.join(generatedOut, "project-adapter.json"), "utf8"));
   assert(adapter.schema === "uash.project-adapter.v2", "adapter schema mismatch");
-  assert(adapter.generatorVersion === "0.4.0", "generator version mismatch");
+  assert(adapter.generatorVersion === "0.5.0", "generator version mismatch");
+  assert(adapter.commissioning?.questionGroups >= 30, "expanded commissioning group count missing");
+  assert(adapter.commissioning?.questionCount >= 150, "expanded commissioning question count missing");
   assert(adapter.codeGraph?.requiredArtifacts?.includes("graph/graph.json"), "Graphify/code graph adapter missing");
   assert(adapter.productionReadiness.layers.length === 13, "production readiness layer count mismatch");
   assert(adapter.telemetryModes.modes.includes("live"), "live telemetry mode missing");
   assert(adapter.nodeStateContract.skippedRequiresReason, "skip-reason rule missing");
   assert(adapter.nodeStateContract.failedRequiresRecoveryPath, "failure recovery rule missing");
+  assert(adapter.foundationBlueprint?.badFoundationSignals?.length > 0, "foundation blueprint missing");
+  assert(adapter.codeQualityGuardrails?.antiSpaghettiRules?.length > 0, "code quality guardrails missing");
+  assert(adapter.enterpriseProofBank?.domainPack, "enterprise proof bank missing");
+  assert(adapter.operatingIntelligence?.evalGate?.artifacts?.includes("evals/eval-plan.json"), "eval gate commissioning missing");
+  assert(adapter.operatingIntelligence?.trajectoryGate?.artifacts?.includes("trajectory/trace.jsonl"), "trajectory gate commissioning missing");
+  assert(adapter.operatingIntelligence?.contextManifest?.artifacts?.includes("context/manifest.yaml"), "context manifest commissioning missing");
+  assert(adapter.operatingIntelligence?.skillRegistry?.artifacts?.some((artifact) => artifact.includes("skills/registry.yaml")), "skill registry commissioning missing");
+  assert(adapter.operatingIntelligence?.modelRouting?.qualityGate, "model routing commissioning missing");
+  assert(adapter.operatingIntelligence?.aiEconomics?.costHandoff, "AI economics commissioning missing");
+  assert(adapter.operatingIntelligence?.interop?.mcpTools?.includes("uash.start_run"), "MCP commissioning missing");
+  assert(adapter.teamHarnessRegistry?.harnessOwner, "team harness registry missing");
+  assert(adapter.humanAgentProtocol?.approvalContract, "human-agent protocol missing");
   await readFile(path.join(generatedOut, "AGENTS.md"), "utf8");
   await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Codex Runtime Prompt.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Graphify Code Graph.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Good Looks Like Foundation.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Code Quality Guardrails.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Enterprise Proof Bank.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Operating Intelligence Layer.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Team Harness Registry.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Human Agent Protocol.md"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "uash-emit-event.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "graphify-scan.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "graphify-gate.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "anchor-gate.mjs"), "utf8");
+
+  const rootEnterpriseProofBank = await readFile(path.join(root, "docs", "ENTERPRISE_PROOF_BANK.md"), "utf8");
+  const rootOperatingIntelligence = await readFile(path.join(root, "docs", "OPERATING_INTELLIGENCE_LAYER.md"), "utf8");
+  const rootTestDayGates = await readFile(path.join(root, "docs", "TEST_DAY_ACCEPTANCE_GATES.md"), "utf8");
+  assert(rootEnterpriseProofBank.includes("Scale / concurrency") && rootEnterpriseProofBank.includes("Domain packs"), "enterprise proof bank root doc missing core sections");
+  assert(rootOperatingIntelligence.includes("Trajectory evaluation") && rootOperatingIntelligence.includes("AI economics"), "operating intelligence root doc missing paper-gap patterns");
+  assert(rootTestDayGates.includes("30 groups / 150 questions") && rootTestDayGates.includes("main updated"), "test-day acceptance gates doc missing update criteria");
+
+  const claudeTemplate = await readFile(path.join(root, "templates", "claude-code", "commands", "valdris-sdlc-harness.md"), "utf8");
+  const codexTemplate = await readFile(path.join(root, "templates", "codex", "valdris-sdlc-harness.md"), "utf8");
+  assert(claudeTemplate.includes("graphify → design-anchors") && claudeTemplate.includes("Enterprise Proof Bank"), "Claude template missing Graphify/proof-bank flow");
+  assert(codexTemplate.includes("graphify → design-anchors") && codexTemplate.includes("Good Looks Like Foundation"), "Codex template missing Graphify/foundation flow");
+
+  const claudeConnectorDoc = await readFile(path.join(root, "docs", "CLAUDE_CODE_CONNECTOR.md"), "utf8");
+  const codexConnectorDoc = await readFile(path.join(root, "docs", "CODEX_CONNECTOR.md"), "utf8");
+  assert(claudeConnectorDoc.startsWith("# Claude Code Connector v0.4"), "Claude connector doc version drift");
+  assert(codexConnectorDoc.startsWith("# Codex Connector v0.4"), "Codex connector doc version drift");
   await run(node, ["scripts/graphify-scan.mjs", "--repo", "."], { cwd: generatedOut });
   await run(node, ["scripts/graphify-gate.mjs", "--repo", ".", "--allow-stale"], { cwd: generatedOut });
   await run(node, ["scripts/anchor-gate.mjs", "--repo", "."], { cwd: generatedOut });
@@ -288,9 +325,14 @@ try {
     JSON.stringify(
       {
         commissioningQuestionGroups: questionGroups.length,
-        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Graphify Code Graph.md", "scripts/uash-emit-event.mjs", "scripts/graphify-scan.mjs"],
+        commissioningQuestions: questionGroups.reduce((count, group) => count + group.questions.length, 0),
+        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Graphify Code Graph.md", "docs/Good Looks Like Foundation.md", "docs/Code Quality Guardrails.md", "docs/Enterprise Proof Bank.md", "docs/Operating Intelligence Layer.md", "docs/Team Harness Registry.md", "docs/Human Agent Protocol.md", "scripts/uash-emit-event.mjs", "scripts/graphify-scan.mjs"],
         adapterSchema: adapter.schema,
         generatorVersion: adapter.generatorVersion,
+        foundationBlueprint: true,
+        codeQualityGuardrails: true,
+        enterpriseProofBank: true,
+        operatingIntelligence: true,
         productionLayers: adapter.productionReadiness.layers.length,
         bridgeHealth: health.service,
         bridgeContractVersion: health.contractVersion,
