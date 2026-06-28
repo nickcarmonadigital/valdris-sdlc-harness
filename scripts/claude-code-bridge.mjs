@@ -31,7 +31,7 @@ const artifactByNode = {
 const labelByNode = {
   intake: "Intake",
   route: "Route",
-  graphify: "Graphify",
+  graphify: "GitNexus",
   "design-anchors": "Code Anchors",
   "system-design": "System Design",
   "production-readiness": "Production Layers",

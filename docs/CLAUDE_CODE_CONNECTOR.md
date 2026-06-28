@@ -80,7 +80,7 @@ The CLI emitter sends `artifactRoot` automatically as the current working direct
    - click **Poll bridge**
    - click **Copy Claude prompt**
 4. Paste that prompt into Claude Code, or install the slash-command template below.
-5. Claude Code emits events as it moves through the Valdris SDLC Harness flow.
+5. Claude Code emits events as it moves through the Valdris SDLC Harness flow, including GitNexus/code-intelligence evidence for the `graphify` node on code-impacting runs.
 6. The bridge rejects `run.completed` if required artifacts are missing, unverified, failed, skipped without reasons, waiting on approval, or waiting on self-heal PR/proposal.
 7. The app pulls those events and updates:
    - current node

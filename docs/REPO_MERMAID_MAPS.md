@@ -73,7 +73,8 @@ flowchart TB
   end
 
   subgraph GRAPHIFY["Repo intelligence and anchors"]
-    SCAN["scripts/graphify-scan.mjs"]
+    SCAN["scripts/code-intelligence-scan.mjs"]
+    GITNEXUS["graph/gitnexus.json"]
     GRAPH_GATE["scripts/graphify-gate.mjs"]
     ANCHOR_GATE["scripts/anchor-gate.mjs"]
     GRAPH["graph/graph.json"]
@@ -158,7 +159,7 @@ flowchart LR
   classDef gate fill:#4c0519,stroke:#fb7185,color:#ffe4e6,stroke-width:2px
 
   USER["team or operator"] --> INTERVIEW["commissioning interview"]
-  REPO["target repository"] --> SCAN["Graphify repo scan"]
+  REPO["target repository"] --> SCAN["GitNexus code-intelligence index"]
 
   subgraph CORE["Universal core"]
     SCHEMA["adapter schema"]
@@ -400,7 +401,7 @@ flowchart TB
 
   REPO["target repo"] --> COMMISSION["commission-harness.mjs"]
   ANSWERS["human answers"] --> COMMISSION
-  GRAPH["Graphify scan"] --> COMMISSION
+  GRAPH["GitNexus index"] --> COMMISSION
 
   subgraph FRONT["Agent front doors"]
     A["AGENTS.md"]
@@ -433,7 +434,7 @@ flowchart TB
 
   subgraph GENERATED_SCRIPTS["Generated helper scripts"]
     EMITTER["scripts/uash-emit-event.mjs"]
-    GSCAN["scripts/graphify-scan.mjs"]
+    GSCAN["scripts/code-intelligence-scan.mjs"]
   end
 
   COMMISSION --> FRONT

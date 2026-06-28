@@ -14,7 +14,7 @@ Workflow engine
     +--> Codex connector
     +--> Claude Code connector
     +--> Hermes connector
-    +--> Graphify adapter
+    +--> Code intelligence adapter (GitNexus preferred, local graph fallback)
     +--> GitHub adapter
     +--> Human approval adapter
     |

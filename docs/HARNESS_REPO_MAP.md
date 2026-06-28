@@ -7,7 +7,7 @@ Generated as a grounded repo-readout for Nick. This file is intentionally blunt:
 Commands run against `/root/valdris-sdlc-harness`:
 
 ```bash
-npm run graphify:scan && npm run graphify:gate
+npm run code-intelligence:scan && npm run graphify:gate
 npm run verify:harness
 ```
 
@@ -48,7 +48,7 @@ Current verified facts:
 }
 ```
 
-Note: `graph/` and `design/` are generated local Graphify artifacts and are currently untracked by git. They prove the scan ran locally; they are not committed source files.
+Note: `graph/` and `design/` are generated code-intelligence artifacts and are currently untracked by git. `graph/gitnexus.json` proves the GitNexus index ran when available; fallback runs must disclose local-static graph use.
 
 ---
 
@@ -59,7 +59,7 @@ flowchart TB
   Human["Human / operator<br/>Nick or team"]
   Idea["Idea / task / repo ask"]
   Router["Universal SDLC Router<br/>classify work type"]
-  Commission["Repo Commissioning<br/>questions + Graphify + adapter"]
+  Commission["Repo Commissioning<br/>questions + GitNexus/code intelligence + adapter"]
   Adapter["Project Adapter<br/>project-adapter.json / project.yaml"]
   FrontDoors["Agent Front Doors<br/>AGENTS.md / CLAUDE.md / Codex prompt"]
   Agent["External Agent Runtime<br/>Claude Code / Codex / Hermes"]
@@ -158,7 +158,8 @@ valdris-sdlc-harness/
 │   ├── claude-code-bridge.mjs        # strict local bridge / event contract / finish-line
 │   ├── uash-emit-event.mjs           # CLI event emitter for agents
 │   ├── verify-harness.mjs            # adversarial verifier suite
-│   ├── graphify-scan.mjs             # local Graphify-compatible graph generator
+│   ├── code-intelligence-scan.mjs    # GitNexus-backed scan wrapper / evidence writer
+│   ├── graphify-scan.mjs             # local Graphify-compatible fallback graph writer
 │   ├── graphify-gate.mjs             # graph schema/freshness gate
 │   ├── anchor-gate.mjs               # validates design anchors cite real files
 │   └── simulate-agent-run.mjs        # local demo event simulation
@@ -184,7 +185,8 @@ valdris-sdlc-harness/
 │   └── codex/valdris-sdlc-harness.md
 ├── research/clean-room/              # source research + clean-room product specs
 ├── runs/SELF-HEAL-*/                 # example real run packet with proof artifacts
-├── graph/                            # generated local Graphify artifacts, untracked
+├── graph/                            # generated code-intelligence artifacts, untracked
+│   ├── gitnexus.json
 │   ├── graph.json
 │   └── freshness.json
 └── design/                           # generated local anchors, untracked
@@ -193,9 +195,9 @@ valdris-sdlc-harness/
 
 ---
 
-## 4. Code graph / Graphify map
+## 4. Code intelligence / GitNexus map
 
-Graphify-compatible scan currently sees 23 code nodes, 5 import edges, and 8 high-signal entrypoints.
+GitNexus index currently sees 963 nodes, 1,525 edges, 37 clusters, and 58 flows for this repo. The stable Valdris fallback graph still writes `graph/graph.json`, `graph/freshness.json`, and `design/anchors.json` for the harness gates.
 
 ```mermaid
 flowchart TD
@@ -208,9 +210,10 @@ flowchart TD
 
   AgentOpsBoard["components/AgentOpsBoard.tsx"] --> RunEvents["lib/run-events.ts"]
 
-  GraphifyScan["scripts/graphify-scan.mjs"] --> GraphJson["graph/graph.json"]
-  GraphifyScan --> Freshness["graph/freshness.json"]
-  GraphifyScan --> Anchors["design/anchors.json"]
+  CodeIntel["scripts/code-intelligence-scan.mjs"] --> GitNexus["graph/gitnexus.json"]
+  CodeIntel --> GraphJson["graph/graph.json"]
+  CodeIntel --> Freshness["graph/freshness.json"]
+  CodeIntel --> Anchors["design/anchors.json"]
   GraphGate["scripts/graphify-gate.mjs"] --> GraphJson
   AnchorGate["scripts/anchor-gate.mjs"] --> Anchors
 ```
@@ -236,7 +239,7 @@ components/HarnessTelemetryApp.tsx
 sequenceDiagram
   participant User as Human/operator
   participant CLI as commission-harness.mjs
-  participant Graph as Graphify/code graph
+  participant Graph as GitNexus/code intelligence
   participant Adapter as project-adapter.json
   participant Pack as Generated harness pack
   participant Agent as Claude/Codex/Hermes
@@ -358,7 +361,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | Capability | Current status | Evidence | Honest read |
 |---|---:|---|---|
 | Universal SDLC stage flow | Built | `lib/run-events.ts`, `lib/control-plane.ts`, connector contract | Real core flow exists |
-| Graphify first-class node | Built + verified | `graphify`, `design-anchors`, `npm run graphify:*` | Real local code graph adapter exists |
+| GitNexus/code-intelligence node | Built + verified | `graphify`, `design-anchors`, `npm run code-intelligence:*` | GitNexus preferred backend with disclosed local fallback |
 | Project commissioning generator | Built + verified | `scripts/commission-harness.mjs`, verifier generated pack | Expanded to 30 groups / 150 questions with foundation + operating-intelligence fields |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs | Teaches target foundation and anti-spaghetti rules before feature work |
 | Operating-intelligence commissioning | Built structurally | adapter sections for evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, PR agents, MCP/A2A, lifecycle, team registry, human protocol | Questions/docs exist; executable gates remain next buildout |
@@ -378,7 +381,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | Enterprise load/concurrency proof | Partial / policy | `ENTERPRISE_PROOF_BANK.md` scale/concurrency dimensions | Needs load/k6/artillery/Locust validator |
 | Game development domain pack | Partial / policy | serious game section in `ENTERPRISE_PROOF_BANK.md` | Needs dedicated game domain-pack artifact + gates |
 | Website/web-app domain packs | Partial generic | enterprise web/growth sections in `ENTERPRISE_PROOF_BANK.md` | Needs domain-specific templates + proof validators |
-| Understand-anything style repo explainer | Partial via Graphify + this doc | `graph/graph.json`, this file | Needs generated interactive repo-explainer view |
+| Understand-anything style repo explainer | Partial via GitNexus + this doc | `graph/gitnexus.json`, this file | Needs generated interactive repo-explainer view |
 
 ---
 
@@ -484,7 +487,7 @@ visual board update
 ```text
 The repo has a real universal harness MVP:
 - stage flow
-- Graphify/code graph
+- GitNexus/code intelligence
 - commissioning generator
 - local connector bridge
 - strict event contract

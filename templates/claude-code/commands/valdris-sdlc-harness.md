@@ -66,17 +66,19 @@ node scripts/uash-emit-event.mjs "$RUN_ID" agent.connected route "Claude Code at
 
 Name the lane family and work type. Examples: engineering-default, system-design, production-readiness, cloud-platform, qa-release, agent-runtime, incidents, support-triage, data-supabase, provider-config, voice-vapi.
 
-### 3. Graphify / Code Graph
+### 3. GitNexus / Code Intelligence
 
-For codebase, architecture, refactor, debugging, or cross-file implementation work, run or verify the code graph before design claims:
+For codebase, architecture, refactor, debugging, or cross-file implementation work, run GitNexus-backed code intelligence before design claims:
 
 ```bash
-node scripts/graphify-scan.mjs --repo .
+node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local
 node scripts/graphify-gate.mjs --repo .
 node scripts/anchor-gate.mjs --repo .
-node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written graphify "Graphify/code graph artifact written" --artifact graph/graph.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
+node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written graphify "GitNexus/code-intelligence artifact written" --artifact graph/graph.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written design-anchors "Design anchors written for blast-radius reasoning" --artifact design/anchors.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
 ```
+
+`graph/gitnexus.json` is the GitNexus evidence artifact. If the scan falls back to the local static graph, disclose that in the handoff and do not claim GitNexus-backed analysis.
 
 If this is docs-only/non-code work, emit explicit skips for both `graphify` and `design-anchors` with reasons.
 

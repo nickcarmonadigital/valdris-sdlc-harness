@@ -22,6 +22,7 @@ This is not an IDE and not a prompt library by itself. It is the control plane, 
 
 ```text
 commission repo/team
+→ run GitNexus/code-intelligence scan
 → generate project-specific adapter
 → install AGENTS.md / CLAUDE.md / Claude slash-command / Codex prompt front doors
 → run external coding agent
@@ -49,6 +50,7 @@ Keep universal:
 - answer contract
 - connector event contract
 - lane-context eval pattern
+- GitNexus/code-intelligence gate
 
 Move into generated adapters:
 
@@ -68,6 +70,8 @@ Run before claiming done:
 ```bash
 npm run typecheck
 npm run build
+npm run code-intelligence:scan
+npm run graphify:gate
 npm run verify:harness
 npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 ```

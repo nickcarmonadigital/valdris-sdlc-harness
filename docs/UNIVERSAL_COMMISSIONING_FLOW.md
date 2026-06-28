@@ -19,6 +19,7 @@ repo + human interview
 | “Make my harness universal” | Harness commissioning | Convert repo/team facts into an AI-operable harness pack | Internal Developer Platform / Agentic SDLC | Emerging, strong product term |
 | “Questions asked to understand the person and repo” | Commissioning interview | Structured intake that captures facts code scanning cannot infer | Onboarding / discovery workflow | Standard pattern, product-specific use |
 | “Put inside Claude Code or Codex” | Agent front door / runtime adapter | Instructions + local tools that make an external coding agent follow the harness | Agent connector | Emerging category |
+| “Use GitNexus in the SDLC flow” | Code-intelligence backend | GitNexus indexes the repo; the harness consumes stable graph/freshness/anchor artifacts | Static analysis / GraphRAG / AgentOps | GitNexus is vendor/project-specific; code-intelligence gate is standardizing |
 | “See what was done / what the agent did” | Run packet / artifact ledger | Durable evidence of stages, gates, approvals, proof, and handoff | AgentOps / audit trail | Standardizing now |
 | “Don’t let agents freelance” | Policy/gate engine | Mechanical rules that block done without required artifacts | SDLC governance | Standard concept applied to agents |
 
@@ -41,7 +42,7 @@ That is the **project-specific adapter** for Utari. The universal product should
 
 These stay the same across repos:
 
-1. Stage flow: `intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`.
+1. Stage flow: `intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`, where `graphify` is the stable node ID for the GitNexus/code-intelligence gate.
 2. Artifact model: every stage writes/verifies a required artifact or records a skip reason.
 3. Gate types: pre-flight, revision, escalation, abort, QA/break-it, live-smoke, self-heal.
 4. Red Zone model: high-risk mutations need human approval.
@@ -108,7 +109,7 @@ Groups 14–30 commission the missing “100%” operating-intelligence layer:
 16. Team harness registry.
 17. Human-agent operating protocol.
 
-The product UX should not force users to answer 150 blank fields manually. Graphify/code scan should pre-fill code-derived facts, defaults should teach what good looks like, and humans should only confirm operating facts code cannot know.
+The product UX should not force users to answer 150 blank fields manually. GitNexus/code-intelligence indexing should pre-fill code-derived facts, defaults should teach what good looks like, and humans should only confirm operating facts code cannot know.
 
 ## Good-looks-like foundation model
 
@@ -158,7 +159,7 @@ Generated `AGENTS.md` should tell Codex:
 ## MVP build sequence
 
 1. **Local commissioning CLI** - implemented now as `npm run commission`.
-2. **Repo scanner** - currently detects package manager, scripts, frameworks, repo role; extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
+2. **Repo scanner / code intelligence** - GitNexus-backed index is now preferred via `scripts/code-intelligence-scan.mjs`; local static graph remains disclosed fallback. Extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
 3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, map/router, validation/red-zone docs, run template, review packet.
 4. **Claude/Codex command templates** - implemented now: generated Claude slash command plus Codex runtime prompt/front door.
 5. **Gate script portability** - next: port the uploaded harness `_core/scripts/*` into reusable generator templates.
@@ -181,6 +182,8 @@ A repo is commissioned only when:
 ## Current proof command
 
 ```bash
+npm run code-intelligence:scan
+npm run graphify:gate
 npm run commission -- --repo /root/valdris-sdlc-harness --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 node -e "JSON.parse(require('fs').readFileSync('/tmp/valdris-commissioned/project-adapter.json','utf8')); console.log('adapter ok')"
 npm run verify:harness

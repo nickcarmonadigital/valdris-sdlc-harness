@@ -8,15 +8,26 @@ const EXCLUDED_DIRS = new Set([".git", "node_modules", ".next", "dist", "build",
 const RESOLVE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".json", "/index.ts", "/index.tsx", "/index.js", "/index.jsx"];
 
 function parseArgs(argv) {
-  const args = { repo: process.cwd(), graph: "graph/graph.json", freshness: "graph/freshness.json", anchors: "design/anchors.json" };
+  const args = {
+    repo: process.cwd(),
+    graph: "graph/graph.json",
+    freshness: "graph/freshness.json",
+    anchors: "design/anchors.json",
+    backendProvider: "local-static-code-graph",
+    backendEvidence: "",
+    backendIndexName: "",
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--repo") args.repo = argv[++i];
     else if (arg === "--graph") args.graph = argv[++i];
     else if (arg === "--freshness") args.freshness = argv[++i];
     else if (arg === "--anchors") args.anchors = argv[++i];
+    else if (arg === "--backend-provider") args.backendProvider = argv[++i];
+    else if (arg === "--backend-evidence") args.backendEvidence = argv[++i];
+    else if (arg === "--backend-index-name") args.backendIndexName = argv[++i];
     else if (arg === "--help" || arg === "-h") {
-      console.log(`Graphify-compatible local code graph scan\n\nUsage:\n  node scripts/graphify-scan.mjs --repo .\n\nOptions:\n  --repo <path>       Repo root. Defaults to cwd.\n  --graph <path>      Graph artifact path relative to repo. Defaults to graph/graph.json.\n  --freshness <path>  Freshness artifact path relative to repo. Defaults to graph/freshness.json.\n  --anchors <path>    Design anchors artifact path relative to repo. Defaults to design/anchors.json.\n`);
+      console.log(`Graphify-compatible local code graph scan\n\nUsage:\n  node scripts/graphify-scan.mjs --repo .\n\nOptions:\n  --repo <path>       Repo root. Defaults to cwd.\n  --graph <path>      Graph artifact path relative to repo. Defaults to graph/graph.json.\n  --freshness <path>  Freshness artifact path relative to repo. Defaults to graph/freshness.json.\n  --anchors <path>    Design anchors artifact path relative to repo. Defaults to design/anchors.json.\n  --backend-provider <name>   Backend that produced the primary intelligence signal. Defaults to local-static-code-graph.\n  --backend-evidence <path>   Optional evidence artifact for an external backend such as GitNexus.\n  --backend-index-name <name> Optional external backend index name.\n`);
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -145,11 +156,22 @@ const entrypoints = [...nodes]
   .sort((a, b) => b.entrypointScore - a.entrypointScore || a.path.localeCompare(b.path))
   .slice(0, 25)
   .map((node) => node.path);
+const gitnexusBacked = args.backendProvider === "gitnexus";
+const codeIntelligence = {
+  provider: args.backendProvider,
+  primaryBackend: gitnexusBacked ? "GitNexus" : "local-static-code-graph",
+  evidenceArtifact: args.backendEvidence || null,
+  indexName: args.backendIndexName || null,
+  licenseBoundary: gitnexusBacked
+    ? "GitNexus was invoked as an external CLI in index-only mode; this repo does not vendor or redistribute GitNexus code."
+    : "Local static fallback only; do not claim GitNexus or external Graphify ran for this artifact.",
+};
 
 const graph = {
   schema: "uash.graphify.compat.v0.1",
-  generator: "local-static-code-graph",
+  generator: gitnexusBacked ? "gitnexus-backed-code-intelligence" : "local-static-code-graph",
   graphifyCompatible: true,
+  codeIntelligence,
   generatedAt,
   repoRoot: repo,
   git: { commit, branch, dirty: dirtyFiles.length > 0, dirtyFiles },
@@ -157,7 +179,9 @@ const graph = {
     nodes: nodes.length,
     edges: edges.length,
     entrypoints: entrypoints.length,
-    note: "Local Graphify-compatible code graph. Replace generator with external Graphify when configured; never claim external Graphify ran unless it did.",
+    note: gitnexusBacked
+      ? "GitNexus-backed code-intelligence scan with stable harness graph/anchor artifacts. Use graph/gitnexus.json as backend evidence."
+      : "Local Graphify-compatible code graph fallback. Never claim GitNexus or external Graphify ran unless backend evidence exists.",
   },
   nodes,
   edges,
@@ -170,11 +194,12 @@ const freshness = {
   graphPath: args.graph,
   generator: graph.generator,
   graphifyCompatible: true,
+  codeIntelligence,
   git: graph.git,
   nodeCount: nodes.length,
   edgeCount: edges.length,
   validForCommit: commit,
-  staleWhen: "git HEAD changes, cited files change, or task scope expands to uncrawled code",
+  staleWhen: "git HEAD changes, cited files change, GitNexus index drifts, or task scope expands to uncrawled code",
 };
 
 const anchorFiles = (entrypoints.length ? entrypoints : nodes.map((node) => node.path).sort()).slice(0, 12);
@@ -191,4 +216,4 @@ writeJson(repo, args.graph, graph);
 writeJson(repo, args.freshness, freshness);
 writeJson(repo, args.anchors, anchors);
 
-console.log(JSON.stringify({ ok: true, graph: args.graph, freshness: args.freshness, anchors: args.anchors, nodes: nodes.length, edges: edges.length, entrypoints: entrypoints.length, commit, dirty: dirtyFiles.length > 0 }, null, 2));
+console.log(JSON.stringify({ ok: true, graph: args.graph, freshness: args.freshness, anchors: args.anchors, provider: codeIntelligence.primaryBackend, backendEvidence: codeIntelligence.evidenceArtifact, nodes: nodes.length, edges: edges.length, entrypoints: entrypoints.length, commit, dirty: dirtyFiles.length > 0 }, null, 2));

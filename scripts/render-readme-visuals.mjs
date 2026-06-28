@@ -220,7 +220,7 @@ function workLanesMap() {
     if (row === 0) s += lineArrow(cx, 428, startX + col * (cw + gapX) + cw / 2, startY - 8, colors.cyan, "arrow", 1.2);
   });
   const bottomY = 772;
-  s += card(80, bottomY, 445, 78, "Shared stage flow", { sub: "intake → route → graphify → design-anchors → implement → validate → handoff", stroke: colors.cyan, titleSize: 19, subSize: 12 });
+  s += card(80, bottomY, 445, 78, "Shared stage flow", { sub: "intake → route → GitNexus → design-anchors → implement → validate → handoff", stroke: colors.cyan, titleSize: 19, subSize: 12 });
   s += card(577, bottomY, 445, 78, "Shared gates", { sub: "RCA / anchor / Red Zone / proof / smoke / finish-line / self-heal", stroke: colors.rose, titleSize: 19, subSize: 12 });
   s += card(1075, bottomY, 445, 78, "Run packet artifacts", { sub: "graph/graph.json / design/anchors.json / proof/proof.json / smoke/smoke_proof.json / handoff/final.md", stroke: colors.green, titleSize: 19, subSize: 12, maxChars: 34 });
   s += lineArrow(525, bottomY + 39, 577, bottomY + 39, colors.cyan);
@@ -256,8 +256,8 @@ function repoOperatingMap() {
   });
 
   s += cluster(804, 128, 332, 262, "Repo intelligence", colors.blue);
-  ["graphify-scan.mjs", "graphify-gate.mjs", "anchor-gate.mjs", "graph/graph.json", "design/anchors.json"].forEach((t, i) => {
-    s += miniCard(832, 180 + i * 44, 276, 34, t, i < 3 ? colors.blue : colors.green, { size: 13 });
+  ["code-intelligence-scan.mjs", "graphify-gate.mjs", "anchor-gate.mjs", "graph/gitnexus.json", "graph/graph.json", "design/anchors.json"].forEach((t, i) => {
+    s += miniCard(832, 174 + i * 38, 276, 31, t, i < 3 ? colors.blue : colors.green, { size: 11.5 });
   });
 
   s += cluster(804, 442, 332, 300, "Verification gates", colors.rose);
@@ -299,7 +299,7 @@ function flowMonitor() {
   s += `<rect x="${canvasX}" y="${canvasY}" width="${canvasW}" height="${canvasH}" rx="22" fill="#07111f" stroke="#1e293b"/>`;
   s += label(canvasX + 24, canvasY + 36, "N8N-style SDLC swimlane", { size: 17, color: colors.muted, weight: 800 });
   const nodes = [
-    ["intake", colors.green, 0], ["route", colors.green, 1], ["graphify", colors.green, 2], ["design-anchors", colors.green, 3],
+    ["intake", colors.green, 0], ["route", colors.green, 1], ["GitNexus", colors.green, 2], ["design-anchors", colors.green, 3],
     ["system-design", colors.indigo, 4], ["production-readiness", colors.amber, 5], ["cloud-platform", colors.amber, 6],
     ["implement", colors.cyan, 7], ["redzone", colors.rose, 8], ["qa-break-it", colors.violet, 9], ["prove", colors.rose, 10],
     ["live-smoke", colors.teal, 11], ["self-heal", colors.amber, 12], ["handoff", colors.green, 13],
@@ -338,7 +338,7 @@ function flowMonitor() {
   s += `<rect x="92" y="${ledgerY}" width="1416" height="136" rx="22" fill="#07111f" stroke="#1e293b"/>`;
   s += label(120, ledgerY + 36, "Event stream + artifact ledger", { size: 18, color: colors.text, weight: 850 });
   [
-    ["10:42:17", "graphify", "wrote graph/graph.json", colors.green],
+    ["10:42:17", "GitNexus", "wrote graph/gitnexus.json", colors.green],
     ["10:43:02", "design-anchors", "wrote design/anchors.json", colors.green],
     ["10:47:18", "prove", "blocked: missing proof/proof.json", colors.rose],
     ["10:48:09", "redzone", "human approval required", colors.amber],
@@ -425,7 +425,7 @@ function universalAdapter() {
   s += card(80, 180, 230, 78, "team or operator", { stroke: colors.cyan, align: "center" });
   s += card(80, 312, 230, 78, "target repository", { stroke: colors.blue, align: "center" });
   s += card(380, 160, 260, 92, "commissioning interview", { sub: "human answers + repo rules", stroke: colors.cyan, align: "center" });
-  s += card(380, 300, 260, 92, "Graphify repo scan", { sub: "code map + anchors", stroke: colors.blue, align: "center" });
+  s += card(380, 300, 260, 92, "GitNexus index", { sub: "code intelligence + anchors", stroke: colors.blue, align: "center" });
   s += arrow(310, 218, 380, 206, colors.cyan);
   s += arrow(310, 350, 380, 346, colors.blue);
   s += `<rect x="710" y="128" width="330" height="408" rx="26" fill="#020617" opacity="0.44" stroke="${colors.indigo}"/>`;
@@ -448,7 +448,7 @@ function universalAdapter() {
 
 function generatedPack() {
   let s = shell("Valdris SDLC Harness — Generated Harness Pack", "Commissioning turns a normal repo into an AI-operable repo with front doors, rules, run packets, and helper scripts.");
-  const inputs = [["target repo", colors.blue], ["human answers", colors.cyan], ["Graphify scan", colors.indigo]];
+  const inputs = [["target repo", colors.blue], ["human answers", colors.cyan], ["GitNexus index", colors.indigo]];
   inputs.forEach(([t, color], i) => {
     const x = 220 + i * 240;
     s += card(x, 150, 190, 72, t, { stroke: color, align: "center", titleSize: 19 });
@@ -460,7 +460,7 @@ function generatedPack() {
     ["Project adapter", 388, 488, colors.amber, ["project-adapter.json", "project.yaml", "00_MAP.md", "CONTEXT.md"]],
     ["Operating docs", 698, 488, colors.indigo, ["Validation Commands.md", "Red Zone Rules.md", "Production Readiness Layers.md", "QA and Live Smoke.md"]],
     ["Run packet", 1008, 488, colors.green, ["runs/_run-template/", "commissioning-review.md"]],
-    ["Helper scripts", 1268, 488, colors.teal, ["uash-emit-event.mjs", "graphify-scan.mjs"]],
+    ["Helper scripts", 1268, 488, colors.teal, ["uash-emit-event.mjs", "code-intelligence-scan.mjs"]],
   ];
   groups.forEach(([title, x, y, color, items]) => {
     const w = title === "Run packet" || title === "Helper scripts" ? 236 : 270;

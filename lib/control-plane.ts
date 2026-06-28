@@ -126,9 +126,9 @@ export const workflowNodes: WorkflowNode[] = [
   },
   {
     id: "graphify",
-    label: "Graphify",
+    label: "GitNexus",
     lane: "graph",
-    description: "Build or refresh the code graph before codebase, architecture, refactor, or debugging claims.",
+    description: "Build or refresh GitNexus-backed code intelligence before codebase, architecture, refactor, or debugging claims.",
     requiredArtifact: "graph/graph.json",
     x: 32,
     y: 8,
@@ -320,7 +320,7 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "graphify",
         artifact: "graph/graph.json",
-        message: "Graphify/code-graph scan pinned current repo topology before SDLC model changes.",
+        message: "GitNexus/code-intelligence scan pinned current repo topology before SDLC model changes.",
         status: "ok",
       },
       {
@@ -420,7 +420,7 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "graphify",
         artifact: "graph/graph.json",
-        message: "Graphify/code-graph scan required before cloud/platform architecture claims.",
+        message: "GitNexus/code-intelligence scan required before cloud/platform architecture claims.",
         status: "ok",
       },
       {

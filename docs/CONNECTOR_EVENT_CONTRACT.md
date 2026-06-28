@@ -104,7 +104,7 @@ type RunEvent = {
 
 ## Workflow node IDs
 
-Base v0.4 bridge flow:
+Base v0.4 bridge flow. The stable node ID remains `graphify`, but the preferred backend for that node is now GitNexus/code intelligence:
 
 ```text
 intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff

@@ -90,7 +90,7 @@ These must not live in the universal core:
 | Red Zone actions | Risk profile differs by product |
 | Answer style | Human preference differs |
 | Lane set | Repos need different work lanes |
-| Graphify/code graph path | Generated per repo snapshot |
+| GitNexus/code-intelligence path | Generated per repo snapshot |
 
 ## Product rule
 

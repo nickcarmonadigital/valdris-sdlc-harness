@@ -1,6 +1,6 @@
 {
   "name": "valdris-sdlc-harness",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "private": true,
   "description": "Valdris SDLC Harness: commissioning, project adapters, proof gates, and workflow telemetry for Claude Code/Codex/Hermes.",
   "scripts": {
@@ -12,7 +12,9 @@
     "commission:questions": "node scripts/commission-harness.mjs --print-questions",
     "simulate:agent": "node scripts/simulate-agent-run.mjs",
     "verify:harness": "node scripts/verify-harness.mjs",
-    "graphify:scan": "node scripts/graphify-scan.mjs",
+    "graphify:scan": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback local",
+    "code-intelligence:scan": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback local",
+    "code-intelligence:scan:strict": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback none --strict",
     "graphify:gate": "node scripts/graphify-gate.mjs && node scripts/anchor-gate.mjs",
     "render:readme-visuals": "node scripts/render-readme-visuals.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",

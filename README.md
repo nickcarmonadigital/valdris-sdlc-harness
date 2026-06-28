@@ -16,7 +16,7 @@ The harness is easiest to understand as **lanes → stages → gates → artifac
 
 - **Lanes** decide what kind of work this is: engineering, cloud, security, incident, QA, agent-runtime, support, etc.
 - **Stages** move the work through intake, route, graph scan, design, implementation, validation, and handoff.
-- **Gates** block fake completion: RCA, Graphify/anchor, Red Zone approval, proof, live smoke, finish-line, self-heal.
+- **Gates** block fake completion: RCA, GitNexus/code-intelligence + anchor, Red Zone approval, proof, live smoke, finish-line, self-heal.
 - **Artifacts** prove the gate ran: `graph/graph.json`, `design/anchors.json`, `proof/proof.json`, `smoke/smoke_proof.json`, `handoff/final.md`.
 
 ### Core lane families
@@ -73,7 +73,7 @@ The current app renders an operator dashboard / visual flow monitor with:
 
 - Blueprint / Live Run / Replay mode separation;
 - N8N-style SDLC swimlanes;
-- visible Graphify/code-graph node;
+- visible GitNexus/code-intelligence node;
 - skill/gate/proof nodes;
 - selected-node inspector;
 - event stream;
@@ -90,7 +90,7 @@ The harness turns “I did it” into a verifiable run packet:
 
 | Weak agent claim | Harness requirement |
 |---|---|
-| “I inspected the code” | Graph/code anchor artifact exists and cites real files |
+| “I inspected the code” | GitNexus/code-intelligence evidence + graph/code anchor artifacts exist and cite real files |
 | “I found the cause” | RCA artifact exists when debugging |
 | “I built it” | implementation events + proof artifact exist |
 | “It passed” | proof gate emits `proof/proof.json` |
@@ -154,6 +154,24 @@ These nodes are not just labels. Each node has an expected artifact path and con
 | `self-heal` | `self_heal/self_heal_report.md` |
 | `handoff` | `handoff/final.md` |
 
+## GitNexus-backed code intelligence
+
+The `graphify` node now uses **GitNexus as the preferred code-intelligence backend**. The harness does **not** vendor GitNexus; it invokes the external CLI in index-only mode and writes an evidence artifact.
+
+```bash
+npm run code-intelligence:scan
+npm run graphify:gate
+```
+
+That produces:
+
+- `graph/gitnexus.json` — GitNexus index evidence, package/license boundary, command output, and status.
+- `graph/graph.json` — stable Valdris graph artifact consumed by the harness.
+- `graph/freshness.json` — commit/freshness proof.
+- `design/anchors.json` — file anchors for design and blast-radius reasoning.
+
+If GitNexus is unavailable, the scanner may fall back to the local static graph, but the run must disclose that fallback and must not claim GitNexus-backed analysis. Use `npm run code-intelligence:scan:strict` when a run must fail instead of falling back.
+
 ## 13-layer production readiness stack
 
 For serious product work, “done” cannot mean “the page loaded once.” The harness includes a **13-layer production readiness pack** so production-impacting runs can mark each layer as required, passed, failed, pending, or skipped with a reason.
@@ -216,7 +234,7 @@ Rule: **demo data must never pretend to be live telemetry.**
 | SDLC node chain | canonical node IDs/artifacts | skip policies and required proof |
 | Run packet model | events, artifacts, approvals, gates | issue IDs, branch names, owners |
 | Proof gates | proof/red-zone/smoke/self-heal enforcement | actual validation commands |
-| Graphify slot | code graph + design anchors | repo-specific graph paths and refresh command |
+| Graphify slot | GitNexus-backed code intelligence + graph/code anchors | repo-specific graph paths, index alias, and fallback policy |
 | Answer contract | bottom line, why, proof, fix, your call | tone and stakeholder style |
 
 ## Project commissioning output
@@ -262,7 +280,8 @@ commissioning-review.md
 | `scripts/claude-code-bridge.mjs` | local event bridge and finish-line enforcement |
 | `scripts/uash-emit-event.mjs` | CLI event emitter for runtimes |
 | `scripts/verify-harness.mjs` | adversarial verifier for generator + bridge + gates |
-| `scripts/graphify-scan.mjs` | local Graphify-compatible code graph generator |
+| `scripts/code-intelligence-scan.mjs` | GitNexus-backed scan wrapper; writes GitNexus evidence and stable graph artifacts |
+| `scripts/graphify-scan.mjs` | local Graphify-compatible graph generator / fallback artifact writer |
 | `scripts/graphify-gate.mjs` | graph schema/freshness gate |
 | `scripts/anchor-gate.mjs` | design-anchor file citation gate |
 | `docs/ENTERPRISE_PROOF_BANK.md` | enterprise/domain proof-bank standard |
@@ -284,7 +303,7 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 | Next.js visual monitor | Built MVP | `app/`, `components/HarnessTelemetryApp.tsx` |
 | Run queue/control-plane shell | Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts` |
 | Blueprint / Live / Replay model | Built | docs + telemetry/event types |
-| Graphify first-class node | Built + verified | `graphify`, `design-anchors`, `npm run graphify:*` |
+| GitNexus/code-intelligence node | Built + verified | `graphify`, `design-anchors`, `npm run code-intelligence:*` |
 | Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 30 groups / 150 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
@@ -310,7 +329,7 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 npm install
 npm run typecheck
 npm run build
-npm run graphify:scan
+npm run code-intelligence:scan
 npm run graphify:gate
 npm run verify:harness
 npm run dev
@@ -374,7 +393,7 @@ The verifier spins up the bridge and tests negative cases like missing fields, f
 1. **External runtimes stay external.** This is a control plane, not an IDE.
 2. **Artifacts beat claims.** If the file does not exist, the gate did not run.
 3. **Skipped is a state, not silence.** Skipped nodes require reasons.
-4. **Graphify is first-class.** Code graph and design anchors belong in the main flow, not as a later add-on.
+4. **GitNexus/code intelligence is first-class.** Code intelligence and design anchors belong in the main flow, not as a later add-on.
 5. **Production readiness is full-stack.** Frontend-only proof is not enough for serious software.
 6. **Live telemetry must be real.** Blueprint/demo/replay must be labeled.
 7. **Self-heal the harness.** If a live run contradicts the harness docs/gates, propose or open a correction.

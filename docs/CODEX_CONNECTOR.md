@@ -39,7 +39,7 @@ Use:
 ```text
 RUN_ID=RUN-1042
 BRIDGE_URL=http://127.0.0.1:8787
-Use the Valdris SDLC Harness. Read AGENTS.md, project-adapter.json, 00_MAP.md, CONTEXT.md, and docs/Validation Commands.md. Follow intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff. Emit bridge events for every node/gate/artifact/approval/skip/failure. Do not emit run.completed until proof exists and every required node is passed or skipped with a reason.
+Use the Valdris SDLC Harness. Read AGENTS.md, project-adapter.json, 00_MAP.md, CONTEXT.md, and docs/Validation Commands.md. Follow intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff. For code-impacting work, run `node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local` before design claims, then run the graph/anchor gates. Emit bridge events for every node/gate/artifact/approval/skip/failure. Do not emit run.completed until proof exists and every required node is passed or skipped with a reason.
 
 Task: <your task>
 ```

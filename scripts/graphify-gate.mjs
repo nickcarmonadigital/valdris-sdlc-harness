@@ -13,7 +13,7 @@ function parseArgs(argv) {
     else if (arg === "--freshness") args.freshness = argv[++i];
     else if (arg === "--allow-stale") args.allowStale = true;
     else if (arg === "--help" || arg === "-h") {
-      console.log(`Graphify/code-graph freshness gate\n\nUsage:\n  node scripts/graphify-gate.mjs --repo .\n\nFails when graph artifacts are missing, malformed, empty, or generated for a different git HEAD.\nUse --allow-stale only for historical replay mode.\n`);
+      console.log(`Code-intelligence graph freshness gate\n\nUsage:\n  node scripts/graphify-gate.mjs --repo .\n\nFails when graph artifacts are missing, malformed, empty, generated for a different git HEAD, or GitNexus-backed artifacts are missing GitNexus evidence.\nUse --allow-stale only for historical replay mode.\n`);
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -58,6 +58,23 @@ if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) problems.push("grap
 if (!Array.isArray(graph.edges)) problems.push("graph edges must be an array");
 if (freshness.schema !== "uash.graph-freshness.v0.1") problems.push(`unexpected freshness schema: ${freshness.schema}`);
 if (freshness.graphPath !== args.graph) problems.push(`freshness graphPath mismatch: ${freshness.graphPath}`);
+
+const backend = graph.codeIntelligence?.provider || freshness.codeIntelligence?.provider;
+if (backend === "gitnexus") {
+  const evidenceArtifact = graph.codeIntelligence?.evidenceArtifact || freshness.codeIntelligence?.evidenceArtifact;
+  if (!evidenceArtifact) {
+    problems.push("GitNexus-backed graph is missing codeIntelligence.evidenceArtifact");
+  } else {
+    try {
+      const evidence = await readJsonInside(repo, evidenceArtifact, "GitNexus evidence artifact");
+      if (evidence.schema !== "uash.gitnexus.evidence.v0.1") problems.push(`unexpected GitNexus evidence schema: ${evidence.schema}`);
+      if (evidence.provider !== "GitNexus") problems.push(`unexpected GitNexus evidence provider: ${evidence.provider}`);
+      if (!evidence.ok) problems.push("GitNexus evidence artifact does not declare ok=true");
+    } catch (error) {
+      problems.push(error.message);
+    }
+  }
+}
 
 const currentCommit = runGit(repo, ["rev-parse", "HEAD"]);
 const graphCommit = graph.git?.commit || freshness.git?.commit || freshness.validForCommit;

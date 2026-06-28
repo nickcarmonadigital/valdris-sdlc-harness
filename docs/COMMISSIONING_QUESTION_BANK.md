@@ -9,14 +9,14 @@ The commissioning interview turns a repo/team into a project-specific Valdris SD
 
 ## Operating rule
 
-Graphify/code scan should pre-fill code-derived facts. The human interview should focus on operating facts code cannot know: production meaning, approval owners, quality bars, source-of-truth order, what good looks like, and what must be blocked.
+GitNexus/code-intelligence indexing should pre-fill code-derived facts. The human interview should focus on operating facts code cannot know: production meaning, approval owners, quality bars, source-of-truth order, what good looks like, and what must be blocked.
 
 ## Group index
 
 1. **Person / team operating style** — operator, answer style, autonomy, annoyances.
 2. **Project identity** — product, users, production meaning, worst agent failure.
 3. **Source of truth** — conflict precedence, issue tracker, docs/KB.
-4. **Repo and architecture** — repo role, safe paths, review-required paths, Graphify policy.
+4. **Repo and architecture** — repo role, safe paths, review-required paths, GitNexus/code-intelligence policy.
 5. **Branch and deploy model** — branches/environments, merge/deploy owner, deploy proof.
 6. **Validation and proof** — install/lint/type/test/build/smoke commands, done definition.
 7. **Red Zone / approval boundaries** — approval-required actions, approval owner, read-only policy.

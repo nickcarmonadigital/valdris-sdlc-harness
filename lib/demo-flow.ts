@@ -19,7 +19,7 @@ export const demoHarnessSteps: HarnessStep[] = [
   {
     id: "orient",
     label: "Orient",
-    description: "Source-of-truth, branch model, Graphify freshness, lane route.",
+    description: "Source-of-truth, branch model, GitNexus freshness, lane route.",
     artifact: "run/orient.json",
     state: "complete",
   },
