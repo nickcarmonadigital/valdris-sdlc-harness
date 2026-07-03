@@ -1,11 +1,11 @@
 # GitNexus / Code Intelligence Gate
 
-`graphify` remains the stable harness node ID, but the preferred backend for that node is now **GitNexus-backed code intelligence**. LLMs should not navigate a non-trivial codebase from vibes, memory, or file-name guesses.
+`code-intelligence` remains the stable harness node ID, but the preferred backend for that node is now **GitNexus-backed code intelligence**. LLMs should not navigate a non-trivial codebase from vibes, memory, or file-name guesses.
 
 ## Required flow position
 
 ```text
-intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → code-intelligence → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## Artifacts
@@ -21,14 +21,14 @@ intake → route → graphify → design-anchors → system-design → productio
 
 ```bash
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 ```
 
 Use the strict path when fallback is not acceptable:
 
 ```bash
 npm run code-intelligence:scan:strict
-npm run graphify:gate
+npm run code-intelligence:gate
 ```
 
 ## Backend boundary
@@ -41,13 +41,13 @@ npx -y gitnexus@latest analyze . --index-only --name <repo-alias> --force --work
 
 It does **not** vendor or redistribute GitNexus code. GitNexus is licensed PolyForm Noncommercial 1.0.0, so commercial/product use needs license review or a commercial permission path.
 
-If GitNexus is unavailable, `code-intelligence-scan.mjs --fallback local` can still produce the stable graph/freshness/anchor artifacts from the local static scanner. That fallback must be disclosed in the handoff; never claim GitNexus-backed analysis unless `graph/gitnexus.json` says `ok: true` and `graphify-gate` passes.
+If GitNexus is unavailable, `code-intelligence-scan.mjs --fallback local` can still produce the stable graph/freshness/anchor artifacts from the local static scanner. That fallback must be disclosed in the handoff; never claim GitNexus-backed analysis unless `graph/gitnexus.json` says `ok: true` and `code-intelligence-gate` passes.
 
 ## Skip rule
 
-The `graphify` node may only be skipped for docs-only/non-code work. The run must emit explicit skip reasons for both:
+The `code-intelligence` node may only be skipped for docs-only/non-code work. The run must emit explicit skip reasons for both:
 
-- `graphify`
+- `code-intelligence`
 - `design-anchors`
 
 ## Why this exists

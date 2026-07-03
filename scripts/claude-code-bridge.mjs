@@ -22,7 +22,7 @@ const EXTRA_ADAPTER_ROOTS = (process.env.UASH_ADAPTER_ROOTS || "")
 const artifactByNode = {
   intake: "run/intake.json",
   route: "run/route.json",
-  graphify: "graph/graph.json",
+  "code-intelligence": "graph/graph.json",
   "design-anchors": "design/anchors.json",
   "system-design": "design/system_design.md",
   "production-readiness": "production/layer-assessment.json",
@@ -39,7 +39,7 @@ const artifactByNode = {
 const labelByNode = {
   intake: "Intake",
   route: "Route",
-  graphify: "GitNexus",
+  "code-intelligence": "GitNexus",
   "design-anchors": "Code Anchors",
   "system-design": "System Design",
   "production-readiness": "Production Layers",

@@ -13,7 +13,7 @@ function parseArgs(argv) {
     else if (arg === "--freshness") args.freshness = argv[++i];
     else if (arg === "--allow-stale") args.allowStale = true;
     else if (arg === "--help" || arg === "-h") {
-      console.log(`Code-intelligence graph freshness gate\n\nUsage:\n  node scripts/graphify-gate.mjs --repo .\n\nFails when graph artifacts are missing, malformed, empty, generated for a different git HEAD, or GitNexus-backed artifacts are missing GitNexus evidence.\nUse --allow-stale only for historical replay mode.\n`);
+      console.log(`Code-intelligence graph freshness gate\n\nUsage:\n  node scripts/code-intelligence-gate.mjs --repo .\n\nFails when graph artifacts are missing, malformed, empty, generated for a different git HEAD, or GitNexus-backed artifacts are missing GitNexus evidence.\nUse --allow-stale only for historical replay mode.\n`);
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -52,8 +52,8 @@ const graph = await readJsonInside(repo, args.graph, "graph artifact");
 const freshness = await readJsonInside(repo, args.freshness, "freshness artifact");
 const problems = [];
 
-if (graph.schema !== "uash.graphify.compat.v0.1") problems.push(`unexpected graph schema: ${graph.schema}`);
-if (!graph.graphifyCompatible) problems.push("graph artifact does not declare graphifyCompatible=true");
+if (graph.schema !== "uash.code-intelligence.graph.v0.1") problems.push(`unexpected graph schema: ${graph.schema}`);
+if (!graph.codeIntelligenceCompatible) problems.push("graph artifact does not declare codeIntelligenceCompatible=true");
 if (!Array.isArray(graph.nodes) || graph.nodes.length === 0) problems.push("graph contains no nodes");
 if (!Array.isArray(graph.edges)) problems.push("graph edges must be an array");
 if (freshness.schema !== "uash.graph-freshness.v0.1") problems.push(`unexpected freshness schema: ${freshness.schema}`);

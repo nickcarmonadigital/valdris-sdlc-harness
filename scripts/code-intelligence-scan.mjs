@@ -128,10 +128,10 @@ function runGitNexus(repo, args) {
 }
 
 function runLocalGraph(repo, args, provider, evidence) {
-  const graphifyScript = path.join(SCRIPT_DIR, "graphify-scan.mjs");
-  if (!existsSync(graphifyScript)) throw new Error(`Missing graphify-scan.mjs next to ${fileURLToPath(import.meta.url)}`);
-  const graphifyArgs = [
-    graphifyScript,
+  const localScanScript = path.join(SCRIPT_DIR, "code-intelligence-local-scan.mjs");
+  if (!existsSync(localScanScript)) throw new Error(`Missing code-intelligence-local-scan.mjs next to ${fileURLToPath(import.meta.url)}`);
+  const localScanArgs = [
+    localScanScript,
     "--repo",
     repo,
     "--graph",
@@ -144,11 +144,11 @@ function runLocalGraph(repo, args, provider, evidence) {
     provider,
   ];
   if (evidence?.ok) {
-    graphifyArgs.push("--backend-evidence", args.evidence, "--backend-index-name", evidence.indexName);
+    localScanArgs.push("--backend-evidence", args.evidence, "--backend-index-name", evidence.indexName);
   }
-  const result = run(process.execPath, graphifyArgs, { cwd: repo, env: process.env });
+  const result = run(process.execPath, localScanArgs, { cwd: repo, env: process.env });
   if (result.exitCode !== 0) {
-    throw new Error(`graphify-scan failed\n${result.stdout}\n${result.stderr}`);
+    throw new Error(`code-intelligence-scan failed\n${result.stdout}\n${result.stderr}`);
   }
   return result;
 }
@@ -171,7 +171,7 @@ if (args.provider === "gitnexus") {
   }
 }
 
-const graphify = runLocalGraph(repo, args, providerUsed, evidence);
+const localGraph = runLocalGraph(repo, args, providerUsed, evidence);
 
 console.log(JSON.stringify({
   ok: true,
@@ -183,9 +183,9 @@ console.log(JSON.stringify({
   anchors: args.anchors,
   gitnexusEvidence: evidence ? args.evidence : null,
   gitnexusOk: evidence ? evidence.ok : false,
-  graphify: {
-    exitCode: graphify.exitCode,
-    stdout: graphify.stdout,
-    stderr: graphify.stderr,
+  localGraph: {
+    exitCode: localGraph.exitCode,
+    stdout: localGraph.stdout,
+    stderr: localGraph.stderr,
   },
 }, null, 2));

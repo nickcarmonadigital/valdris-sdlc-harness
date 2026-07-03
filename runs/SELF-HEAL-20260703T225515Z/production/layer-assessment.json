@@ -1,0 +1,12 @@
+{
+  "schema": "uash.production-layer-assessment.v1",
+  "runId": "SELF-HEAL-20260703T225515Z",
+  "layers": {
+    "docs-generated-prompts": "required",
+    "ci-cd": "required",
+    "backend-api-logic": "required",
+    "ui-copy": "required",
+    "cloud-compute": "skipped"
+  },
+  "summary": "Harness naming/API hotfix; no deployed cloud resource mutated."
+}

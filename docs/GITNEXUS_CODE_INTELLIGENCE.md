@@ -1,14 +1,14 @@
 # GitNexus Code Intelligence
 
-This repo uses GitNexus as the preferred backend for the harness `graphify` node.
+This repo uses GitNexus as the preferred backend for the harness `code-intelligence` node.
 
-See [`GRAPHIFY_CODE_GRAPH.md`](GRAPHIFY_CODE_GRAPH.md) for the full gate contract.
+See [`CODE_INTELLIGENCE_GRAPH.md`](CODE_INTELLIGENCE_GRAPH.md) for the full gate contract.
 
 ## Command
 
 ```bash
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 ```
 
 ## Artifacts

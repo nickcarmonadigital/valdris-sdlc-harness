@@ -22,9 +22,9 @@
 - [ ] Generate Prompt Library from project adapter.
 - [ ] Run coherence check.
 
-## Epic 2 — Graphify adapter
+## Epic 2 — GitNexus code-intelligence adapter
 
-- [ ] Run Graphify scan against local repo path.
+- [ ] Run GitNexus code-intelligence scan against local repo path.
 - [ ] Store graph snapshot metadata.
 - [ ] Generate Codebase Map.
 - [ ] Generate Blast Radius Map.

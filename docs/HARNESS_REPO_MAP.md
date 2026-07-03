@@ -7,7 +7,7 @@ Generated as a grounded repo-readout for Nick. This file is intentionally blunt:
 Commands run against `/root/valdris-sdlc-harness`:
 
 ```bash
-npm run code-intelligence:scan && npm run graphify:gate
+npm run code-intelligence:scan && npm run code-intelligence:gate
 npm run verify:harness
 ```
 
@@ -15,7 +15,7 @@ Current verified facts:
 
 ```json
 {
-  "graphify": {
+  "code-intelligence": {
     "ok": true,
     "nodes": 23,
     "edges": 5,
@@ -35,9 +35,9 @@ Current verified facts:
     "codeQualityGuardrails": true,
     "enterpriseProofBank": true,
     "operatingIntelligence": true,
-    "graphifyFlowNode": true,
-    "graphifyGeneratedScripts": true,
-    "graphifyGateSmoke": true,
+    "code-intelligenceFlowNode": true,
+    "code-intelligenceGeneratedScripts": true,
+    "code-intelligenceGateSmoke": true,
     "artifactFileVerification": true,
     "symlinkEscapeBlocked": true,
     "redZoneCompletionBlocked": true,
@@ -88,8 +88,8 @@ flowchart TB
 stateDiagram-v2
   [*] --> intake
   intake --> route
-  route --> graphify
-  graphify --> design_anchors
+  route --> code-intelligence
+  code-intelligence --> design_anchors
   design_anchors --> system_design
   system_design --> production_readiness
   production_readiness --> cloud_platform
@@ -113,8 +113,8 @@ stateDiagram-v2
 ```mermaid
 flowchart LR
   intake["intake<br/>run/intake.json"] --> route["route<br/>run/route.json"]
-  route --> graphify["graphify<br/>graph/graph.json"]
-  graphify --> anchors["design-anchors<br/>design/anchors.json"]
+  route --> code-intelligence["code-intelligence<br/>graph/graph.json"]
+  code-intelligence --> anchors["design-anchors<br/>design/anchors.json"]
   anchors --> design["system-design<br/>design/system_design.md"]
   design --> prod["production-readiness<br/>production/layer-assessment.json"]
   prod --> cloud["cloud-platform<br/>cloud/service-map.json or skip"]
@@ -159,15 +159,15 @@ valdris-sdlc-harness/
 │   ├── uash-emit-event.mjs           # CLI event emitter for agents
 │   ├── verify-harness.mjs            # adversarial verifier suite
 │   ├── code-intelligence-scan.mjs    # GitNexus-backed scan wrapper / evidence writer
-│   ├── graphify-scan.mjs             # local Graphify-compatible fallback graph writer
-│   ├── graphify-gate.mjs             # graph schema/freshness gate
+│   ├── code-intelligence-local-scan.mjs             # local Code-intelligence-compatible fallback graph writer
+│   ├── code-intelligence-gate.mjs             # graph schema/freshness gate
 │   ├── anchor-gate.mjs               # validates design anchors cite real files
 │   └── simulate-agent-run.mjs        # local demo event simulation
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── UNIVERSAL_COMMISSIONING_FLOW.md
 │   ├── CONNECTOR_EVENT_CONTRACT.md
-│   ├── GRAPHIFY_CODE_GRAPH.md
+│   ├── CODE_INTELLIGENCE_GRAPH.md
 │   ├── PRODUCTION_READINESS_LAYER_PACK.md
 │   ├── CLOUD_PLATFORM_ENGINEERING.md
 │   ├── QA_RELEASE_AND_SELF_HEALING.md
@@ -214,7 +214,7 @@ flowchart TD
   CodeIntel --> GraphJson["graph/graph.json"]
   CodeIntel --> Freshness["graph/freshness.json"]
   CodeIntel --> Anchors["design/anchors.json"]
-  GraphGate["scripts/graphify-gate.mjs"] --> GraphJson
+  GraphGate["scripts/code-intelligence-gate.mjs"] --> GraphJson
   AnchorGate["scripts/anchor-gate.mjs"] --> Anchors
 ```
 
@@ -361,7 +361,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | Capability | Current status | Evidence | Honest read |
 |---|---:|---|---|
 | Universal SDLC stage flow | Built | `lib/run-events.ts`, `lib/control-plane.ts`, connector contract | Real core flow exists |
-| GitNexus/code-intelligence node | Built + verified | `graphify`, `design-anchors`, `npm run code-intelligence:*` | GitNexus preferred backend with disclosed local fallback |
+| GitNexus/code-intelligence node | Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*` | GitNexus preferred backend with disclosed local fallback |
 | Project commissioning generator | Built + verified | `scripts/commission-harness.mjs`, verifier generated pack | Expanded to 30 groups / 150 questions with foundation + operating-intelligence fields |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs | Teaches target foundation and anti-spaghetti rules before feature work |
 | Operating-intelligence commissioning | Built structurally | adapter sections for evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, PR agents, MCP/A2A, lifecycle, team registry, human protocol | Questions/docs exist; executable gates remain next buildout |

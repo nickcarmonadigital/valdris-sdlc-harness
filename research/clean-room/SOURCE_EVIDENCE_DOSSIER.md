@@ -772,7 +772,7 @@ Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main`
 
 This source defines the project-specific Utari implementation that should be split into:
 
-1. Universal core: lanes/stages, run packets, gate scripts, Answer Contract, Graphify pattern, ADR/self-heal pattern.
+1. Universal core: lanes/stages, run packets, gate scripts, Answer Contract, GitNexus code-intelligence pattern, ADR/self-heal pattern.
 2. Project adapter: Utari-specific source truth, branch/deploy rules, Red Zone, validation commands, Linear/Jelani/team style, runtime maps.
 
 
@@ -801,7 +801,7 @@ Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main/references/Pro
 - G. Ship (staging QA, deploy_verify, promote)
 - H. Operate (watch and reconcile)
 - I. Full-lane prompts (the whole route, one per lane)
-- J. Graphify (ground-truth, query before you guess)
+- J. Code Intelligence (ground-truth, query before you guess)
 - K. Self-healing and harness maintenance
 - L. Anti-skip nudges (when it shortcuts the flow)
 

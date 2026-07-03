@@ -71,7 +71,7 @@ Run before claiming done:
 npm run typecheck
 npm run build
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 npm run verify:harness
 npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 ```

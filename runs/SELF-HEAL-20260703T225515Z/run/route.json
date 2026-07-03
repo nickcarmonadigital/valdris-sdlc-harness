@@ -1,0 +1,13 @@
+{
+  "schema": "uash.route.v1",
+  "lane": "harness-self-healing",
+  "workType": "terminology-and-interface-correction",
+  "phase": "v0.6.2",
+  "changes": [
+    "nodeId code-intelligence",
+    "package scripts code-intelligence:*",
+    "renamed local scan/gate scripts",
+    "renamed docs",
+    "zero retired-name search results"
+  ]
+}

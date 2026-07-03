@@ -54,7 +54,7 @@ export type RunEvent = {
 export const workflowNodes: WorkflowNode[] = [
   { id: "intake", label: "Task intake", shortLabel: "Intake", lane: "Trigger", artifact: "run/intake.json", x: 4, y: 8 },
   { id: "route", label: "Lane route", shortLabel: "Route", lane: "Harness", artifact: "run/route.json", x: 18, y: 8 },
-  { id: "graphify", label: "GitNexus/code intelligence", shortLabel: "GitNexus", lane: "Graph", artifact: "graph/graph.json", x: 32, y: 8 },
+  { id: "code-intelligence", label: "GitNexus/code intelligence", shortLabel: "GitNexus", lane: "Graph", artifact: "graph/graph.json", x: 32, y: 8 },
   { id: "design-anchors", label: "Code anchors", shortLabel: "Anchors", lane: "Graph", artifact: "design/anchors.json", x: 46, y: 8 },
   { id: "system-design", label: "System design", shortLabel: "Design", lane: "System", artifact: "design/system_design.md", x: 60, y: 8 },
   { id: "production-readiness", label: "Production layer assessment", shortLabel: "13 Layers", lane: "Production", artifact: "production/layer-assessment.json", x: 76, y: 8 },
@@ -70,8 +70,8 @@ export const workflowNodes: WorkflowNode[] = [
 
 export const workflowEdges = [
   ["intake", "route"],
-  ["route", "graphify"],
-  ["graphify", "design-anchors"],
+  ["route", "code-intelligence"],
+  ["code-intelligence", "design-anchors"],
   ["design-anchors", "system-design"],
   ["system-design", "production-readiness"],
   ["production-readiness", "cloud-platform"],
@@ -112,7 +112,7 @@ export const demoRunEvents: RunEvent[] = [
     type: "artifact.written",
     ts: "00:07",
     actor: "harness",
-    nodeId: "graphify",
+    nodeId: "code-intelligence",
     artifact: "graph/graph.json",
     message: "GitNexus/code-intelligence scan ran before codebase reasoning and blast-radius claims.",
     status: "ok",

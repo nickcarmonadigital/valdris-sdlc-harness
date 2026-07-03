@@ -1,0 +1,6 @@
+{
+  "schema": "uash.run-mode.v1",
+  "mode": "live",
+  "eventSource": "local-jsonl",
+  "note": "Real repo naming correction: remove retired code-map vendor naming and make GitNexus/code-intelligence canonical."
+}

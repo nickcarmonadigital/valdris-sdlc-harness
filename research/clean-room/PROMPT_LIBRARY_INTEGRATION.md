@@ -105,7 +105,7 @@ Prompt Library sections become generated prompt packs:
 - validation/proof/smoke
 - ship/deploy/promote
 - operate/watch
-- Graphify queries
+- GitNexus code-intelligence queries
 - self-heal/correction
 - lane full-flow prompts
 

@@ -149,8 +149,8 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
   await postEvent(port, runId, baseEvent("artifact.written", "intake", "intake artifact", { artifact: "run/intake.json", actor: "codex" }));
   await writeArtifact(artifactRoot, "run/route.json", JSON.stringify({ lane: "verification" }));
   await postEvent(port, runId, baseEvent("artifact.written", "route", "route artifact", { artifact: "run/route.json", actor: "codex" }));
-  await writeArtifact(artifactRoot, "graph/graph.json", JSON.stringify({ schema: "uash.graphify.compat.v0.1", nodes: [{ path: "package.json" }], edges: [], graphifyCompatible: true }));
-  await postEvent(port, runId, baseEvent("artifact.written", "graphify", "graphify/code graph artifact", { artifact: "graph/graph.json", actor: "codex" }));
+  await writeArtifact(artifactRoot, "graph/graph.json", JSON.stringify({ schema: "uash.code-intelligence.graph.v0.1", nodes: [{ path: "package.json" }], edges: [], codeIntelligenceCompatible: true }));
+  await postEvent(port, runId, baseEvent("artifact.written", "code-intelligence", "code-intelligence/code graph artifact", { artifact: "graph/graph.json", actor: "codex" }));
   await writeArtifact(artifactRoot, "graph/freshness.json", JSON.stringify({ schema: "uash.graph-freshness.v0.1", graphPath: "graph/graph.json" }));
   await writeArtifact(artifactRoot, "design/anchors.json", JSON.stringify({ schema: "uash.design-anchors.v0.1", anchors: [{ path: "run/route.json", reason: "verification anchor" }] }));
   await postEvent(port, runId, baseEvent("artifact.written", "design-anchors", "design anchors artifact", { artifact: "design/anchors.json", actor: "codex" }));
@@ -225,7 +225,7 @@ try {
   await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Codex Runtime Prompt.md"), "utf8");
-  await readFile(path.join(generatedOut, "docs", "Graphify Code Graph.md"), "utf8");
+  await readFile(path.join(generatedOut, "docs", "Code Intelligence Graph.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "GitNexus Code Intelligence.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Good Looks Like Foundation.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Code Quality Guardrails.md"), "utf8");
@@ -236,8 +236,8 @@ try {
   await readFile(path.join(generatedOut, "scripts", "uash-emit-event.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "uash-write-proof.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "code-intelligence-scan.mjs"), "utf8");
-  await readFile(path.join(generatedOut, "scripts", "graphify-scan.mjs"), "utf8");
-  await readFile(path.join(generatedOut, "scripts", "graphify-gate.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "code-intelligence-local-scan.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "code-intelligence-gate.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "anchor-gate.mjs"), "utf8");
 
   const rootEnterpriseProofBank = await readFile(path.join(root, "docs", "ENTERPRISE_PROOF_BANK.md"), "utf8");
@@ -257,7 +257,7 @@ try {
   assert(claudeConnectorDoc.startsWith("# Claude Code Connector v0.5"), "Claude connector doc version drift");
   assert(codexConnectorDoc.startsWith("# Codex Connector v0.5"), "Codex connector doc version drift");
   await run(node, ["scripts/code-intelligence-scan.mjs", "--repo", ".", "--provider", "local"], { cwd: generatedOut });
-  await run(node, ["scripts/graphify-gate.mjs", "--repo", ".", "--allow-stale"], { cwd: generatedOut });
+  await run(node, ["scripts/code-intelligence-gate.mjs", "--repo", ".", "--allow-stale"], { cwd: generatedOut });
   await run(node, ["scripts/anchor-gate.mjs", "--repo", "."], { cwd: generatedOut });
 
   await mkdir(pyTarget, { recursive: true });
@@ -279,7 +279,7 @@ try {
   assert(health.ok, "bridge health did not return ok");
   assert(health.contractVersion === "uash.connector-events.v0.5", "bridge contract version mismatch");
   assert(health.proofSchema === "uash.proof.v1" && health.adapterAware && health.humanApprovalTokenConfigured, "bridge hardening metadata missing");
-  assert(health.nodeIds.includes("graphify") && health.nodeIds.includes("design-anchors"), "Graphify/design anchor nodes missing from bridge health");
+  assert(health.nodeIds.includes("code-intelligence") && health.nodeIds.includes("design-anchors"), "Code Intelligence/design anchor nodes missing from bridge health");
 
   await run(node, [
     "scripts/uash-emit-event.mjs",
@@ -475,7 +475,7 @@ try {
       {
         commissioningQuestionGroups: questionGroups.length,
         commissioningQuestions: questionGroups.reduce((count, group) => count + group.questions.length, 0),
-        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Graphify Code Graph.md", "docs/GitNexus Code Intelligence.md", "docs/Proof Schema.md", "docs/Good Looks Like Foundation.md", "docs/Code Quality Guardrails.md", "docs/Enterprise Proof Bank.md", "docs/Operating Intelligence Layer.md", "docs/Team Harness Registry.md", "docs/Human Agent Protocol.md", "scripts/uash-emit-event.mjs", "scripts/uash-write-proof.mjs", "scripts/code-intelligence-scan.mjs", "scripts/graphify-scan.mjs"],
+        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Code Intelligence Graph.md", "docs/GitNexus Code Intelligence.md", "docs/Proof Schema.md", "docs/Good Looks Like Foundation.md", "docs/Code Quality Guardrails.md", "docs/Enterprise Proof Bank.md", "docs/Operating Intelligence Layer.md", "docs/Team Harness Registry.md", "docs/Human Agent Protocol.md", "scripts/uash-emit-event.mjs", "scripts/uash-write-proof.mjs", "scripts/code-intelligence-scan.mjs", "scripts/code-intelligence-local-scan.mjs"],
         adapterSchema: adapter.schema,
         generatorVersion: adapter.generatorVersion,
         foundationBlueprint: true,
@@ -485,11 +485,11 @@ try {
         productionLayers: adapter.productionReadiness.layers.length,
         bridgeHealth: health.service,
         bridgeContractVersion: health.contractVersion,
-        graphifyFlowNode: true,
+        codeIntelligenceFlowNode: true,
         gitnexusPrimaryProvider: true,
         codeIntelligenceScanScript: true,
-        graphifyGeneratedScripts: true,
-        graphifyGateSmoke: true,
+        codeIntelligenceGeneratedScripts: true,
+        codeIntelligenceGateSmoke: true,
         generatedEmitterSmoke: true,
         proofSchemaValidation: true,
         failedProofBlocked: true,

@@ -18,7 +18,7 @@ It does this by:
 Sign up / create workspace
 → create project
 → connect GitHub/local repo read-only
-→ run Graphify scan
+→ run GitNexus code-intelligence scan
 → complete Harness Commissioning Interview
 → generate project adapter + harness pack
 → review Source of Truth + Red Zone + Validation commands
@@ -31,7 +31,7 @@ Sign up / create workspace
 
 ### 1. Harness Commissioning
 
-Collects human/team facts Graphify cannot know:
+Collects human/team facts Code Intelligence cannot know:
 
 - project purpose and users
 - production definition
@@ -47,7 +47,7 @@ Collects human/team facts Graphify cannot know:
 
 Output: `project.yaml`, `source_truth.yaml`, `red_zone.yaml`, `validation.yaml`, generated docs/workspaces/prompts.
 
-### 2. Repo Intelligence / Graphify
+### 2. Repo Intelligence / Code Intelligence
 
 - Build code graph from repo(s).
 - Identify languages/frameworks/entrypoints.
@@ -158,7 +158,7 @@ done = required_artifacts_present && required_artifacts_status_pass || explicit_
 ## MVP acceptance criteria
 
 - Commission one local repo into a generated harness pack.
-- Generate project adapter files from interview + Graphify.
+- Generate project adapter files from interview + Code Intelligence.
 - Create Kanban board and task.
 - Run one toy task through intake → plan → proof → handoff.
 - Finish-line validator blocks missing proof.

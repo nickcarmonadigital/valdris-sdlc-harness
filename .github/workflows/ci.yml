@@ -35,8 +35,8 @@ jobs:
       - name: Code intelligence local scan
         run: node scripts/code-intelligence-scan.mjs --repo . --provider local
 
-      - name: Graphify / anchor gates
-        run: npm run graphify:gate
+      - name: Code intelligence / anchor gates
+        run: npm run code-intelligence:gate
 
       - name: Harness adversarial verifier
         run: npm run verify:harness

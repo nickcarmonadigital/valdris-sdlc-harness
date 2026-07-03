@@ -1,6 +1,0 @@
-{
-  "schema": "uash.skip.v1",
-  "nodeId": "cloud-platform",
-  "status": "skipped",
-  "reason": "No AWS/cloud provider resource, IAM policy, secret, network, deployment, or paid provider setting changed in this code-only hardening run."
-}

@@ -17,15 +17,15 @@ If `RUN_ID` is missing, ask for it before changing files. Do not invent one.
 ## Required flow
 
 ```text
-intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → code-intelligence → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## Rules
 
 1. Read `AGENTS.md`, `project-adapter.json`, `00_MAP.md`, `CONTEXT.md`, `docs/Validation Commands.md`, `docs/Good Looks Like Foundation.md`, `docs/Code Quality Guardrails.md`, and `docs/Enterprise Proof Bank.md` before planning.
-2. For codebase, architecture, refactor, debugging, or cross-file work, run `node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local`, then `node scripts/graphify-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .` before design claims. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.
+2. For codebase, architecture, refactor, debugging, or cross-file work, run `node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local`, then `node scripts/code-intelligence-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .` before design claims. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.
 3. Emit a real bridge event for every node/gate/artifact/approval/skip/failure when `RUN_ID` and `BRIDGE_URL` are provided.
-4. Use `node.skipped` with `--skip-reason` for irrelevant nodes, including `graphify` and `design-anchors` on docs-only/non-code runs.
+4. Use `node.skipped` with `--skip-reason` for irrelevant nodes, including `code-intelligence` and `design-anchors` on docs-only/non-code runs.
 5. Use `node.failed` with `--failure-reason` and `--recovery-path` for failed nodes.
 6. Stop for Red Zone approval before production deploys, secrets/env changes, auth/billing/customer data, destructive ops, provider config, or cloud resource mutation.
 7. Do not emit `run.completed` until `proof/proof.json` validates as passing `uash.proof.v1` and every required node is passed or skipped with a reason.

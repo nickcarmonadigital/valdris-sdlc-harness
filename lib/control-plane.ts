@@ -125,7 +125,7 @@ export const workflowNodes: WorkflowNode[] = [
     y: 8,
   },
   {
-    id: "graphify",
+    id: "code-intelligence",
     label: "GitNexus",
     lane: "graph",
     description: "Build or refresh GitNexus-backed code intelligence before codebase, architecture, refactor, or debugging claims.",
@@ -236,8 +236,8 @@ export const workflowNodes: WorkflowNode[] = [
 
 export const workflowEdges = [
   ["intake", "route"],
-  ["route", "graphify"],
-  ["graphify", "design-anchors"],
+  ["route", "code-intelligence"],
+  ["code-intelligence", "design-anchors"],
   ["design-anchors", "system-design"],
   ["system-design", "production-readiness"],
   ["production-readiness", "cloud-platform"],
@@ -318,7 +318,7 @@ export const demoRuns: AppRun[] = [
         type: "artifact.written",
         at: "22:33",
         actor: "harness",
-        nodeId: "graphify",
+        nodeId: "code-intelligence",
         artifact: "graph/graph.json",
         message: "GitNexus/code-intelligence scan pinned current repo topology before SDLC model changes.",
         status: "ok",
@@ -418,7 +418,7 @@ export const demoRuns: AppRun[] = [
         type: "artifact.written",
         at: "22:52",
         actor: "harness",
-        nodeId: "graphify",
+        nodeId: "code-intelligence",
         artifact: "graph/graph.json",
         message: "GitNexus/code-intelligence scan required before cloud/platform architecture claims.",
         status: "ok",

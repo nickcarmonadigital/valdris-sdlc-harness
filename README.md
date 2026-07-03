@@ -121,7 +121,7 @@ See the rendered flow diagrams in [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAI
 ```text
 intake
 → route
-→ graphify
+→ code-intelligence
 → design-anchors
 → system-design
 → production-readiness
@@ -141,7 +141,7 @@ These nodes are not just labels. Each node has an expected artifact path and con
 |---|---|
 | `intake` | `run/intake.json` |
 | `route` | `run/route.json` |
-| `graphify` | `graph/graph.json` |
+| `code-intelligence` | `graph/graph.json` |
 | `design-anchors` | `design/anchors.json` |
 | `system-design` | `design/system_design.md` |
 | `production-readiness` | `production/layer-assessment.json` |
@@ -156,11 +156,11 @@ These nodes are not just labels. Each node has an expected artifact path and con
 
 ## GitNexus-backed code intelligence
 
-The `graphify` node now uses **GitNexus as the preferred code-intelligence backend**. The harness does **not** vendor GitNexus; it invokes the external CLI in index-only mode and writes an evidence artifact.
+The `code-intelligence` node now uses **GitNexus as the preferred code-intelligence backend**. The harness does **not** vendor GitNexus; it invokes the external CLI in index-only mode and writes an evidence artifact.
 
 ```bash
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 ```
 
 That produces:
@@ -236,7 +236,7 @@ Rule: **Demo data must be labeled Demo and must never pretend to be Live Run or 
 | SDLC node chain | canonical node IDs/artifacts | skip policies and required proof |
 | Run packet model | events, artifacts, approvals, gates | issue IDs, branch names, owners |
 | Proof gates | proof/red-zone/smoke/self-heal enforcement | actual validation commands |
-| Graphify slot | GitNexus-backed code intelligence + graph/code anchors | repo-specific graph paths, index alias, and fallback policy |
+| Code Intelligence slot | GitNexus-backed code intelligence + graph/code anchors | repo-specific graph paths, index alias, and fallback policy |
 | Answer contract | bottom line, why, proof, fix, your call | tone and stakeholder style |
 
 ## Project commissioning output
@@ -272,8 +272,8 @@ runs/_run-template/README.md
 scripts/uash-emit-event.mjs
 scripts/uash-write-proof.mjs
 scripts/code-intelligence-scan.mjs
-scripts/graphify-scan.mjs
-scripts/graphify-gate.mjs
+scripts/code-intelligence-local-scan.mjs
+scripts/code-intelligence-gate.mjs
 scripts/anchor-gate.mjs
 commissioning-review.md
 ```
@@ -290,8 +290,8 @@ commissioning-review.md
 | `scripts/uash-emit-event.mjs` | CLI event emitter for runtimes |
 | `scripts/verify-harness.mjs` | adversarial verifier for generator + bridge + gates |
 | `scripts/code-intelligence-scan.mjs` | GitNexus-backed scan wrapper; writes GitNexus evidence and stable graph artifacts |
-| `scripts/graphify-scan.mjs` | local Graphify-compatible graph generator / fallback artifact writer |
-| `scripts/graphify-gate.mjs` | graph schema/freshness gate |
+| `scripts/code-intelligence-local-scan.mjs` | local Code-intelligence-compatible graph generator / fallback artifact writer |
+| `scripts/code-intelligence-gate.mjs` | graph schema/freshness gate |
 | `scripts/anchor-gate.mjs` | design-anchor file citation gate |
 | `docs/ENTERPRISE_PROOF_BANK.md` | enterprise/domain proof-bank standard |
 | `docs/OPERATING_INTELLIGENCE_LAYER.md` | evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, MCP/A2A, lifecycle |
@@ -325,7 +325,7 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 | Next.js visual monitor | Built MVP | `app/`, `components/HarnessTelemetryApp.tsx` |
 | Run queue/control-plane shell | Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts` |
 | Blueprint / Demo / Live / Replay truth model | Built + verified | bundled seed data is Demo; Live requires connector events; Replay is historical run data |
-| GitNexus/code-intelligence node | Built + verified | `graphify`, `design-anchors`, `npm run code-intelligence:*` |
+| GitNexus/code-intelligence node | Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*` |
 | Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 30 groups / 150 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
@@ -353,7 +353,7 @@ npm ci
 npm run typecheck
 npm run build
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 npm run verify:harness
 npm run proof:write -- --run-id LOCAL-VERIFY --command "npm run typecheck" --command "npm run build" --out proof/proof.json
 npm run dev

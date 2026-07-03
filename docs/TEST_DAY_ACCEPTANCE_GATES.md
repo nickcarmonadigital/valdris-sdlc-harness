@@ -28,7 +28,7 @@ npm run typecheck
 npm run build
 npm run verify:harness
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 ```
 
@@ -41,7 +41,7 @@ CLAUDE.md
 .claude/commands/valdris-sdlc-harness.md
 docs/Codex Runtime Prompt.md
 docs/Proof Schema.md
-docs/Graphify Code Graph.md
+docs/Code Intelligence Graph.md
 docs/GitNexus Code Intelligence.md
 docs/Good Looks Like Foundation.md
 docs/Code Quality Guardrails.md
@@ -52,8 +52,8 @@ docs/Human Agent Protocol.md
 scripts/code-intelligence-scan.mjs
 scripts/uash-emit-event.mjs
 scripts/uash-write-proof.mjs
-scripts/graphify-scan.mjs
-scripts/graphify-gate.mjs
+scripts/code-intelligence-local-scan.mjs
+scripts/code-intelligence-gate.mjs
 scripts/anchor-gate.mjs
 ```
 

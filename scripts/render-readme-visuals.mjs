@@ -256,7 +256,7 @@ function repoOperatingMap() {
   });
 
   s += cluster(804, 128, 332, 262, "Repo intelligence", colors.blue);
-  ["code-intelligence-scan.mjs", "graphify-gate.mjs", "anchor-gate.mjs", "graph/gitnexus.json", "graph/graph.json", "design/anchors.json"].forEach((t, i) => {
+  ["code-intelligence-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "graph/gitnexus.json", "graph/graph.json", "design/anchors.json"].forEach((t, i) => {
     s += miniCard(832, 174 + i * 38, 276, 31, t, i < 3 ? colors.blue : colors.green, { size: 11.5 });
   });
 

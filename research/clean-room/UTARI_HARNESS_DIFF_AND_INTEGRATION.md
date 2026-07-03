@@ -23,7 +23,7 @@ These are reusable for any software team:
 | run packet template | durable per-work artifact bundle |
 | proof/RCA/smoke/redzone/review gates | mechanical enforcement |
 | Answer Contract | consistent final answer shape |
-| Graphify integration pattern | code graph grounding |
+| Code Intelligence integration pattern | code graph grounding |
 | ADR/self-heal pattern | durable decision + correction loop |
 | Prompt Library | anti-skip workflow invocation layer |
 
@@ -50,7 +50,7 @@ universal-harness-core/
   run packet schema/
   prompt library templates/
   answer contract schema/
-  graphify adapter/
+  code-intelligence adapter/
   adr/self-heal schema/
 
 project-adapter/
@@ -65,8 +65,8 @@ project-adapter/
 
 ## Integration design
 
-1. **Commissioning interview** collects the human/team context Graphify cannot infer.
-2. **Graphify scan** fills code topology, symbols, entrypoints, blast radius, and graph freshness.
+1. **Commissioning interview** collects the human/team context Code Intelligence cannot infer.
+2. **GitNexus code-intelligence scan** fills code topology, symbols, entrypoints, blast radius, and graph freshness.
 3. **Harness generator** instantiates the universal core into a project adapter.
 4. **Coherence check** ensures docs/stages/gates are internally consistent.
 5. **Prompt Library generator** creates project-specific master-flow prompts and anti-skip nudges.

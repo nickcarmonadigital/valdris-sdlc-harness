@@ -79,7 +79,7 @@ export const harnessNodes: HarnessNode[] = [
     recovery: "If detection is wrong, edit the adapter and mark that field as human-confirmed.",
   },
   {
-    id: "graphify",
+    id: "code-intelligence",
     label: "GitNexus code-intelligence scan",
     layer: "Commission",
     kind: "scan",
@@ -419,7 +419,7 @@ export const scenarios: Scenario[] = [
     subtitle: "Bundled seed scenario showing SDLC as parent, system design, 13 production layers, cloud skip reason, break-it QA block, and self-heal path.",
     activeNodeId: "break-it-qa",
     nodeStates: stateMap([...baseDone, "system-design", "production-readiness", "design-anchors", "implement"], {
-      graphify: "skipped",
+      "code-intelligence": "skipped",
       "debug-skill": "skipped",
       "grill-skill": "skipped",
       "prd-skill": "done",
@@ -438,7 +438,7 @@ export const scenarios: Scenario[] = [
       "finish-line": "pending",
     }),
     reasons: {
-      graphify: "Skipped because this run changes harness docs/model/UI copy, not code architecture claims. If code-path claims appear, GitNexus/code intelligence reopens.",
+      "code-intelligence": "Skipped because this run changes harness docs/model/UI copy, not code architecture claims. If code-path claims appear, GitNexus/code intelligence reopens.",
       "debug-skill": "Skipped because this is not a reproduced bug.",
       "grill-skill": "Skipped because requirements were already specified by Nick in conversation.",
       "refactor-skill": "Skipped because this is product model expansion, not behavior-preserving code movement.",
@@ -464,7 +464,7 @@ export const scenarios: Scenario[] = [
     mode: "Blueprint",
     subtitle: "Shows AWS/cloud lane nodes: service map, IAM/secrets, observability/cost/rollback, and approval before mutation.",
     activeNodeId: "redzone-gate",
-    nodeStates: stateMap([...baseDone, "graphify", "system-design", "production-readiness", "cloud-platform", "iam-secrets-check", "observability-cost-rollback", "design-anchors", "implement"], {
+    nodeStates: stateMap([...baseDone, "code-intelligence", "system-design", "production-readiness", "cloud-platform", "iam-secrets-check", "observability-cost-rollback", "design-anchors", "implement"], {
       "debug-skill": "skipped",
       "grill-skill": "skipped",
       "prd-skill": "skipped",
@@ -500,7 +500,7 @@ export const scenarios: Scenario[] = [
     subtitle: "Shows Blueprint mode and skip ledger for a docs-only run with no fake live-state claim.",
     activeNodeId: "handoff",
     nodeStates: stateMap([...baseDone, "design-anchors", "implement", "qa-plan", "proof-gate", "review-gate"], {
-      graphify: "skipped",
+      "code-intelligence": "skipped",
       "system-design": "skipped",
       "debug-skill": "skipped",
       "grill-skill": "skipped",
@@ -518,7 +518,7 @@ export const scenarios: Scenario[] = [
       "finish-line": "pending",
     }),
     reasons: {
-      graphify: "Skipped because this docs-only run makes no code-path or architecture claim.",
+      "code-intelligence": "Skipped because this docs-only run makes no code-path or architecture claim.",
       "system-design": "Skipped because no architecture decision or hard-to-reverse design change is being made.",
       "production-readiness": "Skipped because no runtime/product behavior changes; no production layer is touched.",
       "cloud-platform": "Skipped because there is no deploy, cloud resource, IAM, secret, network, or provider change.",
@@ -532,7 +532,7 @@ export const scenarios: Scenario[] = [
     },
     events: [
       { at: "15:02", type: "run.mode_set", nodeId: "mode-boundary", message: "Blueprint mode: static topology explanation only.", status: "done", artifact: "run/mode.json" },
-      { at: "15:05", type: "node.skipped", nodeId: "graphify", message: "GitNexus/code-intelligence skipped: no code or architecture claim in scope.", status: "skipped" },
+      { at: "15:05", type: "node.skipped", nodeId: "code-intelligence", message: "GitNexus/code-intelligence skipped: no code or architecture claim in scope.", status: "skipped" },
       { at: "15:17", type: "gate.passed", nodeId: "proof-gate", message: "Docs build/typecheck passed; proof object present.", status: "done", artifact: "proof/proof.json" },
       { at: "15:19", type: "node.skipped", nodeId: "staging-smoke", message: "Staging smoke skipped: no deployed behavior changed.", status: "skipped", artifact: "smoke/skip.json" },
     ],

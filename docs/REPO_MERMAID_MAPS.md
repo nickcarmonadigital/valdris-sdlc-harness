@@ -72,10 +72,10 @@ flowchart TB
     SIM["scripts/simulate-agent-run.mjs"]
   end
 
-  subgraph GRAPHIFY["Repo intelligence and anchors"]
+  subgraph CODE_INTELLIGENCE["Repo intelligence and anchors"]
     SCAN["scripts/code-intelligence-scan.mjs"]
     GITNEXUS["graph/gitnexus.json"]
-    GRAPH_GATE["scripts/graphify-gate.mjs"]
+    GRAPH_GATE["scripts/code-intelligence-gate.mjs"]
     ANCHOR_GATE["scripts/anchor-gate.mjs"]
     GRAPH["graph/graph.json"]
     ANCHORS["design/anchors.json"]
@@ -115,7 +115,7 @@ flowchart TB
   GRAPH --> GRAPH_GATE
   ANCHORS --> ANCHOR_GATE
 
-  GRAPHIFY --> GATES
+  CODE_INTELLIGENCE --> GATES
   EVENTS --> GATES
   VERIFY --> GATES
 
@@ -258,7 +258,7 @@ flowchart TB
   CLASSIFY --> VOICE
   CLASSIFY --> RAG
 
-  LANES --> STAGES["Shared stage flow: intake → route → graphify → design anchors → implement → validate → handoff"]
+  LANES --> STAGES["Shared stage flow: intake → route → code-intelligence → design anchors → implement → validate → handoff"]
   STAGES --> GATES["Shared gates: RCA / anchor / Red Zone / proof / smoke / finish-line / self-heal"]
   GATES --> ARTIFACTS["Run packet artifacts: graph.json / anchors.json / proof.json / smoke_proof.json / final.md"]
 

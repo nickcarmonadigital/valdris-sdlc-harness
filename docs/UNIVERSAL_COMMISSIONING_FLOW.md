@@ -31,7 +31,7 @@ The uploaded zip is a repo-native Utari/JeremyAI harness with:
 - `00_MAP.md` and `CONTEXT.md` routing.
 - Lane contexts under `workspaces/`.
 - Mechanical gates under `_core/scripts/` such as proof, RCA, smoke, red-zone, finish-line, anchor, deploy, migration, and coherence checks.
-- Stable docs for validation, red zone, support, incidents, deployment, Graphify, answer contracts, and evals.
+- Stable docs for validation, red zone, support, incidents, deployment, Code Intelligence, answer contracts, and evals.
 - Run packet scaffolds under `runs/`.
 
 That is the **project-specific adapter** for Utari. The universal product should generate the same class of pack for any repo.
@@ -42,7 +42,7 @@ That is the **project-specific adapter** for Utari. The universal product should
 
 These stay the same across repos:
 
-1. Stage flow: `intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`, where `graphify` is the stable node ID for the GitNexus/code-intelligence gate.
+1. Stage flow: `intake → route → code-intelligence → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff`, where `code-intelligence` is the stable node ID for the GitNexus/code-intelligence gate.
 2. Artifact model: every stage writes/verifies a required artifact or records a skip reason.
 3. Gate types: pre-flight, revision, escalation, abort, QA/break-it, live-smoke, self-heal.
 4. Red Zone model: high-risk mutations need human approval.
@@ -183,7 +183,7 @@ A repo is commissioned only when:
 
 ```bash
 npm run code-intelligence:scan
-npm run graphify:gate
+npm run code-intelligence:gate
 npm run commission -- --repo /root/valdris-sdlc-harness --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 node -e "JSON.parse(require('fs').readFileSync('/tmp/valdris-commissioned/project-adapter.json','utf8')); console.log('adapter ok')"
 npm run verify:harness

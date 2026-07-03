@@ -32,7 +32,7 @@ Workflow engine / Kanban controller
         +--> Agent adapter: Hermes / Claude Code / Codex / OpenCode
         +--> Tool adapter: MCP stdio/http / shell / browser / GitHub / Linear
         +--> Human adapter: Telegram / Slack / email / web approval
-        +--> Graphify adapter: code graph query + freshness
+        +--> GitNexus code-intelligence adapter: code graph query + freshness
         |
         v
 Runner daemon
@@ -98,7 +98,7 @@ kanban_cards
 - Human review/approval as durable tool calls.
 - Artifact comments and decision capture.
 - Context forking/compaction via artifacts.
-- Graphify-backed code grounding.
+- GitNexus-backed code grounding.
 - Audit/event log from day one.
 
 ## What not to copy

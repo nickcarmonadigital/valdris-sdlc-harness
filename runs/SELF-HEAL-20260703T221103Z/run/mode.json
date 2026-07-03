@@ -1,6 +1,0 @@
-{
-  "schema": "uash.run-mode.v1",
-  "mode": "live",
-  "eventSource": "local-jsonl",
-  "note": "Real hotfix run triggered by independent reviewer blockers after v0.6.0 push."
-}

@@ -36,7 +36,7 @@ If this script is not available in the target repo, tell the user to copy it fro
 ## Required node flow
 
 ```text
-intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → code-intelligence → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 ## Mode rule
@@ -73,15 +73,15 @@ For codebase, architecture, refactor, debugging, or cross-file implementation wo
 
 ```bash
 node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local
-node scripts/graphify-gate.mjs --repo .
+node scripts/code-intelligence-gate.mjs --repo .
 node scripts/anchor-gate.mjs --repo .
-node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written graphify "GitNexus/code-intelligence artifact written" --artifact graph/graph.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
+node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written code-intelligence "GitNexus/code-intelligence artifact written" --artifact graph/graph.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written design-anchors "Design anchors written for blast-radius reasoning" --artifact design/anchors.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
 ```
 
 `graph/gitnexus.json` is the GitNexus evidence artifact. If the scan falls back to the local static graph, disclose that in the handoff and do not claim GitNexus-backed analysis.
 
-If this is docs-only/non-code work, emit explicit skips for both `graphify` and `design-anchors` with reasons.
+If this is docs-only/non-code work, emit explicit skips for both `code-intelligence` and `design-anchors` with reasons.
 
 ### 4. System Design
 

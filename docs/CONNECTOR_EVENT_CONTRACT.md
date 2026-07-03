@@ -67,7 +67,7 @@ type Status = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval
 type NodeId =
   | "intake"
   | "route"
-  | "graphify"
+  | "code-intelligence"
   | "design-anchors"
   | "system-design"
   | "production-readiness"
@@ -104,10 +104,10 @@ type RunEvent = {
 
 ## Workflow node IDs
 
-Base v0.5 bridge flow. The stable node ID remains `graphify`, but the preferred backend for that node is now GitNexus/code intelligence:
+Base v0.5 bridge flow. The stable node ID remains `code-intelligence`, but the preferred backend for that node is now GitNexus/code intelligence:
 
 ```text
-intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
+intake → route → code-intelligence → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
 ```
 
 Cloud/platform expansion nodes are documented lane-detail concepts, but the current local bridge only accepts the base node IDs above. Expansion nodes should be represented inside `cloud/service-map.json` or future adapter schemas until the bridge adds adapter-defined nodes.
