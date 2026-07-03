@@ -1,0 +1,12 @@
+{
+  "schema": "uash.production-layer-assessment.v1",
+  "runId": "SELF-HEAL-20260703T221103Z",
+  "layers": {
+    "security": "required",
+    "cicd-version-control": "required",
+    "backend-api-logic": "required",
+    "documentation": "required",
+    "cloud-compute": "skipped"
+  },
+  "summary": "Local bridge/security/docs hotfix; no deployed cloud resource mutated."
+}

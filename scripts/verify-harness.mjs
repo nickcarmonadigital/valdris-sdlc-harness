@@ -125,6 +125,25 @@ function proofJson(runId = "VERIFY-PROOF") {
   });
 }
 
+function failedProofJson(runId = "VERIFY-FAILED-PROOF") {
+  const now = new Date().toISOString();
+  return JSON.stringify({
+    schema: "uash.proof.v1",
+    generatedAt: now,
+    runId,
+    status: "failed",
+    summary: "Harness verifier deliberately failed command evidence.",
+    commands: [
+      {
+        command: "false",
+        exitCode: 1,
+        completedAt: now,
+        stderrTail: "failed",
+      },
+    ],
+  });
+}
+
 async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
   await writeArtifact(artifactRoot, "run/intake.json", JSON.stringify({ ok: true }));
   await postEvent(port, runId, baseEvent("artifact.written", "intake", "intake artifact", { artifact: "run/intake.json", actor: "codex" }));
@@ -259,7 +278,7 @@ try {
   const health = await waitForHealth(port);
   assert(health.ok, "bridge health did not return ok");
   assert(health.contractVersion === "uash.connector-events.v0.5", "bridge contract version mismatch");
-  assert(health.proofSchema === "uash.proof.v1" && health.adapterAware, "bridge hardening metadata missing");
+  assert(health.proofSchema === "uash.proof.v1" && health.adapterAware && health.humanApprovalTokenConfigured, "bridge hardening metadata missing");
   assert(health.nodeIds.includes("graphify") && health.nodeIds.includes("design-anchors"), "Graphify/design anchor nodes missing from bridge health");
 
   await run(node, [
@@ -325,6 +344,44 @@ try {
   const badProof = await postEvent(port, "VERIFY-BAD-PROOF", baseEvent("artifact.written", "prove", "legacy fake proof", { artifact: "proof/proof.json" }), 400);
   assertProblem(badProof, "uash.proof.v1", "bad proof schema");
 
+  const failedProofRoot = path.join(tempRoot, "failed-proof-root");
+  await writeArtifact(failedProofRoot, "proof/proof.json", failedProofJson("VERIFY-FAILED-PROOF"));
+  await postRun(port, { id: "VERIFY-FAILED-PROOF", artifactRoot: failedProofRoot });
+  const failedProof = await postEvent(port, "VERIFY-FAILED-PROOF", baseEvent("artifact.written", "prove", "failed proof must not pass", { artifact: "proof/proof.json" }), 400);
+  assertProblem(failedProof, "proof.status must be passed", "failed proof status");
+
+  const clientTokenRejected = await postRun(port, { id: "VERIFY-CLIENT-TOKEN-REJECTED", artifactRoot: path.join(tempRoot, "client-token-root"), humanApprovalToken: "agent-chosen-token" }, 400);
+  assert(clientTokenRejected.error === "client_supplied_human_token_rejected", "client-supplied human token was not rejected");
+
+  const adapterMissingProofRoot = path.join(tempRoot, "adapter-missing-proof-root");
+  await writeArtifact(adapterMissingProofRoot, "project-adapter.json", JSON.stringify({ schema: "uash.project-adapter.v2", runtime: { requiredNodes: ["handoff"], artifactByNode: { handoff: "handoff/final.md" } } }));
+  const adapterMissingProof = await postRun(port, { id: "VERIFY-ADAPTER-MISSING-PROOF", artifactRoot: adapterMissingProofRoot, adapterPath: "project-adapter.json" }, 400);
+  assertProblem(adapterMissingProof, "cannot remove finish-line", "adapter missing proof invariant");
+
+  const customProofRoot = path.join(tempRoot, "custom-proof-root");
+  await writeArtifact(customProofRoot, "project-adapter.json", JSON.stringify({
+    schema: "uash.project-adapter.v2",
+    runtime: {
+      connectorContractVersion: "uash.connector-events.v0.5",
+      requiredNodes: ["prove", "handoff"],
+      artifactByNode: { prove: "custom/proof.json", handoff: "handoff/final.md" }
+    },
+    proofSchema: { schema: "uash.proof.v1" },
+    humanApproval: { tokenRequiredForGrant: true }
+  }));
+  await writeArtifact(customProofRoot, "custom/proof.json", JSON.stringify({ exitCode: 0 }));
+  await postRun(port, { id: "VERIFY-CUSTOM-PROOF-PATH", artifactRoot: customProofRoot, adapterPath: "project-adapter.json" });
+  const proofPathMismatch = await postEvent(port, "VERIFY-CUSTOM-PROOF-PATH", baseEvent("artifact.written", "handoff", "handoff cannot claim custom proof path", { artifact: "custom/proof.json" }), 400);
+  assertProblem(proofPathMismatch, "configured artifact path", "custom proof path mismatch");
+  const invalidCustomProof = await postEvent(port, "VERIFY-CUSTOM-PROOF-PATH", baseEvent("artifact.written", "prove", "invalid custom proof", { artifact: "custom/proof.json" }), 400);
+  assertProblem(invalidCustomProof, "uash.proof.v1", "custom proof validation");
+  await writeArtifact(customProofRoot, "custom/proof.json", proofJson("VERIFY-CUSTOM-PROOF-PATH"));
+  await postEvent(port, "VERIFY-CUSTOM-PROOF-PATH", baseEvent("artifact.written", "prove", "valid custom proof", { artifact: "custom/proof.json" }), 200);
+  await writeArtifact(customProofRoot, "handoff/final.md", "# Custom proof handoff\n\nComplete.\n");
+  await postEvent(port, "VERIFY-CUSTOM-PROOF-PATH", baseEvent("artifact.written", "handoff", "custom proof handoff", { artifact: "handoff/final.md" }), 200);
+  const customProofComplete = await postEvent(port, "VERIFY-CUSTOM-PROOF-PATH", baseEvent("run.completed", "handoff", "custom proof path completion", { artifact: "handoff/final.md" }), 200);
+  assert(customProofComplete.run.status === "complete", "valid adapter custom proof path did not complete");
+
   const unsafeAdapterPath = path.join(tempRoot, "outside-project-adapter.json");
   await writeFile(unsafeAdapterPath, JSON.stringify({ schema: "uash.project-adapter.v2", runtime: { requiredNodes: ["intake", "prove", "handoff"] } }), "utf8");
   const adapterEscapeRoot = path.join(tempRoot, "adapter-escape-root");
@@ -380,12 +437,13 @@ try {
   const tokenRunId = "VERIFY-HUMAN-TOKEN-GRANT";
   const tokenRoot = path.join(tempRoot, tokenRunId);
   const tokenCreated = await postRun(port, { id: tokenRunId, artifactRoot: tokenRoot });
+  assert(!Object.prototype.hasOwnProperty.call(tokenCreated, "humanApprovalToken"), "POST /runs leaked a raw human approval token");
   await postEvent(port, tokenRunId, baseEvent("approval.requested", "redzone", "token-gated approval requested", { status: "needs_approval", approvalOwner: "Nick", approvalScope: "redzone" }));
-  await postEvent(port, tokenRunId, baseEvent("approval.granted", "redzone", "token-gated human grant", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 200, { "x-uash-human-token": tokenCreated.humanApprovalToken });
+  await postEvent(port, tokenRunId, baseEvent("approval.granted", "redzone", "token-gated human grant", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 200, { "x-uash-human-token": "verify-human-token" });
   const tokenEventsJsonl = await readFile(path.join(dataDir, tokenRunId, "events.jsonl"), "utf8");
   const tokenRunJson = await readFile(path.join(dataDir, tokenRunId, "run.json"), "utf8");
-  assert(!tokenEventsJsonl.includes(tokenCreated.humanApprovalToken), "human token leaked to events.jsonl");
-  assert(!tokenRunJson.includes(tokenCreated.humanApprovalToken), "human token leaked to run.json");
+  assert(!tokenEventsJsonl.includes("verify-human-token"), "human token leaked to events.jsonl");
+  assert(!tokenRunJson.includes("verify-human-token"), "human token leaked to run.json");
 
   const selfHealRunId = "VERIFY-SELF-HEAL-NO-PR";
   const selfHealRoot = path.join(tempRoot, selfHealRunId);
@@ -406,7 +464,7 @@ try {
   assert(finalBody.run.status === "complete", "verified run did not complete");
   assert(finalBody.run.events.some((event) => event.actor === "codex"), "Codex actor event missing from verified run");
   const proofArtifact = finalBody.run.artifacts.find((artifact) => artifact.path === "proof/proof.json");
-  assert(proofArtifact?.verification?.checked && proofArtifact.verification.exists, "proof artifact was not file-verified");
+  assert(proofArtifact?.verification?.checked && proofArtifact.verification.exists && proofArtifact.verification.proof?.valid === true, "proof artifact was not file-verified and passing");
 
   const eventsJsonl = await readFile(path.join(dataDir, runId, "events.jsonl"), "utf8");
   assert(eventsJsonl.includes("run.completed"), "events.jsonl missing run.completed");
@@ -434,8 +492,13 @@ try {
         graphifyGateSmoke: true,
         generatedEmitterSmoke: true,
         proofSchemaValidation: true,
+        failedProofBlocked: true,
+        adapterInvariantProofRequired: true,
+        adapterCustomProofPathValidated: true,
         adapterAwareBridge: true,
         humanApprovalTokenGate: true,
+        humanApprovalTokenNotReturnedByHttp: true,
+        clientSuppliedHumanTokenRejected: true,
         ciWorkflow: true,
         strictEventValidation: true,
         artifactRootRequired: true,

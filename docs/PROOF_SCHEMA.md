@@ -2,9 +2,9 @@
 
 `proof/proof.json` is now content-validated, not existence-validated.
 
-A passing proof artifact must use `schema: "uash.proof.v1"`, include a timestamp, a summary, and at least one command result with `command`, integer `exitCode`, `completedAt`, and output evidence (`stdoutTail`, `stderrTail`, or `outputDigest`).
+A passing proof artifact must use `schema: "uash.proof.v1"`, `status: "passed"`, include a timestamp, a summary, and at least one command result with `command`, integer `exitCode`, `completedAt`, and output evidence (`stdoutTail`, `stderrTail`, or `outputDigest`). Every command must have `exitCode: 0`.
 
-A legacy file like `{ "exitCode": 0 }` is rejected by the bridge.
+A legacy file like `{ "exitCode": 0 }`, or a schema-shaped proof with `status: "failed"` / non-zero command exits, is rejected by the bridge for the finish line.
 
 ## Minimal passing example
 

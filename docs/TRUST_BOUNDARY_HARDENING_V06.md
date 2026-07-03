@@ -9,7 +9,7 @@ This release implements the Phase 1 Fable audit remediation for the Universal Ag
 | No CI | `.github/workflows/ci.yml` runs install, typecheck, build, local code-intelligence scan, graph/anchor gates, `verify:harness`, and commissioning smoke. |
 | Existence-only proof | `proof/proof.json` must validate as `uash.proof.v1`; fake `{ "exitCode": 0 }` proof is rejected. |
 | Adapter-blind gates | The bridge safely loads `project-adapter.json` and applies `runtime.requiredNodes` / `runtime.artifactByNode`. Arbitrary absolute adapter paths are rejected. |
-| Spoofable human approval | `approval.granted` / `approval.denied` require `actor: human`, a pending approval, and a matching per-run or env token via `x-uash-human-token` / `--human-token`. Raw tokens are never persisted. |
+| Spoofable human approval | `approval.granted` / `approval.denied` require `actor: human`, a pending approval, and the operator-held `UASH_HUMAN_APPROVAL_TOKEN` via `x-uash-human-token` / `--human-token`. Raw tokens are never accepted from `POST /runs`, never returned by HTTP, and never persisted. |
 | Demo/replay drift | Bundled seed UI scenarios are labeled Demo; Replay remains reserved for historical run packets. |
 
 ## Still intentionally deferred

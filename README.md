@@ -254,6 +254,7 @@ CLAUDE.md
 00_MAP.md
 CONTEXT.md
 docs/Validation Commands.md
+docs/Proof Schema.md
 docs/Codex Runtime Prompt.md
 docs/Red Zone Rules.md
 docs/Production Readiness Layers.md
@@ -268,6 +269,12 @@ docs/Operating Intelligence Layer.md
 docs/Team Harness Registry.md
 docs/Human Agent Protocol.md
 runs/_run-template/README.md
+scripts/uash-emit-event.mjs
+scripts/uash-write-proof.mjs
+scripts/code-intelligence-scan.mjs
+scripts/graphify-scan.mjs
+scripts/graphify-gate.mjs
+scripts/anchor-gate.mjs
 commissioning-review.md
 ```
 
@@ -403,7 +410,7 @@ Run the verifier:
 npm run verify:harness
 ```
 
-The verifier spins up the bridge and tests negative cases like missing fields, fake artifacts, symlink/path escape, Red Zone bypass, self-heal bypass, and early completion.
+The verifier spins up the bridge and tests negative cases like missing fields, fake artifacts, failed/non-passing proof, adapter removal of the proof gate, adapter proof-path mismatch, client-supplied approval tokens, symlink/path escape, Red Zone bypass, self-heal bypass, and early completion.
 
 ## Design principles
 

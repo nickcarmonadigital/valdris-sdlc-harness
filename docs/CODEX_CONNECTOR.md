@@ -58,7 +58,7 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.en
 
 ## Red Zone approval events
 
-Agents may request approval, but only a token-gated human approval event may grant or deny it. Use `--human-token` or `UASH_HUMAN_TOKEN`; the token is sent as a header and is never persisted.
+Agents may request approval, but only a token-gated human approval event may grant or deny it. Use `--human-token` with the operator-held `UASH_HUMAN_APPROVAL_TOKEN`; the token is sent as a header, is never accepted from `POST /runs`, and is never persisted.
 
 ```bash
 UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone \
@@ -80,7 +80,7 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approva
   --source bridge \
   --approval-owner "primary operator" \
   --approval-scope "redzone" \
-  --human-token "$UASH_HUMAN_TOKEN"
+  --human-token "$UASH_HUMAN_APPROVAL_TOKEN"
 ```
 
 ## Finish-line enforcement

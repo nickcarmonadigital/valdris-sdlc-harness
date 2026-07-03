@@ -74,7 +74,7 @@ options.message = messageParts.join(" ").trim() || `${type} ${nodeId}`;
 const bridgeUrl = process.env.UASH_BRIDGE_URL || "http://127.0.0.1:8787";
 const url = `${bridgeUrl.replace(/\/$/, "")}/runs/${encodeURIComponent(runId)}/events`;
 
-const humanToken = options.humanToken || process.env.UASH_HUMAN_TOKEN || process.env.UASH_HUMAN_APPROVAL_TOKEN;
+const humanToken = options.humanToken || process.env.UASH_HUMAN_APPROVAL_TOKEN;
 const headers = { "content-type": "application/json" };
 if (humanToken) headers["x-uash-human-token"] = humanToken;
 

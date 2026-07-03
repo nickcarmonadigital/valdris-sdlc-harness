@@ -128,8 +128,8 @@ Rules:
 - `skipped` requires `skipReason`.
 - `failed` requires `failureReason` and `recoveryPath`.
 - `needs_approval` requires `approvalOwner` and `approvalScope`.
-- `approval.granted` and `approval.denied` must be emitted by `actor: "human"`, must match an existing pending approval, and must include a matching human token via `x-uash-human-token` / `--human-token`.
-- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected. For `prove`, `proof/proof.json` must validate as `uash.proof.v1`.
+- `approval.granted` and `approval.denied` must be emitted by `actor: "human"`, must match an existing pending approval, and must include the operator-held `UASH_HUMAN_APPROVAL_TOKEN` via `x-uash-human-token` / `--human-token`; tokens are never accepted from `POST /runs` or returned by HTTP.
+- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected. For `prove`, the configured proof artifact must validate as passing `uash.proof.v1` with zero-exit command evidence.
 - `run.completed` can only pass when all required nodes are verified-present or explicitly skipped with reasons.
 - If `self_heal.detected` is emitted, a later `self_heal.pr_opened` or `self_heal.pr_proposed` is required before completion.
 

@@ -1,0 +1,8 @@
+{
+  "schema": "uash.intake.v1",
+  "runId": "SELF-HEAL-20260703T221103Z",
+  "task": "Patch post-review trust-boundary blockers: failed proof completion, adapter proof removal, self-issued approval token, custom proof-path bypass, stale templates/docs.",
+  "repo": "nickcarmonadigital/valdris-sdlc-harness",
+  "risk": "medium",
+  "operator": "Nick Carmona"
+}

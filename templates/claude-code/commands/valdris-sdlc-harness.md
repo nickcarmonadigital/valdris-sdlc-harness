@@ -27,7 +27,8 @@ node scripts/uash-emit-event.mjs <RUN_ID> <event-type> <node-id> "<message>" \
   [--failure-reason "..."] \
   [--recovery-path "..."] \
   [--approval-owner "..."] \
-  [--approval-scope "..."]
+  [--approval-scope "..."] \
+  [--human-token "$UASH_HUMAN_APPROVAL_TOKEN"]
 ```
 
 If this script is not available in the target repo, tell the user to copy it from the Universal Harness repo or run the command from that repo with the same `RUN_ID`.
@@ -134,7 +135,11 @@ If the change touches auth, billing, data deletion, provider config, deployments
 node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required before continuing" --artifact approvals/redzone.json --status needs_approval --actor harness --approval-owner "primary operator" --approval-scope "specific risky action"
 ```
 
-Wait for human approval.
+Wait for human approval. The agent must not approve itself. A real operator grant uses the operator-held token configured on the bridge process:
+
+```bash
+node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action"   --artifact approvals/redzone.json   --status ok   --actor human   --mode live   --source bridge   --approval-owner "primary operator"   --approval-scope "specific risky action"   --human-token "$UASH_HUMAN_APPROVAL_TOKEN"
+```
 
 If no Red Zone applies:
 
@@ -155,7 +160,7 @@ If skipped, emit `node.skipped` with reason.
 ### 10. Prove
 
 ```bash
-node scripts/uash-emit-event.mjs "$RUN_ID" gate.fired prove "Proof gate fired; validation must produce proof/proof.json (`uash.proof.v1`)" --artifact proof/proof.json --status ok --actor harness
+node scripts/uash-emit-event.mjs "$RUN_ID" gate.fired prove "Proof gate fired; validation must produce uash.proof.v1 proof/proof.json" --artifact proof/proof.json --status ok --actor harness
 ```
 
 Run tests/evals/smoke checks. For AI/runtime/provider changes, include eval proof; for serious production work, cite the Enterprise Proof Bank dimensions. If proof is missing or failing:

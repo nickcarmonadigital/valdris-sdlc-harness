@@ -158,7 +158,7 @@ node scripts/uash-emit-event.mjs RUN-1042 approval.granted redzone \
   --source bridge \
   --approval-owner "primary operator" \
   --approval-scope "redzone" \
-  --human-token "$UASH_HUMAN_TOKEN"
+  --human-token "$UASH_HUMAN_APPROVAL_TOKEN"
 ```
 
 ## Claude Code slash command path

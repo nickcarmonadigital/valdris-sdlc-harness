@@ -80,11 +80,11 @@ const EVENT_SOURCES = new Set(["bridge", "mcp", "api", "watched-artifact", "loca
 
 function createBaseArtifacts(adapterPolicy = {}) {
   const artifactMap = { ...artifactByNode, ...(adapterPolicy.artifactByNode || {}) };
-  const requiredNodes = new Set(
-    Array.isArray(adapterPolicy.requiredNodes)
-      ? adapterPolicy.requiredNodes.filter((nodeId) => NODE_IDS.has(nodeId))
-      : Object.keys(artifactByNode),
-  );
+  const policyRequiredNodes = Array.isArray(adapterPolicy.requiredNodes)
+    ? adapterPolicy.requiredNodes.filter((nodeId) => NODE_IDS.has(nodeId))
+    : Object.keys(artifactByNode);
+  // Adapters may narrow project-specific gates, but they may never remove the finish-line proof or handoff invariants.
+  const requiredNodes = new Set([...policyRequiredNodes, "prove", "handoff"]);
   return Object.entries(artifactByNode).map(([nodeId, defaultArtifactPath]) => {
     const artifactPath = artifactMap[nodeId] || defaultArtifactPath;
     return {
@@ -150,6 +150,21 @@ function extractHumanToken(req, body) {
   return headerToken || body.humanToken || body.humanApprovalToken;
 }
 
+function humanApprovalAuthRecord(now = nowIso()) {
+  const envToken = process.env.UASH_HUMAN_APPROVAL_TOKEN;
+  if (!envToken) {
+    return {
+      humanApprovalTokenRequired: true,
+      humanApprovalTokenMode: "operator-env-required",
+    };
+  }
+  return {
+    humanApprovalTokenSha256: digestHumanApprovalToken(envToken),
+    humanApprovalTokenIssuedAt: now,
+    humanApprovalTokenMode: "process-env",
+  };
+}
+
 function safeAdapterRoots(artifactRoot) {
   return [artifactRoot, REPO_ROOT, ...EXTRA_ADAPTER_ROOTS]
     .filter(Boolean)
@@ -182,6 +197,9 @@ function adapterPolicyFrom(adapter) {
   const requiredNodes = Array.isArray(runtime.requiredNodes) ? runtime.requiredNodes : Object.keys(artifactByNode);
   const unknownRequired = requiredNodes.filter((nodeId) => !NODE_IDS.has(nodeId));
   if (unknownRequired.length) throw new Error(`project adapter contains unknown required node IDs: ${unknownRequired.join(", ")}`);
+  const requiredSet = new Set(requiredNodes);
+  const missingInvariantNodes = ["prove", "handoff"].filter((nodeId) => !requiredSet.has(nodeId));
+  if (missingInvariantNodes.length) throw new Error(`project adapter cannot remove finish-line required node IDs: ${missingInvariantNodes.join(", ")}`);
   const invalidArtifacts = Object.keys(artifactMap).filter((nodeId) => !NODE_IDS.has(nodeId));
   if (invalidArtifacts.length) throw new Error(`project adapter contains unknown artifact node IDs: ${invalidArtifacts.join(", ")}`);
   return {
@@ -207,8 +225,17 @@ function loadAdapterPolicy(adapterPath, artifactRoot) {
   return { adapterPath: resolved.adapterPath, adapterPolicy: adapterPolicyFrom(adapter) };
 }
 
-function isProofEvent(event) {
-  return event.nodeId === "prove" || event.artifact === "proof/proof.json";
+function artifactEntryForNode(run, nodeId) {
+  return (run.artifacts || []).find((artifact) => artifact.nodeId === nodeId);
+}
+
+function artifactPathForNode(run, nodeId) {
+  return artifactEntryForNode(run, nodeId)?.path || artifactByNode[nodeId];
+}
+
+function isProofEvent(run, event) {
+  const proofPath = artifactPathForNode(run, "prove") || artifactByNode.prove;
+  return event.nodeId === "prove" || event.artifact === proofPath || event.artifact === artifactByNode.prove;
 }
 
 function validateProofDocument(filePath) {
@@ -221,7 +248,7 @@ function validateProofDocument(filePath) {
   }
   if (document.schema !== PROOF_SCHEMA) problems.push(`proof artifact schema must be ${PROOF_SCHEMA}`);
   if (!document.generatedAt || Number.isNaN(Date.parse(document.generatedAt))) problems.push("proof.generatedAt must be an ISO timestamp");
-  if (!["passed", "failed", "blocked"].includes(document.status)) problems.push("proof.status must be passed, failed, or blocked");
+  if (document.status !== "passed") problems.push("proof.status must be passed for finish-line proof");
   if (typeof document.summary !== "string" || !document.summary.trim()) problems.push("proof.summary is required");
   if (!Array.isArray(document.commands) || document.commands.length === 0) {
     problems.push("proof.commands must contain at least one command result");
@@ -237,8 +264,8 @@ function validateProofDocument(filePath) {
       if (!command.stdoutTail && !command.stderrTail && !command.outputDigest) problems.push(`proof.commands[${index}] must include stdoutTail, stderrTail, or outputDigest`);
     });
   }
-  if (document.status === "passed" && Array.isArray(document.commands) && document.commands.some((command) => command?.exitCode !== 0)) {
-    problems.push("proof.status passed requires every command exitCode to be 0");
+  if (Array.isArray(document.commands) && document.commands.some((command) => command?.exitCode !== 0)) {
+    problems.push("finish-line proof requires every command exitCode to be 0");
   }
   return {
     checked: true,
@@ -264,7 +291,7 @@ function humanApprovalTokenProblems(run, event, humanToken) {
     if (!safeCompare(String(humanToken), String(envToken))) return ["human approval token did not match UASH_HUMAN_APPROVAL_TOKEN"];
     return [];
   }
-  return ["human approval token is required; create the run with POST /runs or set UASH_HUMAN_APPROVAL_TOKEN"];
+  return ["human approval token is required; restart the bridge with operator-held UASH_HUMAN_APPROVAL_TOKEN before approval grant/deny events"];
 }
 
 async function readJson(req) {
@@ -313,7 +340,6 @@ function normalizeRun(run) {
 function createMinimalRun(runId, event = {}, options = {}) {
   const now = nowIso();
   const adapterConfig = loadAdapterPolicy(event.adapterPath, event.artifactRoot);
-  const humanApprovalToken = options.humanApprovalToken;
   return normalizeRun({
     id: runId,
     title: event.title || `Claude Code run ${runId}`,
@@ -330,13 +356,7 @@ function createMinimalRun(runId, event = {}, options = {}) {
     artifactRoot: event.artifactRoot,
     adapterPath: adapterConfig.adapterPath || event.adapterPath,
     adapterPolicy: adapterConfig.adapterPolicy,
-    auth: humanApprovalToken
-      ? {
-          humanApprovalTokenSha256: digestHumanApprovalToken(humanApprovalToken),
-          humanApprovalTokenIssuedAt: now,
-          humanApprovalTokenMode: "per-run",
-        }
-      : event.auth,
+    auth: humanApprovalAuthRecord(now),
     createdAt: now,
     updatedAt: now,
     approvals: [],
@@ -346,8 +366,7 @@ function createMinimalRun(runId, event = {}, options = {}) {
 }
 
 function createRunFromBody(body) {
-  const humanApprovalToken = String(body.humanApprovalToken || generateHumanApprovalToken());
-  const base = createMinimalRun(body.id, body, { humanApprovalToken });
+  const base = createMinimalRun(body.id, body);
   const run = normalizeRun({
     ...base,
     title: body.title || base.title,
@@ -369,7 +388,7 @@ function createRunFromBody(body) {
     artifacts: createBaseArtifacts(base.adapterPolicy),
     events: [],
   });
-  return { run, humanApprovalToken };
+  return { run };
 }
 
 function normalizeEvent(runId, event) {
@@ -455,9 +474,18 @@ function eventStateProblems(run, event, humanToken) {
   return problems;
 }
 
-function artifactTargetFor(event) {
+function artifactTargetFor(run, event) {
   if (event.type === "artifact.written" && event.artifact) return event.artifact;
-  return artifactByNode[event.nodeId] || event.artifact;
+  return artifactPathForNode(run, event.nodeId) || event.artifact;
+}
+
+function artifactPathConsistencyProblems(run, event) {
+  if (event.type !== "artifact.written" || !event.nodeId || !event.artifact) return [];
+  const expected = artifactPathForNode(run, event.nodeId);
+  if (expected && event.artifact !== expected) {
+    return [`artifact.written for node ${event.nodeId} must use configured artifact path ${expected}; got ${event.artifact}`];
+  }
+  return [];
 }
 
 function artifactRootFor(run) {
@@ -496,9 +524,11 @@ function resolveArtifactPath(run, target, requireExists = false) {
 
 function artifactWriteProblems(run, event) {
   if (event.type !== "artifact.written") return [];
+  const problems = artifactPathConsistencyProblems(run, event);
+  if (problems.length) return problems;
   const result = resolveArtifactPath(run, event.artifact, true);
-  const problems = [...result.problems];
-  if (!problems.length && isProofEvent(event)) problems.push(...validateProofDocument(result.resolved).problems);
+  problems.push(...result.problems);
+  if (!problems.length && isProofEvent(run, event)) problems.push(...validateProofDocument(result.resolved).problems);
   return problems;
 }
 
@@ -508,7 +538,7 @@ function artifactVerification(run, event) {
   if (result.problems.length) return { checked: true, exists: false, problems: result.problems, path: result.resolved };
   const stat = statSync(result.resolved);
   const verification = { checked: true, exists: true, path: result.resolved, realPath: result.realTarget, size: stat.size, mtimeMs: stat.mtimeMs };
-  if (isProofEvent(event)) verification.proof = validateProofDocument(result.resolved);
+  if (isProofEvent(run, event)) verification.proof = validateProofDocument(result.resolved);
   return verification;
 }
 
@@ -533,7 +563,7 @@ function artifactProofProblems(run, artifact) {
   if (!artifact.present) return [`${artifact.path} missing or not skipped`];
   if (!artifact.verification?.checked) return [`${artifact.path} present but not verified against artifactRoot`];
   if (!artifact.verification.exists) return [`${artifact.path} was claimed but file verification failed`];
-  if (artifact.path === "proof/proof.json" && artifact.verification.proof?.valid !== true) {
+  if (artifact.nodeId === "prove" && artifact.verification.proof?.valid !== true) {
     const problems = artifact.verification.proof?.problems?.join("; ") || "proof content was not schema-validated";
     return [`${artifact.path} failed ${PROOF_SCHEMA} validation: ${problems}`];
   }
@@ -582,7 +612,7 @@ function updateApproval(run, event) {
 }
 
 function applyArtifactEvent(run, event, verification) {
-  const targetArtifact = artifactTargetFor(event);
+  const targetArtifact = artifactTargetFor(run, event);
   if (!targetArtifact) return run.artifacts || createBaseArtifacts();
   const artifacts = (run.artifacts || createBaseArtifacts()).some((entry) => entry.path === targetArtifact)
     ? run.artifacts || createBaseArtifacts()
@@ -706,6 +736,7 @@ async function handle(req, res) {
         nodeIds: Array.from(NODE_IDS),
         proofSchema: PROOF_SCHEMA,
         adapterAware: true,
+        humanApprovalTokenConfigured: Boolean(process.env.UASH_HUMAN_APPROVAL_TOKEN),
         repoRoot: REPO_ROOT,
       });
     }
@@ -720,6 +751,9 @@ async function handle(req, res) {
       if (body.status === "complete") {
         return send(res, 409, { ok: false, error: "run_creation_cannot_complete", problems: ["Create runs as running; completion must flow through verified run.completed events."] });
       }
+      if (body.humanApprovalToken || body.humanToken || body.auth) {
+        return send(res, 400, { ok: false, error: "client_supplied_human_token_rejected", problems: ["Human approval tokens are operator-held process configuration, not POST /runs input. Set UASH_HUMAN_APPROVAL_TOKEN on the bridge process."] });
+      }
       let created;
       try {
         created = createRunFromBody(body);
@@ -729,8 +763,8 @@ async function handle(req, res) {
       await writeRun(created.run);
       return send(res, 200, {
         ...created.run,
-        humanApprovalToken: created.humanApprovalToken,
-        humanApprovalTokenNotice: "Shown once. Send it as x-uash-human-token or --human-token for approval.granted/approval.denied; raw tokens are never persisted.",
+        humanApprovalTokenRequired: true,
+        humanApprovalTokenNotice: "Approval grant/deny requires operator-held UASH_HUMAN_APPROVAL_TOKEN sent as x-uash-human-token or --human-token. Raw tokens are never accepted from POST /runs and never returned by HTTP.",
       });
     }
 
@@ -814,5 +848,6 @@ createServer(handle).listen(PORT, HOST, () => {
   console.log(`${SERVICE} listening on http://${HOST}:${PORT}`);
   console.log(`contract: ${CONTRACT_VERSION}`);
   console.log(`data dir: ${DATA_DIR}`);
+  console.log(process.env.UASH_HUMAN_APPROVAL_TOKEN ? "human approval token: configured from UASH_HUMAN_APPROVAL_TOKEN" : "human approval token: NOT configured; approval.granted/denied will be rejected until UASH_HUMAN_APPROVAL_TOKEN is set");
   console.log("Open the app, click Check bridge, then Sync run to bridge.");
 });

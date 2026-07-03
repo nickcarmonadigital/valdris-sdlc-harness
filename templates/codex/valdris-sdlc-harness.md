@@ -28,7 +28,7 @@ intake → route → graphify → design-anchors → system-design → productio
 4. Use `node.skipped` with `--skip-reason` for irrelevant nodes, including `graphify` and `design-anchors` on docs-only/non-code runs.
 5. Use `node.failed` with `--failure-reason` and `--recovery-path` for failed nodes.
 6. Stop for Red Zone approval before production deploys, secrets/env changes, auth/billing/customer data, destructive ops, provider config, or cloud resource mutation.
-7. Do not emit `run.completed` until `proof/proof.json (`uash.proof.v1`)` validates as `uash.proof.v1` and every required node is passed or skipped with a reason.
+7. Do not emit `run.completed` until `proof/proof.json` validates as passing `uash.proof.v1` and every required node is passed or skipped with a reason.
 
 ## Event command
 
@@ -43,6 +43,16 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.en
 ```
 
 If `scripts/uash-emit-event.mjs` is not present in the target repo, run the command from the Valdris SDLC Harness repo or copy the script into the target repo.
+
+## Red Zone token-gated approval
+
+Agents may request approval, but only a real operator may grant or deny it with the operator-held token configured on the bridge process.
+
+```bash
+UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone   "Red Zone approval required before continuing"   --artifact approvals/redzone.json   --status needs_approval   --actor codex   --mode live   --source bridge   --approval-owner "primary operator"   --approval-scope "specific risky action"
+
+UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone   "Human approved scoped Red Zone action"   --artifact approvals/redzone.json   --status ok   --actor human   --mode live   --source bridge   --approval-owner "primary operator"   --approval-scope "specific risky action"   --human-token "$UASH_HUMAN_APPROVAL_TOKEN"
+```
 
 ## Handoff
 

@@ -40,6 +40,7 @@ AGENTS.md
 CLAUDE.md
 .claude/commands/valdris-sdlc-harness.md
 docs/Codex Runtime Prompt.md
+docs/Proof Schema.md
 docs/Graphify Code Graph.md
 docs/GitNexus Code Intelligence.md
 docs/Good Looks Like Foundation.md
@@ -50,6 +51,7 @@ docs/Team Harness Registry.md
 docs/Human Agent Protocol.md
 scripts/code-intelligence-scan.mjs
 scripts/uash-emit-event.mjs
+scripts/uash-write-proof.mjs
 scripts/graphify-scan.mjs
 scripts/graphify-gate.mjs
 scripts/anchor-gate.mjs
