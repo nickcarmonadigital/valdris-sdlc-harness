@@ -1,4 +1,4 @@
-# Codex Connector v0.4
+# Codex Connector v0.5
 
 This repo is ready for Codex as a repo-level SDLC engineering harness, not as an IDE wrapper.
 
@@ -20,7 +20,7 @@ Codex in target repo
 From the Valdris SDLC Harness repo:
 
 ```bash
-npm install
+npm ci
 npm run commission -- --repo /path/to/target-repo --project-name "Target Project" --out /path/to/target-repo/.valdris-harness --yes
 npm run bridge:claude
 ```
@@ -58,7 +58,7 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.en
 
 ## Red Zone approval events
 
-Agents may request approval, but only a human approval event may grant or deny it.
+Agents may request approval, but only a token-gated human approval event may grant or deny it. Use `--human-token` or `UASH_HUMAN_TOKEN`; the token is sent as a header and is never persisted.
 
 ```bash
 UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone \
@@ -79,7 +79,8 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approva
   --mode live \
   --source bridge \
   --approval-owner "primary operator" \
-  --approval-scope "redzone"
+  --approval-scope "redzone" \
+  --human-token "$UASH_HUMAN_TOKEN"
 ```
 
 ## Finish-line enforcement

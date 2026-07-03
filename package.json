@@ -1,6 +1,6 @@
 {
   "name": "valdris-sdlc-harness",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "private": true,
   "description": "Valdris SDLC Harness: commissioning, project adapters, proof gates, and workflow telemetry for Claude Code/Codex/Hermes.",
   "scripts": {
@@ -18,16 +18,17 @@
     "graphify:gate": "node scripts/graphify-gate.mjs && node scripts/anchor-gate.mjs",
     "render:readme-visuals": "node scripts/render-readme-visuals.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
-    "bridge:emit": "node scripts/uash-emit-event.mjs"
+    "bridge:emit": "node scripts/uash-emit-event.mjs",
+    "proof:write": "node scripts/uash-write-proof.mjs"
   },
   "dependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest"
+    "@types/node": "25.9.3",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "next": "16.2.9",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "typescript": "6.0.3"
   },
   "overrides": {
     "postcss": "8.5.10"

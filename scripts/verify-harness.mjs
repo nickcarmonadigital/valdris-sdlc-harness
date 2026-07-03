@@ -50,10 +50,10 @@ async function stopProcess(child) {
   });
 }
 
-async function postJson(url, body, expectedStatus = 200) {
+async function postJson(url, body, expectedStatus = 200, headers = {}) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
   const text = await response.text();
@@ -73,8 +73,8 @@ async function postRun(port, run, expectedStatus = 200) {
   return postJson(`http://127.0.0.1:${port}/runs`, run, expectedStatus);
 }
 
-async function postEvent(port, runId, event, expectedStatus = 200) {
-  return postJson(`http://127.0.0.1:${port}/runs/${encodeURIComponent(runId)}/events`, event, expectedStatus);
+async function postEvent(port, runId, event, expectedStatus = 200, headers = {}) {
+  return postJson(`http://127.0.0.1:${port}/runs/${encodeURIComponent(runId)}/events`, event, expectedStatus, headers);
 }
 
 function assert(condition, message) {
@@ -104,6 +104,27 @@ async function writeArtifact(rootDir, relativePath, content = "{}\n") {
   await writeFile(fullPath, content.endsWith("\n") ? content : `${content}\n`, "utf8");
 }
 
+function proofJson(runId = "VERIFY-PROOF") {
+  const now = new Date().toISOString();
+  return JSON.stringify({
+    schema: "uash.proof.v1",
+    generatedAt: now,
+    runId,
+    status: "passed",
+    summary: "Harness verifier command evidence passed.",
+    commands: [
+      {
+        command: "npm run verify:harness",
+        exitCode: 0,
+        startedAt: now,
+        completedAt: now,
+        outputDigest: "sha256:verify-harness-fixture",
+        stdoutTail: "Valdris SDLC Harness verification passed",
+      },
+    ],
+  });
+}
+
 async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
   await writeArtifact(artifactRoot, "run/intake.json", JSON.stringify({ ok: true }));
   await postEvent(port, runId, baseEvent("artifact.written", "intake", "intake artifact", { artifact: "run/intake.json", actor: "codex" }));
@@ -124,7 +145,7 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
     await postEvent(port, runId, baseEvent("node.skipped", "redzone", "red zone skipped", { status: "skipped", artifact: "approvals/redzone.json", skipReason: "No production/secrets/billing/auth/data/destructive action" }));
   }
   await postEvent(port, runId, baseEvent("node.skipped", "qa-break-it", "break-it QA skipped", { status: "skipped", artifact: "qa/break-it-results.md", skipReason: "Verification checks connector contract only; no product behavior changed" }));
-  await writeArtifact(artifactRoot, "proof/proof.json", JSON.stringify({ commands: ["verify:harness"], exitCode: 0 }));
+  await writeArtifact(artifactRoot, "proof/proof.json", proofJson(runId));
   await postEvent(port, runId, baseEvent("artifact.written", "prove", "proof artifact", { artifact: "proof/proof.json" }));
   await postEvent(port, runId, baseEvent("node.skipped", "live-smoke", "live smoke skipped", { status: "skipped", artifact: "smoke/skip.json", skipReason: "No deployed/provider/runtime behavior changed" }));
   if (!options.leaveSelfHealOpen) {
@@ -134,6 +155,7 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
   await postEvent(port, runId, baseEvent("artifact.written", "handoff", "handoff artifact", { artifact: "handoff/final.md" }));
 }
 
+const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-"));
 const generatedOut = path.join(tempRoot, "commissioned");
 const pyTarget = path.join(tempRoot, "pyproject-only");
@@ -151,7 +173,7 @@ try {
 
   const adapter = JSON.parse(await readFile(path.join(generatedOut, "project-adapter.json"), "utf8"));
   assert(adapter.schema === "uash.project-adapter.v2", "adapter schema mismatch");
-  assert(adapter.generatorVersion === "0.5.1", "generator version mismatch");
+  assert(adapter.generatorVersion === packageJson.version, "generator version mismatch");
   assert(adapter.commissioning?.questionGroups >= 30, "expanded commissioning group count missing");
   assert(adapter.commissioning?.questionCount >= 150, "expanded commissioning question count missing");
   assert(adapter.codeGraph?.requiredArtifacts?.includes("graph/graph.json"), "code graph adapter missing stable graph artifact");
@@ -175,6 +197,11 @@ try {
   assert(adapter.operatingIntelligence?.interop?.mcpTools?.includes("uash.start_run"), "MCP commissioning missing");
   assert(adapter.teamHarnessRegistry?.harnessOwner, "team harness registry missing");
   assert(adapter.humanAgentProtocol?.approvalContract, "human-agent protocol missing");
+  assert(adapter.runtime?.connectorContractVersion === "uash.connector-events.v0.5", "adapter runtime contract version missing");
+  assert(adapter.runtime?.requiredNodes?.includes("prove"), "adapter runtime required nodes missing prove");
+  assert(adapter.proofSchema?.schema === "uash.proof.v1", "proof schema missing from adapter");
+  assert(adapter.humanApproval?.tokenRequiredForGrant, "human approval token contract missing from adapter");
+  assert(adapter.ciEnforcement?.workflow === ".github/workflows/ci.yml", "CI enforcement marker missing from adapter");
   await readFile(path.join(generatedOut, "AGENTS.md"), "utf8");
   await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
@@ -188,6 +215,7 @@ try {
   await readFile(path.join(generatedOut, "docs", "Team Harness Registry.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Human Agent Protocol.md"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "uash-emit-event.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "uash-write-proof.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "code-intelligence-scan.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "graphify-scan.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "graphify-gate.mjs"), "utf8");
@@ -207,8 +235,8 @@ try {
 
   const claudeConnectorDoc = await readFile(path.join(root, "docs", "CLAUDE_CODE_CONNECTOR.md"), "utf8");
   const codexConnectorDoc = await readFile(path.join(root, "docs", "CODEX_CONNECTOR.md"), "utf8");
-  assert(claudeConnectorDoc.startsWith("# Claude Code Connector v0.4"), "Claude connector doc version drift");
-  assert(codexConnectorDoc.startsWith("# Codex Connector v0.4"), "Codex connector doc version drift");
+  assert(claudeConnectorDoc.startsWith("# Claude Code Connector v0.5"), "Claude connector doc version drift");
+  assert(codexConnectorDoc.startsWith("# Codex Connector v0.5"), "Codex connector doc version drift");
   await run(node, ["scripts/code-intelligence-scan.mjs", "--repo", ".", "--provider", "local"], { cwd: generatedOut });
   await run(node, ["scripts/graphify-gate.mjs", "--repo", ".", "--allow-stale"], { cwd: generatedOut });
   await run(node, ["scripts/anchor-gate.mjs", "--repo", "."], { cwd: generatedOut });
@@ -221,7 +249,7 @@ try {
 
   bridge = spawn(node, ["scripts/claude-code-bridge.mjs"], {
     cwd: root,
-    env: { ...process.env, UASH_BRIDGE_PORT: String(port), UASH_DATA_DIR: dataDir },
+    env: { ...process.env, UASH_BRIDGE_PORT: String(port), UASH_DATA_DIR: dataDir, UASH_HUMAN_APPROVAL_TOKEN: "verify-human-token" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   let bridgeLog = "";
@@ -230,7 +258,8 @@ try {
 
   const health = await waitForHealth(port);
   assert(health.ok, "bridge health did not return ok");
-  assert(health.contractVersion === "uash.connector-events.v0.4", "bridge contract version mismatch");
+  assert(health.contractVersion === "uash.connector-events.v0.5", "bridge contract version mismatch");
+  assert(health.proofSchema === "uash.proof.v1" && health.adapterAware, "bridge hardening metadata missing");
   assert(health.nodeIds.includes("graphify") && health.nodeIds.includes("design-anchors"), "Graphify/design anchor nodes missing from bridge health");
 
   await run(node, [
@@ -289,18 +318,74 @@ try {
   const symlinkBlocked = await postEvent(port, "VERIFY-SYMLINK-ESCAPE", baseEvent("artifact.written", "prove", "symlink proof", { artifact: "proof/proof.json" }), 400);
   assertProblem(symlinkBlocked, "symlink", "symlink escape");
 
+
+  const badProofRoot = path.join(tempRoot, "bad-proof-root");
+  await writeArtifact(badProofRoot, "proof/proof.json", JSON.stringify({ exitCode: 0 }));
+  await postRun(port, { id: "VERIFY-BAD-PROOF", artifactRoot: badProofRoot });
+  const badProof = await postEvent(port, "VERIFY-BAD-PROOF", baseEvent("artifact.written", "prove", "legacy fake proof", { artifact: "proof/proof.json" }), 400);
+  assertProblem(badProof, "uash.proof.v1", "bad proof schema");
+
+  const unsafeAdapterPath = path.join(tempRoot, "outside-project-adapter.json");
+  await writeFile(unsafeAdapterPath, JSON.stringify({ schema: "uash.project-adapter.v2", runtime: { requiredNodes: ["intake", "prove", "handoff"] } }), "utf8");
+  const adapterEscapeRoot = path.join(tempRoot, "adapter-escape-root");
+  await mkdir(adapterEscapeRoot, { recursive: true });
+  const adapterEscape = await postRun(port, { id: "VERIFY-ADAPTER-ESCAPE", artifactRoot: adapterEscapeRoot, adapterPath: unsafeAdapterPath }, 400);
+  assert(adapterEscape.error === "adapter_policy_violation", "unsafe adapter path was not rejected");
+
+  const adapterAwareRunId = "VERIFY-ADAPTER-AWARE";
+  const adapterAwareRoot = path.join(tempRoot, adapterAwareRunId);
+  await writeArtifact(adapterAwareRoot, "project-adapter.json", JSON.stringify({
+    schema: "uash.project-adapter.v2",
+    generatorVersion: packageJson.version,
+    runtime: {
+      connectorContractVersion: "uash.connector-events.v0.5",
+      requiredNodes: ["intake", "prove", "handoff"],
+      artifactByNode: {
+        intake: "run/intake.json",
+        prove: "proof/proof.json",
+        handoff: "handoff/final.md"
+      }
+    },
+    proofSchema: { schema: "uash.proof.v1" },
+    humanApproval: { tokenRequiredForGrant: true }
+  }));
+  const adapterAwareCreated = await postRun(port, { id: adapterAwareRunId, artifactRoot: adapterAwareRoot, adapterPath: "project-adapter.json" });
+  assert(adapterAwareCreated.adapterPolicy?.requiredNodes?.length === 3, "adapter-aware required node policy was not loaded");
+  await writeArtifact(adapterAwareRoot, "run/intake.json", JSON.stringify({ ok: true }));
+  await postEvent(port, adapterAwareRunId, baseEvent("artifact.written", "intake", "adapter-aware intake", { artifact: "run/intake.json", actor: "codex" }));
+  await writeArtifact(adapterAwareRoot, "proof/proof.json", proofJson(adapterAwareRunId));
+  await postEvent(port, adapterAwareRunId, baseEvent("artifact.written", "prove", "adapter-aware proof", { artifact: "proof/proof.json", actor: "harness" }));
+  await writeArtifact(adapterAwareRoot, "handoff/final.md", "# Adapter-aware handoff\n\nComplete.\n");
+  await postEvent(port, adapterAwareRunId, baseEvent("artifact.written", "handoff", "adapter-aware handoff", { artifact: "handoff/final.md", actor: "harness" }));
+  const adapterAwareComplete = await postEvent(port, adapterAwareRunId, baseEvent("run.completed", "handoff", "adapter-aware completion", { artifact: "handoff/final.md", actor: "harness" }), 200);
+  assert(adapterAwareComplete.run.status === "complete", "adapter-aware reduced required-node completion failed");
+  assert(adapterAwareComplete.run.artifacts.find((artifact) => artifact.nodeId === "route")?.required === false, "adapter policy did not make route optional");
+
   const redzoneRunId = "VERIFY-REDZONE-NO-GRANT";
   const redzoneRoot = path.join(tempRoot, redzoneRunId);
-  await postRun(port, { id: redzoneRunId, artifactRoot: redzoneRoot });
+  const redzoneCreated = await postRun(port, { id: redzoneRunId, artifactRoot: redzoneRoot });
   await satisfyCoreArtifacts(port, redzoneRunId, redzoneRoot, { leaveRedzoneOpen: true });
   await postEvent(port, redzoneRunId, baseEvent("approval.requested", "redzone", "red zone approval requested", { status: "needs_approval", approvalOwner: "Nick", approvalScope: "redzone" }));
   const agentGrant = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "agent tried to grant red zone", { actor: "codex", approvalOwner: "Nick", approvalScope: "redzone" }), 400);
   assertProblem(agentGrant, "actor human", "agent grant");
+  const humanGrantNoToken = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "human grant missing token", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 409);
+  assertProblem(humanGrantNoToken, "human approval token", "human grant no token");
   const redzoneBlocked = await postEvent(port, redzoneRunId, baseEvent("run.completed", "handoff", "try completion without approval", { artifact: "handoff/final.md" }), 409);
   assertProblem(redzoneBlocked, "approval pending", "redzone completion");
 
-  const grantNoPending = await postEvent(port, "VERIFY-GRANT-NO-PENDING", baseEvent("approval.granted", "redzone", "human grant without request", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 409);
+  const grantNoPending = await postEvent(port, "VERIFY-GRANT-NO-PENDING", baseEvent("approval.granted", "redzone", "human grant without request", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 409, { "x-uash-human-token": "verify-human-token" });
   assert(grantNoPending.error === "event_state_violation", "grant without pending approval did not return state violation");
+
+
+  const tokenRunId = "VERIFY-HUMAN-TOKEN-GRANT";
+  const tokenRoot = path.join(tempRoot, tokenRunId);
+  const tokenCreated = await postRun(port, { id: tokenRunId, artifactRoot: tokenRoot });
+  await postEvent(port, tokenRunId, baseEvent("approval.requested", "redzone", "token-gated approval requested", { status: "needs_approval", approvalOwner: "Nick", approvalScope: "redzone" }));
+  await postEvent(port, tokenRunId, baseEvent("approval.granted", "redzone", "token-gated human grant", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 200, { "x-uash-human-token": tokenCreated.humanApprovalToken });
+  const tokenEventsJsonl = await readFile(path.join(dataDir, tokenRunId, "events.jsonl"), "utf8");
+  const tokenRunJson = await readFile(path.join(dataDir, tokenRunId, "run.json"), "utf8");
+  assert(!tokenEventsJsonl.includes(tokenCreated.humanApprovalToken), "human token leaked to events.jsonl");
+  assert(!tokenRunJson.includes(tokenCreated.humanApprovalToken), "human token leaked to run.json");
 
   const selfHealRunId = "VERIFY-SELF-HEAL-NO-PR";
   const selfHealRoot = path.join(tempRoot, selfHealRunId);
@@ -332,7 +417,7 @@ try {
       {
         commissioningQuestionGroups: questionGroups.length,
         commissioningQuestions: questionGroups.reduce((count, group) => count + group.questions.length, 0),
-        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Graphify Code Graph.md", "docs/GitNexus Code Intelligence.md", "docs/Good Looks Like Foundation.md", "docs/Code Quality Guardrails.md", "docs/Enterprise Proof Bank.md", "docs/Operating Intelligence Layer.md", "docs/Team Harness Registry.md", "docs/Human Agent Protocol.md", "scripts/uash-emit-event.mjs", "scripts/code-intelligence-scan.mjs", "scripts/graphify-scan.mjs"],
+        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "docs/Graphify Code Graph.md", "docs/GitNexus Code Intelligence.md", "docs/Proof Schema.md", "docs/Good Looks Like Foundation.md", "docs/Code Quality Guardrails.md", "docs/Enterprise Proof Bank.md", "docs/Operating Intelligence Layer.md", "docs/Team Harness Registry.md", "docs/Human Agent Protocol.md", "scripts/uash-emit-event.mjs", "scripts/uash-write-proof.mjs", "scripts/code-intelligence-scan.mjs", "scripts/graphify-scan.mjs"],
         adapterSchema: adapter.schema,
         generatorVersion: adapter.generatorVersion,
         foundationBlueprint: true,
@@ -348,6 +433,10 @@ try {
         graphifyGeneratedScripts: true,
         graphifyGateSmoke: true,
         generatedEmitterSmoke: true,
+        proofSchemaValidation: true,
+        adapterAwareBridge: true,
+        humanApprovalTokenGate: true,
+        ciWorkflow: true,
         strictEventValidation: true,
         artifactRootRequired: true,
         artifactFileVerification: true,

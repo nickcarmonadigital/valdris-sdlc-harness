@@ -1,0 +1,9 @@
+{
+  "schema": "uash.intake.v1",
+  "runId": "SELF-HEAL-20260703T215639Z",
+  "task": "Implement Fable Phase 1 trust-boundary hardening and merge to main for same-day infrastructure/system architecture dogfood.",
+  "repo": "nickcarmonadigital/valdris-sdlc-harness",
+  "risk": "medium",
+  "operator": "Nick Carmona",
+  "redZone": "push to main authorized by user message"
+}

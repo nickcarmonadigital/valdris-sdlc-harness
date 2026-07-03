@@ -17,7 +17,7 @@ export type Scenario = {
   id: string;
   label: string;
   workType: "bug" | "feature" | "refactor" | "docs" | "cloud";
-  mode: "Blueprint" | "Live Run" | "Replay";
+  mode: "Blueprint" | "Live Run" | "Replay" | "Demo";
   subtitle: string;
   activeNodeId: string;
   nodeStates: Record<string, NodeStatus>;
@@ -413,10 +413,10 @@ const baseDone = ["mode-boundary", "commission", "repo-scan", "adapter", "front-
 export const scenarios: Scenario[] = [
   {
     id: "v02-production-pack",
-    label: "v0.2: production-readiness merge",
+    label: "Demo: production-readiness merge",
     workType: "feature",
-    mode: "Replay",
-    subtitle: "Shows SDLC as parent, system design, 13 production layers, cloud skip reason, break-it QA block, and self-heal path.",
+    mode: "Demo",
+    subtitle: "Bundled seed scenario showing SDLC as parent, system design, 13 production layers, cloud skip reason, break-it QA block, and self-heal path.",
     activeNodeId: "break-it-qa",
     nodeStates: stateMap([...baseDone, "system-design", "production-readiness", "design-anchors", "implement"], {
       graphify: "skipped",
@@ -450,7 +450,7 @@ export const scenarios: Scenario[] = [
       "self-heal": "Needs approval: if this run exposes missing adapter defaults, open a self-heal PR against the harness pack.",
     },
     events: [
-      { at: "09:00", type: "run.mode_set", nodeId: "mode-boundary", message: "Mode set to Replay: historical sample, not fake live telemetry.", status: "done", artifact: "run/mode.json" },
+      { at: "09:00", type: "run.mode_set", nodeId: "mode-boundary", message: "Mode set to Demo: bundled seed scenario, not live telemetry or historical replay.", status: "done", artifact: "run/mode.json" },
       { at: "09:05", type: "artifact.written", nodeId: "system-design", message: "System design lane captured SDLC-as-parent taxonomy and ADR triggers.", status: "done", artifact: "design/system_design.md" },
       { at: "09:09", type: "artifact.written", nodeId: "production-readiness", message: "Production Readiness Layer Pack added: frontend through DR/recovery.", status: "done", artifact: "production/layer-assessment.json" },
       { at: "09:12", type: "node.skipped", nodeId: "cloud-platform", message: "Cloud/platform skipped with reason: no cloud/deploy/IAM/secret/network change.", status: "skipped", artifact: "cloud/skip.json" },

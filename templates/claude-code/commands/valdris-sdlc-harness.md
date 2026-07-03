@@ -155,7 +155,7 @@ If skipped, emit `node.skipped` with reason.
 ### 10. Prove
 
 ```bash
-node scripts/uash-emit-event.mjs "$RUN_ID" gate.fired prove "Proof gate fired; validation must produce proof/proof.json" --artifact proof/proof.json --status ok --actor harness
+node scripts/uash-emit-event.mjs "$RUN_ID" gate.fired prove "Proof gate fired; validation must produce proof/proof.json (`uash.proof.v1`)" --artifact proof/proof.json --status ok --actor harness
 ```
 
 Run tests/evals/smoke checks. For AI/runtime/provider changes, include eval proof; for serious production work, cite the Enterprise Proof Bank dimensions. If proof is missing or failing:

@@ -29,7 +29,7 @@ Current verified facts:
     "generatorVersion": "0.5.0",
     "commissioningQuestionGroups": 30,
     "commissioningQuestions": 150,
-    "bridgeContractVersion": "uash.connector-events.v0.4",
+    "bridgeContractVersion": "uash.connector-events.v0.5",
     "productionLayers": 13,
     "foundationBlueprint": true,
     "codeQualityGuardrails": true,
@@ -265,7 +265,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart TB
-  Emit["uash-emit-event.mjs<br/>agent emits event"] --> Contract["connector contract v0.4<br/>strict schema"]
+  Emit["uash-emit-event.mjs<br/>agent emits event"] --> Contract["connector contract v0.5<br/>strict schema"]
   Contract --> Fields{"required fields present?"}
   Fields -- no --> Reject["reject: event_contract_violation"]
   Fields -- yes --> Node{"known nodeId?"}

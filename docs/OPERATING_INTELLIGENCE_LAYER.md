@@ -4,7 +4,7 @@
 
 The original control-plane skeleton is necessary but not sufficient. The PDF / paper-gap pattern says Valdris also needs operating intelligence: evals, trajectory review, context manifests, skills, memory, tool permissions, sandboxing, model routing, AI economics, background PR agents, interoperability, production-agent lifecycle, team ownership, and human-agent protocols.
 
-This document is the durable map for that layer. The v0.5 commissioning generator now asks 30 groups / 150 questions so new repos can capture these rules before agents start writing code.
+This document is the durable map for that layer. The v0.6 commissioning generator now asks 30 groups / 150 questions so new repos can capture these rules before agents start writing code.
 
 ## Operating-intelligence families
 

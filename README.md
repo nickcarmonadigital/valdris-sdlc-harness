@@ -203,12 +203,14 @@ The current repo has the layer pack, commissioning questions, adapter generation
 The local bridge is a v0 connector/runtime boundary. It is intentionally strict:
 
 - validates event type, actor, status, run mode, and event source;
+- safely loads `project-adapter.json` to apply required-node/artifact policy;
 - rejects unknown node IDs;
 - requires skip reasons for skipped nodes;
 - requires failure reason + recovery path for failed nodes;
 - verifies artifact files under the declared artifact root;
+- validates `proof/proof.json` content against `uash.proof.v1`;
 - blocks path escape / symlink escape;
-- blocks agent-granted Red Zone approvals;
+- blocks agent-granted or tokenless Red Zone approvals;
 - blocks self-heal bypass when a harness gap is detected;
 - blocks early `run.completed` until required artifacts are passed or explicitly skipped.
 
@@ -220,7 +222,7 @@ The local bridge is a v0 connector/runtime boundary. It is intentionally strict:
 | **Live Run** | Current run state from real events | bridge, MCP, API, CLI emitter, watched artifacts |
 | **Replay** | Historical run playback | JSONL, database, run packet |
 
-Rule: **demo data must never pretend to be live telemetry.**
+Rule: **Demo data must be labeled Demo and must never pretend to be Live Run or historical Replay telemetry.**
 
 ## What stays universal vs what becomes project-specific
 
@@ -296,13 +298,26 @@ For a deeper generated map, see [`docs/HARNESS_REPO_MAP.md`](docs/HARNESS_REPO_M
 
 For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAID_MAPS.md).
 
+## v0.6 trust-boundary hardening
+
+The Fable Phase 1 audit remediation is now part of the main harness contract:
+
+- dependencies are pinned;
+- GitHub Actions CI runs the harness gates;
+- proof artifacts validate as `uash.proof.v1`;
+- the bridge consumes adapter runtime policy;
+- human approval grants require a token and never persist the raw token;
+- bundled UI seed data is labeled Demo, not Replay.
+
+See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.md) and [`docs/PROOF_SCHEMA.md`](docs/PROOF_SCHEMA.md).
+
 ## Current implementation status
 
 | Capability | Status | Evidence |
 |---|---:|---|
 | Next.js visual monitor | Built MVP | `app/`, `components/HarnessTelemetryApp.tsx` |
 | Run queue/control-plane shell | Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts` |
-| Blueprint / Live / Replay model | Built | docs + telemetry/event types |
+| Blueprint / Demo / Live / Replay truth model | Built + verified | bundled seed data is Demo; Live requires connector events; Replay is historical run data |
 | GitNexus/code-intelligence node | Built + verified | `graphify`, `design-anchors`, `npm run code-intelligence:*` |
 | Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 30 groups / 150 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
@@ -310,13 +325,14 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 | Operating-intelligence commissioning | Built structurally | eval, trajectory, context, skills, memory, tools, sandbox, model, economics, PR agents, MCP/A2A, lifecycle, registry, human protocol questions |
 | Enterprise proof-bank map | Built structurally | `docs/ENTERPRISE_PROOF_BANK.md`, generated Enterprise Proof Bank docs |
 | Test-day acceptance gates | Built structurally | `docs/TEST_DAY_ACCEPTANCE_GATES.md`, verifier command set |
-| Local connector bridge | Built + verified | `scripts/claude-code-bridge.mjs` |
-| Strict event contract | Built + verified | `docs/CONNECTOR_EVENT_CONTRACT.md`, verifier |
-| Artifact existence verification | Built + verified | bridge + adversarial verifier |
-| Red Zone approval boundary | Built + verified | agent approval grants blocked |
+| Local connector bridge | Built + verified | `scripts/claude-code-bridge.mjs`; adapter-aware v0.6 trust boundary |
+| Strict event contract | Built + verified | `docs/CONNECTOR_EVENT_CONTRACT.md`, verifier, CI |
+| Artifact content verification | Built + verified | `uash.proof.v1` schema validation + bridge + adversarial verifier |
+| Red Zone approval boundary | Built + verified | actor-human + pending approval + token gate; raw tokens not persisted |
 | Self-heal bypass prevention | Built + verified | verifier blocks detected-gap bypass |
 | 13 production layers | Built structurally | docs, adapter schema, verifier count |
 | Cloud/platform lane | Built structurally | docs + node/artifact policy |
+| CI enforcement | Built + verified | `.github/workflows/ci.yml` runs the harness gates automatically |
 | QA/break-it/live smoke | Partial | docs + node/gate positions; deeper automation next |
 | Enterprise load proof | Partial / policy-only | proof-bank standard exists; executable load gate is next |
 | Observability proof gate | Partial / policy-only | proof-bank standard exists; logs/metrics/traces validator is next |
@@ -326,12 +342,13 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 ## Quick start
 
 ```bash
-npm install
+npm ci
 npm run typecheck
 npm run build
 npm run code-intelligence:scan
 npm run graphify:gate
 npm run verify:harness
+npm run proof:write -- --run-id LOCAL-VERIFY --command "npm run typecheck" --command "npm run build" --out proof/proof.json
 npm run dev
 ```
 

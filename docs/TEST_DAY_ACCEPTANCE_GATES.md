@@ -67,9 +67,9 @@ Do not call `main` updated until:
 6. remote `origin/main` SHA equals local `HEAD`;
 7. public/raw GitHub files show the key strings after push.
 
-## Known next phase after v0.5
+## Known next phase after v0.6
 
-The v0.5 update installs structural operating intelligence. The next phase is executable specialization:
+The v0.6 update installs structural operating intelligence plus trust-boundary hardening. The next phase is executable specialization:
 
 - eval gate script;
 - trajectory scorer;

@@ -71,7 +71,7 @@ export function HarnessTelemetryApp() {
         </div>
 
         <section className="scenarioList" aria-label="Run scenarios">
-          <div className="sidebarLabel">Blueprint / replay paths</div>
+          <div className="sidebarLabel">Blueprint / demo / replay paths</div>
           {scenarios.map((item) => (
             <button
               className={`scenarioButton ${item.id === scenario.id ? "selected" : ""}`}
@@ -105,10 +105,10 @@ export function HarnessTelemetryApp() {
       <section className="telemetryMain">
         <header className="telemetryHero">
           <div>
-            <p className="eyebrow">N8N-style Flow Monitor · Blueprint / Live Run / Replay separated</p>
+            <p className="eyebrow">N8N-style Flow Monitor · Blueprint / Demo / Live Run / Replay separated</p>
             <h1>Trace the full Agentic SDLC: system design, production layers, cloud/platform, QA, proof, and self-healing.</h1>
             <p>
-              This visual layer shows the universal SDLC harness topology and replay samples. Live Run mode only lights up from real Claude Code/Codex/Hermes connector events; Blueprint mode is static, and Replay mode is historical event data.
+              This visual layer shows the universal SDLC harness topology, bundled Demo seed scenarios, and real/historical run modes. Live Run only lights up from connector events; Blueprint is static; Replay is historical event data.
             </p>
           </div>
           <div className="heroCallout">
@@ -250,7 +250,7 @@ export function HarnessTelemetryApp() {
           <article>
             <span>1</span>
             <h3>Mode labels prevent fake telemetry</h3>
-            <p>Blueprint explains topology, Live Run uses real connector events, and Replay plays durable run packets. The UI says which one you are seeing.</p>
+            <p>Blueprint explains topology, Demo is bundled seed data, Live Run uses real connector events, and Replay plays durable run packets. The UI says which one you are seeing.</p>
           </article>
           <article>
             <span>2</span>

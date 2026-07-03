@@ -1,7 +1,7 @@
 export type AgentRuntime = "claude-code" | "codex" | "hermes";
 export type RunStatus = "queued" | "running" | "blocked" | "approval" | "complete";
 export type RiskLevel = "low" | "medium" | "red-zone";
-export type RunMode = "blueprint" | "live" | "replay";
+export type RunMode = "blueprint" | "live" | "replay" | "demo";
 export type EventSource = "static-blueprint" | "browser-local" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet";
 
 export type AppEventType =
@@ -268,8 +268,8 @@ export const demoRuns: AppRun[] = [
     agent: "claude-code",
     status: "blocked",
     risk: "medium",
-    mode: "replay",
-    eventSource: "local-jsonl",
+    mode: "demo",
+    eventSource: "browser-local",
     currentNodeId: "qa-break-it",
     createdAt: "2026-06-22T22:31:00.000Z",
     updatedAt: "2026-06-22T22:42:00.000Z",
@@ -298,8 +298,8 @@ export const demoRuns: AppRun[] = [
         artifact: "run/intake.json",
         message: "Run packet opened from app intake.",
         status: "ok",
-        runMode: "replay",
-        eventSource: "local-jsonl",
+        runMode: "demo",
+        eventSource: "browser-local",
       },
       {
         id: "evt-2",
@@ -308,10 +308,10 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "route",
         artifact: "run/route.json",
-        message: "Mode is Replay: historical seed data, not fake live telemetry.",
+        message: "Mode is Demo: bundled seed data, not live telemetry or historical replay.",
         status: "ok",
-        runMode: "replay",
-        eventSource: "local-jsonl",
+        runMode: "demo",
+        eventSource: "browser-local",
       },
       {
         id: "evt-2g",

@@ -1,5 +1,5 @@
 export type AgentRuntime = "claude-code" | "codex" | "hermes";
-export type RunMode = "blueprint" | "live" | "replay";
+export type RunMode = "blueprint" | "live" | "replay" | "demo";
 export type EventSource = "static-blueprint" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet" | "browser-local";
 
 export type RunEventType =
@@ -92,10 +92,10 @@ export const demoRunEvents: RunEvent[] = [
     actor: "human",
     nodeId: "intake",
     artifact: "run/intake.json",
-    message: "Nick asks: merge production readiness + system design + cloud/platform into the harness.",
+    message: "Demo seed: merge production readiness + system design + cloud/platform into the harness.",
     status: "ok",
-    runMode: "replay",
-    eventSource: "local-jsonl",
+    runMode: "demo",
+    eventSource: "browser-local",
   },
   {
     id: "evt-002",

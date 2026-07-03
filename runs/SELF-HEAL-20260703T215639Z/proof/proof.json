@@ -1,0 +1,72 @@
+{
+  "schema": "uash.proof.v1",
+  "generatedAt": "2026-07-03T21:57:54.667Z",
+  "runId": "SELF-HEAL-20260703T215639Z",
+  "status": "passed",
+  "summary": "All proof commands exited 0.",
+  "commands": [
+    {
+      "command": "npm ci --ignore-scripts",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:23.674Z",
+      "completedAt": "2026-07-03T21:57:32.030Z",
+      "outputDigest": "sha256:166c46d309d08dba679f3ca493cb47e3e407eb40dcf592102237c8a85d0e33cc",
+      "stdoutTail": "\nadded 31 packages, and audited 32 packages in 8s\n\n8 packages are looking for funding\n  run `npm fund` for details\n\nfound 0 vulnerabilities\n",
+      "stderrTail": ""
+    },
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:32.030Z",
+      "completedAt": "2026-07-03T21:57:33.438Z",
+      "outputDigest": "sha256:f51e4c4d5e427abf676544b708b8228ad14ed94d95407e0981e4f7442199d1cf",
+      "stdoutTail": "\n> valdris-sdlc-harness@0.6.0 typecheck\n> tsc --noEmit\n\n",
+      "stderrTail": ""
+    },
+    {
+      "command": "npm run build",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:33.438Z",
+      "completedAt": "2026-07-03T21:57:41.949Z",
+      "outputDigest": "sha256:226371a973b689b5ac3d7339582f9f7754ed6bd781a081327e3b8f7744ad827c",
+      "stdoutTail": "\n> valdris-sdlc-harness@0.6.0 build\n> next build\n\n▲ Next.js 16.2.9 (Turbopack)\n\n  Creating an optimized production build ...\n✓ Compiled successfully in 2.1s\n  Running TypeScript ...\n  Finished TypeScript in 3.7s ...\n  Collecting page data using 6 workers ...\n  Generating static pages using 6 workers (0/4) ...\n  Generating static pages using 6 workers (1/4) \r\n  Generating static pages using 6 workers (2/4) \r\n  Generating static pages using 6 workers (3/4) \r\n✓ Generating static pages using 6 workers (4/4) in 394ms\n  Finalizing page optimization ...\n\nRoute (app)\n┌ ○ /\n├ ○ /_not-found\n├ ƒ /api/runs/demo/events\n└ ○ /docs\n\n\n○  (Static)   prerendered as static content\nƒ  (Dynamic)  server-rendered on demand\n\n",
+      "stderrTail": ""
+    },
+    {
+      "command": "npm run code-intelligence:scan",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:41.949Z",
+      "completedAt": "2026-07-03T21:57:53.128Z",
+      "outputDigest": "sha256:f7eb32f49e7c2b67a114165a282a79e2895f8d4fd4fb6cf3d8c2f8c835797709",
+      "stdoutTail": "\n> valdris-sdlc-harness@0.6.0 code-intelligence:scan\n> node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback local\n\n{\n  \"ok\": true,\n  \"providerRequested\": \"gitnexus\",\n  \"providerUsed\": \"gitnexus\",\n  \"fallback\": null,\n  \"graph\": \"graph/graph.json\",\n  \"freshness\": \"graph/freshness.json\",\n  \"anchors\": \"design/anchors.json\",\n  \"gitnexusEvidence\": \"graph/gitnexus.json\",\n  \"gitnexusOk\": true,\n  \"graphify\": {\n    \"exitCode\": 0,\n    \"stdout\": \"{\\n  \\\"ok\\\": true,\\n  \\\"graph\\\": \\\"graph/graph.json\\\",\\n  \\\"freshness\\\": \\\"graph/freshness.json\\\",\\n  \\\"anchors\\\": \\\"design/anchors.json\\\",\\n  \\\"provider\\\": \\\"GitNexus\\\",\\n  \\\"backendEvidence\\\": \\\"graph/gitnexus.json\\\",\\n  \\\"nodes\\\": 25,\\n  \\\"edges\\\": 5,\\n  \\\"entrypoints\\\": 8,\\n  \\\"commit\\\": \\\"a808a579d0402544b0962e22e17a0476e8b60bcc\\\",\\n  \\\"dirty\\\": true\\n}\\n\",\n    \"stderr\": \"\"\n  }\n}\n",
+      "stderrTail": ""
+    },
+    {
+      "command": "npm run graphify:gate",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:53.128Z",
+      "completedAt": "2026-07-03T21:57:53.345Z",
+      "outputDigest": "sha256:6a3f1de8d9d59523467adbdc64c78b5bfb75d628f46af2c32196d0822fee0a07",
+      "stdoutTail": "\n> valdris-sdlc-harness@0.6.0 graphify:gate\n> node scripts/graphify-gate.mjs && node scripts/anchor-gate.mjs\n\n{\n  \"ok\": true,\n  \"graph\": \"graph/graph.json\",\n  \"freshness\": \"graph/freshness.json\",\n  \"nodes\": 25,\n  \"edges\": 5,\n  \"commit\": \"a808a579d0402544b0962e22e17a0476e8b60bcc\",\n  \"dirty\": true\n}\n{\n  \"ok\": true,\n  \"anchors\": \"design/anchors.json\",\n  \"anchorCount\": 8\n}\n",
+      "stderrTail": ""
+    },
+    {
+      "command": "npm run verify:harness",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:53.345Z",
+      "completedAt": "2026-07-03T21:57:54.469Z",
+      "outputDigest": "sha256:67e33fb0ed94943a9fcdfa27ab2a618347911b56566f53a6be13abf6c72c5c01",
+      "stdoutTail": "\n> valdris-sdlc-harness@0.6.0 verify:harness\n> node scripts/verify-harness.mjs\n\nValdris SDLC Harness verification passed\n{\n  \"commissioningQuestionGroups\": 30,\n  \"commissioningQuestions\": 150,\n  \"generatedFrontDoors\": [\n    \"AGENTS.md\",\n    \"CLAUDE.md\",\n    \".claude/commands/valdris-sdlc-harness.md\",\n    \"docs/Codex Runtime Prompt.md\",\n    \"docs/Graphify Code Graph.md\",\n    \"docs/GitNexus Code Intelligence.md\",\n    \"docs/Proof Schema.md\",\n    \"docs/Good Looks Like Foundation.md\",\n    \"docs/Code Quality Guardrails.md\",\n    \"docs/Enterprise Proof Bank.md\",\n    \"docs/Operating Intelligence Layer.md\",\n    \"docs/Team Harness Registry.md\",\n    \"docs/Human Agent Protocol.md\",\n    \"scripts/uash-emit-event.mjs\",\n    \"scripts/uash-write-proof.mjs\",\n    \"scripts/code-intelligence-scan.mjs\",\n    \"scripts/graphify-scan.mjs\"\n  ],\n  \"adapterSchema\": \"uash.project-adapter.v2\",\n  \"generatorVersion\": \"0.6.0\",\n  \"foundationBlueprint\": true,\n  \"codeQualityGuardrails\": true,\n  \"enterpriseProofBank\": true,\n  \"operatingIntelligence\": true,\n  \"productionLayers\": 13,\n  \"bridgeHealth\": \"uash-claude-code-bridge\",\n  \"bridgeContractVersion\": \"uash.connector-events.v0.5\",\n  \"graphifyFlowNode\": true,\n  \"gitnexusPrimaryProvider\": true,\n  \"codeIntelligenceScanScript\": true,\n  \"graphifyGeneratedScripts\": true,\n  \"graphifyGateSmoke\": true,\n  \"generatedEmitterSmoke\": true,\n  \"proofSchemaValidation\": true,\n  \"adapterAwareBridge\": true,\n  \"humanApprovalTokenGate\": true,\n  \"ciWorkflow\": true,\n  \"strictEventValidation\": true,\n  \"artifactRootRequired\": true,\n  \"artifactFileVerification\": true,\n  \"symlinkEscapeBlocked\": true,\n  \"redZoneCompletionBlocked\": true,\n  \"agentApprovalGrantBlocked\": true,\n  \"selfHealCompletionBlocked\": true,\n  \"selfHealSkipAfterDetectionBlocked\": true,\n  \"directCompletionInjectionBlocked\": true,\n  \"earlyCompletionBlocked\": true,\n  \"verifiedRun\": \"VERIFY-PASS-1783115874333\",\n  \"eventCount\": 15\n}\n",
+      "stderrTail": ""
+    },
+    {
+      "command": "rm -rf /tmp/valdris-commissioned-proof && npm run commission -- --repo . --project-name 'Valdris SDLC Harness' --out /tmp/valdris-commissioned-proof --yes && node -e \"const fs=require('fs'); const a=JSON.parse(fs.readFileSync('/tmp/valdris-commissioned-proof/project-adapter.json','utf8')); if(a.proofSchema?.schema!=='uash.proof.v1'||!a.runtime?.adapterAwareBridge||!a.humanApproval?.tokenRequiredForGrant) process.exit(1); console.log('commissioning v0.6 smoke ok');\"",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T21:57:54.469Z",
+      "completedAt": "2026-07-03T21:57:54.667Z",
+      "outputDigest": "sha256:8e01992ce73ee9a6dc4a3a3d30929465b90725308ddcbd8ba1e1fdbd0485f868",
+      "stdoutTail": "\n> valdris-sdlc-harness@0.6.0 commission\n> node scripts/commission-harness.mjs --repo . --project-name Valdris SDLC Harness --out /tmp/valdris-commissioned-proof --yes\n\nGenerated Valdris SDLC harness pack: /tmp/valdris-commissioned-proof\nProject: Valdris SDLC Harness\nFront doors: /tmp/valdris-commissioned-proof/AGENTS.md, /tmp/valdris-commissioned-proof/CLAUDE.md, /tmp/valdris-commissioned-proof/.claude/commands/valdris-sdlc-harness.md, and /tmp/valdris-commissioned-proof/docs/Codex Runtime Prompt.md\nReview packet: /tmp/valdris-commissioned-proof/commissioning-review.md\ncommissioning v0.6 smoke ok\n",
+      "stderrTail": ""
+    }
+  ]
+}

@@ -5,7 +5,7 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 
-const VERSION = "0.5.1";
+const VERSION = "0.6.0";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 const DEFAULT_LANE_FAMILIES = [
@@ -31,6 +31,25 @@ const DEFAULT_LANE_FAMILIES = [
   "handoff",
   "harness-self-healing",
 ];
+
+const CANONICAL_NODE_IDS = ["intake", "route", "graphify", "design-anchors", "system-design", "production-readiness", "cloud-platform", "implement", "redzone", "qa-break-it", "prove", "live-smoke", "self-heal", "handoff"];
+
+const ARTIFACT_BY_NODE = {
+  intake: "run/intake.json",
+  route: "run/route.json",
+  graphify: "graph/graph.json",
+  "design-anchors": "design/anchors.json",
+  "system-design": "design/system_design.md",
+  "production-readiness": "production/layer-assessment.json",
+  "cloud-platform": "cloud/service-map.json",
+  implement: "session/events.jsonl",
+  redzone: "approvals/redzone.json",
+  "qa-break-it": "qa/break-it-results.md",
+  prove: "proof/proof.json",
+  "live-smoke": "smoke/smoke_proof.json",
+  "self-heal": "self_heal/self_heal_report.md",
+  handoff: "handoff/final.md",
+};
 
 const PRODUCTION_LAYERS = [
   "frontend",
@@ -551,11 +570,11 @@ function renderClaude(answers) {
 }
 
 function renderClaudeCommand(answers) {
-  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> graphify -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until proof exists and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone"\n\`\`\`\n\nOnly a human approval event may grant/deny approval:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> graphify -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until proof exists and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone"\n\`\`\`\n\nOnly a human approval event may grant/deny approval:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --human-token "$UASH_HUMAN_TOKEN"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderCodexPrompt(answers) {
-  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> graphify -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. For codebase, architecture, refactor, debugging, or cross-file work, run \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/graphify-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .\`.\n5. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n6. Never claim done until proof exists and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  [--artifact-root "$PWD"] \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."]\n\`\`\`\n\n## Red Zone approval events\n\nAgents may request approval, but only a human approval event may grant or deny it.\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" \\\n  --artifact approvals/redzone.json \\\n  --status needs_approval \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" \\\n  --artifact approvals/redzone.json \\\n  --status ok \\\n  --actor human \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> graphify -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. For codebase, architecture, refactor, debugging, or cross-file work, run \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/graphify-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .\`.\n5. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n6. Never claim done until proof exists and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  [--artifact-root "$PWD"] \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."]\n  [--human-token "$UASH_HUMAN_TOKEN"]\n\`\`\`\n\n## Red Zone approval events\n\nAgents may request approval, but only a token-gated human approval event may grant or deny it. Use \`--human-token\` or \`UASH_HUMAN_TOKEN\`; the token is sent as a header and is never persisted.\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" \\\n  --artifact approvals/redzone.json \\\n  --status needs_approval \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" \\\n  --artifact approvals/redzone.json \\\n  --status ok \\\n  --actor human \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone" \\\n  --human-token "$UASH_HUMAN_TOKEN"\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderMap(answers, detected) {
@@ -567,7 +586,7 @@ function renderContext(answers) {
 }
 
 function renderValidation(answers) {
-  return `# Validation Commands\n\nAgents must run the relevant commands and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason. Failed nodes need a recovery path.\n`;
+  return `# Validation Commands\n\nAgents must run the relevant commands and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason. Failed nodes need a recovery path. The \`prove\` node requires \`proof/proof.json\` to validate as \`uash.proof.v1\`.\n`;
 }
 
 function renderRedZone(answers) {
@@ -591,7 +610,7 @@ function renderQaSmoke(answers) {
 }
 
 function renderModes(answers) {
-  return `# Blueprint / Live Run / Replay Modes\n\n${answers.telemetry_mode_policy}\n\n## Rule\n\n- Blueprint explains topology only.\n- Live Run uses real connector/MCP/CLI/API/watched-artifact events.\n- Replay uses stored run packets/events/artifacts.\n\nNever imply fake live telemetry.\n`;
+  return `# Blueprint / Live Run / Replay Modes\n\n${answers.telemetry_mode_policy}\n\n## Rule\n\n- Blueprint explains topology only.\n- Demo is bundled seed data only; it is not a connector mode.\n- Live Run uses real connector/MCP/CLI/API/watched-artifact events.\n- Replay uses stored run packets/events/artifacts.\n\nNever imply fake live telemetry.\n`;
 }
 
 function renderSelfHealing(answers) {
@@ -620,6 +639,49 @@ function renderTeamHarnessRegistry(answers) {
 
 function renderHumanAgentProtocol(answers) {
   return `# Human-Agent Operating Protocol\n\n## Decision and review owners\n\n- Decision owner: ${answers.decision_owner}\n- Normal PR reviewer: ${answers.normal_pr_reviewer}\n- Specialist reviewers: ${answers.specialist_reviewers}\n\n## Escalation and SLA\n\n- Escalation path: ${answers.escalation_path}\n- Blocked-agent SLA: ${answers.blocked_agent_sla}\n- Contact channels: ${answers.human_contact_channels}\n\n## Approval contract\n\n${answers.approval_contract}\n\n## Rule\n\nApprovals are durable scoped objects, not vibes. Agents may request approval; they may not grant it to themselves.\n`;
+}
+
+
+function renderProofSchema(answers) {
+  return `# UASH Proof Schema v1
+
+The finish line accepts proof only when \`proof/proof.json\` conforms to \`uash.proof.v1\`. A file that only says \`{"exitCode":0}\` is not enough.
+
+## Minimal passing shape
+
+\`\`\`json
+{
+  "schema": "uash.proof.v1",
+  "generatedAt": "2026-07-03T00:00:00.000Z",
+  "runId": "RUN-123",
+  "status": "passed",
+  "summary": "All required validation commands passed.",
+  "commands": [
+    {
+      "command": "npm run typecheck",
+      "exitCode": 0,
+      "startedAt": "2026-07-03T00:00:00.000Z",
+      "completedAt": "2026-07-03T00:00:01.000Z",
+      "outputDigest": "sha256:<digest>",
+      "stdoutTail": "..."
+    }
+  ]
+}
+\`\`\`
+
+## Generate it
+
+\`\`\`bash
+node scripts/uash-write-proof.mjs --run-id "$RUN_ID" \\
+  --command "${answers.typecheck_command}" \\
+  --command "${answers.build_command}" \\
+  --out proof/proof.json
+\`\`\`
+
+## Bridge rule
+
+When \`artifact.written\` is emitted for the \`prove\` node, the bridge parses the file and rejects it unless this schema and command evidence are present.
+`;
 }
 
 function renderRunTemplate(answers) {
@@ -823,9 +885,36 @@ function generatePack(args, detected, answers) {
       contactChannels: answers.human_contact_channels,
       approvalContract: answers.approval_contract,
     },
+    runtime: {
+      connectorContractVersion: "uash.connector-events.v0.5",
+      canonicalNodes: CANONICAL_NODE_IDS,
+      requiredNodes: CANONICAL_NODE_IDS,
+      artifactByNode: ARTIFACT_BY_NODE,
+      adapterAwareBridge: true,
+      adapterPathPolicy: "adapterPath must resolve inside the run artifactRoot, UASH_REPO_ROOT, or UASH_ADAPTER_ROOTS; arbitrary absolute files are rejected",
+    },
+    proofSchema: {
+      schema: "uash.proof.v1",
+      generatorScript: "scripts/uash-write-proof.mjs",
+      requiredCommandFields: ["command", "exitCode", "completedAt", "stdoutTail|stderrTail|outputDigest"],
+      existenceOnlyProofRejected: true,
+    },
+    humanApproval: {
+      tokenRequiredForGrant: true,
+      preferredHeader: "x-uash-human-token",
+      cliFlag: "--human-token",
+      bodyFallback: "humanToken",
+      neverPersistRawToken: true,
+      approvalOwner: answers.approval_owner,
+    },
+    ciEnforcement: {
+      workflow: ".github/workflows/ci.yml",
+      requiredCommands: ["npm ci", "npm run typecheck", "npm run build", "node scripts/code-intelligence-scan.mjs --repo . --provider local", "npm run graphify:gate", "npm run verify:harness"],
+    },
     telemetryModes: {
       policy: answers.telemetry_mode_policy,
       modes: ["blueprint", "live", "replay"],
+      demoDataLabel: "Demo is allowed for bundled seed scenarios only; it is not a connector run mode",
     },
     selfHealing: {
       allowed: answers.self_heal_allowed,
@@ -857,6 +946,7 @@ function generatePack(args, detected, answers) {
   write(path.join(out, "00_MAP.md"), renderMap(answers, detected));
   write(path.join(out, "CONTEXT.md"), renderContext(answers));
   write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers));
+  write(path.join(out, "docs/Proof Schema.md"), renderProofSchema(answers));
   write(path.join(out, "docs/Red Zone Rules.md"), renderRedZone(answers));
   write(path.join(out, "docs/Graphify Code Graph.md"), renderGraphify(answers));
   write(path.join(out, "docs/GitNexus Code Intelligence.md"), renderGraphify(answers));
@@ -872,7 +962,7 @@ function generatePack(args, detected, answers) {
   write(path.join(out, "docs/Team Harness Registry.md"), renderTeamHarnessRegistry(answers));
   write(path.join(out, "docs/Human Agent Protocol.md"), renderHumanAgentProtocol(answers));
   write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
-  for (const scriptName of ["uash-emit-event.mjs", "code-intelligence-scan.mjs", "graphify-scan.mjs", "graphify-gate.mjs", "anchor-gate.mjs"]) {
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "graphify-scan.mjs", "graphify-gate.mjs", "anchor-gate.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));

@@ -1,4 +1,4 @@
-# Claude Code Connector v0.4
+# Claude Code Connector v0.5
 
 This is the practical answer to: “If I open Claude Code on my Mac, how does this application connect to it?”
 
@@ -35,7 +35,7 @@ That gives the exact thing Nick described: the app shows the flow, validation po
 From this repo:
 
 ```bash
-npm install
+npm ci
 npm run bridge:claude
 ```
 
@@ -54,7 +54,7 @@ It stores local run state at:
 
 ## Current strict bridge rules
 
-The v0.4 bridge rejects fake or incomplete events.
+The v0.5 bridge rejects fake or incomplete events.
 
 Required event fields:
 
@@ -107,7 +107,7 @@ Artifact proof example:
 
 ```bash
 mkdir -p proof
-printf '{"commands":["npm run verify:harness"],"exitCode":0}\n' > proof/proof.json
+node scripts/uash-write-proof.mjs --run-id RUN-1042 --command "npm run verify:harness" --out proof/proof.json
 node scripts/uash-emit-event.mjs RUN-1042 artifact.written prove \
   "Proof artifact written after validation passed" \
   --artifact proof/proof.json \
@@ -157,7 +157,8 @@ node scripts/uash-emit-event.mjs RUN-1042 approval.granted redzone \
   --mode live \
   --source bridge \
   --approval-owner "primary operator" \
-  --approval-scope "redzone"
+  --approval-scope "redzone" \
+  --human-token "$UASH_HUMAN_TOKEN"
 ```
 
 ## Claude Code slash command path

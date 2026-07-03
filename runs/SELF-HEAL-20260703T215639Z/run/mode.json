@@ -1,0 +1,6 @@
+{
+  "schema": "uash.run-mode.v1",
+  "mode": "live",
+  "eventSource": "local-jsonl",
+  "note": "Real self-heal hardening loop for Fable Phase 1 remediation, not demo/replay."
+}

@@ -17,6 +17,7 @@ Options:
   --approval-owner text
   --approval-scope text
   --self-heal-pr-url url
+  --human-token token (preferred for human approval grant/deny; sent as header, never persisted)
   --artifact-root path (defaults to current working directory for local proof verification)
 
 Example:
@@ -37,6 +38,7 @@ const options = {
   approvalOwner: undefined,
   approvalScope: undefined,
   selfHealPrUrl: undefined,
+  humanToken: undefined,
   artifactRoot: process.cwd(),
 };
 
@@ -52,6 +54,7 @@ const optionMap = {
   "--approval-owner": "approvalOwner",
   "--approval-scope": "approvalScope",
   "--self-heal-pr-url": "selfHealPrUrl",
+  "--human-token": "humanToken",
   "--artifact-root": "artifactRoot",
 };
 
@@ -71,9 +74,13 @@ options.message = messageParts.join(" ").trim() || `${type} ${nodeId}`;
 const bridgeUrl = process.env.UASH_BRIDGE_URL || "http://127.0.0.1:8787";
 const url = `${bridgeUrl.replace(/\/$/, "")}/runs/${encodeURIComponent(runId)}/events`;
 
+const humanToken = options.humanToken || process.env.UASH_HUMAN_TOKEN || process.env.UASH_HUMAN_APPROVAL_TOKEN;
+const headers = { "content-type": "application/json" };
+if (humanToken) headers["x-uash-human-token"] = humanToken;
+
 const response = await fetch(url, {
   method: "POST",
-  headers: { "content-type": "application/json" },
+  headers,
   body: JSON.stringify({
     type,
     nodeId,

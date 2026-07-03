@@ -1,0 +1,47 @@
+name: Harness CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  trust-boundary-hardening:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Code intelligence local scan
+        run: node scripts/code-intelligence-scan.mjs --repo . --provider local
+
+      - name: Graphify / anchor gates
+        run: npm run graphify:gate
+
+      - name: Harness adversarial verifier
+        run: npm run verify:harness
+
+      - name: Commissioning smoke
+        run: |
+          npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
+          node -e "const fs=require('fs'); const a=JSON.parse(fs.readFileSync('/tmp/valdris-commissioned/project-adapter.json','utf8')); if(a.proofSchema?.schema!=='uash.proof.v1'||!a.runtime?.adapterAwareBridge||!a.humanApproval?.tokenRequiredForGrant) process.exit(1);"

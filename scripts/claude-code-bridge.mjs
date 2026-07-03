@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
 import { mkdir, readFile, readdir, writeFile, appendFile } from "node:fs/promises";
-import { existsSync, lstatSync, realpathSync, statSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 
@@ -9,7 +10,14 @@ const PORT = Number(process.env.UASH_BRIDGE_PORT || 8787);
 const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
 const DATA_DIR = path.resolve(process.env.UASH_DATA_DIR || path.join(os.homedir(), ".uash", "runs"));
 const SERVICE = "uash-claude-code-bridge";
-const CONTRACT_VERSION = "uash.connector-events.v0.4";
+const CONTRACT_VERSION = "uash.connector-events.v0.5";
+const PROOF_SCHEMA = "uash.proof.v1";
+const REPO_ROOT = path.resolve(process.env.UASH_REPO_ROOT || process.cwd());
+const EXTRA_ADAPTER_ROOTS = (process.env.UASH_ADAPTER_ROOTS || "")
+  .split(path.delimiter)
+  .map((entry) => entry.trim())
+  .filter(Boolean)
+  .map((entry) => path.resolve(entry));
 
 const artifactByNode = {
   intake: "run/intake.json",
@@ -70,14 +78,23 @@ const STATUSES = new Set(["ok", "warn", "blocked", "skipped", "failed", "needs_a
 const RUN_MODES = new Set(["blueprint", "live", "replay"]);
 const EVENT_SOURCES = new Set(["bridge", "mcp", "api", "watched-artifact", "local-jsonl", "database", "run-packet", "static-blueprint", "browser-local"]);
 
-function createBaseArtifacts() {
-  return Object.entries(artifactByNode).map(([nodeId, artifactPath]) => ({
-    path: artifactPath,
-    label: labelByNode[nodeId] || nodeId,
-    nodeId,
-    required: true,
-    present: false,
-  }));
+function createBaseArtifacts(adapterPolicy = {}) {
+  const artifactMap = { ...artifactByNode, ...(adapterPolicy.artifactByNode || {}) };
+  const requiredNodes = new Set(
+    Array.isArray(adapterPolicy.requiredNodes)
+      ? adapterPolicy.requiredNodes.filter((nodeId) => NODE_IDS.has(nodeId))
+      : Object.keys(artifactByNode),
+  );
+  return Object.entries(artifactByNode).map(([nodeId, defaultArtifactPath]) => {
+    const artifactPath = artifactMap[nodeId] || defaultArtifactPath;
+    return {
+      path: artifactPath,
+      label: labelByNode[nodeId] || nodeId,
+      nodeId,
+      required: requiredNodes.has(nodeId),
+      present: false,
+    };
+  });
 }
 
 function runDir(runId) {
@@ -98,9 +115,156 @@ function send(res, status, body) {
     "content-type": typeof body === "string" ? "text/plain; charset=utf-8" : "application/json; charset=utf-8",
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-headers": "content-type, x-uash-human-token",
   });
   res.end(payload);
+}
+
+
+function sha256(value) {
+  return createHash("sha256").update(String(value)).digest("hex");
+}
+
+function safeCompare(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+}
+
+function generateHumanApprovalToken() {
+  return `uash-human-${randomBytes(24).toString("base64url")}`;
+}
+
+function digestHumanApprovalToken(token) {
+  return `sha256:${sha256(token)}`;
+}
+
+function humanApprovalTokenMatches(token, expectedDigest) {
+  if (!token || !expectedDigest) return false;
+  return safeCompare(digestHumanApprovalToken(token), expectedDigest);
+}
+
+function extractHumanToken(req, body) {
+  const headerToken = req.headers["x-uash-human-token"];
+  if (Array.isArray(headerToken)) return headerToken[0];
+  return headerToken || body.humanToken || body.humanApprovalToken;
+}
+
+function safeAdapterRoots(artifactRoot) {
+  return [artifactRoot, REPO_ROOT, ...EXTRA_ADAPTER_ROOTS]
+    .filter(Boolean)
+    .map((entry) => path.resolve(String(entry)))
+    .filter((entry) => existsSync(entry))
+    .map((entry) => realpathSync(entry));
+}
+
+function resolveAdapterPath(adapterPath, artifactRoot) {
+  if (!adapterPath) return { adapterPath: null, problems: [] };
+  const base = artifactRoot ? path.resolve(String(artifactRoot)) : REPO_ROOT;
+  const candidate = path.isAbsolute(String(adapterPath)) ? path.resolve(String(adapterPath)) : path.resolve(base, String(adapterPath));
+  if (!existsSync(candidate)) return { adapterPath: candidate, problems: [`adapterPath does not exist: ${candidate}`] };
+  if (lstatSync(candidate).isSymbolicLink()) return { adapterPath: candidate, problems: [`adapterPath is a symlink and is not allowed: ${adapterPath}`] };
+  const realCandidate = realpathSync(candidate);
+  const allowedRoots = safeAdapterRoots(artifactRoot);
+  if (!allowedRoots.some((allowedRoot) => isInside(allowedRoot, realCandidate))) {
+    return {
+      adapterPath: realCandidate,
+      problems: [`adapterPath must resolve inside artifactRoot, UASH_REPO_ROOT, or UASH_ADAPTER_ROOTS: ${adapterPath}`],
+    };
+  }
+  return { adapterPath: realCandidate, problems: [] };
+}
+
+function adapterPolicyFrom(adapter) {
+  if (!adapter || typeof adapter !== "object") throw new Error("project adapter must be a JSON object");
+  const runtime = adapter.runtime && typeof adapter.runtime === "object" ? adapter.runtime : {};
+  const artifactMap = runtime.artifactByNode && typeof runtime.artifactByNode === "object" ? runtime.artifactByNode : {};
+  const requiredNodes = Array.isArray(runtime.requiredNodes) ? runtime.requiredNodes : Object.keys(artifactByNode);
+  const unknownRequired = requiredNodes.filter((nodeId) => !NODE_IDS.has(nodeId));
+  if (unknownRequired.length) throw new Error(`project adapter contains unknown required node IDs: ${unknownRequired.join(", ")}`);
+  const invalidArtifacts = Object.keys(artifactMap).filter((nodeId) => !NODE_IDS.has(nodeId));
+  if (invalidArtifacts.length) throw new Error(`project adapter contains unknown artifact node IDs: ${invalidArtifacts.join(", ")}`);
+  return {
+    schema: adapter.schema,
+    generatorVersion: adapter.generatorVersion,
+    requiredNodes,
+    artifactByNode: Object.fromEntries(Object.entries(artifactMap).filter(([nodeId, value]) => NODE_IDS.has(nodeId) && typeof value === "string" && value.trim())),
+    approvalOwner: adapter.humanApproval?.approvalOwner || adapter.answers?.approval_owner || adapter.humanAgentProtocol?.decisionOwner || "primary human/operator",
+    proofSchema: adapter.proofSchema?.schema || PROOF_SCHEMA,
+  };
+}
+
+function loadAdapterPolicy(adapterPath, artifactRoot) {
+  const implicitAdapter = !adapterPath && artifactRoot && existsSync(path.resolve(String(artifactRoot), "project-adapter.json"))
+    ? path.resolve(String(artifactRoot), "project-adapter.json")
+    : !adapterPath && existsSync(path.resolve(REPO_ROOT, "project-adapter.json"))
+      ? path.resolve(REPO_ROOT, "project-adapter.json")
+      : adapterPath;
+  if (!implicitAdapter) return { adapterPath: null, adapterPolicy: undefined };
+  const resolved = resolveAdapterPath(implicitAdapter, artifactRoot);
+  if (resolved.problems.length) throw new Error(resolved.problems.join("; "));
+  const adapter = JSON.parse(readFileSync(resolved.adapterPath, "utf8"));
+  return { adapterPath: resolved.adapterPath, adapterPolicy: adapterPolicyFrom(adapter) };
+}
+
+function isProofEvent(event) {
+  return event.nodeId === "prove" || event.artifact === "proof/proof.json";
+}
+
+function validateProofDocument(filePath) {
+  const problems = [];
+  let document;
+  try {
+    document = JSON.parse(readFileSync(filePath, "utf8"));
+  } catch (error) {
+    return { checked: true, valid: false, schema: null, commandCount: 0, problems: [`proof artifact must be valid JSON: ${error.message}`] };
+  }
+  if (document.schema !== PROOF_SCHEMA) problems.push(`proof artifact schema must be ${PROOF_SCHEMA}`);
+  if (!document.generatedAt || Number.isNaN(Date.parse(document.generatedAt))) problems.push("proof.generatedAt must be an ISO timestamp");
+  if (!["passed", "failed", "blocked"].includes(document.status)) problems.push("proof.status must be passed, failed, or blocked");
+  if (typeof document.summary !== "string" || !document.summary.trim()) problems.push("proof.summary is required");
+  if (!Array.isArray(document.commands) || document.commands.length === 0) {
+    problems.push("proof.commands must contain at least one command result");
+  } else {
+    document.commands.forEach((command, index) => {
+      if (!command || typeof command !== "object" || Array.isArray(command)) {
+        problems.push(`proof.commands[${index}] must be an object`);
+        return;
+      }
+      if (typeof command.command !== "string" || !command.command.trim()) problems.push(`proof.commands[${index}].command is required`);
+      if (!Number.isInteger(command.exitCode)) problems.push(`proof.commands[${index}].exitCode must be an integer`);
+      if (!command.completedAt || Number.isNaN(Date.parse(command.completedAt))) problems.push(`proof.commands[${index}].completedAt must be an ISO timestamp`);
+      if (!command.stdoutTail && !command.stderrTail && !command.outputDigest) problems.push(`proof.commands[${index}] must include stdoutTail, stderrTail, or outputDigest`);
+    });
+  }
+  if (document.status === "passed" && Array.isArray(document.commands) && document.commands.some((command) => command?.exitCode !== 0)) {
+    problems.push("proof.status passed requires every command exitCode to be 0");
+  }
+  return {
+    checked: true,
+    valid: problems.length === 0,
+    schema: document.schema,
+    commandCount: Array.isArray(document.commands) ? document.commands.length : 0,
+    status: document.status,
+    problems,
+  };
+}
+
+function humanApprovalTokenProblems(run, event, humanToken) {
+  if (event.type !== "approval.granted" && event.type !== "approval.denied") return [];
+  const runDigest = run.auth?.humanApprovalTokenSha256;
+  if (runDigest) {
+    if (!humanToken) return ["human approval token is required for approval grant/deny events"];
+    if (!humanApprovalTokenMatches(humanToken, runDigest)) return ["human approval token did not match this run"];
+    return [];
+  }
+  const envToken = process.env.UASH_HUMAN_APPROVAL_TOKEN;
+  if (envToken) {
+    if (!humanToken) return ["human approval token is required for approval grant/deny events"];
+    if (!safeCompare(String(humanToken), String(envToken))) return ["human approval token did not match UASH_HUMAN_APPROVAL_TOKEN"];
+    return [];
+  }
+  return ["human approval token is required; create the run with POST /runs or set UASH_HUMAN_APPROVAL_TOKEN"];
 }
 
 async function readJson(req) {
@@ -133,17 +297,23 @@ function normalizeApprovalRecords(approvals = []) {
 }
 
 function normalizeRun(run) {
+  const adapterPolicy = run.adapterPolicy || undefined;
   return {
     ...run,
     contractVersion: run.contractVersion || CONTRACT_VERSION,
+    adapterPath: run.adapterPath,
+    adapterPolicy,
+    auth: run.auth,
     approvals: normalizeApprovalRecords(run.approvals || []),
-    artifacts: Array.isArray(run.artifacts) && run.artifacts.length ? run.artifacts : createBaseArtifacts(),
+    artifacts: Array.isArray(run.artifacts) && run.artifacts.length ? run.artifacts : createBaseArtifacts(adapterPolicy),
     events: Array.isArray(run.events) ? run.events : [],
   };
 }
 
-function createMinimalRun(runId, event = {}) {
+function createMinimalRun(runId, event = {}, options = {}) {
   const now = nowIso();
+  const adapterConfig = loadAdapterPolicy(event.adapterPath, event.artifactRoot);
+  const humanApprovalToken = options.humanApprovalToken;
   return normalizeRun({
     id: runId,
     title: event.title || `Claude Code run ${runId}`,
@@ -158,17 +328,27 @@ function createMinimalRun(runId, event = {}) {
     eventSource: event.eventSource || "bridge",
     currentNodeId: event.nodeId || "intake",
     artifactRoot: event.artifactRoot,
+    adapterPath: adapterConfig.adapterPath || event.adapterPath,
+    adapterPolicy: adapterConfig.adapterPolicy,
+    auth: humanApprovalToken
+      ? {
+          humanApprovalTokenSha256: digestHumanApprovalToken(humanApprovalToken),
+          humanApprovalTokenIssuedAt: now,
+          humanApprovalTokenMode: "per-run",
+        }
+      : event.auth,
     createdAt: now,
     updatedAt: now,
     approvals: [],
-    artifacts: createBaseArtifacts(),
+    artifacts: createBaseArtifacts(adapterConfig.adapterPolicy),
     events: [],
   });
 }
 
 function createRunFromBody(body) {
-  const base = createMinimalRun(body.id, body);
-  return normalizeRun({
+  const humanApprovalToken = String(body.humanApprovalToken || generateHumanApprovalToken());
+  const base = createMinimalRun(body.id, body, { humanApprovalToken });
+  const run = normalizeRun({
     ...base,
     title: body.title || base.title,
     task: body.task || base.task,
@@ -180,12 +360,16 @@ function createRunFromBody(body) {
     mode: body.mode || body.runMode || base.mode,
     eventSource: body.eventSource || base.eventSource,
     artifactRoot: body.artifactRoot || base.artifactRoot,
+    adapterPath: base.adapterPath,
+    adapterPolicy: base.adapterPolicy,
+    auth: base.auth,
     // Never trust client-supplied completion, artifact truth, events, or approvals on run creation.
     status: "running",
     approvals: [],
-    artifacts: createBaseArtifacts(),
+    artifacts: createBaseArtifacts(base.adapterPolicy),
     events: [],
   });
+  return { run, humanApprovalToken };
 }
 
 function normalizeEvent(runId, event) {
@@ -211,6 +395,7 @@ function normalizeEvent(runId, event) {
     approvalOwner: event.approvalOwner,
     approvalScope: event.approvalScope,
     selfHealPrUrl: event.selfHealPrUrl,
+    adapterPath: event.adapterPath,
   };
 }
 
@@ -259,9 +444,10 @@ function eventContractProblems(event) {
   return problems;
 }
 
-function eventStateProblems(run, event) {
+function eventStateProblems(run, event, humanToken) {
   const problems = [];
   if (event.type === "approval.granted" || event.type === "approval.denied") {
+    problems.push(...humanApprovalTokenProblems(run, event, humanToken));
     const approvals = normalizeApprovalRecords(run.approvals || []);
     const pending = approvals.find((approval) => approval.scope === event.approvalScope && approval.owner === event.approvalOwner && approval.status === "pending");
     if (!pending) problems.push(`approval ${event.type} requires an existing pending approval for ${event.approvalScope} owned by ${event.approvalOwner}`);
@@ -310,7 +496,10 @@ function resolveArtifactPath(run, target, requireExists = false) {
 
 function artifactWriteProblems(run, event) {
   if (event.type !== "artifact.written") return [];
-  return resolveArtifactPath(run, event.artifact, true).problems;
+  const result = resolveArtifactPath(run, event.artifact, true);
+  const problems = [...result.problems];
+  if (!problems.length && isProofEvent(event)) problems.push(...validateProofDocument(result.resolved).problems);
+  return problems;
 }
 
 function artifactVerification(run, event) {
@@ -318,7 +507,9 @@ function artifactVerification(run, event) {
   const result = resolveArtifactPath(run, event.artifact, true);
   if (result.problems.length) return { checked: true, exists: false, problems: result.problems, path: result.resolved };
   const stat = statSync(result.resolved);
-  return { checked: true, exists: true, path: result.resolved, realPath: result.realTarget, size: stat.size, mtimeMs: stat.mtimeMs };
+  const verification = { checked: true, exists: true, path: result.resolved, realPath: result.realTarget, size: stat.size, mtimeMs: stat.mtimeMs };
+  if (isProofEvent(event)) verification.proof = validateProofDocument(result.resolved);
+  return verification;
 }
 
 function unresolvedApprovalProblems(run) {
@@ -342,6 +533,10 @@ function artifactProofProblems(run, artifact) {
   if (!artifact.present) return [`${artifact.path} missing or not skipped`];
   if (!artifact.verification?.checked) return [`${artifact.path} present but not verified against artifactRoot`];
   if (!artifact.verification.exists) return [`${artifact.path} was claimed but file verification failed`];
+  if (artifact.path === "proof/proof.json" && artifact.verification.proof?.valid !== true) {
+    const problems = artifact.verification.proof?.problems?.join("; ") || "proof content was not schema-validated";
+    return [`${artifact.path} failed ${PROOF_SCHEMA} validation: ${problems}`];
+  }
   return [];
 }
 
@@ -509,6 +704,9 @@ async function handle(req, res) {
         port: PORT,
         eventTypes: Array.from(EVENT_TYPES),
         nodeIds: Array.from(NODE_IDS),
+        proofSchema: PROOF_SCHEMA,
+        adapterAware: true,
+        repoRoot: REPO_ROOT,
       });
     }
 
@@ -522,9 +720,18 @@ async function handle(req, res) {
       if (body.status === "complete") {
         return send(res, 409, { ok: false, error: "run_creation_cannot_complete", problems: ["Create runs as running; completion must flow through verified run.completed events."] });
       }
-      const run = createRunFromBody(body);
-      await writeRun(run);
-      return send(res, 200, run);
+      let created;
+      try {
+        created = createRunFromBody(body);
+      } catch (error) {
+        return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
+      }
+      await writeRun(created.run);
+      return send(res, 200, {
+        ...created.run,
+        humanApprovalToken: created.humanApprovalToken,
+        humanApprovalTokenNotice: "Shown once. Send it as x-uash-human-token or --human-token for approval.granted/approval.denied; raw tokens are never persisted.",
+      });
     }
 
     if (parts[0] === "runs" && parts[1] && req.method === "GET" && parts.length === 2) {
@@ -534,18 +741,31 @@ async function handle(req, res) {
     if (parts[0] === "runs" && parts[1] && parts[2] === "events" && req.method === "POST") {
       const runId = parts[1];
       const body = await readJson(req);
+      const humanToken = extractHumanToken(req, body);
       let run;
       try {
         run = await readRun(runId);
       } catch {
-        run = createMinimalRun(runId, body);
+        try {
+          run = createMinimalRun(runId, body);
+        } catch (error) {
+          return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
+        }
+      }
+      if (body.adapterPath && !run.adapterPolicy) {
+        try {
+          const adapterConfig = loadAdapterPolicy(body.adapterPath, body.artifactRoot || run.artifactRoot);
+          run = normalizeRun({ ...run, adapterPath: adapterConfig.adapterPath, adapterPolicy: adapterConfig.adapterPolicy, artifacts: createBaseArtifacts(adapterConfig.adapterPolicy) });
+        } catch (error) {
+          return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
+        }
       }
       const event = normalizeEvent(runId, body);
       const contractProblems = eventContractProblems(event);
       if (contractProblems.length) {
         return send(res, 400, { ok: false, error: "event_contract_violation", problems: contractProblems });
       }
-      const stateProblems = eventStateProblems(run, event);
+      const stateProblems = eventStateProblems(run, event, humanToken);
       if (stateProblems.length) {
         return send(res, 409, { ok: false, error: "event_state_violation", problems: stateProblems });
       }

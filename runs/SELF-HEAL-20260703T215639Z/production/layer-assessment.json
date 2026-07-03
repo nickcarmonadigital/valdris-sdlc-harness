@@ -1,0 +1,12 @@
+{
+  "schema": "uash.production-layer-assessment.v1",
+  "runId": "SELF-HEAL-20260703T215639Z",
+  "layers": {
+    "cicd-version-control": "required",
+    "security": "required",
+    "backend-api-logic": "required",
+    "error-tracking-logs-observability": "skipped",
+    "cloud-compute": "skipped"
+  },
+  "summary": "Local harness/control-plane hardening; no deployed cloud resource was mutated."
+}

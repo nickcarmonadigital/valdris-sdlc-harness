@@ -1,4 +1,4 @@
-# Connector Event Contract v0.4
+# Connector Event Contract v0.5
 
 The connector contract lets Claude Code, Codex, Hermes, or any future agent runtime appear on the visual board without turning this product into an IDE.
 
@@ -46,7 +46,7 @@ agent runtime
 
 ## Strict event schema
 
-The v0.4 local bridge is intentionally strict. Events missing required fields are rejected with `event_contract_violation`.
+The v0.5 local bridge is intentionally strict. Events missing required fields are rejected with `event_contract_violation`.
 
 ```ts
 type RunMode = "blueprint" | "live" | "replay";
@@ -104,7 +104,7 @@ type RunEvent = {
 
 ## Workflow node IDs
 
-Base v0.4 bridge flow. The stable node ID remains `graphify`, but the preferred backend for that node is now GitNexus/code intelligence:
+Base v0.5 bridge flow. The stable node ID remains `graphify`, but the preferred backend for that node is now GitNexus/code intelligence:
 
 ```text
 intake → route → graphify → design-anchors → system-design → production-readiness → cloud-platform → implement → redzone → qa-break-it → prove → live-smoke → self-heal → handoff
@@ -128,8 +128,8 @@ Rules:
 - `skipped` requires `skipReason`.
 - `failed` requires `failureReason` and `recoveryPath`.
 - `needs_approval` requires `approvalOwner` and `approvalScope`.
-- `approval.granted` and `approval.denied` must be emitted by `actor: "human"` and must match an existing pending approval.
-- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected.
+- `approval.granted` and `approval.denied` must be emitted by `actor: "human"`, must match an existing pending approval, and must include a matching human token via `x-uash-human-token` / `--human-token`.
+- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected. For `prove`, `proof/proof.json` must validate as `uash.proof.v1`.
 - `run.completed` can only pass when all required nodes are verified-present or explicitly skipped with reasons.
 - If `self_heal.detected` is emitted, a later `self_heal.pr_opened` or `self_heal.pr_proposed` is required before completion.
 
@@ -194,6 +194,10 @@ Rules:
   "message": "Proposed patch to add a missing cloud/platform commissioning question."
 }
 ```
+
+## Project-adapter runtime policy
+
+The v0.5 bridge can load `project-adapter.json` from inside the run `artifactRoot`, `UASH_REPO_ROOT`, or `UASH_ADAPTER_ROOTS`. It consumes `runtime.requiredNodes` and `runtime.artifactByNode` so project-specific gates are enforced at runtime instead of only in prompts. Arbitrary absolute adapter paths are rejected.
 
 ## Adapter responsibility
 

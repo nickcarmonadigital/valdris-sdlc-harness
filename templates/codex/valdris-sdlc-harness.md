@@ -28,7 +28,7 @@ intake → route → graphify → design-anchors → system-design → productio
 4. Use `node.skipped` with `--skip-reason` for irrelevant nodes, including `graphify` and `design-anchors` on docs-only/non-code runs.
 5. Use `node.failed` with `--failure-reason` and `--recovery-path` for failed nodes.
 6. Stop for Red Zone approval before production deploys, secrets/env changes, auth/billing/customer data, destructive ops, provider config, or cloud resource mutation.
-7. Do not emit `run.completed` until proof exists and every required node is passed or skipped with a reason.
+7. Do not emit `run.completed` until `proof/proof.json (`uash.proof.v1`)` validates as `uash.proof.v1` and every required node is passed or skipped with a reason.
 
 ## Event command
 
