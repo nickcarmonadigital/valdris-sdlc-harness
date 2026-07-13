@@ -83,13 +83,13 @@ npm run commission:questions
 
 Current expanded bank:
 
-- **30 question groups**
-- **150 questions**
+- **31 question groups**
+- **158 questions**
 - **Full index:** [`docs/COMMISSIONING_QUESTION_BANK.md`](COMMISSIONING_QUESTION_BANK.md)
 
 The first 13 groups commission the base control-plane skeleton: operator style, project identity, source of truth, repo/architecture, branch/deploy, validation, Red Zone, lanes, system design, production readiness, cloud/platform, QA/release, and modes/self-healing.
 
-Groups 14–30 commission the missing “100%” operating-intelligence layer:
+Groups 14–30 commission the operating-intelligence layer, and group 31 captures Apple/iOS platform facts:
 
 1. Good looks like / foundation blueprint.
 2. Anti-spaghetti code quality guardrails.
@@ -162,7 +162,7 @@ Generated `AGENTS.md` should tell Codex:
 2. **Repo scanner / code intelligence** - GitNexus-backed index is now preferred via `scripts/code-intelligence-scan.mjs`; local static graph remains disclosed fallback. Extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
 3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, map/router, validation/red-zone docs, run template, review packet.
 4. **Claude/Codex command templates** - implemented now: generated Claude slash command plus Codex runtime prompt/front door.
-5. **Gate script portability** - next: port the uploaded harness `_core/scripts/*` into reusable generator templates.
+5. **Gate script portability** - implemented: generated packs carry gate scripts, controls, skills, package scripts, and a CI workflow template; nested packs use `node .valdris-harness/scripts/<gate> --repo .` from the target root.
 6. **UI commissioning surface** - next: render the question groups in the web app and store adapter drafts.
 7. **Connector event enforcement** - implemented now in the local bridge: missing proof/artifacts, missing skip reasons, and missing failure recovery paths block `run.completed`.
 

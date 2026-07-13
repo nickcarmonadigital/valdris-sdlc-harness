@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Architecture and Refactor"
+  short_description: "Design and refactor with blast-radius proof"
+  default_prompt: "Use $valdris-architecture-refactor to design this change and verify its architectural impact."
+
+policy:
+  allow_implicit_invocation: true

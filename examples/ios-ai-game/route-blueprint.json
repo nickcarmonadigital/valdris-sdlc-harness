@@ -1,0 +1,39 @@
+{
+  "schema": "uash.route-blueprint.v1",
+  "profile": "enterprise",
+  "primarySkillByPhase": {
+    "intake-route": "valdris-intake-route",
+    "delivery": "valdris-feature-delivery",
+    "proof-handoff": "valdris-proof-handoff"
+  },
+  "supportingSkills": [
+    "valdris-genai-assurance",
+    "valdris-security-audit",
+    "valdris-platform-release"
+  ],
+  "productionLayers": [
+    {"layer": "frontend", "initialApplicability": "required"},
+    {"layer": "backend-api-logic", "initialApplicability": "required"},
+    {"layer": "database-storage", "initialApplicability": "required"},
+    {"layer": "auth-permissions-rls", "initialApplicability": "required"},
+    {"layer": "hosting-deployment", "initialApplicability": "required"},
+    {"layer": "cloud-compute", "initialApplicability": "required"},
+    {"layer": "cicd-version-control", "initialApplicability": "required"},
+    {"layer": "security", "initialApplicability": "required"},
+    {"layer": "rate-limiting", "initialApplicability": "required"},
+    {"layer": "caching-cdn", "initialApplicability": "potentially-affected"},
+    {"layer": "load-balancing-scaling", "initialApplicability": "required"},
+    {"layer": "error-tracking-logs-observability", "initialApplicability": "required"},
+    {"layer": "availability-recovery-dr", "initialApplicability": "required"}
+  ],
+  "ai": {"workloadDetected": true, "rag": "undecided", "tools": true, "memory": true},
+  "domainPacks": ["mobile-ios", "multiplayer-realtime", "digital-commerce", "youth-ai-safety"],
+  "redZone": [
+    "Apple signing credentials or App Store Connect keys",
+    "TestFlight upload or promotion",
+    "production cloud deploy, traffic, DNS, IAM, secret, failover, or restore",
+    "real StoreKit product configuration, billing, refund, void, grant, or reconciliation",
+    "real player data, external tester invitation, or customer communication",
+    "consequential AI tool activation or production model/provider/prompt promotion"
+  ]
+}

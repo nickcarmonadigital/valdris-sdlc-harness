@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Proof and Handoff"
+  short_description: "Validate evidence and block unsupported done"
+  default_prompt: "Use $valdris-proof-handoff to validate the run packet and produce the final decision packet."
+
+policy:
+  allow_implicit_invocation: true

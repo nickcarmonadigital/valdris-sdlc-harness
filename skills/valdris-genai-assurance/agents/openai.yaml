@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris GenAI Assurance"
+  short_description: "Gate AI, agent, and RAG production changes"
+  default_prompt: "Use $valdris-genai-assurance to evaluate this AI workload across eval, safety, data, tool, and lifecycle controls."
+
+policy:
+  allow_implicit_invocation: true

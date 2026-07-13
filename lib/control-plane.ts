@@ -48,6 +48,7 @@ export type AppEvent = {
 export type RunArtifact = {
   path: string;
   label: string;
+  nodeId?: string;
   required: boolean;
   present: boolean;
   skipped?: boolean;
@@ -63,6 +64,15 @@ export type RunArtifact = {
     realPath?: string;
     size?: number;
     mtimeMs?: number;
+    productionLayerAssessment?: {
+      valid?: boolean;
+      layerCount?: number;
+      passedLayers?: number;
+      skippedLayers?: number;
+      blockingLayers?: string[];
+      layers?: Array<{ layer: string; status: string; reason?: string; evidence?: string }>;
+      problems?: string[];
+    };
   };
 };
 
@@ -104,6 +114,22 @@ export type WorkflowNode = {
   x: number;
   y: number;
 };
+
+export const productionLayers = [
+  { id: "frontend", label: "Frontend" },
+  { id: "backend-api-logic", label: "Backend/API Logic" },
+  { id: "database-storage", label: "Database/Storage" },
+  { id: "auth-permissions-rls", label: "Auth/Permissions/RLS" },
+  { id: "hosting-deployment", label: "Hosting/Deployment" },
+  { id: "cloud-compute", label: "Cloud/Compute" },
+  { id: "cicd-version-control", label: "CI/CD/Version Control" },
+  { id: "security", label: "Security" },
+  { id: "rate-limiting", label: "Rate Limiting" },
+  { id: "caching-cdn", label: "Caching/CDN" },
+  { id: "load-balancing-scaling", label: "Load Balancing/Scaling" },
+  { id: "error-tracking-logs-observability", label: "Error Tracking/Logs/Observability" },
+  { id: "availability-recovery-dr", label: "Availability/Recovery/DR" },
+] as const;
 
 export const workflowNodes: WorkflowNode[] = [
   {
@@ -253,6 +279,7 @@ export const workflowEdges = [
 export const baseArtifacts: RunArtifact[] = workflowNodes.map((node) => ({
   path: node.requiredArtifact,
   label: node.label,
+  nodeId: node.id,
   required: true,
   present: node.id === "intake",
 }));

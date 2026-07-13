@@ -5,8 +5,9 @@ import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 
-const VERSION = "0.6.2";
+const VERSION = "0.7.0";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+const HARNESS_ROOT = path.resolve(SCRIPT_DIR, "..");
 
 const DEFAULT_LANE_FAMILIES = [
   "intake-classify",
@@ -239,7 +240,7 @@ const QUESTION_GROUPS = [
       { id: "eval_dataset_owner", label: "Who owns eval datasets/examples?", default: "product/AI owner plus domain reviewer" },
       { id: "eval_acceptance_threshold", label: "What eval score blocks merge or deploy?", default: "project-specific; default block on critical regression, unsafe answer, tool misuse, or below agreed score threshold" },
       { id: "eval_run_location", label: "Where should evals run?", default: "local during development and CI before merge for AI behavior changes" },
-      { id: "eval_artifacts", label: "What eval artifacts must be attached?", default: "evals/eval-plan.json, evals/results.json, failing examples, judge/config version, model/provider used" },
+      { id: "eval_artifacts", label: "What eval artifacts must be attached?", default: "evals/results.json, failing examples, judge/config version, model/provider used" },
     ],
   },
   {
@@ -250,7 +251,7 @@ const QUESTION_GROUPS = [
       { id: "retry_loop_limit", label: "How many retries/loops are acceptable before escalation?", default: "3 focused attempts or 20 minutes without new evidence, then escalate with blocker packet" },
       { id: "forbidden_tool_sequences", label: "Which tool/action sequences are forbidden?", default: "write before context/graph on cross-file work; deploy before proof; approval.granted by agent; destructive action without pending human approval" },
       { id: "trajectory_scores", label: "What should the trajectory scorer grade?", default: "context loaded, tool selection, artifact sequence, recovery after failures, skip reasons, approval behavior, cost/retry discipline" },
-      { id: "trajectory_artifacts", label: "What trajectory evidence must be stored?", default: "trajectory/trace.jsonl, tool calls, context loads, approval events, retry/failure ledger, final trajectory score" },
+      { id: "trajectory_artifacts", label: "What trajectory evidence must be stored?", default: "trajectory/trajectory.json, tool calls, context loads, approval events, retry/failure ledger" },
     ],
   },
   {
@@ -262,7 +263,7 @@ const QUESTION_GROUPS = [
       { id: "approval_required_context", label: "What context should never be loaded or used unless approved?", default: "secrets, production data, private customer data, billing/provider dashboards, sensitive logs" },
       { id: "stale_context_policy", label: "How should stale or conflicting context be handled?", default: "check live system/git first, mark stale docs, cite source date, ask before Red Zone decisions" },
       { id: "context_budget", label: "What is the token/context budget policy?", default: "load smallest sufficient lane context; summarize long docs; keep source links; fail if required context cannot fit or be retrieved" },
-      { id: "context_artifacts", label: "What context artifacts must exist?", default: "context/manifest.yaml, context/budget.json, context/sources.json, context/loaded.md" },
+      { id: "context_artifacts", label: "What context artifacts must exist?", default: "context/manifest.json, context/budget.json, context/sources.json, context/loaded.md" },
     ],
   },
   {
@@ -274,7 +275,7 @@ const QUESTION_GROUPS = [
       { id: "skill_activation_rules", label: "When should each skill activate?", default: "by lane, file path, risk class, work type, provider touched, or user command" },
       { id: "skill_tool_permissions", label: "What tools is each skill allowed to use?", default: "least privilege by skill; Red Zone tools require human approval" },
       { id: "skill_proof", label: "What proof does each skill need to produce?", default: "skill name/version, why selected, artifacts generated, commands run, eval/tests/smoke as applicable" },
-      { id: "skill_registry_artifacts", label: "How are skills versioned and reviewed?", default: "skills/registry.yaml plus per-skill manifest with owner, version, triggers, allowed tools, proof, evals" },
+      { id: "skill_registry_artifacts", label: "How are skills versioned and reviewed?", default: "skills/registry.json plus per-skill SKILL.md and agents/openai.yaml" },
     ],
   },
   {
@@ -398,10 +399,24 @@ const QUESTION_GROUPS = [
       { id: "approval_contract", label: "What does approval have to include?", default: "scope, run ID, artifact path, approver, expiry if temporary, risk accepted, exact action allowed" },
     ],
   },
+  {
+    id: "apple_mobile_ios",
+    title: "Apple / iOS platform commissioning",
+    questions: [
+      { id: "ios_scheme", label: "What Xcode scheme and workspace/project should CI build?", default: "commission exact workspace/project and shared scheme when iOS is detected; otherwise not applicable" },
+      { id: "ios_bundle_id", label: "What bundle ID and Apple Developer team own the app?", default: "commissioned owner must provide; never infer signing identity" },
+      { id: "ios_support_matrix", label: "What iOS/device support matrix is required?", default: "commission minimum iOS, iPhone/iPad devices, orientations, accessibility, and physical-device smoke" },
+      { id: "ios_macos_runner", label: "Which approved macOS/Xcode runner supplies native proof?", default: "required before Xcode archive, simulator/device, signing, or TestFlight claims" },
+      { id: "ios_signing_owner", label: "Who owns certificates, profiles, entitlements, and App Store Connect keys?", default: "human Apple platform owner; Red Zone" },
+      { id: "ios_testflight_owner", label: "Who may upload/promote TestFlight builds and invite testers?", default: "human release owner; Red Zone" },
+      { id: "ios_storekit_model", label: "What StoreKit products, entitlements, and server-side verification model apply?", default: "not applicable unless commerce is detected; otherwise commission exact products and authoritative ledger" },
+      { id: "ios_push_model", label: "Does APNs apply and who owns its keys/payload privacy?", default: "not applicable unless push is used" }
+    ]
+  },
 ];
 
 function parseArgs(argv) {
-  const args = { repo: process.cwd(), out: "generated-harness", answers: null, projectName: null, printQuestions: false, yes: false };
+  const args = { repo: process.cwd(), out: "generated-harness", answers: null, projectName: null, printQuestions: false, yes: false, force: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--repo") args.repo = argv[++i];
@@ -410,6 +425,7 @@ function parseArgs(argv) {
     else if (arg === "--project-name") args.projectName = argv[++i];
     else if (arg === "--print-questions") args.printQuestions = true;
     else if (arg === "--yes" || arg === "-y") args.yes = true;
+    else if (arg === "--force") args.force = true;
     else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -421,7 +437,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out ./generated-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Repo to scan. Defaults to cwd.\n  --out <path>           Output harness pack directory. Defaults to generated-harness.\n  --answers <json>       Optional answers JSON file. Missing values are asked interactively.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use defaults for missing answers.\n  --print-questions      Print the commissioning question bank and exit.\n`);
+  console.log(`Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out ./generated-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Repo to scan. Defaults to cwd.\n  --out <path>           Output harness pack directory. Defaults to generated-harness.\n  --answers <json>       Optional answers JSON file. Missing values are asked interactively.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use defaults for missing answers.\n  --force                Replace an existing generated pack; never permits --out to equal --repo.\n  --print-questions      Print the commissioning question bank and exit.\n`);
 }
 
 function exists(repo, file) {
@@ -447,16 +463,46 @@ function detectRepo(repo) {
   const hasRequirements = exists(repo, "requirements.txt");
   const hasPyproject = exists(repo, "pyproject.toml");
   const hasPython = hasPyproject || hasRequirements;
+  const ignoredDiscoveryDirs = new Set([".git", "node_modules", ".next", "dist", "build", "DerivedData", "Pods"]);
+  const discovered = [];
+  const queue = [{ dir: repo, depth: 0 }];
+  while (queue.length) {
+    const { dir, depth } = queue.shift();
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const relative = path.relative(repo, path.join(dir, entry.name)).replaceAll("\\", "/");
+      discovered.push({ entry, relative });
+      if (discovered.length > 100000) throw new Error("Repository discovery exceeded 100,000 entries; narrow the repo or add an ignored generated directory");
+      if (entry.isDirectory() && !entry.isSymbolicLink() && !ignoredDiscoveryDirs.has(entry.name)) queue.push({ dir: path.join(dir, entry.name), depth: depth + 1 });
+    }
+  }
+  const hasDiscoveredName = (predicate) => discovered.some(({ entry, relative }) => predicate(entry, relative));
+  const hasXcodeProject = hasDiscoveredName((entry) => entry.isDirectory() && [".xcodeproj", ".xcworkspace"].some((suffix) => entry.name.toLowerCase().endsWith(suffix)));
+  const hasSwiftPackage = hasDiscoveredName((entry) => entry.isFile() && entry.name === "Package.swift");
+  const hasPodfile = hasDiscoveredName((entry) => entry.isFile() && entry.name === "Podfile");
+  const hasFastlane = hasDiscoveredName((entry) => entry.isDirectory() && entry.name === "fastlane");
+  const hasIos = hasXcodeProject || hasPodfile || hasFastlane;
+  const hasUnity = exists(repo, "Assets") && exists(repo, "ProjectSettings");
+  const hasGodot = exists(repo, "project.godot");
+  const hasUnreal = hasDiscoveredName((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".uproject"));
   const frameworks = [];
   if (exists(repo, "next.config.ts") || exists(repo, "next.config.js")) frameworks.push("Next.js");
   if (exists(repo, "vite.config.ts") || exists(repo, "vite.config.js")) frameworks.push("Vite");
   if (hasPython) frameworks.push("Python");
+  if (hasXcodeProject) frameworks.push("Xcode/iOS");
+  if (hasSwiftPackage) frameworks.push("Swift Package Manager");
+  if (hasPodfile) frameworks.push("CocoaPods");
+  if (hasFastlane) frameworks.push("Fastlane");
+  if (hasUnity) frameworks.push("Unity");
+  if (hasGodot) frameworks.push("Godot");
+  if (hasUnreal) frameworks.push("Unreal Engine");
   if (exists(repo, ".github/workflows")) frameworks.push("GitHub Actions");
   if (exists(repo, "Dockerfile") || exists(repo, "docker-compose.yml")) frameworks.push("Docker");
   if (exists(repo, "infra") || exists(repo, "terraform") || exists(repo, "cdk.json")) frameworks.push("IaC/infra");
   const role = [
     exists(repo, "app") || exists(repo, "pages") || exists(repo, "components") ? "frontend" : null,
     hasPython ? "backend/python" : null,
+    hasIos ? "mobile/ios" : null,
+    hasUnity || hasGodot || hasUnreal ? "game" : null,
     exists(repo, "api") || exists(repo, "server") ? "backend/api" : null,
     exists(repo, "infra") || exists(repo, "terraform") || exists(repo, "cdk.json") ? "infra/platform" : null,
     exists(repo, "docs") ? "docs" : null,
@@ -475,11 +521,15 @@ function detectRepo(repo) {
         ? "python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt"
         : hasPyproject
           ? "python3 -m venv .venv && . .venv/bin/activate && pip install -e ."
-          : "project-specific",
+          : hasSwiftPackage
+            ? "swift package resolve (approved macOS/Xcode runner for iOS targets)"
+            : hasPodfile
+              ? "bundle exec pod install on an approved macOS runner"
+              : "project-specific",
     detectedLint: has("lint") ? `${run} lint` : "project-specific",
     detectedTypecheck: has("typecheck") ? `${run} typecheck` : exists(repo, "tsconfig.json") ? "npx tsc --noEmit" : "project-specific",
-    detectedTest: has("test") ? `${run} test` : hasPython ? "pytest" : "project-specific",
-    detectedBuild: has("build") ? `${run} build` : "project-specific",
+    detectedTest: has("test") ? `${run} test` : hasPython ? "pytest" : hasSwiftPackage && !hasXcodeProject ? "swift test" : hasXcodeProject ? "commissioned xcodebuild test on approved macOS runner" : "project-specific",
+    detectedBuild: has("build") ? `${run} build` : hasSwiftPackage && !hasXcodeProject ? "swift build" : hasXcodeProject ? "commissioned xcodebuild archive on approved macOS runner" : "project-specific",
   };
 }
 
@@ -562,7 +612,17 @@ function write(file, content) {
 }
 
 function renderAgents(answers) {
-  return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. Read \`docs/Good Looks Like Foundation.md\`, \`docs/Code Quality Guardrails.md\`, and \`docs/Enterprise Proof Bank.md\` before architecture, infra, feature, or refactor work.\n4. Read \`docs/Operating Intelligence Layer.md\` before AI/runtime/tooling/model/eval/memory work.\n5. Run GitNexus/code intelligence before codebase, architecture, refactor, debugging, or cross-file implementation work: \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local && node scripts/code-intelligence-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .\` when scripts are available.\n6. For Codex live runs, also read \`docs/Codex Runtime Prompt.md\` when a RUN_ID/BRIDGE_URL is supplied.\n7. Route to the smallest matching lane family.\n8. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
+  return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. If \`project-adapter.json\` exists, use it as repo-specific truth and do not regenerate or re-ask stable commissioning facts unless the pack is incomplete.\n4. Read \`docs/Good Looks Like Foundation.md\`, \`docs/Code Quality Guardrails.md\`, and \`docs/Enterprise Proof Bank.md\` before architecture, infra, feature, or refactor work.\n5. Read \`docs/Operating Intelligence Layer.md\` before AI/runtime/tooling/model/eval/memory work.\n6. Run GitNexus/code intelligence before codebase, architecture, refactor, debugging, or cross-file implementation work: \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate-all.mjs --repo .\` when scripts are available. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.\n7. For Codex live runs, also read \`docs/Codex Runtime Prompt.md\` when a RUN_ID/BRIDGE_URL is supplied.\n8. Route to the smallest matching lane family.\n9. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
+}
+
+function syncValdrisSkillTree(source, target) {
+  mkdirp(target);
+  for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+    if ((entry.isDirectory() && entry.name.startsWith("valdris-")) || ["registry.json", "codex-routing.yaml"].includes(entry.name)) {
+      fs.rmSync(path.join(target, entry.name), { recursive: true, force: true });
+    }
+  }
+  fs.cpSync(source, target, { recursive: true });
 }
 
 function renderClaude(answers) {
@@ -570,11 +630,11 @@ function renderClaude(answers) {
 }
 
 function renderClaudeCommand(answers) {
-  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until \`proof/proof.json\` validates as passing \`uash.proof.v1\` and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone"\n\`\`\`\n\nOnly a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator grant requires the operator-held bridge token:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --human-token "$UASH_HUMAN_APPROVAL_TOKEN"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until \`proof/proof.json\` validates as passing \`uash.proof.v1\`, \`production/layer-assessment.json\` validates all 13 production layers, and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --artifact-root "$PWD"\n\`\`\`\n\nOnly a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator grant requires the operator-held bridge token:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --human-token "$UASH_HUMAN_APPROVAL_TOKEN" --artifact-root "$PWD"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderCodexPrompt(answers) {
-  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. For codebase, architecture, refactor, debugging, or cross-file work, run \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .\`.\n5. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n6. Never claim done until \`proof/proof.json\` validates as passing \`uash.proof.v1\` and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  [--artifact-root "$PWD"] \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."] \\
+  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`. If the commissioned files exist, do not regenerate the pack or re-ask stable commissioning facts unless required files/scripts are missing.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. For codebase, architecture, refactor, debugging, or cross-file work, run \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate-all.mjs --repo .\`. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.\n5. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n6. In live mode, set \`UASH_BRIDGE_URL="$BRIDGE_URL"\`, run event commands from the artifact root that contains the pack, and include \`--artifact-root "$PWD"\` on the first event or create/sync the run with the correct artifactRoot first.\n7. Never claim done until \`proof/proof.json\` validates as passing \`uash.proof.v1\`, \`production/layer-assessment.json\` validates all 13 production layers, and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --artifact-root "$PWD" \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."] \\
   [--human-token "$UASH_HUMAN_APPROVAL_TOKEN"]\n\`\`\`\n\n## Red Zone approval events\n\nAgents may request approval, but only a token-gated human approval event may grant or deny it. Use \`--human-token\` with the operator-held \`UASH_HUMAN_APPROVAL_TOKEN\`; the token is sent as a header, is never accepted from \`POST /runs\`, and is never persisted.\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" \\\n  --artifact approvals/redzone.json \\\n  --status needs_approval \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" \\\n  --artifact approvals/redzone.json \\\n  --status ok \\\n  --actor human \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone" \\\n  --human-token "$UASH_HUMAN_APPROVAL_TOKEN"\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
@@ -586,8 +646,28 @@ function renderContext(answers) {
   return `# ${answers.project_name} Context Router\n\nUse this after \`00_MAP.md\`. Pick the smallest matching lane and load only the docs needed for that risk area.\n\n## Router\n\n| If the request is about | Use lane | Gate emphasis |\n|---|---|---|\n| Normal bug, feature, UI, backend, API, PR | engineering-default | design anchors + proof |\n| New architecture, API/data model, scale, tradeoffs | system-design | SDD/ADR + anchors |\n| Production readiness, deployability, real full-stack layers | production-readiness | layer assessment + skip reasons |\n| AWS/Azure/GCP/Vercel/Supabase infra, deploy, IAM, secrets | cloud-platform | service map + approval + rollback/live smoke |\n| Production/user-facing incident | incidents | runtime evidence + Red Zone |\n| Data, schema, migrations, auth/RLS | data | migration/schema proof + Red Zone |\n| Security, billing, auth, permissions | security | human approval + security checklist |\n| QA, release, regression, smoke | qa-release | QA plan + break-it + live smoke |\n| Docs, process, harness changes | docs-product | coherence + review + no fake telemetry |\n\n## Safe edit paths\n\n${answers.safe_edit_paths}\n\n## Review-required paths\n\n${answers.review_required_paths}\n\n## Branch/deploy model\n\n- Default work branch: ${answers.default_work_branch}\n- Staging: ${answers.staging_branch}\n- Production: ${answers.production_branch}\n- Merge/deploy owner: ${answers.merge_owner}\n- Deployment proof: ${answers.deployment_proof}\n\n## System design triggers\n\n${answers.system_design_triggers}\n\n## ADR policy\n\n${answers.adr_policy}\n`;
 }
 
-function renderValidation(answers) {
-  return `# Validation Commands\n\nAgents must run the relevant commands and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason. Failed nodes need a recovery path. The \`prove\` node requires \`proof/proof.json\` to validate as \`uash.proof.v1\`.\n`;
+function renderValidation(answers, paths) {
+  return `# Validation Commands\n\nRun these from the target repository root and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Knowledge vault | \`node ${paths.scriptFromRepo}/okf-vault-gate.mjs --repo ${paths.packFromRepo}\` |\n| Skill registry | \`node ${paths.scriptFromRepo}/skill-registry-gate.mjs --repo ${paths.packFromRepo}\` |\n| Active goal shape | \`node ${paths.scriptFromRepo}/goal-gate.mjs --repo . --allow-active\` |\n| Enterprise + AI finish line | \`node ${paths.scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason, except proof and handoff, which are non-skippable. Failed nodes need a recovery path. The \`prove\` node requires passing \`uash.proof.v1\`; production-impacting work requires typed control evidence in \`uash.production-readiness.v2\`; AI work requires \`uash.ai-assurance.v1\`; and a completed goal requires every stopping condition plus token-gated route approval to pass. Runtime-native loops do not override these gates or human approvals.\n`;
+}
+
+function renderAgentKnowledgeVault(answers) {
+  return `# Agent Knowledge Vault\n\nThis commissioned pack includes an OKF-style agent knowledge vault under \`knowledge/\`.\n\n## Purpose\n\nUse \`knowledge/index.md\` as the first low-token map after \`AGENTS.md\`. It gives agents progressive disclosure over systems, playbooks, concepts, and source notes without loading every doc.\n\n## Required shape\n\n- \`knowledge/index.md\` lists the top-level sections.\n- \`knowledge/log.md\` records durable knowledge changes with ISO date headings.\n- Concept files use YAML frontmatter with \`type\`, \`title\`, and \`description\`.\n- Internal links stay inside \`knowledge/\`.\n\n## Gate\n\n\`\`\`bash\nnode scripts/okf-vault-gate.mjs --repo .\n\`\`\`\n\nUpdate the vault when stable routing knowledge changes for ${answers.project_name}.\n`;
+}
+
+function renderKnowledgeVaultFiles(answers) {
+  const now = new Date().toISOString();
+  return {
+    "knowledge/index.md": `# ${answers.project_name} Agent Knowledge Vault\n\nStart here for progressive disclosure. Open the smallest linked page that matches the task.\n\n# Systems\n\n* [${answers.project_name}](systems/project-system.md) - repo identity, production definition, and source-of-truth order.\n\n# Playbooks\n\n* [Engineering Task Routing](playbooks/engineering-task-routing.md) - first route for normal Codex engineering tasks.\n* [GitNexus Code Intelligence](playbooks/gitnexus-code-intelligence.md) - repo-intelligence route for code-impacting work.\n* [Production Readiness 13 Layers](playbooks/production-readiness-13-layers.md) - full-stack production impact route.\n\n# Concepts\n\n* [Proof-First Handoff](concepts/proof-first-handoff.md) - final-answer and artifact standard.\n`,
+    "knowledge/log.md": `# Knowledge Vault Update Log\n\n## ${now.slice(0, 10)}\n\n* **Creation**: Generated the OKF-style agent knowledge vault for ${answers.project_name}.\n`,
+    "knowledge/systems/index.md": `# Systems\n\n* [${answers.project_name}](project-system.md) - commissioned repo system profile.\n`,
+    "knowledge/systems/project-system.md": `---\ntype: System\ntitle: ${answers.project_name}\ndescription: Commissioned repo profile for Valdris SDLC Harness agents.\nresource: project-adapter.json\ntags: [valdris, commissioned-repo, system]\ntimestamp: ${now}\n---\n\n# Identity\n\n- Users/customers: ${answers.users}\n- Production means: ${answers.production_definition}\n- Worst agent failure: ${answers.worst_agent_failure}\n\n# Source Of Truth\n\n${answers.truth_order}\n\n# Related Playbooks\n\n* [Engineering Task Routing](/playbooks/engineering-task-routing.md)\n* [GitNexus Code Intelligence](/playbooks/gitnexus-code-intelligence.md)\n* [Production Readiness 13 Layers](/playbooks/production-readiness-13-layers.md)\n`,
+    "knowledge/playbooks/index.md": `# Playbooks\n\n* [Engineering Task Routing](engineering-task-routing.md) - choose context and gates.\n* [GitNexus Code Intelligence](gitnexus-code-intelligence.md) - scan/gate code intelligence.\n* [Production Readiness 13 Layers](production-readiness-13-layers.md) - classify production impact.\n`,
+    "knowledge/playbooks/engineering-task-routing.md": `---\ntype: Playbook\ntitle: Engineering Task Routing\ndescription: First routing page for Valdris-guided Codex engineering tasks.\nresource: CONTEXT.md\ntags: [codex, routing, engineering, playbook]\ntimestamp: ${now}\n---\n\n# Start\n\nRead \`project-adapter.json\`, this vault, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n\n# Route\n\n1. Code, architecture, debugging, refactor, or cross-file work uses [GitNexus Code Intelligence](/playbooks/gitnexus-code-intelligence.md).\n2. Production-impacting work uses [Production Readiness 13 Layers](/playbooks/production-readiness-13-layers.md).\n3. Docs-only work may skip code nodes with explicit reasons, but durable routing knowledge updates should update \`knowledge/\`.\n\n# Proof\n\nRun the commands listed in \`docs/Validation Commands.md\` and report artifacts before claiming done.\n`,
+    "knowledge/playbooks/gitnexus-code-intelligence.md": `---\ntype: Playbook\ntitle: GitNexus Code Intelligence\ndescription: Required repo-intelligence route before codebase, architecture, refactor, debugging, or cross-file implementation claims.\nresource: scripts/code-intelligence-scan.mjs\ntags: [gitnexus, code-intelligence, graph, anchors]\ntimestamp: ${now}\n---\n\n# Commands\n\n\`\`\`bash\nnode scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\nnode scripts/code-intelligence-gate-all.mjs --repo .\n\`\`\`\n\nUse strict mode when GitNexus itself must be proved:\n\n\`\`\`bash\nnode scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback none --strict\n\`\`\`\n\n# Disclosure\n\nIf local fallback occurs, disclose it and do not claim GitNexus-backed analysis.\n`,
+    "knowledge/playbooks/production-readiness-13-layers.md": `---\ntype: Playbook\ntitle: Production Readiness 13 Layers\ndescription: Full-stack production readiness route for production-impacting engineering tasks.\nresource: scripts/production-layer-gate.mjs\ntags: [production, full-stack, readiness, proof]\ntimestamp: ${now}\n---\n\n# Required Artifact\n\n\`production/layer-assessment.json\` must classify all 13 canonical production layers exactly once.\n\n# Command\n\n\`\`\`bash\nnode scripts/production-layer-gate.mjs --repo .\n\`\`\`\n\n# Blocking States\n\n\`failed\`, \`pending\`, \`blocked\`, \`required\`, and \`needs_approval\` block completion.\n`,
+    "knowledge/concepts/index.md": `# Concepts\n\n* [Proof-First Handoff](proof-first-handoff.md) - artifacts beat claims.\n`,
+    "knowledge/concepts/proof-first-handoff.md": `---\ntype: Concept\ntitle: Proof-First Handoff\ndescription: Final answers and completion claims must be backed by proof artifacts and validation commands.\nresource: docs/Proof Schema.md\ntags: [proof, handoff, artifacts, validation]\ntimestamp: ${now}\n---\n\n# Rule\n\nArtifacts beat claims. Do not claim done without passing proof, skip reasons for irrelevant nodes, and a human-readable handoff.\n\n# Related Playbook\n\nUse [Engineering Task Routing](/playbooks/engineering-task-routing.md) before finalizing.\n`,
+  };
 }
 
 function renderRedZone(answers) {
@@ -595,11 +675,11 @@ function renderRedZone(answers) {
 }
 
 function renderCodeIntelligence(answers) {
-  return `# GitNexus / Code Intelligence\n\nThe \`code-intelligence\` node is the harness' first-class repo-intelligence gate. GitNexus is the preferred backend for that gate; the stable Valdris artifacts remain \`graph/graph.json\`, \`graph/freshness.json\`, and \`design/anchors.json\` so the rest of the SDLC flow stays backend-agnostic.\n\n## Policy\n\n${answers.code_graph}.\n\n## Required artifacts\n\n- \`graph/gitnexus.json\` — GitNexus index evidence: command, package, license boundary, status, and index alias.\n- \`graph/graph.json\` — stable harness graph artifact generated from the indexed repo.\n- \`graph/freshness.json\` — git commit/freshness proof for the graph.\n- \`design/anchors.json\` — code anchors the agent must cite before architecture, refactor, debugging, or cross-file implementation claims.\n\n## Commands\n\n\`\`\`bash\nnode scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\nnode scripts/code-intelligence-gate.mjs --repo .\nnode scripts/anchor-gate.mjs --repo .\n\`\`\`\n\nUse \`--strict\` or \`--fallback none\` when a run must fail if GitNexus cannot index. If the script falls back to the local static graph, the handoff must say GitNexus was unavailable and must not claim GitNexus-backed analysis.\n\n## License boundary\n\nGitNexus is invoked externally with \`npx gitnexus@latest analyze --index-only\`. Do not vendor GitNexus code into this harness pack, and treat commercial/product use as requiring license review or a commercial permission path.\n\n## Skip rule\n\nOnly docs-only/non-code runs may skip this node, and the run must emit \`node.skipped\` for \`code-intelligence\` and \`design-anchors\` with explicit reasons.\n`;
+  return `# GitNexus / Code Intelligence\n\nThe \`code-intelligence\` node is the harness' first-class repo-intelligence gate. GitNexus is the preferred backend for that gate; the stable Valdris artifacts remain \`graph/graph.json\`, \`graph/freshness.json\`, and \`design/anchors.json\` so the rest of the SDLC flow stays backend-agnostic.\n\n## Policy\n\n${answers.code_graph}.\n\n## Required artifacts\n\n- \`graph/gitnexus.json\` - GitNexus index evidence: command, package, license boundary, status, and index alias.\n- \`graph/graph.json\` - stable harness graph artifact generated as the local projection for the run.\n- \`graph/freshness.json\` - git commit/freshness proof for the graph.\n- \`design/anchors.json\` - code anchors the agent must cite before architecture, refactor, debugging, or cross-file implementation claims.\n\n## Commands\n\n\`\`\`bash\nnode scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\nnode scripts/code-intelligence-gate-all.mjs --repo .\n\`\`\`\n\nUse \`--strict\` or \`--fallback none\` when a run must fail if GitNexus cannot index. If the script falls back to the local static graph, the handoff must say GitNexus was unavailable and must not claim GitNexus-backed analysis. Until a future exporter consumes GitNexus graph output directly, describe the default success path as GitNexus indexed plus local stable projection.\n\n## License boundary\n\nGitNexus is invoked externally with \`npx gitnexus@latest analyze --index-only\`. Do not vendor GitNexus code into this harness pack, and treat commercial/product use as requiring license review or a commercial permission path.\n\n## Skip rule\n\nOnly docs-only/non-code runs may skip this node, and the run must emit \`node.skipped\` for \`code-intelligence\` and \`design-anchors\` with explicit reasons.\n`;
 }
 
 function renderProductionReadiness(answers) {
-  return `# Production Readiness Layers\n\nFor every run, classify which production layers are touched. Relevant layers become required gates; irrelevant layers are skipped with reasons.\n\n${splitList(answers.production_layers).map((layer) => `- ${layer}`).join("\n")}\n\n## Skip policy\n\n${answers.production_layer_skip_policy}\n\n## Required proof\n\n${answers.production_readiness_proof}\n`;
+  return `# Production Readiness Layers v2\n\nThe catalog at \`controls/production-layers.v2.json\` defines 13 dependency-ordered layers and their control IDs. A required layer passes only when every required control has typed, resolvable evidence. A non-applicable layer must be explicitly skipped with a reason.\n\n${splitList(answers.production_layers).map((layer) => `- ${layer}`).join("\n")}\n\n## Artifact shape\n\n\`production/layer-assessment.json\` uses \`uash.production-readiness.v2\` and binds the run to a profile, environment, commit, owner, applicability decision, catalog control IDs, and typed evidence arrays. Artifact evidence is path-resolved and hashed for enterprise/regulated profiles; command evidence needs an output digest; metrics must meet their thresholds; approvals must name a real human actor.\n\nRun:\n\n\`\`\`bash\nnode scripts/production-layer-gate.mjs --repo .\n\`\`\`\n\nLegacy v1 artifacts remain readable for historical compatibility, but newly commissioned work uses v2.\n\n## Skip policy\n\n${answers.production_layer_skip_policy}\n\n## Required proof\n\n${answers.production_readiness_proof}\n`;
 }
 
 function renderCloudPlatform(answers) {
@@ -689,6 +769,17 @@ function renderRunTemplate(answers) {
   return `# Run Packet Template\n\nProject: ${answers.project_name}\n\n## Required artifacts\n\n- run/mode.json\n- run/intake.json\n- run/route.json\n- graph/graph.json from GitNexus/code-intelligence scan, or graph skip reason for docs-only/non-code work\n- graph/gitnexus.json with GitNexus index evidence when available, or a disclosed local-fallback reason\n- graph/freshness.json proving graph commit/freshness\n- design/anchors.json for codebase claims and blast-radius reasoning\n- design/system_design.md when design/architecture matters\n- production/layer-assessment.json for production-impacting work\n- cloud/service-map.json for cloud/platform work, or cloud/skip.json with reason\n- approvals/redzone.json when Red Zone applies\n- qa/qa-plan.md when validation scope matters\n- qa/break-it-results.md or explicit skip reason\n- proof/proof.json (passing uash.proof.v1) before done\n- smoke/smoke_proof.json or explicit skip reason\n- self_heal/self_heal_report.md when process/harness gap is found\n- handoff/final.md\n\n## Final handoff shape\n\nBottom line\nWhy\nProof\nRisk\nFix/Plan\nYour call\nSkipped nodes / reasons\n`;
 }
 
+function renderGoalSkillProtocol() {
+  return `\n## Valdris v0.7 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`skills/codex-routing.yaml\` and the gate-authoritative \`skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Activate the production, AI, eval, trajectory, smoke, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n5. Use \`controls/domain-packs/\` for mobile iOS, realtime multiplayer, digital commerce, and youth-AI work.\n6. Run \`node scripts/enterprise-ai-gate-all.mjs --repo .\` for the full enterprise/AI run packet.\n7. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+}
+
+function renderInstalledPathProtocol(repo, out) {
+  const relativePack = path.relative(repo, out).replaceAll("\\", "/") || ".";
+  const scriptPrefix = relativePack === "." ? "scripts" : `${relativePack}/scripts`;
+  const adapterPath = relativePack === "." ? "project-adapter.json" : `${relativePack}/project-adapter.json`;
+  return `\n## Installed pack command paths\n\nRun these commands from the **target repository root**. This generated pack is at \`${relativePack}\`; earlier \`node scripts/... --repo .\` examples apply only when the pack itself is installed at the target root.\n\n\`\`\`bash\nnode ${scriptPrefix}/route-request.mjs --repo . --request \"<task>\" --actor \"<human>\"\nnode ${scriptPrefix}/enterprise-ai-gate-all.mjs --repo .\nUASH_BRIDGE_URL=\"$BRIDGE_URL\" node ${scriptPrefix}/uash-emit-event.mjs \"$RUN_ID\" node.entered intake \"Agent started intake\" --artifact run/intake.json --status ok --actor codex --artifact-root \"$PWD\" --adapter-path ${adapterPath}\n\`\`\`\n\nEvery first nested-pack bridge event must include both \`--artifact-root\` and \`--adapter-path\` so the v0.7 adapter cannot be bypassed.\n`;
+}
+
 function renderReview(adapter) {
   const answers = adapter.answers;
   return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\`, \`CLAUDE.md\`, the Claude slash command, or the Codex runtime prompt, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.6 commissioning + trust-boundary hardening\n\n- Commissioning question groups: ${adapter.commissioning.questionGroups}\n- Commissioning questions: ${adapter.commissioning.questionCount}\n- GitNexus/code intelligence policy: ${answers.code_graph}\n- Code-intelligence backend: GitNexus preferred, local static graph fallback disclosed\n- System Design lane triggers: ${answers.system_design_triggers}\n- Foundation blueprint: ${answers.reference_architecture}\n- Anti-spaghetti guardrails: ${answers.anti_spaghetti_rules}\n- Enterprise proof-bank domain pack: ${answers.domain_pack}\n- Operating intelligence: evals, trajectory, context, skills, memory, tools/hooks, sandbox, model routing, economics, PR agents, MCP/A2A, agent lifecycle\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
@@ -696,6 +787,19 @@ function renderReview(adapter) {
 
 function generatePack(args, detected, answers) {
   const out = path.resolve(args.out);
+  const repoRoot = path.resolve(detected.repoPath);
+  if (out === repoRoot) throw new Error("Refusing to commission directly over the target repository; use a nested pack such as --out <repo>/.valdris-harness");
+  const repoInsideOutput = path.relative(out, repoRoot);
+  if (repoInsideOutput === "" || (!repoInsideOutput.startsWith("..") && !path.isAbsolute(repoInsideOutput))) throw new Error("Refusing an output directory that contains the target repository");
+  const outputIsNonEmpty = fs.existsSync(out) && fs.readdirSync(out).length > 0;
+  if (outputIsNonEmpty && !args.force) throw new Error(`Output directory is not empty: ${out}. Use --force only to replace a reviewed generated pack.`);
+  if (outputIsNonEmpty && args.force) {
+    const marker = readJsonIfExists(path.join(out, "project-adapter.json"));
+    if (marker?.schema !== "uash.project-adapter.v2" || !marker?.generatorVersion) throw new Error("Refusing --force because the output is not a recognized generated Valdris pack");
+  }
+  const packFromRepo = path.relative(repoRoot, out).replaceAll("\\", "/") || ".";
+  const repoFromPack = path.relative(out, repoRoot).replaceAll("\\", "/") || ".";
+  const scriptFromRepo = packFromRepo === "." ? "scripts" : `${packFromRepo}/scripts`;
   const adapter = {
     schema: "uash.project-adapter.v2",
     generatedAt: new Date().toISOString(),
@@ -722,16 +826,76 @@ function generatePack(args, detected, answers) {
       policy: answers.code_graph,
       requiredArtifacts: ["graph/graph.json", "graph/freshness.json", "design/anchors.json"],
       preferredArtifacts: ["graph/gitnexus.json"],
-      scanCommand: "node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local",
-      strictScanCommand: "node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback none --strict",
-      gateCommand: "node scripts/code-intelligence-gate.mjs --repo . && node scripts/anchor-gate.mjs --repo .",
+      scanCommand: `node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local`,
+      strictScanCommand: `node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback none --strict`,
+      gateCommand: `node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .`,
       skipAllowedOnlyFor: "docs-only or non-code work with explicit skip reasons for code-intelligence and design-anchors",
       fallbackDisclosureRequired: true,
     },
     productionReadiness: {
       layers: splitList(answers.production_layers),
+      schema: "uash.production-readiness.v2",
+      catalog: "controls/production-layers.v2.json",
+      gateCommand: `node ${scriptFromRepo}/production-layer-gate.mjs --repo .`,
       skipPolicy: answers.production_layer_skip_policy,
       proof: answers.production_readiness_proof,
+    },
+    generativeAiAssurance: {
+      schema: "uash.ai-assurance.v1",
+      catalog: "controls/genai-assurance.v1.json",
+      artifact: "ai/assurance.json",
+      profiles: ["AI-0", "AI-1", "AI-2", "AI-3"],
+      gateCommand: `node ${scriptFromRepo}/ai-assurance-gate.mjs --repo .`,
+      policy: "Cross-cutting assurance overlay; not a fourteenth infrastructure layer. Required when models, prompts, retrieval, tools, memory, or agents affect behavior.",
+    },
+    domainAssurance: {
+      schema: "uash.domain-assurance.v1",
+      index: "controls/domain-packs/index.json",
+      availablePacks: ["mobile-ios", "multiplayer-realtime", "digital-commerce", "youth-ai-safety"],
+      artifact: "domain/assurance.json",
+      gateCommand: `node ${scriptFromRepo}/domain-assurance-gate.mjs --repo .`,
+    },
+    mobileIos: {
+      detected: detected.frameworks.some((framework) => ["Xcode/iOS", "CocoaPods", "Fastlane"].includes(framework)),
+      scheme: answers.ios_scheme,
+      bundleAndTeam: answers.ios_bundle_id,
+      supportMatrix: answers.ios_support_matrix,
+      macosRunner: answers.ios_macos_runner,
+      signingOwner: answers.ios_signing_owner,
+      testflightOwner: answers.ios_testflight_owner,
+      storeKitModel: answers.ios_storekit_model,
+      pushModel: answers.ios_push_model,
+      redZone: ["signing credentials", "App Store Connect keys", "TestFlight upload/promotion", "tester invitation", "real StoreKit configuration"],
+    },
+    goalLoop: {
+      schema: "uash.goal.v1",
+      artifact: "goal/goal.json",
+      gateCommand: `node ${scriptFromRepo}/goal-gate.mjs --repo .`,
+      transitionCommand: `node ${scriptFromRepo}/goal-transition.mjs --repo . --expected-revision <n> ...`,
+      finishAuthority: "Valdris gates and human approvals; runtime-native goal/loop state is advisory acceleration only.",
+    },
+    skillRouter: {
+      schema: "uash.skill-registry.v1",
+      registry: "skills/registry.json",
+      codexRouting: "skills/codex-routing.yaml",
+      implicitInvocation: true,
+      catalogSize: 8,
+      gateCommand: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
+      selection: "One primary skill plus the smallest supporting set.",
+    },
+    finishLineAssurance: {
+      required: true,
+      gateCommand: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
+      requiredArtifacts: ["run/intake.json", "run/route.json", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "skills/codex-routing.yaml", "skills/registry.json"],
+      binding: ["runId", "profile", "commit", "environment"],
+    },
+    knowledgeVault: {
+      format: "OKF v0.1",
+      root: "knowledge/",
+      index: "knowledge/index.md",
+      log: "knowledge/log.md",
+      gateCommand: `node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`,
+      policy: "Use as the first progressive-disclosure map after AGENTS.md; update when durable routing knowledge changes.",
     },
     systemDesign: {
       triggers: answers.system_design_triggers,
@@ -909,8 +1073,9 @@ function generatePack(args, detected, answers) {
       approvalOwner: answers.approval_owner,
     },
     ciEnforcement: {
-      workflow: ".github/workflows/ci.yml",
-      requiredCommands: ["npm ci", "npm run typecheck", "npm run build", "node scripts/code-intelligence-scan.mjs --repo . --provider local", "npm run code-intelligence:gate", "npm run verify:harness"],
+      workflowTemplate: ".github/workflows/valdris-assurance.yml",
+      installationRequired: "If the harness pack stays nested, copy the workflow template to the target repo's top-level .github/workflows and set the pack path.",
+      requiredCommands: [`node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local`, `node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .`, `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`],
     },
     telemetryModes: {
       policy: answers.telemetry_mode_policy,
@@ -929,6 +1094,10 @@ function generatePack(args, detected, answers) {
     },
     validation: {
       install: answers.install_command,
+      knowledge: `node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`,
+      skills: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
+      activeGoal: `node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active`,
+      finishLine: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
       lint: answers.lint_command,
       typecheck: answers.typecheck_command,
       test: answers.test_command,
@@ -937,16 +1106,18 @@ function generatePack(args, detected, answers) {
     },
   };
 
+  if (args.force && fs.existsSync(out)) fs.rmSync(out, { recursive: true, force: true });
   mkdirp(out);
+  const installedPathProtocol = renderInstalledPathProtocol(repoRoot, out);
   write(path.join(out, "project-adapter.json"), JSON.stringify(adapter, null, 2));
   write(path.join(out, "project.yaml"), toYaml(adapter));
-  write(path.join(out, "AGENTS.md"), renderAgents(answers));
-  write(path.join(out, "CLAUDE.md"), renderClaude(answers));
-  write(path.join(out, ".claude/commands/valdris-sdlc-harness.md"), renderClaudeCommand(answers));
-  write(path.join(out, "docs/Codex Runtime Prompt.md"), renderCodexPrompt(answers));
+  write(path.join(out, "AGENTS.md"), renderAgents(answers) + renderGoalSkillProtocol() + installedPathProtocol);
+  write(path.join(out, "CLAUDE.md"), renderClaude(answers) + renderGoalSkillProtocol() + installedPathProtocol);
+  write(path.join(out, ".claude/commands/valdris-sdlc-harness.md"), renderClaudeCommand(answers) + renderGoalSkillProtocol() + installedPathProtocol);
+  write(path.join(out, "docs/Codex Runtime Prompt.md"), renderCodexPrompt(answers) + renderGoalSkillProtocol() + installedPathProtocol);
   write(path.join(out, "00_MAP.md"), renderMap(answers, detected));
   write(path.join(out, "CONTEXT.md"), renderContext(answers));
-  write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers));
+  write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers, { scriptFromRepo, packFromRepo }));
   write(path.join(out, "docs/Proof Schema.md"), renderProofSchema(answers));
   write(path.join(out, "docs/Red Zone Rules.md"), renderRedZone(answers));
   write(path.join(out, "docs/Code Intelligence Graph.md"), renderCodeIntelligence(answers));
@@ -962,15 +1133,50 @@ function generatePack(args, detected, answers) {
   write(path.join(out, "docs/Operating Intelligence Layer.md"), renderOperatingIntelligence(answers));
   write(path.join(out, "docs/Team Harness Registry.md"), renderTeamHarnessRegistry(answers));
   write(path.join(out, "docs/Human Agent Protocol.md"), renderHumanAgentProtocol(answers));
+  write(path.join(out, "docs/Agent Knowledge Vault.md"), renderAgentKnowledgeVault(answers));
+  for (const docName of ["ENTERPRISE_CONTROL_MODEL_V2.md", "GENERATIVE_AI_ASSURANCE_PACK.md", "GOAL_LOOP_AND_SKILL_ROUTER.md"]) {
+    fs.copyFileSync(path.join(HARNESS_ROOT, "docs", docName), path.join(out, "docs", docName));
+  }
+  for (const [relativePath, content] of Object.entries(renderKnowledgeVaultFiles(answers))) {
+    write(path.join(out, relativePath), content);
+  }
+  for (const relativePath of ["playbooks/goal-loop-skill-routing.md", "playbooks/genai-assurance.md", "concepts/typed-evidence.md"]) {
+    fs.copyFileSync(path.join(HARNESS_ROOT, "knowledge", relativePath), path.join(out, "knowledge", relativePath));
+  }
+  fs.appendFileSync(path.join(out, "knowledge", "index.md"), "\n* [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](playbooks/genai-assurance.md) - cross-cutting AI controls.\n* [Typed Evidence](concepts/typed-evidence.md) - resolvable proof contract.\n");
+  fs.appendFileSync(path.join(out, "knowledge", "playbooks", "index.md"), "\n* [Goal Loop and Skill Routing](goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](genai-assurance.md) - cross-cutting AI controls.\n");
+  fs.appendFileSync(path.join(out, "knowledge", "concepts", "index.md"), "\n* [Typed Evidence](typed-evidence.md) - resolvable proof contract.\n");
   write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
-  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs"]) {
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "intake-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));
     fs.copyFileSync(scriptSource, scriptTarget);
     fs.chmodSync(scriptTarget, 0o755);
   }
-  write(path.join(out, "commissioning-review.md"), renderReview(adapter));
+  fs.cpSync(path.join(HARNESS_ROOT, "controls"), path.join(out, "controls"), { recursive: true });
+  syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, "skills"));
+  syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, ".agents", "skills"));
+  syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, ".claude", "skills"));
+  write(path.join(out, "package.json"), JSON.stringify({
+    name: `${answers.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project"}-valdris-harness`,
+    version: VERSION,
+    private: true,
+    type: "module",
+    scripts: {
+      "knowledge:gate": "node scripts/okf-vault-gate.mjs --repo .",
+      "skills:gate": "node scripts/skill-registry-gate.mjs --repo .",
+      "skills:install:codex": "node scripts/install-codex-skills.mjs",
+      "skills:check:codex": "node scripts/install-codex-skills.mjs --check",
+      "route:gate": `node scripts/route-gate.mjs --repo \"${repoFromPack}\"`,
+      "route:request": `node scripts/route-request.mjs --repo \"${repoFromPack}\"`,
+      "goal:transition": `node scripts/goal-transition.mjs --repo \"${repoFromPack}\"`,
+      "goal:gate:active": `node scripts/goal-gate.mjs --repo \"${repoFromPack}\" --allow-active`,
+      "enterprise-ai:gate": `node scripts/enterprise-ai-gate-all.mjs --repo \"${repoFromPack}\"`
+    }
+  }, null, 2));
+  write(path.join(out, ".github/workflows/valdris-assurance.yml"), `name: Valdris Assurance\n\non:\n  pull_request:\n  push:\n\npermissions:\n  contents: read\n\njobs:\n  valdris:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24"\n      - run: node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local\n      - run: node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .\n      - name: Validate active goal shape\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active\n      - name: Read goal status\n        id: goal\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node -e "const fs=require('fs'); const complete=JSON.parse(fs.readFileSync('goal/goal.json','utf8')).status==='completed'; fs.appendFileSync(process.env.GITHUB_OUTPUT, 'complete='+complete+'\\n')"\n      - name: Validate completed Valdris run packet\n        if: \${{ steps.goal.outputs.complete == 'true' }}\n        run: node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\n`);
+  write(path.join(out, "commissioning-review.md"), renderReview(adapter).replace("## v0.6 commissioning + trust-boundary hardening", "## v0.7 enterprise + AI goal-loop commissioning"));
   return { out, adapter };
 }
 

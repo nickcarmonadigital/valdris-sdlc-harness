@@ -13,6 +13,7 @@ import {
   missingArtifacts,
   nextNodeId,
   nodeIdForArtifact,
+  productionLayers,
   type AgentRuntime,
   type AppRun,
   type RiskLevel,
@@ -356,7 +357,7 @@ export function ControlPlaneApp() {
 
   async function copyClaudePrompt() {
     if (!selectedRun) return;
-    const prompt = `Use the Valdris SDLC Harness for this run.\n\nRUN_ID=${selectedRun.id}\nBRIDGE_URL=${BRIDGE_URL}\nREPO=${selectedRun.repo}\nBRANCH=${selectedRun.branch}\nLANE=${selectedRun.lane}\nAGENT=${labelForAgent(selectedRun.agent)}\n\nTask:\n${selectedRun.task}\n\nRules:\n1. Do not shortcut the harness.\n2. Before each stage, emit a bridge event.\n3. Write or name each required artifact path.\n4. If a node is not relevant, emit node.skipped with a skip reason.\n5. If a node fails, emit node.failed with failureReason and recoveryPath.\n6. If a Red Zone action appears, stop and request approval.\n7. For codebase, architecture, refactor, debugging, or cross-file work, run GitNexus/code intelligence first (node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local) and emit code-intelligence + design-anchors artifacts.\n8. Finish only after all required nodes are passed or skipped with reasons.\n\nEmit examples from the project root that contains the connector scripts:\nnode scripts/uash-emit-event.mjs ${selectedRun.id} agent.connected route "Claude Code attached to the Valdris SDLC Harness run" --artifact run/route.json --status ok --actor claude-code --mode live --source bridge\nnode scripts/uash-emit-event.mjs ${selectedRun.id} artifact.written production-readiness "Production layer assessment written" --artifact production/layer-assessment.json --status ok --actor claude-code\nnode scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "Cloud/platform skipped" --artifact cloud/skip.json --status skipped --actor harness --skip-reason "No cloud resource, deploy, secret, IAM, or network change"\nnode scripts/uash-emit-event.mjs ${selectedRun.id} node.failed qa-break-it "Break-it QA failed" --artifact qa/break-it-results.md --status failed --actor harness --failure-reason "Tenant-boundary negative test failed" --recovery-path "Fix policy and rerun negative authz test"\nnode scripts/uash-emit-event.mjs ${selectedRun.id} approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --approval-owner "primary operator" --approval-scope "cloud/provider mutation"\nnode scripts/uash-emit-event.mjs ${selectedRun.id} self_heal.pr_opened self-heal "Self-heal PR opened/proposed" --artifact self_heal/pr.json --status ok --actor harness\n\nNow start at Intake, route the lane, and continue node by node.`;
+    const prompt = `Use the Valdris SDLC Harness for this run.\n\nRUN_ID=${selectedRun.id}\nBRIDGE_URL=${BRIDGE_URL}\nREPO=${selectedRun.repo}\nBRANCH=${selectedRun.branch}\nLANE=${selectedRun.lane}\nAGENT=${labelForAgent(selectedRun.agent)}\n\nTask:\n${selectedRun.task}\n\nRules:\n1. Do not shortcut the harness.\n2. Before each stage, emit a bridge event.\n3. Write or name each required artifact path.\n4. If a node is not relevant, emit node.skipped with a skip reason.\n5. If a node fails, emit node.failed with failureReason and recoveryPath.\n6. If a Red Zone action appears, stop and request approval.\n7. For codebase, architecture, refactor, debugging, or cross-file work, run GitNexus/code intelligence first (node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local; node scripts/code-intelligence-gate-all.mjs --repo .) and emit code-intelligence + design-anchors artifacts. Disclose local fallback if GitNexus is unavailable.\n8. Finish only after proof/proof.json passes, production/layer-assessment.json validates all 13 layers, and all required nodes are passed or skipped with reasons.\n\nEmit examples from the project root that contains the connector scripts:\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs ${selectedRun.id} agent.connected route "Claude Code attached to the Valdris SDLC Harness run" --artifact run/route.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs ${selectedRun.id} artifact.written production-readiness "Production layer assessment written" --artifact production/layer-assessment.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "Cloud/platform skipped" --artifact cloud/skip.json --status skipped --actor harness --mode live --source bridge --skip-reason "No cloud resource, deploy, secret, IAM, or network change" --artifact-root "$PWD"\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs ${selectedRun.id} node.failed qa-break-it "Break-it QA failed" --artifact qa/break-it-results.md --status failed --actor harness --mode live --source bridge --failure-reason "Tenant-boundary negative test failed" --recovery-path "Fix policy and rerun negative authz test" --artifact-root "$PWD"\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs ${selectedRun.id} approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "primary operator" --approval-scope "cloud/provider mutation" --artifact-root "$PWD"\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs ${selectedRun.id} self_heal.pr_proposed self-heal "Self-heal PR proposed" --artifact self_heal/pr.json --status ok --actor harness --mode live --source bridge --artifact-root "$PWD"\n\nNow start at Intake, route the lane, and continue node by node.`;
     await navigator.clipboard.writeText(prompt);
     setPromptCopied(true);
     window.setTimeout(() => setPromptCopied(false), 1400);
@@ -374,6 +375,22 @@ export function ControlPlaneApp() {
   }
 
   const selectedNode = nodeById[selectedRun.currentNodeId];
+  const productionArtifact = selectedRun.artifacts.find((artifact) => artifact.path === "production/layer-assessment.json");
+  const productionAssessment = productionArtifact?.verification?.productionLayerAssessment;
+  const productionLayerRows = productionLayers.map((layer) => {
+    const verified = productionAssessment?.layers?.find((entry) => entry.layer === layer.id);
+    const status = verified?.status ?? (productionArtifact?.skipped ? "skipped" : productionArtifact?.present ? "unverified" : "missing");
+    return {
+      ...layer,
+      status,
+      detail: verified?.evidence ?? verified?.reason ?? productionArtifact?.failureReason ?? productionArtifact?.skipReason ?? "Awaiting production/layer-assessment.json",
+    };
+  });
+  const productionLayerSummary = productionAssessment
+    ? `${productionAssessment.passedLayers ?? 0} passed / ${productionAssessment.skippedLayers ?? 0} skipped`
+    : productionArtifact?.present
+      ? "artifact present"
+      : "not assessed";
 
   return (
     <main className="appShell">
@@ -583,6 +600,22 @@ export function ControlPlaneApp() {
             </div>
           </article>
 
+          <article className="layerPanel" id="production-layers">
+            <div className="panelHeader">
+              <span className="tinyLabel">13 production layers</span>
+              <strong>{productionLayerSummary}</strong>
+            </div>
+            <div className="layerRows">
+              {productionLayerRows.map((layer) => (
+                <div className={`layerRow ${layer.status}`} key={layer.id}>
+                  <span>{layer.status}</span>
+                  <b>{layer.label}</b>
+                  <small>{layer.detail}</small>
+                </div>
+              ))}
+            </div>
+          </article>
+
           <article className="eventPanel">
             <div className="panelHeader">
               <span className="tinyLabel">Event stream</span>
@@ -609,12 +642,12 @@ export function ControlPlaneApp() {
             </div>
             <p>Connect Claude Code through a tiny local bridge on your Mac. The Vercel app can talk to localhost from your browser, so no Supabase is needed for the first real connector loop.</p>
             <div className="bridgeMessage">{bridgeMessage}</div>
-            <pre>{`# Terminal 1, on your Mac
+            <pre>{`# Terminal 1, on your machine
 npm run bridge:claude
 
 # Terminal 2, inside Claude Code / your repo
-node scripts/uash-emit-event.mjs ${selectedRun.id} node.entered system-design "entered system design" --artifact design/system_design.md --actor claude-code
-node scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness`}</pre>
+UASH_BRIDGE_URL="${BRIDGE_URL}" node scripts/uash-emit-event.mjs ${selectedRun.id} node.entered system-design "entered system design" --artifact design/system_design.md --actor claude-code --artifact-root "$PWD"
+UASH_BRIDGE_URL="${BRIDGE_URL}" node scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness --artifact-root "$PWD"`}</pre>
             <div className="formActions">
               <button className="secondaryButton" onClick={checkBridge} type="button">Check bridge</button>
               <button className="secondaryButton" onClick={syncSelectedToBridge} type="button">Sync run to bridge</button>

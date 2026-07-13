@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Bug RCA"
+  short_description: "Diagnose bugs with evidence before fixing"
+  default_prompt: "Use $valdris-bug-rca to reproduce, isolate, fix, and prove this defect."
+
+policy:
+  allow_implicit_invocation: true

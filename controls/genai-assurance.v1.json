@@ -1,0 +1,22 @@
+{
+  "schema": "uash.ai-control-catalog.v1",
+  "version": "1.0.0",
+  "assuranceProfiles": [
+    {"id": "AI-0", "use": "No AI behavior is present; the assurance artifact is explicitly skipped."},
+    {"id": "AI-1", "use": "Bounded assistive AI with low consequence, no autonomous consequential action, and human verification."},
+    {"id": "AI-2", "use": "User-facing, retrieval/memory-bearing, or operational AI whose failures can materially affect product behavior."},
+    {"id": "AI-3", "use": "Consequential or autonomous AI, sensitive/high-impact decisions, or state-changing tools requiring the strongest gates and human authority."}
+  ],
+  "controls": [
+    {"id": "AI-INVENTORY-001", "domain": "inventory", "requirement": "Models, providers, prompts, tools, skills, datasets, corpora, memory, and policies are versioned."},
+    {"id": "AI-EVAL-001", "domain": "evaluation", "requirement": "Deterministic tests and nondeterministic evals have datasets, rubrics, thresholds, and owners."},
+    {"id": "AI-DATA-001", "domain": "data-governance", "requirement": "AI data has provenance, consent, classification, retention, residency, and deletion controls."},
+    {"id": "AI-RAG-001", "domain": "retrieval", "conditional": "rag", "requirement": "Retrieval quality, grounding, citations, source authorization, freshness, and tenant isolation are evaluated."},
+    {"id": "AI-SAFETY-001", "domain": "safety", "requirement": "Prompt injection, jailbreak, disclosure, harmful output, and excessive-agency cases are tested."},
+    {"id": "AI-TOOLS-001", "domain": "tool-governance", "conditional": "tools", "requirement": "Tools use least privilege, typed contracts, sandboxing, budgets, and human approval for consequential actions."},
+    {"id": "AI-MEMORY-001", "domain": "memory", "conditional": "memory", "requirement": "Session and durable memory are isolated, reviewable, expirable, and deletable."},
+    {"id": "AI-OBS-001", "domain": "observability", "requirement": "AI traces record version, latency, token, cost, safety, tool, retrieval, eval, and feedback signals without sensitive payload leakage."},
+    {"id": "AI-COST-001", "domain": "economics", "requirement": "Per-run and per-tenant token, tool, retry, latency, and spend budgets are enforced."},
+    {"id": "AI-LIFECYCLE-001", "domain": "lifecycle", "requirement": "Model, prompt, provider, and agent changes use regression evals, canaries, rollback, degraded modes, and incident response."}
+  ]
+}

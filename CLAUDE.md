@@ -8,10 +8,13 @@ Read:
 
 1. `README.md`
 2. `AGENTS.md`
-3. `docs/UNIVERSAL_CORE_FROM_ZIP.md`
-4. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
-5. `docs/CLAUDE_CODE_CONNECTOR.md`
-6. `docs/CODEX_CONNECTOR.md`
+3. `knowledge/index.md`
+4. `skills/registry.json`
+5. `docs/GOAL_LOOP_AND_SKILL_ROUTER.md`
+6. `docs/ENTERPRISE_CONTROL_MODEL_V2.md`
+7. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
+8. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
+9. `docs/CLAUDE_CODE_CONNECTOR.md`
 
 ## Non-negotiable product boundary
 
@@ -24,6 +27,9 @@ When modifying code, prove the result with:
 ```bash
 npm run typecheck
 npm run build
+npm run knowledge:gate
+npm run skills:gate
+npm run verify:enterprise-ai
 npm run verify:harness
 ```
 

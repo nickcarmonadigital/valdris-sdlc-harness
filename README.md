@@ -4,6 +4,10 @@
 
 It commissions a repo/team, generates a project-specific harness pack, connects to Claude Code, Codex, Hermes, or future coding-agent runtimes, streams run events/artifacts, and blocks “done” until proof exists.
 
+v0.7 adds a protocol-independent goal/checkpoint loop, an eight-skill workflow router, 39 typed enterprise controls, executable generative-AI assurance/eval/trajectory gates, and initial iOS, realtime multiplayer, digital-commerce, and youth-AI domain packs.
+
+The repo also includes an OKF/Obsidian-style agent knowledge vault under `knowledge/`. Treat `knowledge/index.md` as the low-token navigation layer before opening deeper docs.
+
 ## Start here: the visible lane map
 
 ![Work lanes map](docs/assets/readme/work-lanes-map.svg)
@@ -194,7 +198,23 @@ For serious product work, “done” cannot mean “the page loaded once.” The
 | 12 | Error tracking / logs / observability | logs, metrics, traces, alerts, dashboards/request IDs |
 | 13 | Availability / recovery / DR | rollback, restore, graceful degradation, RTO/RPO |
 
-The current repo has the layer pack, commissioning questions, adapter generation, and verifier coverage for the 13-layer structure. The next maturity jump is a full **enterprise proof-bank implementation** with domain packs, load gates, observability gates, eval gates, and domain-specific evidence templates.
+The current repo has 39 named controls across the thirteen layers. `uash.production-readiness.v2` rejects evidence-shaped prose: paths must resolve, enterprise artifacts must match hashes/commit/environment, metrics must satisfy their thresholds, command results need output digests, and approvals must name a human. Four domain packs add iOS, realtime multiplayer, digital-commerce, and youth-AI requirements without bloating the universal layer model.
+
+## Can this drive a full-stack iOS game build?
+
+Yes—within real platform and authority boundaries. Route the request through intake, then use feature delivery as the primary skill with platform/release, security, GenAI (when applicable), and final proof as phased support. The goal can cover the Swift/iOS client, authoritative backend, accounts, purchases, cloud saves, matchmaking, AI behavior, deployment, observability, recovery, and TestFlight smoke.
+
+On Windows, Valdris can commission, design, implement source/backend work, run non-Apple gates, and manage the loop. A signed iOS archive, simulator/device tests, and TestFlight upload still require an authorized macOS/Xcode runner, Apple credentials, and human approval. Those stopping conditions remain open until real evidence arrives. See [`docs/GOAL_LOOP_AND_SKILL_ROUTER.md`](docs/GOAL_LOOP_AND_SKILL_ROUTER.md).
+
+The local validators verify shape, subject binding, paths, digests, timestamps, target IDs, and declared trust metadata; they do not cryptographically authenticate a self-authored CI/provider receipt. Native test, archive, distribution, and TestFlight smoke evidence must share the commissioned scheme, bundle/team reference, adapter digest, and immutable build ID. A real release must still import receipts or signed attestations from protected CI/App Store Connect and use token-gated bridge approvals. Valdris orchestrates and rejects missing proof; it is not the Apple build service or a certification authority.
+
+Start the executable route and active goal from the target repo:
+
+```bash
+node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, and ship it to TestFlight."
+```
+
+The deterministic router writes the intake/route/goal starting point; it does not launch Codex or certify its own output. Validate the active start with `intake-gate.mjs`, `route-gate.mjs`, and `goal-gate.mjs --allow-active`. The selected external coding runtime then executes the engineering checkpoints under the bridge-enforced finish line.
 
 ## Connector + proof gate model
 
@@ -251,6 +271,16 @@ project.yaml
 AGENTS.md
 CLAUDE.md
 .claude/commands/valdris-sdlc-harness.md
+.agents/skills/<eight Valdris skills>
+.claude/skills/<eight Valdris skills>
+skills/codex-routing.yaml
+skills/registry.json
+controls/production-layers.v2.json
+controls/genai-assurance.v1.json
+controls/domain-packs/*.json
+.github/workflows/valdris-assurance.yml
+package.json
+knowledge/index.md
 00_MAP.md
 CONTEXT.md
 docs/Validation Commands.md
@@ -268,6 +298,7 @@ docs/Enterprise Proof Bank.md
 docs/Operating Intelligence Layer.md
 docs/Team Harness Registry.md
 docs/Human Agent Protocol.md
+docs/Agent Knowledge Vault.md
 runs/_run-template/README.md
 scripts/uash-emit-event.mjs
 scripts/uash-write-proof.mjs
@@ -275,6 +306,22 @@ scripts/code-intelligence-scan.mjs
 scripts/code-intelligence-local-scan.mjs
 scripts/code-intelligence-gate.mjs
 scripts/anchor-gate.mjs
+scripts/code-intelligence-gate-all.mjs
+scripts/intake-gate.mjs
+scripts/route-gate.mjs
+scripts/control-gate-lib.mjs
+scripts/production-layer-gate.mjs
+scripts/ai-assurance-gate.mjs
+scripts/domain-assurance-gate.mjs
+scripts/goal-gate.mjs
+scripts/goal-transition.mjs
+scripts/context-manifest-gate.mjs
+scripts/eval-gate.mjs
+scripts/trajectory-gate.mjs
+scripts/waiver-gate.mjs
+scripts/skill-registry-gate.mjs
+scripts/enterprise-ai-gate-all.mjs
+scripts/okf-vault-gate.mjs
 commissioning-review.md
 ```
 
@@ -285,6 +332,7 @@ commissioning-review.md
 | `app/` | Next.js app routes and API surface |
 | `components/` | visual monitor, control-plane shell, connector cards, flow views |
 | `lib/` | workflow nodes, telemetry data, run/event models |
+| `knowledge/` | OKF-style agent vault: progressive indexes, playbooks, concepts, and source notes |
 | `scripts/commission-harness.mjs` | project-adapter + harness-pack generator |
 | `scripts/claude-code-bridge.mjs` | local event bridge and finish-line enforcement |
 | `scripts/uash-emit-event.mjs` | CLI event emitter for runtimes |
@@ -292,6 +340,12 @@ commissioning-review.md
 | `scripts/code-intelligence-scan.mjs` | GitNexus-backed scan wrapper; writes GitNexus evidence and stable graph artifacts |
 | `scripts/code-intelligence-local-scan.mjs` | local Code-intelligence-compatible graph generator / fallback artifact writer |
 | `scripts/code-intelligence-gate.mjs` | graph schema/freshness gate |
+| `scripts/code-intelligence-gate-all.mjs` | combined graph and anchor gate wrapper |
+| `scripts/production-layer-gate.mjs` | 13-layer production readiness validator |
+| `scripts/enterprise-ai-gate-all.mjs` | current-run aggregate intake/route/goal/context/production/AI/domain/eval/trajectory/waiver finish line |
+| `controls/` | canonical production, AI, iOS, realtime, commerce, and youth-safety control catalogs |
+| `skills/` | eight phase-aware Valdris workflow skills, Codex YAML routing projection, and proof-gate registry |
+| `scripts/okf-vault-gate.mjs` | OKF-style knowledge vault validator |
 | `scripts/anchor-gate.mjs` | design-anchor file citation gate |
 | `docs/ENTERPRISE_PROOF_BANK.md` | enterprise/domain proof-bank standard |
 | `docs/OPERATING_INTELLIGENCE_LAYER.md` | evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, MCP/A2A, lifecycle |
@@ -304,6 +358,18 @@ commissioning-review.md
 For a deeper generated map, see [`docs/HARNESS_REPO_MAP.md`](docs/HARNESS_REPO_MAP.md).
 
 For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAID_MAPS.md).
+
+## v0.7 enterprise + AI goal-loop assurance
+
+- eight repo-native skills with phased intake, delivery, and proof ownership;
+- durable goals, stopping conditions, checkpoints, and cost/tool/token/time budgets;
+- hashed context manifests that reject secret-like inputs and path escapes;
+- control-level production proof across all thirteen layers;
+- AI inventory, eval, safety, RAG, tool, memory, observability, cost, and lifecycle controls;
+- iOS, multiplayer, commerce, and youth-AI domain packs;
+- adversarial fixtures for fabricated evidence, failing metrics/evals, self-approval, budget overrun, secret context, and registry escape.
+
+Research and primary-source crosswalks live under [`research/enterprise-ai-2026/`](research/enterprise-ai-2026/).
 
 ## v0.6 trust-boundary hardening
 
@@ -325,25 +391,30 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 | Next.js visual monitor | Built MVP | `app/`, `components/HarnessTelemetryApp.tsx` |
 | Run queue/control-plane shell | Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts` |
 | Blueprint / Demo / Live / Replay truth model | Built + verified | bundled seed data is Demo; Live requires connector events; Replay is historical run data |
-| GitNexus/code-intelligence node | Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*` |
-| Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 30 groups / 150 questions |
+| GitNexus/code-intelligence node | Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*`; GitNexus indexed + local stable projection unless a direct GitNexus exporter is added |
+| Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 31 groups / 158 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
-| Operating-intelligence commissioning | Built structurally | eval, trajectory, context, skills, memory, tools, sandbox, model, economics, PR agents, MCP/A2A, lifecycle, registry, human protocol questions |
-| Enterprise proof-bank map | Built structurally | `docs/ENTERPRISE_PROOF_BANK.md`, generated Enterprise Proof Bank docs |
+| Goal/checkpoint loop + skill router | Built + verified | `goal-gate.mjs`, YAML-frontmatter discovery, `skills/codex-routing.yaml`, `skills/registry.json`, eight Valdris workflows, forward tests |
+| Operating-intelligence enforcement core | Built + verified | executable goal, eval, trajectory, context, skill, production, AI/domain, smoke, waiver, and typed-evidence gates |
+| Extended operating-intelligence policy | Commissioned, not a runtime | memory, tool hooks, sandbox management, model routing, economics, background PR agents, MCP/A2A, and agent lifecycle are captured as policy fields/docs for external runtimes and providers |
+| Enterprise proof-bank map | Built + executable controls | 39 controls, typed evidence, dependency DAG, `production-layer-gate.mjs` |
 | Test-day acceptance gates | Built structurally | `docs/TEST_DAY_ACCEPTANCE_GATES.md`, verifier command set |
 | Local connector bridge | Built + verified | `scripts/claude-code-bridge.mjs`; adapter-aware v0.6 trust boundary |
 | Strict event contract | Built + verified | `docs/CONNECTOR_EVENT_CONTRACT.md`, verifier, CI |
 | Artifact content verification | Built + verified | `uash.proof.v1` schema validation + bridge + adversarial verifier |
 | Red Zone approval boundary | Built + verified | actor-human + pending approval + token gate; raw tokens not persisted |
 | Self-heal bypass prevention | Built + verified | verifier blocks detected-gap bypass |
-| 13 production layers | Built structurally | docs, adapter schema, verifier count |
+| 13 production layers | Built + adversarially verified | v2 control catalog, typed evidence, dependency DAG, bridge compatibility, negative tests |
+| Generative AI assurance | Built + adversarially verified | 10 control domains, conditional RAG/tools/memory, eval and trajectory gates |
+| Domain assurance packs | Built initial set | mobile iOS, multiplayer realtime, digital commerce, youth AI safety |
+| Agent knowledge vault | Built + verified | `knowledge/index.md`, `scripts/okf-vault-gate.mjs`, `npm run knowledge:gate` |
 | Cloud/platform lane | Built structurally | docs + node/artifact policy |
 | CI enforcement | Built + verified | `.github/workflows/ci.yml` runs the harness gates automatically |
 | QA/break-it/live smoke | Partial | docs + node/gate positions; deeper automation next |
 | Enterprise load proof | Partial / policy-only | proof-bank standard exists; executable load gate is next |
 | Observability proof gate | Partial / policy-only | proof-bank standard exists; logs/metrics/traces validator is next |
-| AI/RAG eval gate | Partial / policy-only | eval artifacts are commissioned; executable eval validator is next |
+| AI/RAG eval gate | Built + verified | executable thresholds, dataset/rubric identity, commit/environment/timestamps |
 | Hosted multi-user backend | Future | local JSONL/run-packet first; DB later |
 
 ## Quick start
@@ -352,12 +423,20 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 npm ci
 npm run typecheck
 npm run build
+npm run knowledge:gate
+npm run skills:gate
+npm run skills:install:codex
+npm run skills:check:codex
 npm run code-intelligence:scan
 npm run code-intelligence:gate
+npm run verify:enterprise-ai
 npm run verify:harness
+npm run route:request -- --repo /path/to/target --profile enterprise --actor "<owner>" --request "<work request>"
 npm run proof:write -- --run-id LOCAL-VERIFY --command "npm run typecheck" --command "npm run build" --out proof/proof.json
 npm run dev
 ```
+
+Run `npm run enterprise-ai:gate` inside a complete run packet. Individual goal, context, production, AI, domain, eval, trajectory, and skill gates are also available.
 
 Open the app:
 

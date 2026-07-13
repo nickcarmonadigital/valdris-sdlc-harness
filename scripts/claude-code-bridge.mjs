@@ -3,8 +3,11 @@ import { createServer } from "node:http";
 import { mkdir, readFile, readdir, writeFile, appendFile } from "node:fs/promises";
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { validateProductionLayerAssessment } from "./production-layer-gate.mjs";
 
 const PORT = Number(process.env.UASH_BRIDGE_PORT || 8787);
 const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
@@ -209,15 +212,21 @@ function adapterPolicyFrom(adapter) {
     artifactByNode: Object.fromEntries(Object.entries(artifactMap).filter(([nodeId, value]) => NODE_IDS.has(nodeId) && typeof value === "string" && value.trim())),
     approvalOwner: adapter.humanApproval?.approvalOwner || adapter.answers?.approval_owner || adapter.humanAgentProtocol?.decisionOwner || "primary human/operator",
     proofSchema: adapter.proofSchema?.schema || PROOF_SCHEMA,
+    productionReadinessSchema: adapter.productionReadiness?.schema,
+    enterpriseFinishLineRequired: adapter.finishLineAssurance?.required === true,
   };
 }
 
 function loadAdapterPolicy(adapterPath, artifactRoot) {
-  const implicitAdapter = !adapterPath && artifactRoot && existsSync(path.resolve(String(artifactRoot), "project-adapter.json"))
-    ? path.resolve(String(artifactRoot), "project-adapter.json")
-    : !adapterPath && existsSync(path.resolve(REPO_ROOT, "project-adapter.json"))
-      ? path.resolve(REPO_ROOT, "project-adapter.json")
-      : adapterPath;
+  const nestedAdapter = artifactRoot ? path.resolve(String(artifactRoot), ".valdris-harness", "project-adapter.json") : null;
+  const rootAdapter = artifactRoot ? path.resolve(String(artifactRoot), "project-adapter.json") : null;
+  const implicitAdapter = !adapterPath && rootAdapter && existsSync(rootAdapter)
+    ? rootAdapter
+    : !adapterPath && nestedAdapter && existsSync(nestedAdapter)
+      ? nestedAdapter
+      : !adapterPath && existsSync(path.resolve(REPO_ROOT, "project-adapter.json"))
+        ? path.resolve(REPO_ROOT, "project-adapter.json")
+        : adapterPath;
   if (!implicitAdapter) return { adapterPath: null, adapterPolicy: undefined };
   const resolved = resolveAdapterPath(implicitAdapter, artifactRoot);
   if (resolved.problems.length) throw new Error(resolved.problems.join("; "));
@@ -236,6 +245,11 @@ function artifactPathForNode(run, nodeId) {
 function isProofEvent(run, event) {
   const proofPath = artifactPathForNode(run, "prove") || artifactByNode.prove;
   return event.nodeId === "prove" || event.artifact === proofPath || event.artifact === artifactByNode.prove;
+}
+
+function isProductionLayerEvent(run, event) {
+  const productionPath = artifactPathForNode(run, "production-readiness") || artifactByNode["production-readiness"];
+  return event.nodeId === "production-readiness" || event.artifact === productionPath || event.artifact === artifactByNode["production-readiness"];
 }
 
 function validateProofDocument(filePath) {
@@ -335,6 +349,12 @@ function normalizeRun(run) {
     artifacts: Array.isArray(run.artifacts) && run.artifacts.length ? run.artifacts : createBaseArtifacts(adapterPolicy),
     events: Array.isArray(run.events) ? run.events : [],
   };
+}
+
+function publicRun(run) {
+  const normalized = normalizeRun(run);
+  const { auth, ...safeRun } = normalized;
+  return safeRun;
 }
 
 function createMinimalRun(runId, event = {}, options = {}) {
@@ -465,11 +485,27 @@ function eventContractProblems(event) {
 
 function eventStateProblems(run, event, humanToken) {
   const problems = [];
+  if (event.artifactRoot && run.artifactRoot) {
+    const currentRoot = path.resolve(String(run.artifactRoot));
+    const nextRoot = path.resolve(String(event.artifactRoot));
+    if (currentRoot !== nextRoot) problems.push(`artifactRoot cannot change after run creation: existing ${currentRoot}, event ${nextRoot}`);
+  }
   if (event.type === "approval.granted" || event.type === "approval.denied") {
     problems.push(...humanApprovalTokenProblems(run, event, humanToken));
     const approvals = normalizeApprovalRecords(run.approvals || []);
     const pending = approvals.find((approval) => approval.scope === event.approvalScope && approval.owner === event.approvalOwner && approval.status === "pending");
     if (!pending) problems.push(`approval ${event.type} requires an existing pending approval for ${event.approvalScope} owned by ${event.approvalOwner}`);
+    if (event.approvalScope === "route") {
+      if (event.artifact !== "run/route.json") problems.push("route approval must bind artifact run/route.json");
+      else problems.push(...resolveArtifactPath(run, event.artifact, true).problems.map((problem) => `route approval artifact invalid: ${problem}`));
+    }
+    if (["testflight-release", "app-store-release"].includes(event.approvalScope)) {
+      if (event.artifact !== "domain/assurance.json") problems.push("Apple release approval must bind artifact domain/assurance.json");
+      else problems.push(...resolveArtifactPath(run, event.artifact, true).problems.map((problem) => `Apple release approval artifact invalid: ${problem}`));
+    }
+  }
+  if (event.type === "self_heal.pr_opened" || event.type === "self_heal.pr_proposed") {
+    problems.push(...selfHealResolutionProblems(run, event));
   }
   return problems;
 }
@@ -529,6 +565,7 @@ function artifactWriteProblems(run, event) {
   const result = resolveArtifactPath(run, event.artifact, true);
   problems.push(...result.problems);
   if (!problems.length && isProofEvent(run, event)) problems.push(...validateProofDocument(result.resolved).problems);
+  if (!problems.length && isProductionLayerEvent(run, event)) problems.push(...productionAssessmentVerification(run, result.resolved).problems);
   return problems;
 }
 
@@ -539,7 +576,53 @@ function artifactVerification(run, event) {
   const stat = statSync(result.resolved);
   const verification = { checked: true, exists: true, path: result.resolved, realPath: result.realTarget, size: stat.size, mtimeMs: stat.mtimeMs };
   if (isProofEvent(run, event)) verification.proof = validateProofDocument(result.resolved);
+  if (isProductionLayerEvent(run, event)) verification.productionLayerAssessment = productionAssessmentVerification(run, result.resolved);
   return verification;
+}
+
+function productionAssessmentVerification(run, filePath) {
+  const expected = run.adapterPolicy?.productionReadinessSchema;
+  const verification = validateProductionLayerAssessment(filePath, { allowLegacy: expected !== "uash.production-readiness.v2" });
+  if (expected && verification.schema !== expected) {
+    verification.valid = false;
+    verification.problems = [...verification.problems, `production layer assessment schema must match adapter policy: ${expected}`];
+  }
+  return verification;
+}
+
+function selfHealResolutionProblems(run, event) {
+  const problems = [];
+  let hasVerifiedArtifact = false;
+
+  if (event.artifact) {
+    const result = resolveArtifactPath(run, event.artifact, true);
+    if (result.problems.length) {
+      problems.push(...result.problems.map((problem) => `self-heal resolution artifact invalid: ${problem}`));
+    } else {
+      hasVerifiedArtifact = true;
+    }
+  }
+
+  if (event.selfHealPrUrl) {
+    let parsed;
+    try {
+      parsed = new URL(event.selfHealPrUrl);
+    } catch {
+      problems.push("self-heal PR URL must be a valid URL");
+      return problems;
+    }
+    if (parsed.protocol === "file:") {
+      if (!hasVerifiedArtifact) problems.push("self-heal file URLs require a verified artifact under artifactRoot");
+    } else if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      problems.push("self-heal PR URL must be http(s) or backed by a verified local artifact");
+    } else if (event.type === "self_heal.pr_opened" && !/^\/[^/]+\/[^/]+\/pull\/\d+\/?$/.test(parsed.pathname)) {
+      problems.push("self_heal.pr_opened requires a real pull-request URL or a verified local artifact");
+    }
+  } else if (!hasVerifiedArtifact) {
+    problems.push("self-heal resolution requires a real PR URL or verified self_heal/pr.json artifact");
+  }
+
+  return problems;
 }
 
 function unresolvedApprovalProblems(run) {
@@ -567,6 +650,10 @@ function artifactProofProblems(run, artifact) {
     const problems = artifact.verification.proof?.problems?.join("; ") || "proof content was not schema-validated";
     return [`${artifact.path} failed ${PROOF_SCHEMA} validation: ${problems}`];
   }
+  if (artifact.nodeId === "production-readiness" && artifact.verification.productionLayerAssessment?.valid !== true) {
+    const problems = artifact.verification.productionLayerAssessment?.problems?.join("; ") || "production layer assessment was not schema-validated";
+    return [`${artifact.path} failed production layer validation: ${problems}`];
+  }
   return [];
 }
 
@@ -579,6 +666,10 @@ function finishLineProblems(run) {
       continue;
     }
     if (artifact.skipped) {
+      if (artifact.nodeId === "prove" || artifact.nodeId === "handoff") {
+        problems.push(`${artifact.path} is a non-skippable finish-line invariant`);
+        continue;
+      }
       if (!artifact.skipReason) problems.push(`${artifact.path} skipped without a reason`);
       continue;
     }
@@ -586,7 +677,47 @@ function finishLineProblems(run) {
   }
   problems.push(...unresolvedApprovalProblems(run));
   problems.push(...selfHealProblems(run));
+  problems.push(...enterpriseFinishLineProblems(run));
   return problems;
+}
+
+function enterpriseFinishLineProblems(run) {
+  if (!run.adapterPolicy?.enterpriseFinishLineRequired) return [];
+  if (!run.artifactRoot || !existsSync(run.artifactRoot)) return ["v0.7 finish-line artifactRoot is missing"];
+  const result = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), "enterprise-ai-gate-all.mjs"), "--repo", run.artifactRoot], { encoding: "utf8" });
+  if (result.status !== 0) return [`v0.7 enterprise/AI finish line failed: ${(result.stderr || result.stdout || "no gate output").trim().slice(-4000)}`];
+  try {
+    const routePath = path.join(run.artifactRoot, "run", "route.json");
+    const routeBytes = readFileSync(routePath);
+    const route = JSON.parse(routeBytes.toString("utf8"));
+    const goal = JSON.parse(readFileSync(path.join(run.artifactRoot, "goal", "goal.json"), "utf8"));
+    const waiverLedger = JSON.parse(readFileSync(path.join(run.artifactRoot, "waivers", "waivers.json"), "utf8"));
+    const domainPath = path.join(run.artifactRoot, "domain", "assurance.json");
+    const domainBytes = readFileSync(domainPath);
+    const domainAssurance = JSON.parse(domainBytes.toString("utf8"));
+    const problems = [];
+    if (route.runId !== run.id) problems.push("route.runId must match the bridge run ID");
+    if (goal.goalId !== run.id) problems.push("goal.goalId must match the bridge run ID");
+    const approvals = normalizeApprovalRecords(run.approvals || []);
+    const routeDigest = createHash("sha256").update(routeBytes).digest("hex");
+    if (!approvals.some((approval) => approval.status === "granted" && approval.scope === "route" && approval.artifact === "run/route.json" && approval.artifactDigest === routeDigest)) {
+      problems.push("current run/route.json is not bound to a token-gated human route approval");
+    }
+    for (const waiver of waiverLedger.waivers || []) {
+      if (!approvals.some((approval) => approval.status === "granted" && approval.eventId === waiver.approvalEventId && approval.scope === waiver.scope)) problems.push(`waiver ${waiver.id} is not bound to a granted token-gated bridge approval event`);
+    }
+    const domainDigest = createHash("sha256").update(domainBytes).digest("hex");
+    for (const control of (domainAssurance.packs || []).flatMap((pack) => pack.controls || [])) {
+      for (const evidence of control.evidence || []) {
+        if (evidence.type === "approval" && !approvals.some((approval) => approval.status === "granted" && approval.eventId === evidence.bridgeEventId && approval.scope === evidence.scope && approval.artifact === "domain/assurance.json" && approval.artifactDigest === domainDigest)) {
+          problems.push(`domain approval for ${control.id} is not bound to its token-gated bridge event`);
+        }
+      }
+    }
+    return problems;
+  } catch (error) {
+    return [`v0.7 finish-line binding read failed: ${error.message}`];
+  }
 }
 
 function updateApproval(run, event) {
@@ -602,8 +733,13 @@ function updateApproval(run, event) {
     nodeId: event.nodeId,
     status,
     eventId: event.id,
+    artifact: event.artifact,
     updatedAt: nowIso(),
   };
+  if (event.type === "approval.granted" && event.artifact) {
+    const resolved = resolveArtifactPath(run, event.artifact, true);
+    if (!resolved.problems.length) record.artifactDigest = createHash("sha256").update(readFileSync(resolved.resolved)).digest("hex");
+  }
   if (existingIndex >= 0) {
     approvals[existingIndex] = { ...approvals[existingIndex], ...record };
     return approvals;
@@ -742,7 +878,7 @@ async function handle(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/runs") {
-      return send(res, 200, await listRuns());
+      return send(res, 200, (await listRuns()).map(publicRun));
     }
 
     if (req.method === "POST" && url.pathname === "/runs") {
@@ -762,14 +898,14 @@ async function handle(req, res) {
       }
       await writeRun(created.run);
       return send(res, 200, {
-        ...created.run,
+        ...publicRun(created.run),
         humanApprovalTokenRequired: true,
         humanApprovalTokenNotice: "Approval grant/deny requires operator-held UASH_HUMAN_APPROVAL_TOKEN sent as x-uash-human-token or --human-token. Raw tokens are never accepted from POST /runs and never returned by HTTP.",
       });
     }
 
     if (parts[0] === "runs" && parts[1] && req.method === "GET" && parts.length === 2) {
-      return send(res, 200, await readRun(parts[1]));
+      return send(res, 200, publicRun(await readRun(parts[1])));
     }
 
     if (parts[0] === "runs" && parts[1] && parts[2] === "events" && req.method === "POST") {
@@ -786,10 +922,10 @@ async function handle(req, res) {
           return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
         }
       }
-      if (body.adapterPath && !run.adapterPolicy) {
+      if (!run.adapterPolicy && (body.adapterPath || body.artifactRoot || run.artifactRoot)) {
         try {
           const adapterConfig = loadAdapterPolicy(body.adapterPath, body.artifactRoot || run.artifactRoot);
-          run = normalizeRun({ ...run, adapterPath: adapterConfig.adapterPath, adapterPolicy: adapterConfig.adapterPolicy, artifacts: createBaseArtifacts(adapterConfig.adapterPolicy) });
+          if (adapterConfig.adapterPolicy) run = normalizeRun({ ...run, artifactRoot: run.artifactRoot || body.artifactRoot, adapterPath: adapterConfig.adapterPath, adapterPolicy: adapterConfig.adapterPolicy, artifacts: createBaseArtifacts(adapterConfig.adapterPolicy) });
         } catch (error) {
           return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
         }
@@ -827,13 +963,13 @@ async function handle(req, res) {
           const blockedRun = applyEvent(run, blockedEvent);
           await writeRun(blockedRun);
           await appendEvent(runId, blockedEvent);
-          return send(res, 409, { ok: false, error: "finish_line_blocked", problems, run: blockedRun, event: blockedEvent });
+          return send(res, 409, { ok: false, error: "finish_line_blocked", problems, run: publicRun(blockedRun), event: blockedEvent });
         }
       }
 
       await writeRun(nextRun);
       await appendEvent(runId, event);
-      return send(res, 200, { ok: true, run: nextRun, event });
+      return send(res, 200, { ok: true, run: publicRun(nextRun), event });
     }
 
     return send(res, 404, { error: "not_found", routes: ["GET /health", "GET /runs", "POST /runs", "GET /runs/:id", "POST /runs/:id/events"] });
