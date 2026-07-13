@@ -498,9 +498,11 @@ try {
 
   const symlinkRoot = path.join(tempRoot, "symlink-root");
   await mkdir(path.join(symlinkRoot, "proof"), { recursive: true });
+  const symlinkTarget = path.join(tempRoot, "symlink-target.json");
+  await writeFile(symlinkTarget, JSON.stringify({ outsideArtifactRoot: true }));
   let symlinkEscapeChecked = false;
   try {
-    await symlink("/etc/passwd", path.join(symlinkRoot, "proof", "proof.json"));
+    await symlink(symlinkTarget, path.join(symlinkRoot, "proof", "proof.json"), "file");
     await postRun(port, { id: "VERIFY-SYMLINK-ESCAPE", artifactRoot: symlinkRoot });
     const symlinkBlocked = await postEvent(port, "VERIFY-SYMLINK-ESCAPE", baseEvent("artifact.written", "prove", "symlink proof", { artifact: "proof/proof.json" }), 400);
     assertProblem(symlinkBlocked, "symlink", "symlink escape");
