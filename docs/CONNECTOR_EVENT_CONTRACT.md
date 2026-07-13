@@ -129,9 +129,12 @@ Rules:
 - `failed` requires `failureReason` and `recoveryPath`.
 - `needs_approval` requires `approvalOwner` and `approvalScope`.
 - `approval.granted` and `approval.denied` must be emitted by `actor: "human"`, must match an existing pending approval, and must include the operator-held `UASH_HUMAN_APPROVAL_TOKEN` via `x-uash-human-token` / `--human-token`; tokens are never accepted from `POST /runs` or returned by HTTP.
-- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected. For `prove`, the configured proof artifact must validate as passing `uash.proof.v1` with zero-exit command evidence.
+- `artifact.written` requires an actual file under the run `artifactRoot`; symlink/path escapes are rejected. For `prove`, the configured proof artifact must validate as passing `uash.proof.v1` with zero-exit command evidence. For `production-readiness`, `production/layer-assessment.json` must validate all 13 canonical layers; newly commissioned runs use control-level `uash.production-readiness.v2`, while legacy v1 history remains readable.
+- A nested commissioned pack supplies `adapterPath` on the first event (CLI: `--adapter-path .valdris-harness/project-adapter.json`). The adapter must resolve inside `artifactRoot`, `UASH_REPO_ROOT`, or an explicitly configured `UASH_ADAPTER_ROOTS` entry; symlink and arbitrary-path escapes are rejected.
+- When the adapter sets `finishLineAssurance.required`, `run.completed` also executes the aggregate v0.7 intake/route/goal/context/production/AI/domain/eval/trajectory/waiver gate against the run artifact root, binds route and goal IDs to the bridge run ID, and correlates active waivers with token-gated approval events.
 - `run.completed` can only pass when all required nodes are verified-present or explicitly skipped with reasons.
-- If `self_heal.detected` is emitted, a later `self_heal.pr_opened` or `self_heal.pr_proposed` is required before completion.
+- If `self_heal.detected` is emitted, a later `self_heal.pr_opened` or `self_heal.pr_proposed` is required before completion, and that resolution must include a real pull request URL or a verified local `self_heal/pr.json` proposal artifact.
+- Once a run has an `artifactRoot`, later events may not change it.
 
 ## Event examples
 

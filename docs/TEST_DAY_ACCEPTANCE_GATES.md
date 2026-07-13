@@ -8,7 +8,7 @@ This is the repo-facing version of the test-day discussion: Valdris is not “do
 
 | Gate | Question | Pass signal |
 |---|---|---|
-| Commissioning depth | Did the harness ask enough to know the team/repo/quality bar? | `npm run commission:questions` returns 30 groups / 150 questions. |
+| Commissioning depth | Did the harness ask enough to know the team/repo/quality bar? | `npm run commission:questions` returns 31 groups / 158 questions. |
 | Good-looks-like foundation | Does the generated pack teach architecture/quality/proof before feature work? | Generated docs include Good Looks Like, Code Quality Guardrails, Enterprise Proof Bank. |
 | GitNexus/code intelligence | Does the run map the repo before cross-file reasoning? | `graph/gitnexus.json`, `graph/graph.json`, `graph/freshness.json`, `design/anchors.json` pass gates. |
 | Mode honesty | Does UI/docs separate Blueprint, Live Run, and Replay? | No fake live telemetry; live requires bridge/MCP/API/CLI/watched events. |

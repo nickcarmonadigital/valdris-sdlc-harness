@@ -27,8 +27,8 @@ Current verified facts:
   "harnessVerifier": {
     "ok": true,
     "generatorVersion": "0.5.0",
-    "commissioningQuestionGroups": 30,
-    "commissioningQuestions": 150,
+    "commissioningQuestionGroups": 31,
+    "commissioningQuestions": 158,
     "bridgeContractVersion": "uash.connector-events.v0.5",
     "productionLayers": 13,
     "foundationBlueprint": true,
@@ -49,6 +49,23 @@ Current verified facts:
 ```
 
 Note: `graph/` and `design/` are generated code-intelligence artifacts and are currently untracked by git. `graph/gitnexus.json` proves the GitNexus index ran when available; fallback runs must disclose local-static graph use.
+
+## Agent knowledge vault
+
+The repo now has an OKF-style `knowledge/` vault for agent ease:
+
+```text
+knowledge/
+  index.md
+  log.md
+  systems/
+  playbooks/
+  concepts/
+  sources/
+scripts/okf-vault-gate.mjs
+```
+
+Use `knowledge/index.md` as the first progressive-disclosure map after `AGENTS.md`. Run `npm run knowledge:gate` to validate frontmatter, indexes, logs, and internal links.
 
 ---
 
@@ -362,9 +379,9 @@ Current repo status: this layer pack is documented, included in commissioning, a
 |---|---:|---|---|
 | Universal SDLC stage flow | Built | `lib/run-events.ts`, `lib/control-plane.ts`, connector contract | Real core flow exists |
 | GitNexus/code-intelligence node | Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*` | GitNexus preferred backend with disclosed local fallback |
-| Project commissioning generator | Built + verified | `scripts/commission-harness.mjs`, verifier generated pack | Expanded to 30 groups / 150 questions with foundation + operating-intelligence fields |
+| Project commissioning generator | Built + verified | `scripts/commission-harness.mjs`, verifier generated pack | Expanded to 31 groups / 158 questions including Apple/iOS platform facts |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs | Teaches target foundation and anti-spaghetti rules before feature work |
-| Operating-intelligence commissioning | Built structurally | adapter sections for evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, PR agents, MCP/A2A, lifecycle, team registry, human protocol | Questions/docs exist; executable gates remain next buildout |
+| Operating-intelligence enforcement core | Built + executable | goal, eval, trajectory, context, skills, typed evidence, production, AI/domain, live-smoke, and waiver gates | Eleven positive gates plus route-conditional code-intelligence/smoke and adversarial negative fixtures pass |
 | Generated agent front doors | Built | `AGENTS.md`, `CLAUDE.md`, generated pack checks | Real front-door pattern |
 | Claude/Codex connector bridge | Built local v0 | `scripts/claude-code-bridge.mjs`, `uash-emit-event.mjs` | Local bridge works; MCP/hosted daemon later |
 | Strict event contract | Built + verified | `CONNECTOR_EVENT_CONTRACT.md`, verifier | Good hardening exists |
@@ -373,7 +390,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | Self-heal loop | Partial/built gate | docs + verifier blocks bypass | Needs productized PR/workflow UX |
 | Visual run monitor | Built MVP | Next UI components + docs | Exists; can become deeper n8n-style monitor |
 | Blueprint/Live/Replay separation | Built policy + UI data | docs + event types | Good; must keep enforced in UI |
-| 13 production layers | Built as pack/policy + adapter | `PRODUCTION_READINESS_LAYER_PACK.md`, verifier says 13 | Exists structurally; proof banks need work |
+| 13 production layers | Built as v2 control catalog + enforced gate | 39 controls, typed evidence, dependency DAG, verifier negative tests | Domain-specific packs extend the universal model |
 | Cloud/platform lane | Built as lane/policy | docs + artifact path | Needs real provider adapters/scripts |
 | QA/break-it/live smoke | Partial | docs + artifacts + gate positions | Needs serious automated smoke/e2e harness |
 | Evals | Partial / commissioned | `OPERATING_INTELLIGENCE_LAYER.md`, adapter eval fields | Needs executable `eval-gate` script + UI coverage |
@@ -385,9 +402,9 @@ Current repo status: this layer pack is documented, included in commissioning, a
 
 ---
 
-## 9. The proof-bank correction
+## 9. The proof-bank correction delivered in v0.7
 
-The current harness proof standard is **not yet high enough** for Nick's target.
+The pre-v0.7 harness proof standard was not high enough for Nick's target. v0.7 closes the structural-proof gap with control IDs, a dependency DAG, typed evidence, hashes, commit/environment binding, executable metrics/evals, human-only approvals, and domain catalogs.
 
 Nick's target proof standard:
 
@@ -435,13 +452,15 @@ For a serious game/RPG like Shroudfront, proof should include layers like:
 - security/privacy/compliance if accounts/payments/minors/UGC exist
 - marketing-scale launch readiness: waitlist, analytics, attribution, funnel, CDN, incident runbook
 
-This is now encoded as a root proof-bank policy section. It still needs a dedicated executable game domain-pack artifact and gates.
+This is now encoded through the mobile-iOS, multiplayer-realtime, digital-commerce, and youth-AI catalogs plus `scripts/domain-assurance-gate.mjs`.
 
 ---
 
-## 10. What is actually missing next
+## 10. Remaining work beyond v0.7
 
-Minimum remaining executable buildout to make the harness match Nick's full standard:
+The immediate remaining frontier is provider-backed semantic ingestion, richer workload generators, dedicated OpenTelemetry/SLO query validation, signed supply-chain attestations and expiring waiver governance, Apple-native macOS/device proof, and a hosted multi-user connector service.
+
+The block below is retained as historical pre-v0.7 backlog provenance; the eval gate and initial game/mobile domain packs it requested have now been delivered.
 
 ```text
 docs/domain-packs/ENTERPRISE_PROOF_BANK.md or registry entry
@@ -484,6 +503,10 @@ visual board update
 
 ## 11. Current verdict
 
+v0.7 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 39 enterprise production controls, ten AI assurance domains, four domain packs, executable goal/context/eval/trajectory validators, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
+
+### Historical pre-v0.7 verdict (superseded)
+
 ```text
 The repo has a real universal harness MVP:
 - stage flow
@@ -498,11 +521,11 @@ The repo has a real universal harness MVP:
 
 But it does not yet fully satisfy Nick's enterprise-scale proof-bank standard:
 - load/concurrency proof is policy-only; no executable gate
-- eval proof is commissioned; no executable eval validator yet
+- external eval execution is provider/project-specific; the executable `eval-gate.mjs` validates versioned datasets, rubrics, evaluator configuration, slice thresholds, critical failures, and result digests
 - observability proof is policy-only; no logs/metrics/traces gate implementation
 - serious game/web/website domain packs exist as root policy sections, not dedicated machine-readable packs
 - no full proof-bank registry/classifier yet
 - no hosted/daemon-grade connector runtime yet
 ```
 
-So the right next work is not another generic diagram. The next work is turning the newly commissioned **Enterprise Proof Bank + Foundation/Quality + Operating Intelligence** specs into executable gates, semantic validators, and visual-board enforcement.
+The next work is deeper provider-backed semantic validation, workload/domain coverage, hosted connector operation, and visual-board coverage of the new v0.7 gates—not another generic checklist.

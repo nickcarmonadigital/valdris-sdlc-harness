@@ -51,6 +51,8 @@ Never imply fake live telemetry.
 
 ## Required event sequence
 
+Before routing, read `AGENTS.md`, `project-adapter.json`, `knowledge/index.md`, `skills/registry.json`, `00_MAP.md`, `CONTEXT.md`, and `docs/Validation Commands.md` when present. Use `knowledge/` as the progressive-disclosure vault, select one primary skill for the current phase, store durable multi-checkpoint state in `goal/goal.json`, and run `node scripts/okf-vault-gate.mjs --repo .` when stable routing knowledge changes.
+
 ### 1. Intake
 
 ```bash
@@ -73,8 +75,7 @@ For codebase, architecture, refactor, debugging, or cross-file implementation wo
 
 ```bash
 node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local
-node scripts/code-intelligence-gate.mjs --repo .
-node scripts/anchor-gate.mjs --repo .
+node scripts/code-intelligence-gate-all.mjs --repo .
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written code-intelligence "GitNexus/code-intelligence artifact written" --artifact graph/graph.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written design-anchors "Design anchors written for blast-radius reasoning" --artifact design/anchors.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"
 ```
@@ -103,7 +104,9 @@ node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped system-design "System de
 node scripts/uash-emit-event.mjs "$RUN_ID" artifact.written production-readiness "Production Readiness Layer Pack assessed" --artifact production/layer-assessment.json --status ok --actor claude-code
 ```
 
-Classify touched/skipped layers: frontend, backend/API, DB/storage, auth/RLS, hosting/deploy, cloud/compute, CI/CD, security, rate limiting, caching/CDN, load balancing/scaling, logs/observability, availability/recovery.
+Classify all layers initially as required, potentially affected, or not applicable, then resolve every potentially affected layer before finish. Newly commissioned runs use `uash.production-readiness.v2`: each required layer must pass every named catalog control with typed evidence.
+
+Activate `ai/assurance.json`, eval, and trajectory gates for AI behavior. Activate matching catalogs under `controls/domain-packs/` for iOS, realtime multiplayer, digital commerce, or youth-facing AI.
 
 ### 6. Cloud / Platform
 

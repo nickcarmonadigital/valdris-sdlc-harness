@@ -75,10 +75,29 @@ function writeJsonInside(repo, relativePath, payload) {
   writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
+function quoteCmdArg(value) {
+  const text = String(value);
+  if (!/[ \t"&<>|^]/.test(text)) return text;
+  return `"${text.replace(/"/g, "\"\"")}"`;
+}
+
+function spawnCommandFor(command, commandArgs) {
+  if (process.platform === "win32" && ["npx", "npm", "pnpm", "yarn"].includes(command)) {
+    const shellCommand = [command, ...commandArgs].map(quoteCmdArg).join(" ");
+    return {
+      command: process.env.ComSpec || "cmd.exe",
+      args: ["/d", "/s", "/c", shellCommand],
+      launcher: "windows-comspec",
+    };
+  }
+  return { command, args: commandArgs, launcher: "direct" };
+}
+
 function run(command, commandArgs, options = {}) {
   const startedAt = new Date().toISOString();
   const started = Date.now();
-  const result = spawnSync(command, commandArgs, {
+  const spawnConfig = spawnCommandFor(command, commandArgs);
+  const result = spawnSync(spawnConfig.command, spawnConfig.args, {
     cwd: options.cwd,
     env: options.env,
     encoding: "utf8",
@@ -88,6 +107,8 @@ function run(command, commandArgs, options = {}) {
   return {
     command,
     args: commandArgs,
+    launcher: spawnConfig.launcher,
+    spawnedCommand: spawnConfig.command,
     startedAt,
     durationMs: Date.now() - started,
     exitCode: typeof result.status === "number" ? result.status : result.error ? 1 : 0,

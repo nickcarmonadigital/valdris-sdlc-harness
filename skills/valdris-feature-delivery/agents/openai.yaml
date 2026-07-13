@@ -1,0 +1,4 @@
+interface:
+  display_name: "Valdris Feature Delivery"
+  short_description: "Deliver vertical slices through proof gates"
+  default_prompt: "Use $valdris-feature-delivery to build this feature as verified vertical slices."

@@ -1,0 +1,39 @@
+{
+  "schema": "uash.goal.v1",
+  "goalId": "IOS-AI-GAME-BLUEPRINT",
+  "revision": 1,
+  "generatedAt": "2026-07-12T12:00:00.000Z",
+  "updatedAt": "2026-07-12T12:00:00.000Z",
+  "objective": "Deliver an enterprise-profile multiplayer iOS game to authorized TestFlight testers with authoritative multiplayer state, an AI dungeon master, accounts, purchases, cloud saves, and matchmaking.",
+  "requestSha256": "replace-with-authorized-intake-sha256",
+  "initialRouteSha256": "replace-with-reviewed-route-file-sha256",
+  "owner": "commissioned-product-owner",
+  "status": "in_progress",
+  "profile": "enterprise",
+  "commit": "replace-with-target-commit",
+  "environment": "blueprint",
+  "budgets": {"attempts": 40, "toolCalls": 2000, "tokens": 5000000, "costUsd": 2500, "wallClockMinutes": 43200},
+  "stoppingConditions": [
+    {"id": "ios-core-loop", "status": "pending"},
+    {"id": "two-player-reconnect-flow", "status": "pending"},
+    {"id": "authoritative-server-state", "status": "pending"},
+    {"id": "ai-quality-safety-latency-cost-evals", "status": "pending"},
+    {"id": "prompt-injection-hidden-state-and-tool-boundaries", "status": "pending"},
+    {"id": "storekit-idempotency-lifecycle-and-reconciliation", "status": "pending"},
+    {"id": "cloud-save-conflict-restore-and-outage", "status": "pending"},
+    {"id": "matchmaking-quality-capacity-and-abuse", "status": "pending"},
+    {"id": "security-and-residual-risk", "status": "pending"},
+    {"id": "macos-signed-archive-testflight-device-smoke", "status": "blocked"},
+    {"id": "backend-model-client-rollback", "status": "pending"},
+    {"id": "all-applicable-enterprise-ai-domain-controls", "status": "pending"},
+    {"id": "human-approvals-recorded", "status": "pending"}
+  ],
+  "checkpoints": [
+    {
+      "id": "intake-architecture-unknowns",
+      "status": "started",
+      "recordedAt": "2026-07-12T12:00:00.000Z",
+      "summary": "Resolve engine/UI stack, device matrix, realtime topology, authoritative state, purchase types, age audience, AI authority, scale, budgets, macOS runner, and Apple access."
+    }
+  ]
+}

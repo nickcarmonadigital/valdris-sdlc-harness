@@ -1,0 +1,4 @@
+interface:
+  display_name: "Valdris Intake and Routing"
+  short_description: "Classify work and choose a proof-first lane"
+  default_prompt: "Use $valdris-intake-route to classify this request and select the smallest safe Valdris workflow."

@@ -18,7 +18,9 @@ Options:
   --approval-scope text
   --self-heal-pr-url url
   --human-token token (preferred for human approval grant/deny; sent as header, never persisted)
-  --artifact-root path (defaults to current working directory for local proof verification)
+  --artifact-root path (explicit run artifact root for local proof verification)
+  --adapter-path path (project adapter inside artifactRoot or an allowed adapter root)
+  --event-id id (predeclared ID used to correlate approval evidence)
 
 Example:
   node scripts/uash-emit-event.mjs RUN-1042 node.skipped cloud-platform "Cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness`);
@@ -39,7 +41,9 @@ const options = {
   approvalScope: undefined,
   selfHealPrUrl: undefined,
   humanToken: undefined,
-  artifactRoot: process.cwd(),
+  artifactRoot: undefined,
+  adapterPath: undefined,
+  eventId: undefined,
 };
 
 const optionMap = {
@@ -56,6 +60,8 @@ const optionMap = {
   "--self-heal-pr-url": "selfHealPrUrl",
   "--human-token": "humanToken",
   "--artifact-root": "artifactRoot",
+  "--adapter-path": "adapterPath",
+  "--event-id": "eventId",
 };
 
 const messageParts = [];
@@ -82,6 +88,7 @@ const response = await fetch(url, {
   method: "POST",
   headers,
   body: JSON.stringify({
+    id: options.eventId,
     type,
     nodeId,
     artifact: options.artifact,
@@ -97,6 +104,7 @@ const response = await fetch(url, {
     approvalScope: options.approvalScope,
     selfHealPrUrl: options.selfHealPrUrl,
     artifactRoot: options.artifactRoot,
+    adapterPath: options.adapterPath,
   }),
 });
 

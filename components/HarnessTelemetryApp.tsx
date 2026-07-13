@@ -11,6 +11,7 @@ import {
   type HarnessNode,
   type NodeStatus,
 } from "../lib/harness-telemetry";
+import { productionLayers } from "../lib/control-plane";
 
 const statusLabels: Record<NodeStatus, string> = {
   done: "passed",
@@ -30,6 +31,22 @@ const statusSymbols: Record<NodeStatus, string> = {
   warning: "△",
 };
 
+const layerProofById: Record<string, string> = {
+  frontend: "screenshot, browser/e2e pass, route proof",
+  "backend-api-logic": "API test, request/response proof, logs",
+  "database-storage": "migration proof, rollback path, data sample",
+  "auth-permissions-rls": "authz test, RLS proof, negative permission case",
+  "hosting-deployment": "deploy log, URL, health check",
+  "cloud-compute": "service map, CLI output, resource diff",
+  "cicd-version-control": "workflow run, required check list",
+  security: "threat note, secret scan, security checklist",
+  "rate-limiting": "policy/config proof, load/edge-case note",
+  "caching-cdn": "cache policy, invalidation proof, stale-data test",
+  "load-balancing-scaling": "LB/health config, scaling policy, traffic proof",
+  "error-tracking-logs-observability": "log/query/dashboard/alert proof",
+  "availability-recovery-dr": "rollback plan, backup/restore note, RTO/RPO",
+};
+
 function nodeKindLabel(node: HarnessNode) {
   if (node.kind === "gate") return "enforced gate";
   if (node.kind === "skill") return "skill fired";
@@ -46,6 +63,9 @@ export function HarnessTelemetryApp() {
   const selectedNode = useMemo(() => harnessNodes.find((node) => node.id === selectedNodeId) ?? harnessNodes[0], [selectedNodeId]);
   const selectedStatus = getScenarioNodeStatus(scenario, selectedNode.id);
   const selectedReason = getScenarioNodeReason(scenario, selectedNode);
+  const productionStatus = getScenarioNodeStatus(scenario, "production-readiness");
+  const productionReason = getScenarioNodeReason(scenario, harnessNodes.find((node) => node.id === "production-readiness") ?? selectedNode);
+  const activeLayerIds = new Set(scenario.id === "v02-production-pack" ? ["frontend", "backend-api-logic", "cicd-version-control", "error-tracking-logs-observability"] : scenario.id === "v03-cloud-redzone" ? ["cloud-compute", "hosting-deployment", "security", "availability-recovery-dr"] : []);
 
   const metrics = useMemo(() => {
     const counts: Record<NodeStatus, number> = { done: 0, active: 0, blocked: 0, skipped: 0, pending: 0, warning: 0 };
@@ -244,6 +264,26 @@ export function HarnessTelemetryApp() {
                 })}
             </div>
           </article>
+        </section>
+
+        <section className="productionLayerMatrix" aria-label="13 production layer ledger">
+          <div className="panelHeader">
+            <span className="tinyLabel">13 production layers</span>
+            <strong>{statusLabels[productionStatus]}</strong>
+          </div>
+          <div className="layerRows productionLayerRows">
+            {productionLayers.map((layer) => {
+              const active = activeLayerIds.has(layer.id);
+              const status = productionStatus === "skipped" ? "skipped" : active ? "passed" : "skipped";
+              return (
+                <div className={`layerRow ${status}`} key={layer.id}>
+                  <span>{status}</span>
+                  <b>{layer.label}</b>
+                  <small>{active ? layerProofById[layer.id] : productionReason}</small>
+                </div>
+              );
+            })}
+          </div>
         </section>
 
         <section className="operatingModel">

@@ -1,0 +1,124 @@
+{
+  "schema": "uash.production-control-catalog.v2",
+  "version": "2.0.0",
+  "profiles": ["prototype", "production", "enterprise", "regulated"],
+  "layers": [
+    {
+      "layer": "frontend",
+      "dependencies": ["backend-api-logic", "auth-permissions-rls", "security"],
+      "controls": [
+        {"id": "FE-ACCESSIBILITY-001", "requirement": "Accessibility behavior is tested against the commissioned standard."},
+        {"id": "FE-BEHAVIOR-001", "requirement": "Critical user journeys and negative states have automated evidence."},
+        {"id": "FE-PERFORMANCE-001", "requirement": "Client performance is measured against a workload-specific budget."}
+      ]
+    },
+    {
+      "layer": "backend-api-logic",
+      "dependencies": ["auth-permissions-rls", "error-tracking-logs-observability"],
+      "controls": [
+        {"id": "API-CONTRACT-001", "requirement": "API and event contracts are versioned and compatibility-tested."},
+        {"id": "API-FAILURE-001", "requirement": "Timeout, retry, idempotency, and dependency-failure paths are proven."},
+        {"id": "API-TRACE-001", "requirement": "Requests carry end-to-end correlation and observable failure context."}
+      ]
+    },
+    {
+      "layer": "database-storage",
+      "dependencies": ["auth-permissions-rls", "security"],
+      "controls": [
+        {"id": "DATA-MIGRATION-001", "requirement": "Schema and data changes have forward, backward, and rollback evidence."},
+        {"id": "DATA-INTEGRITY-001", "requirement": "Constraints, isolation, retention, and deletion behavior are verified."},
+        {"id": "DATA-RECOVERY-001", "requirement": "Backups are restored and measured against commissioned RPO and RTO."}
+      ]
+    },
+    {
+      "layer": "auth-permissions-rls",
+      "dependencies": ["security"],
+      "controls": [
+        {"id": "AUTH-AUTHZ-001", "requirement": "Every protected operation enforces server-side authorization."},
+        {"id": "AUTH-TENANT-001", "requirement": "Cross-tenant read and write attempts fail at every relevant boundary."},
+        {"id": "AUTH-LIFECYCLE-001", "requirement": "Sessions, identities, keys, and deprovisioning have tested lifecycles."}
+      ]
+    },
+    {
+      "layer": "hosting-deployment",
+      "dependencies": ["cicd-version-control", "cloud-compute", "error-tracking-logs-observability", "availability-recovery-dr"],
+      "controls": [
+        {"id": "DEPLOY-PROMOTION-001", "requirement": "Production promotion is staged, attributable, and approval-aware."},
+        {"id": "DEPLOY-HEALTH-001", "requirement": "Deploy health and smoke behavior are measured in the target environment."},
+        {"id": "DEPLOY-ROLLBACK-001", "requirement": "Rollback is tested against explicit triggers and time objectives."}
+      ]
+    },
+    {
+      "layer": "cloud-compute",
+      "dependencies": ["security", "error-tracking-logs-observability"],
+      "controls": [
+        {"id": "CLOUD-IAC-001", "requirement": "Cloud topology is reviewable, reproducible, and drift-detected."},
+        {"id": "CLOUD-BOUNDARY-001", "requirement": "IAM, network, region, and secret boundaries are least-privilege."},
+        {"id": "CLOUD-COST-001", "requirement": "Ownership, budgets, forecasts, and anomaly thresholds are explicit."}
+      ]
+    },
+    {
+      "layer": "cicd-version-control",
+      "dependencies": ["security"],
+      "controls": [
+        {"id": "CI-GATES-001", "requirement": "Required checks block unverified changes and overrides are auditable."},
+        {"id": "CI-SUPPLYCHAIN-001", "requirement": "Dependencies, secrets, code, and infrastructure are scanned."},
+        {"id": "CI-PROVENANCE-001", "requirement": "Release artifacts are attributable to source, build, and approval identity."}
+      ]
+    },
+    {
+      "layer": "security",
+      "dependencies": [],
+      "controls": [
+        {"id": "SEC-THREAT-001", "requirement": "Assets, trust boundaries, threats, and mitigations are current."},
+        {"id": "SEC-SECRETS-001", "requirement": "Secrets are absent from source and use governed storage and rotation."},
+        {"id": "SEC-VULNERABILITY-001", "requirement": "Known vulnerabilities are scanned, triaged, and remediated by SLA."}
+      ]
+    },
+    {
+      "layer": "rate-limiting",
+      "dependencies": ["backend-api-logic", "error-tracking-logs-observability"],
+      "controls": [
+        {"id": "RATE-POLICY-001", "requirement": "Limits are explicit by actor, tenant, endpoint, provider, and cost class."},
+        {"id": "RATE-FAILURE-001", "requirement": "Backoff, circuit breaking, and overload behavior avoid retry storms."},
+        {"id": "RATE-METERING-001", "requirement": "Usage and billing meters reconcile to authoritative records."}
+      ]
+    },
+    {
+      "layer": "caching-cdn",
+      "dependencies": ["database-storage", "security", "error-tracking-logs-observability"],
+      "controls": [
+        {"id": "CACHE-KEY-001", "requirement": "Cache keys include every identity, permission, version, and variation boundary."},
+        {"id": "CACHE-INVALIDATION-001", "requirement": "Invalidation, freshness, and purge propagation are tested."},
+        {"id": "CACHE-ISOLATION-001", "requirement": "Personal or tenant data cannot cross cache boundaries."}
+      ]
+    },
+    {
+      "layer": "load-balancing-scaling",
+      "dependencies": ["cloud-compute", "error-tracking-logs-observability"],
+      "controls": [
+        {"id": "SCALE-CAPACITY-001", "requirement": "Capacity and cost are tested against representative workload models."},
+        {"id": "SCALE-PROGRESSIVE-001", "requirement": "Canary or progressive delivery has abort and rollback criteria."},
+        {"id": "SCALE-FAILOVER-001", "requirement": "Routing and scaling failure modes are exercised without unsafe blast radius."}
+      ]
+    },
+    {
+      "layer": "error-tracking-logs-observability",
+      "dependencies": ["security"],
+      "controls": [
+        {"id": "OBS-TELEMETRY-001", "requirement": "Critical flows have correlated logs, metrics, and traces."},
+        {"id": "OBS-SLO-001", "requirement": "SLIs, SLOs, windows, alerts, and error budgets have named owners."},
+        {"id": "OBS-REDACTION-001", "requirement": "Telemetry excludes secrets and sensitive data and preserves audit integrity."}
+      ]
+    },
+    {
+      "layer": "availability-recovery-dr",
+      "dependencies": ["database-storage", "cloud-compute", "error-tracking-logs-observability"],
+      "controls": [
+        {"id": "DR-OBJECTIVES-001", "requirement": "Availability, RTO, and RPO are workload-specific and windowed."},
+        {"id": "DR-RESTORE-001", "requirement": "Restore, rollback, and failover are exercised and measured."},
+        {"id": "DR-INCIDENT-001", "requirement": "Incident roles, communication, evidence, and corrective actions are tested."}
+      ]
+    }
+  ]
+}

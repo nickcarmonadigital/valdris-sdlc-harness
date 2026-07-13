@@ -68,7 +68,7 @@ Artifact proof rule:
 artifact.written requires a real file under artifactRoot.
 ```
 
-The CLI emitter sends `artifactRoot` automatically as the current working directory unless `--artifact-root` is supplied.
+Pass `--artifact-root "$PWD"` on the first live event, or create/sync the run with the correct artifact root before emitting artifact events. The CLI emitter does not invent an artifact root.
 
 ## App flow
 

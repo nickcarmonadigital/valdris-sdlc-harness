@@ -1,0 +1,92 @@
+{
+  "schema": "uash.skill-registry.v1",
+  "version": "1.0.0",
+  "selection": {
+    "catalogSize": 8,
+    "maxPrimary": 1,
+    "maxSupporting": 4,
+    "policy": "Select one primary skill per phase and the smallest supporting set. Ask for confirmation only when ambiguity changes scope, authority, architecture, or proof.",
+    "phaseTransitions": ["intake-route", "delivery", "proof-handoff"],
+    "tieBreakOrder": ["explicit user outcome", "highest consequential risk", "artifact being changed", "narrowest matching primaryFor", "intake when scope remains ambiguous"]
+  },
+  "gatePolicy": {
+    "always": ["goal", "skill-registry", "context", "proof"],
+    "code-intelligence": "Required for code, architecture, debugging, refactor, or cross-file claims; docs-only work records a reason.",
+    "production": "Required for production-impacting work; all 13 layers begin required, potentially-affected, or not-applicable and must resolve before finish.",
+    "ai-assurance": "Required when an AI workload is detected; otherwise write an explicit skipped artifact.",
+    "eval": "Required for AI/probabilistic behavior and any commissioned regression or quality threshold; otherwise record non-applicability in the route.",
+    "trajectory": "Required for multi-checkpoint or agentic execution.",
+    "smoke": "Required for deployed, provider, platform-native, or runtime behavior; otherwise record non-applicability.",
+    "domain-packs": "Activate commissioned domain catalogs such as mobile-iOS, multiplayer-realtime, commerce, or youth-safety."
+  },
+  "skills": [
+    {
+      "name": "valdris-intake-route",
+      "path": "skills/valdris-intake-route/SKILL.md",
+      "primaryFor": ["intake", "ambiguous", "audit", "greenfield"],
+      "triggers": ["new issue", "new task", "classify", "route", "what workflow"],
+      "requiredGates": ["goal", "skill-registry"],
+      "redZoneTriggers": []
+    },
+    {
+      "name": "valdris-bug-rca",
+      "path": "skills/valdris-bug-rca/SKILL.md",
+      "primaryFor": ["bug", "regression", "performance", "incident-diagnosis"],
+      "triggers": ["broken", "failing", "regression", "root cause", "why is"],
+      "requiredGates": ["code-intelligence", "production", "proof"],
+      "conditionalGates": ["smoke when runtime behavior is claimed", "ai-assurance and eval when AI is involved"],
+      "redZoneTriggers": ["production-data-access", "production-telemetry-containing-customer-data", "incident-containment", "charge", "refund", "void", "financial-reconciliation", "payment-provider-configuration", "customer-communication"]
+    },
+    {
+      "name": "valdris-feature-delivery",
+      "path": "skills/valdris-feature-delivery/SKILL.md",
+      "primaryFor": ["feature", "integration", "full-stack"],
+      "triggers": ["build", "add", "implement", "feature", "integration"],
+      "requiredGates": ["goal", "code-intelligence", "production", "proof"],
+      "redZoneTriggers": ["production-deploy", "customer-data", "billing"]
+    },
+    {
+      "name": "valdris-architecture-refactor",
+      "path": "skills/valdris-architecture-refactor/SKILL.md",
+      "primaryFor": ["architecture", "refactor", "migration", "technical-debt"],
+      "triggers": ["architecture", "redesign", "refactor", "migrate", "module boundaries"],
+      "requiredGates": ["code-intelligence", "production", "proof"],
+      "redZoneTriggers": ["breaking-contract", "production-migration"]
+    },
+    {
+      "name": "valdris-security-audit",
+      "path": "skills/valdris-security-audit/SKILL.md",
+      "primaryFor": ["security", "privacy", "auth", "permissions", "compliance"],
+      "triggers": ["security", "vulnerability", "auth", "RLS", "tenant", "secret", "prompt injection"],
+      "requiredGates": ["production", "ai-assurance", "proof"],
+      "redZoneTriggers": ["iam", "rls", "credential-rotation", "destructive-security-test", "customer-data"]
+    },
+    {
+      "name": "valdris-platform-release",
+      "path": "skills/valdris-platform-release/SKILL.md",
+      "primaryFor": ["cloud", "deployment", "release", "reliability", "incident"],
+      "triggers": ["deploy", "cloud", "CI", "rollback", "backup", "failover", "SLO", "incident"],
+      "requiredGates": ["production", "proof", "smoke"],
+      "conditionalGates": ["domain pack for platform-native distribution or specialized runtime"],
+      "redZoneTriggers": ["production-deploy", "testflight-upload", "app-store-promotion", "dns", "traffic", "secrets", "cloud-resource", "failover", "chaos", "charge", "refund", "void", "financial-reconciliation", "payment-provider-configuration", "customer-communication"]
+    },
+    {
+      "name": "valdris-genai-assurance",
+      "path": "skills/valdris-genai-assurance/SKILL.md",
+      "primaryFor": ["ai-product", "agent", "rag", "model", "prompt", "eval"],
+      "triggers": ["AI", "LLM", "agent", "RAG", "model", "prompt", "embedding", "eval"],
+      "requiredGates": ["ai-assurance", "eval", "trajectory", "production", "proof"],
+      "conditionalGates": ["RAG, tool, and memory controls only when each feature is active", "youth-safety domain pack for child or teen audiences"],
+      "redZoneTriggers": ["consequential-tool", "model-provider-change", "sensitive-ai-data", "production-agent-promotion"]
+    },
+    {
+      "name": "valdris-proof-handoff",
+      "path": "skills/valdris-proof-handoff/SKILL.md",
+      "primaryFor": ["review", "finish", "handoff", "release-readiness"],
+      "triggers": ["done", "verify", "review", "handoff", "release ready", "close issue"],
+      "requiredGates": ["goal", "context", "skill-registry", "proof"],
+      "conditionalGates": ["production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider, platform-native, or runtime claims", "commissioned domain packs"],
+      "redZoneTriggers": ["approval-override", "accept-residual-risk"]
+    }
+  ]
+}

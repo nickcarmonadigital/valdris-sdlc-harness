@@ -1,0 +1,13 @@
+{
+  "schema": "uash.domain-control-catalog.v1",
+  "id": "multiplayer-realtime",
+  "version": "1.0.0",
+  "controls": [
+    {"id": "MP-AUTHORITY-001", "requirement": "The authoritative state boundary, client prediction, reconciliation, validation, and anti-cheat rules are explicit."},
+    {"id": "MP-SESSION-001", "requirement": "Join, leave, disconnect, reconnect, resume, timeout, duplicate, ordering, and late-event behavior preserve consistency."},
+    {"id": "MP-MATCH-001", "requirement": "Matchmaking queue time, fairness, cancellation, party integrity, region selection, abuse controls, and fallbacks meet targets."},
+    {"id": "MP-CAPACITY-001", "requirement": "Concurrent players, matches, connections, fan-out, queue depth, latency, backpressure, and cost are load-tested."},
+    {"id": "MP-STATE-001", "requirement": "State snapshots, event ordering, conflict rules, save compatibility, replay, corruption recovery, and auditability are verified."},
+    {"id": "MP-INCIDENT-001", "requirement": "Partial-region, dependency, realtime transport, and matchmaking failures degrade safely and have rollback and communication paths."}
+  ]
+}

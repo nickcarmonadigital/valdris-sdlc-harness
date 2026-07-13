@@ -7,12 +7,14 @@ This repo builds the Valdris SDLC Harness: a connector-first control plane and c
 Before planning or editing, read:
 
 1. `README.md`
-2. `docs/UNIVERSAL_CORE_FROM_ZIP.md`
-3. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
-4. `docs/ARCHITECTURE.md`
-5. `docs/CONNECTOR_EVENT_CONTRACT.md`
-6. `docs/CLAUDE_CODE_CONNECTOR.md`
-7. `docs/CODEX_CONNECTOR.md`
+2. `knowledge/index.md`
+3. `skills/registry.json`
+4. `docs/GOAL_LOOP_AND_SKILL_ROUTER.md`
+5. `docs/ENTERPRISE_CONTROL_MODEL_V2.md`
+6. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
+7. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
+8. `docs/ARCHITECTURE.md`
+9. `docs/CONNECTOR_EVENT_CONTRACT.md`
 
 ## Product rule
 
@@ -29,6 +31,8 @@ commission repo/team
 → stream events/artifacts/gates
 → block done until required proof exists
 ```
+
+For each phase, select exactly one primary skill from `skills/registry.json` and at most four supporting skills. Durable loop state lives in `goal/goal.json`; runtime-native goal/loop state is advisory and cannot override Valdris proof gates or human approvals.
 
 ## Claude/Codex entrypoints
 
@@ -51,6 +55,7 @@ Keep universal:
 - connector event contract
 - lane-context eval pattern
 - GitNexus/code-intelligence gate
+- OKF-style agent knowledge vault
 
 Move into generated adapters:
 
@@ -70,13 +75,16 @@ Run before claiming done:
 ```bash
 npm run typecheck
 npm run build
+npm run knowledge:gate
+npm run skills:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
+npm run verify:enterprise-ai
 npm run verify:harness
 npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 ```
 
-Verify `/tmp/valdris-commissioned/project-adapter.json` parses and required generated front doors exist: `AGENTS.md`, `CLAUDE.md`, `.claude/commands/valdris-sdlc-harness.md`, and `docs/Codex Runtime Prompt.md`.
+Verify `/tmp/valdris-commissioned/project-adapter.json` parses and required generated front doors, scripts, eight skills, control catalogs, and domain packs exist.
 
 ## Answer style
 
