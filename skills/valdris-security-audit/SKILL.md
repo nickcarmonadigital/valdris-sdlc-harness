@@ -1,6 +1,6 @@
 ---
 name: valdris-security-audit
-description: Audit and remediate security, privacy, identity, tenant, secret, supply-chain, and agent-tool boundaries under Valdris. Use for security reviews, auth/RLS changes, vulnerability findings, compliance-impacting work, prompt injection, untrusted content, data exposure, or high-blast-radius permissions.
+description: Audit and remediate security, privacy, identity, tenant, secret, supply-chain, and agent-tool boundaries under Valdris. Select as the primary only when the requested outcome is a security, privacy, auth, RLS, tenant-isolation, vulnerability, compliance, secret, prompt-injection, or permission review/remediation. For a generic end-to-end audit use valdris-intake-route; for product delivery with security impact use this as a supporting lane.
 ---
 
 # Valdris Security Audit

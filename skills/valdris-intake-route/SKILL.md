@@ -1,6 +1,6 @@
 ---
 name: valdris-intake-route
-description: Classify a new Valdris request and select the smallest safe workflow. Use for issues, bugs, incidents, features, audits, refactors, greenfield builds, or ambiguous work that must be mapped to stakes, production layers, GenAI controls, skills, proof, and Red Zone boundaries before implementation.
+description: Classify a new or ambiguous Valdris request and select the smallest safe workflow. Select as the primary for generic end-to-end audits, mixed or unclear requests, greenfield discovery without a concrete build outcome, or work whose stakes, authority, production impact, and delivery workflow are not established. Do not use as the delivery primary when the user clearly asks to build a feature/application, fix a bug, perform a security review, change architecture/platform, assure AI, or verify the finish; route those to the matching Valdris skill.
 ---
 
 # Valdris Intake And Route

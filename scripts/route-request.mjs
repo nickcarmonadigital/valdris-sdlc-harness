@@ -46,12 +46,15 @@ function parseArgs(argv) {
 }
 
 function classifyTask(request) {
-  if (/\b(bug|broken|regression|failing|double[- ]charg|root cause|incident)\b/i.test(request)) return "bug";
-  if (/\b(security|vulnerab|auth|permission|rls|compliance|privacy)\b/i.test(request) && /\b(audit|review|assess|test)\b/i.test(request)) return "security";
-  if (/\b(architect|refactor|migrat|redesign|module boundar)\b/i.test(request)) return "architecture-refactor";
+  if (/\b(bug|broken|regression|failing|double[- ]charg(?:e[sd]?|ing)?|duplicate[- ]charg(?:e[sd]?|ing)?|root cause)\b/i.test(request)) return "bug";
+  if (/\b(incident|outage|sev[- ]?[0-9]+)\b/i.test(request)) return "incident";
+  if (/\b(security|vulnerab(?:le|ility|ilities)?|auth|permissions?|rls|tenant|secrets?|compliance|privacy|prompt[- ]injection)\b/i.test(request) && /\b(audit|review|assess(?:ment)?|test|verify|remediat(?:e|ed|ion)|fix|defenses?)\b/i.test(request)) return "security";
+  if (/\b(architect(?:ure|ural)?|refactor(?:ing)?|migrat(?:e|ed|ing|ion)|redesign|module boundar(?:y|ies))\b/i.test(request)) return "architecture-refactor";
+  if (/\b(ready to merge|merge readiness|handoff|close (?:the )?issue|release ready|final (?:proof|verification)|verify (?:this|it) is ready)\b/i.test(request)) return "proof-handoff";
+  if (/\b(testflight|app store|ship|publish|promote)\b/i.test(request) && !/\b(build|create|develop)\s+(a|an|the|new)\b/i.test(request)) return "platform-release";
   if (/\b(deploy|release|rollback|cloud|infrastructure|slo|failover|backup)\b/i.test(request) && !/\b(build|feature|add|implement|game|app)\b/i.test(request)) return "platform-release";
+  if (/\b(ai|llm|rag|models?|prompts?|embeddings?|agents?|agentic)\b/i.test(request) && (/\b(audit|review|assess(?:ment)?|test|verify|evaluat(?:e|ion)|safety|quality|governance)\b/i.test(request) || !/\b(build|feature|add|implement|game|app)\b/i.test(request))) return "genai";
   if (/\b(audit|review|assess)\b/i.test(request)) return "audit";
-  if (/\b(ai|llm|rag|model|prompt|embedding|agent)\b/i.test(request) && !/\b(build|feature|add|implement|game|app)\b/i.test(request)) return "genai";
   return "feature";
 }
 
@@ -59,7 +62,7 @@ function primaryForTask(taskType) {
   return {
     bug: "valdris-bug-rca", feature: "valdris-feature-delivery", "architecture-refactor": "valdris-architecture-refactor",
     security: "valdris-security-audit", "platform-release": "valdris-platform-release", genai: "valdris-genai-assurance",
-    audit: "valdris-security-audit", incident: "valdris-platform-release", "docs-only": "valdris-intake-route",
+    audit: "valdris-intake-route", incident: "valdris-platform-release", "proof-handoff": "valdris-proof-handoff", "docs-only": "valdris-intake-route",
   }[taskType];
 }
 

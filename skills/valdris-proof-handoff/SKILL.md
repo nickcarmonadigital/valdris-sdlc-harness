@@ -1,6 +1,6 @@
 ---
 name: valdris-proof-handoff
-description: Validate a Valdris run packet and produce the final decision handoff. Use before claiming done, merging, releasing, closing an issue, or handing work to another person or agent; also use when proof, skips, approvals, goal completion, or self-heal state may be incomplete.
+description: Validate a Valdris run packet and produce the final readiness decision and handoff. Select as the primary for verify-before-merge, release-readiness review, issue closure, final proof, or handoff after delivery work is complete. This skill decides whether evidence supports done; it does not perform feature implementation, defect repair, infrastructure changes, or the release operation itself.
 ---
 
 # Valdris Proof And Handoff

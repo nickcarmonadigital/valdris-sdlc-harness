@@ -51,7 +51,7 @@ Never imply fake live telemetry.
 
 ## Required event sequence
 
-Before routing, read `AGENTS.md`, `project-adapter.json`, `knowledge/index.md`, `skills/registry.json`, `00_MAP.md`, `CONTEXT.md`, and `docs/Validation Commands.md` when present. Use `knowledge/` as the progressive-disclosure vault, select one primary skill for the current phase, store durable multi-checkpoint state in `goal/goal.json`, and run `node scripts/okf-vault-gate.mjs --repo .` when stable routing knowledge changes.
+Before routing, read `AGENTS.md`, `project-adapter.json`, `knowledge/index.md`, `skills/codex-routing.yaml`, `skills/registry.json`, `00_MAP.md`, `CONTEXT.md`, and `docs/Validation Commands.md` when present. Use `knowledge/` as the progressive-disclosure vault, select one primary skill for the current phase, store durable multi-checkpoint state in `goal/goal.json`, and run `node scripts/okf-vault-gate.mjs --repo .` when stable routing knowledge changes.
 
 ### 1. Intake
 

@@ -273,6 +273,7 @@ CLAUDE.md
 .claude/commands/valdris-sdlc-harness.md
 .agents/skills/<eight Valdris skills>
 .claude/skills/<eight Valdris skills>
+skills/codex-routing.yaml
 skills/registry.json
 controls/production-layers.v2.json
 controls/genai-assurance.v1.json
@@ -343,7 +344,7 @@ commissioning-review.md
 | `scripts/production-layer-gate.mjs` | 13-layer production readiness validator |
 | `scripts/enterprise-ai-gate-all.mjs` | current-run aggregate intake/route/goal/context/production/AI/domain/eval/trajectory/waiver finish line |
 | `controls/` | canonical production, AI, iOS, realtime, commerce, and youth-safety control catalogs |
-| `skills/` | eight phase-aware Valdris workflow skills and registry |
+| `skills/` | eight phase-aware Valdris workflow skills, Codex YAML routing projection, and proof-gate registry |
 | `scripts/okf-vault-gate.mjs` | OKF-style knowledge vault validator |
 | `scripts/anchor-gate.mjs` | design-anchor file citation gate |
 | `docs/ENTERPRISE_PROOF_BANK.md` | enterprise/domain proof-bank standard |
@@ -394,7 +395,7 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 | Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 31 groups / 158 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
-| Goal/checkpoint loop + skill router | Built + verified | `goal-gate.mjs`, `skills/registry.json`, eight Valdris `SKILL.md` workflows, forward tests |
+| Goal/checkpoint loop + skill router | Built + verified | `goal-gate.mjs`, YAML-frontmatter discovery, `skills/codex-routing.yaml`, `skills/registry.json`, eight Valdris workflows, forward tests |
 | Operating-intelligence enforcement core | Built + verified | executable goal, eval, trajectory, context, skill, production, AI/domain, smoke, waiver, and typed-evidence gates |
 | Extended operating-intelligence policy | Commissioned, not a runtime | memory, tool hooks, sandbox management, model routing, economics, background PR agents, MCP/A2A, and agent lifecycle are captured as policy fields/docs for external runtimes and providers |
 | Enterprise proof-bank map | Built + executable controls | 39 controls, typed evidence, dependency DAG, `production-layer-gate.mjs` |
@@ -424,6 +425,8 @@ npm run typecheck
 npm run build
 npm run knowledge:gate
 npm run skills:gate
+npm run skills:install:codex
+npm run skills:check:codex
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:enterprise-ai

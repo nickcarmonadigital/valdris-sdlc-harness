@@ -1,0 +1,249 @@
+schema: "uash.codex-skill-routing.v1"
+version: "1.0.0"
+source_registry: "skills/registry.json"
+selection:
+  max_primary: 1
+  max_supporting: 4
+  ambiguity_fallback: "valdris-intake-route"
+  finish_skill: "valdris-proof-handoff"
+  implicit_invocation: true
+  tie_break_order:
+    - "explicit user outcome"
+    - "highest consequential risk"
+    - "artifact being changed"
+    - "narrowest matching primaryFor"
+    - "intake when scope remains ambiguous"
+skills:
+  - name: "valdris-intake-route"
+    description: "Classify a new or ambiguous Valdris request and select the smallest safe workflow. Select as the primary for generic end-to-end audits, mixed or unclear requests, greenfield discovery without a concrete build outcome, or work whose stakes, authority, production impact, and delivery workflow are not established. Do not use as the delivery primary when the user clearly asks to build a feature/application, fix a bug, perform a security review, change architecture/platform, assure AI, or verify the finish; route those to the matching Valdris skill."
+    path: "skills/valdris-intake-route/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "intake"
+      - "ambiguous"
+      - "audit"
+      - "greenfield"
+    triggers:
+      - "new issue"
+      - "new task"
+      - "classify"
+      - "route"
+      - "what workflow"
+    required_gates:
+      - "goal"
+      - "skill-registry"
+    conditional_gates: []
+    red_zone_triggers: []
+  - name: "valdris-bug-rca"
+    description: "Diagnose and repair bugs under the Valdris proof contract. Select as the delivery primary when the requested outcome is to explain or fix broken, intermittent, slow, regressed, or unexplained behavior through reproduction, root-cause evidence, a narrow fix, regression tests, and verified handoff. Use other domain skills only as support when the defect also affects security, platform, or AI boundaries."
+    path: "skills/valdris-bug-rca/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "bug"
+      - "regression"
+      - "performance"
+      - "incident-diagnosis"
+    triggers:
+      - "broken"
+      - "failing"
+      - "regression"
+      - "root cause"
+      - "why is"
+    required_gates:
+      - "code-intelligence"
+      - "production"
+      - "proof"
+    conditional_gates:
+      - "smoke when runtime behavior is claimed"
+      - "ai-assurance and eval when AI is involved"
+    red_zone_triggers:
+      - "production-data-access"
+      - "production-telemetry-containing-customer-data"
+      - "incident-containment"
+      - "charge"
+      - "refund"
+      - "void"
+      - "financial-reconciliation"
+      - "payment-provider-configuration"
+      - "customer-communication"
+  - name: "valdris-feature-delivery"
+    description: "Deliver a feature through Valdris as small verified vertical slices. Select as the delivery primary when the user clearly asks to build or implement new behavior, an integration, product change, API, UI, data flow, game, mobile app, or full-stack application. Establish the intake/route phase first when its artifacts are absent. Add architecture, security, platform, and GenAI skills only as supporting risk lanes; use valdris-intake-route as primary only when the requested outcome itself remains unclear."
+    path: "skills/valdris-feature-delivery/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "feature"
+      - "integration"
+      - "full-stack"
+    triggers:
+      - "build"
+      - "add"
+      - "implement"
+      - "feature"
+      - "integration"
+    required_gates:
+      - "goal"
+      - "code-intelligence"
+      - "production"
+      - "proof"
+    conditional_gates: []
+    red_zone_triggers:
+      - "production-deploy"
+      - "customer-data"
+      - "billing"
+  - name: "valdris-architecture-refactor"
+    description: "Design architecture changes and refactors with code-intelligence, dependency, blast-radius, migration, and proof discipline. Select as the primary when redesign, module boundaries, migration, large refactoring, system design, or technical-debt reduction is the requested outcome. Use as a supporting lane for a feature only when architecture is consequential; do not displace feature delivery merely because implementation spans files."
+    path: "skills/valdris-architecture-refactor/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "architecture"
+      - "refactor"
+      - "migration"
+      - "technical-debt"
+    triggers:
+      - "architecture"
+      - "redesign"
+      - "refactor"
+      - "migrate"
+      - "module boundaries"
+    required_gates:
+      - "code-intelligence"
+      - "production"
+      - "proof"
+    conditional_gates: []
+    red_zone_triggers:
+      - "breaking-contract"
+      - "production-migration"
+  - name: "valdris-security-audit"
+    description: "Audit and remediate security, privacy, identity, tenant, secret, supply-chain, and agent-tool boundaries under Valdris. Select as the primary only when the requested outcome is a security, privacy, auth, RLS, tenant-isolation, vulnerability, compliance, secret, prompt-injection, or permission review/remediation. For a generic end-to-end audit use valdris-intake-route; for product delivery with security impact use this as a supporting lane."
+    path: "skills/valdris-security-audit/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "security"
+      - "privacy"
+      - "auth"
+      - "permissions"
+      - "compliance"
+    triggers:
+      - "security"
+      - "vulnerability"
+      - "auth"
+      - "RLS"
+      - "tenant"
+      - "secret"
+      - "prompt injection"
+    required_gates:
+      - "production"
+      - "ai-assurance"
+      - "proof"
+    conditional_gates: []
+    red_zone_triggers:
+      - "iam"
+      - "rls"
+      - "credential-rotation"
+      - "destructive-security-test"
+      - "customer-data"
+  - name: "valdris-platform-release"
+    description: "Plan and prove cloud, deployment, CI/CD, observability, scaling, incident, and recovery work. Select as the primary when the requested outcome is to change infrastructure, hosting, provider configuration, deployment, TestFlight/App Store delivery, reliability, SLOs, rollback, backup, failover, incident response, or capacity. This skill owns the release operation; valdris-proof-handoff owns the final readiness decision."
+    path: "skills/valdris-platform-release/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "cloud"
+      - "deployment"
+      - "release"
+      - "reliability"
+      - "incident"
+    triggers:
+      - "deploy"
+      - "cloud"
+      - "CI"
+      - "rollback"
+      - "backup"
+      - "failover"
+      - "SLO"
+      - "incident"
+    required_gates:
+      - "production"
+      - "proof"
+      - "smoke"
+    conditional_gates:
+      - "domain pack for platform-native distribution or specialized runtime"
+    red_zone_triggers:
+      - "production-deploy"
+      - "testflight-upload"
+      - "app-store-promotion"
+      - "dns"
+      - "traffic"
+      - "secrets"
+      - "cloud-resource"
+      - "failover"
+      - "chaos"
+      - "charge"
+      - "refund"
+      - "void"
+      - "financial-reconciliation"
+      - "payment-provider-configuration"
+      - "customer-communication"
+  - name: "valdris-genai-assurance"
+    description: "Apply production assurance to AI, agent, RAG, model, prompt, tool, memory, and multimodal changes. Select as the primary when the requested outcome is AI assurance, evaluation, safety, model/prompt/provider behavior, RAG quality, or agent/tool governance. Use as a supporting lane when a feature or platform change merely includes AI; do not replace the main delivery skill for an otherwise product-focused build."
+    path: "skills/valdris-genai-assurance/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "ai-product"
+      - "agent"
+      - "rag"
+      - "model"
+      - "prompt"
+      - "eval"
+    triggers:
+      - "AI"
+      - "LLM"
+      - "agent"
+      - "RAG"
+      - "model"
+      - "prompt"
+      - "embedding"
+      - "eval"
+    required_gates:
+      - "ai-assurance"
+      - "eval"
+      - "trajectory"
+      - "production"
+      - "proof"
+    conditional_gates:
+      - "RAG, tool, and memory controls only when each feature is active"
+      - "youth-safety domain pack for child or teen audiences"
+    red_zone_triggers:
+      - "consequential-tool"
+      - "model-provider-change"
+      - "sensitive-ai-data"
+      - "production-agent-promotion"
+  - name: "valdris-proof-handoff"
+    description: "Validate a Valdris run packet and produce the final readiness decision and handoff. Select as the primary for verify-before-merge, release-readiness review, issue closure, final proof, or handoff after delivery work is complete. This skill decides whether evidence supports done; it does not perform feature implementation, defect repair, infrastructure changes, or the release operation itself."
+    path: "skills/valdris-proof-handoff/SKILL.md"
+    implicit_invocation: true
+    primary_for:
+      - "review"
+      - "finish"
+      - "handoff"
+      - "release-readiness"
+    triggers:
+      - "done"
+      - "verify"
+      - "review"
+      - "handoff"
+      - "release ready"
+      - "close issue"
+    required_gates:
+      - "goal"
+      - "context"
+      - "skill-registry"
+      - "proof"
+    conditional_gates:
+      - "production for production impact"
+      - "ai-assurance and eval for AI impact"
+      - "trajectory for multi-checkpoint or agentic execution"
+      - "smoke for deployed, provider, platform-native, or runtime claims"
+      - "commissioned domain packs"
+    red_zone_triggers:
+      - "approval-override"
+      - "accept-residual-risk"

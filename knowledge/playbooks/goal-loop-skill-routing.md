@@ -2,14 +2,14 @@
 type: Playbook
 title: Goal Loop and Skill Routing
 description: Route a request into one primary Valdris skill and execute bounded proof-bearing checkpoints.
-resource: skills/registry.json
+resource: skills/codex-routing.yaml
 tags: [goal, loop, skills, routing, proof]
 timestamp: 2026-07-12T00:00:00.000Z
 ---
 
 # Start
 
-Read `skills/registry.json`. Select exactly one primary skill and the smallest supporting set, never more than four.
+Use each installed skill's `SKILL.md` YAML frontmatter for implicit Codex discovery. Read `skills/codex-routing.yaml` for the complete selection projection and `skills/registry.json` for the gate-authoritative source. Select exactly one primary skill and the smallest supporting set, never more than four.
 
 # Durable State
 

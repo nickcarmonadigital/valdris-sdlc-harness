@@ -1,6 +1,6 @@
 ---
 name: valdris-bug-rca
-description: Diagnose and repair bugs under the Valdris proof contract. Use when behavior is broken, intermittent, slow, regressed, or unexplained and the work requires reproduction, root-cause evidence, a narrow fix, regression tests, production-layer classification, and verified handoff.
+description: Diagnose and repair bugs under the Valdris proof contract. Select as the delivery primary when the requested outcome is to explain or fix broken, intermittent, slow, regressed, or unexplained behavior through reproduction, root-cause evidence, a narrow fix, regression tests, and verified handoff. Use other domain skills only as support when the defect also affects security, platform, or AI boundaries.
 ---
 
 # Valdris Bug RCA

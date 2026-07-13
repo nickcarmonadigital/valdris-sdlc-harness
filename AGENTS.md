@@ -8,13 +8,14 @@ Before planning or editing, read:
 
 1. `README.md`
 2. `knowledge/index.md`
-3. `skills/registry.json`
-4. `docs/GOAL_LOOP_AND_SKILL_ROUTER.md`
-5. `docs/ENTERPRISE_CONTROL_MODEL_V2.md`
-6. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
-7. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
-8. `docs/ARCHITECTURE.md`
-9. `docs/CONNECTOR_EVENT_CONTRACT.md`
+3. `skills/codex-routing.yaml`
+4. `skills/registry.json`
+5. `docs/GOAL_LOOP_AND_SKILL_ROUTER.md`
+6. `docs/ENTERPRISE_CONTROL_MODEL_V2.md`
+7. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
+8. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
+9. `docs/ARCHITECTURE.md`
+10. `docs/CONNECTOR_EVENT_CONTRACT.md`
 
 ## Product rule
 
@@ -32,7 +33,7 @@ commission repo/team
 → block done until required proof exists
 ```
 
-For each phase, select exactly one primary skill from `skills/registry.json` and at most four supporting skills. Durable loop state lives in `goal/goal.json`; runtime-native goal/loop state is advisory and cannot override Valdris proof gates or human approvals.
+Codex discovers each skill from the YAML frontmatter in its `SKILL.md`; every Valdris skill explicitly allows implicit invocation in `agents/openai.yaml`. Use `skills/codex-routing.yaml` as the readable selection projection and `skills/registry.json` as the gate-authoritative registry. For each phase, select exactly one primary skill and at most four supporting skills. Durable loop state lives in `goal/goal.json`; runtime-native goal/loop state is advisory and cannot override Valdris proof gates or human approvals.
 
 ## Claude/Codex entrypoints
 

@@ -19,6 +19,8 @@ The selectable catalog is intentionally small:
 
 Select exactly one primary skill. Add no more than four supporting skills, and only when their risk domain is present. The registry is machine-validated with `npm run skills:gate`.
 
+Codex performs implicit discovery from each skill's `SKILL.md` YAML frontmatter (`name` and `description`), not from an arbitrary global prompt. Each skill also has `agents/openai.yaml` with `policy.allow_implicit_invocation: true`. After discovery, `skills/codex-routing.yaml` gives Codex the complete phase-selection projection; it is generated from and gate-checked against the authoritative `skills/registry.json` plus the current skill descriptions. If the YAML projection drifts, `npm run skills:gate` fails.
+
 `run/intake.json` preserves the human request digest and authority boundary. `run/route.json` binds that intake to three skill phases, all thirteen initial layer decisions, AI profile/features, domain triggers, gate applicability, and SHA-256 digests for the registry and control catalogs. `npm run route:gate` rejects missing trigger-driven packs and registry/catalog drift.
 
 Create the starting artifacts deterministically with `npm run route:request -- --repo . --profile enterprise --actor "<owner>" --request "<request>"`. The router uses explicit keyword/risk rules and conservative defaults; it does not pretend an LLM classification is trusted policy. Review architecture-changing unknowns before delivery begins.

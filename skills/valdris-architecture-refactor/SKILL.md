@@ -1,6 +1,6 @@
 ---
 name: valdris-architecture-refactor
-description: Design architecture changes and refactors with code-intelligence, dependency, blast-radius, migration, and proof discipline. Use for cross-file redesigns, module boundaries, migrations, large refactors, system design, technical-debt reduction, or changes whose safest implementation path is not yet obvious.
+description: Design architecture changes and refactors with code-intelligence, dependency, blast-radius, migration, and proof discipline. Select as the primary when redesign, module boundaries, migration, large refactoring, system design, or technical-debt reduction is the requested outcome. Use as a supporting lane for a feature only when architecture is consequential; do not displace feature delivery merely because implementation spans files.
 ---
 
 # Valdris Architecture And Refactor

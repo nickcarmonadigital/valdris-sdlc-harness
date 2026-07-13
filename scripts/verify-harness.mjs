@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -145,6 +145,16 @@ function failedProofJson(runId = "VERIFY-FAILED-PROOF") {
   });
 }
 
+async function expectCommandFailure(command, args, options, expectedText, label) {
+  try {
+    await run(command, args, options);
+  } catch (error) {
+    assert(String(error.message).includes(expectedText), `${label}: expected failure containing ${expectedText}, got ${error.message}`);
+    return;
+  }
+  throw new Error(`${label}: command unexpectedly passed`);
+}
+
 const PRODUCTION_LAYERS = [
   "frontend",
   "backend-api-logic",
@@ -268,6 +278,7 @@ try {
   assert(adapter.domainAssurance?.availablePacks?.includes("mobile-ios"), "iOS domain pack commissioning missing");
   assert(adapter.goalLoop?.schema === "uash.goal.v1", "goal loop commissioning missing");
   assert(adapter.skillRouter?.catalogSize === 8, "eight-skill router commissioning missing");
+  assert(adapter.skillRouter?.codexRouting === "skills/codex-routing.yaml" && adapter.skillRouter?.implicitInvocation === true, "Codex YAML skill routing commissioning missing");
   assert(adapter.knowledgeVault?.format === "OKF v0.1", "knowledge vault format missing");
   assert(adapter.knowledgeVault?.root === "knowledge/", "knowledge vault root missing");
   assert(adapter.knowledgeVault?.gateCommand?.includes("okf-vault-gate.mjs"), "knowledge vault gate command missing");
@@ -328,7 +339,8 @@ try {
   await readFile(path.join(generatedOut, ".claude", "skills", "registry.json"), "utf8");
   await readFile(path.join(generatedOut, ".github", "workflows", "valdris-assurance.yml"), "utf8");
   const generatedPackage = JSON.parse(await readFile(path.join(generatedOut, "package.json"), "utf8"));
-  assert(generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"], "generated package scripts missing v0.7 router/loop/gate commands");
+  assert(generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"] && generatedPackage.scripts?.["skills:install:codex"] && generatedPackage.scripts?.["skills:check:codex"], "generated package scripts missing v0.7 router/loop/gate/install commands");
+  await readFile(path.join(generatedOut, "scripts", "install-codex-skills.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "okf-vault-gate.mjs"), "utf8");
 
   const rootEnterpriseProofBank = await readFile(path.join(root, "docs", "ENTERPRISE_PROOF_BANK.md"), "utf8");
@@ -342,7 +354,10 @@ try {
   const codexTemplate = await readFile(path.join(root, "templates", "codex", "valdris-sdlc-harness.md"), "utf8");
   assert(claudeTemplate.includes("code-intelligence-scan.mjs") && claudeTemplate.includes("GitNexus/code-intelligence"), "Claude template missing GitNexus/code-intelligence flow");
   assert(codexTemplate.includes("code-intelligence-scan.mjs") && codexTemplate.includes("Good Looks Like Foundation"), "Codex template missing GitNexus/foundation flow");
-  assert(claudeTemplate.includes("skills/registry.json") && codexTemplate.includes("goal/goal.json"), "runtime templates missing v0.7 goal/skill routing");
+  assert(claudeTemplate.includes("skills/codex-routing.yaml") && claudeTemplate.includes("skills/registry.json") && codexTemplate.includes("skills/codex-routing.yaml") && codexTemplate.includes("goal/goal.json"), "runtime templates missing v0.7 Codex YAML goal/skill routing");
+  await readFile(path.join(generatedOut, "skills", "codex-routing.yaml"), "utf8");
+  await readFile(path.join(generatedOut, ".agents", "skills", "codex-routing.yaml"), "utf8");
+  await readFile(path.join(generatedOut, ".claude", "skills", "codex-routing.yaml"), "utf8");
 
   const claudeConnectorDoc = await readFile(path.join(root, "docs", "CLAUDE_CODE_CONNECTOR.md"), "utf8");
   const codexConnectorDoc = await readFile(path.join(root, "docs", "CODEX_CONNECTOR.md"), "utf8");
@@ -352,6 +367,70 @@ try {
   await run(node, ["scripts/code-intelligence-gate-all.mjs", "--repo", ".", "--allow-stale"], { cwd: generatedOut });
   await run(node, ["scripts/okf-vault-gate.mjs", "--repo", "."], { cwd: generatedOut });
   await run(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut });
+  const generatedCanonicalOpenAi = path.join(generatedOut, "skills", "valdris-feature-delivery", "agents", "openai.yaml");
+  const canonicalOpenAi = await readFile(generatedCanonicalOpenAi, "utf8");
+  await writeFile(generatedCanonicalOpenAi, canonicalOpenAi.replace("allow_implicit_invocation: true", "allow_implicit_invocation: false"), "utf8");
+  await expectCommandFailure(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut }, "must allow implicit invocation", "implicit skill invocation downgrade");
+  await writeFile(generatedCanonicalOpenAi, canonicalOpenAi, "utf8");
+
+  const generatedAgentMirror = path.join(generatedOut, ".agents", "skills", "valdris-feature-delivery", "agents", "openai.yaml");
+  const agentMirrorOpenAi = await readFile(generatedAgentMirror, "utf8");
+  await writeFile(generatedAgentMirror, agentMirrorOpenAi.replace("Deliver vertical slices", "Drifted vertical slices"), "utf8");
+  await expectCommandFailure(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut }, "differs from canonical skill", "Codex skill mirror drift");
+  await writeFile(generatedAgentMirror, agentMirrorOpenAi, "utf8");
+
+  const obsoleteSkill = path.join(generatedOut, ".agents", "skills", "valdris-obsolete");
+  await mkdir(obsoleteSkill, { recursive: true });
+  await writeFile(path.join(obsoleteSkill, "SKILL.md"), "---\nname: valdris-obsolete\ndescription: stale\n---\n", "utf8");
+  await expectCommandFailure(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut }, "unregistered Valdris skill", "stale auto-discoverable skill");
+  await rm(obsoleteSkill, { recursive: true, force: true });
+  await run(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut });
+
+  const generatedAdapterPath = path.join(generatedOut, "project-adapter.json");
+  const generatedAdapterText = await readFile(generatedAdapterPath, "utf8");
+  const driftedAdapter = JSON.parse(generatedAdapterText);
+  delete driftedAdapter.skillRouter.codexRouting;
+  await writeFile(generatedAdapterPath, `${JSON.stringify(driftedAdapter, null, 2)}\n`, "utf8");
+  await expectCommandFailure(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut }, "skillRouter.codexRouting", "adapter skill routing downgrade");
+  await writeFile(generatedAdapterPath, generatedAdapterText, "utf8");
+  await rm(generatedAdapterPath, { force: true });
+  await expectCommandFailure(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut }, "project-adapter.json is required", "missing adapter mirror bypass");
+  await writeFile(generatedAdapterPath, generatedAdapterText, "utf8");
+  await rm(path.join(generatedOut, ".agents", "skills"), { recursive: true, force: true });
+  await rm(path.join(generatedOut, ".claude", "skills"), { recursive: true, force: true });
+  await expectCommandFailure(node, ["scripts/skill-registry-gate.mjs", "--repo", "."], { cwd: generatedOut }, "skill mirror is missing", "deleted discovery mirrors bypass");
+  await cp(path.join(generatedOut, "skills"), path.join(generatedOut, ".agents", "skills"), { recursive: true });
+  await cp(path.join(generatedOut, "skills"), path.join(generatedOut, ".claude", "skills"), { recursive: true });
+
+  const codexInstallTarget = path.join(tempRoot, "codex-skills");
+  await run(node, ["scripts/install-codex-skills.mjs", "--target", codexInstallTarget]);
+  await mkdir(path.join(codexInstallTarget, "valdris-obsolete"), { recursive: true });
+  await expectCommandFailure(node, ["scripts/install-codex-skills.mjs", "--target", codexInstallTarget, "--check"], { cwd: root }, "unregistered installed Valdris skill", "obsolete global Codex skill");
+  await run(node, ["scripts/install-codex-skills.mjs", "--target", codexInstallTarget]);
+  await run(node, ["scripts/install-codex-skills.mjs", "--target", codexInstallTarget, "--check"]);
+
+  const generatedInstallTarget = path.join(tempRoot, "generated-codex-skills");
+  await mkdir(path.join(generatedInstallTarget, "valdris-sdlc-harness"), { recursive: true });
+  await writeFile(path.join(generatedInstallTarget, "valdris-sdlc-harness", "preserved.txt"), "preserve global meta skill\n", "utf8");
+  await run(node, [path.join(generatedOut, "scripts", "install-codex-skills.mjs"), "--target", generatedInstallTarget], { cwd: generatedOut });
+  assert((await readFile(path.join(generatedInstallTarget, "valdris-sdlc-harness", "preserved.txt"), "utf8")).includes("preserve"), "generated pack installer pruned the global harness meta skill");
+
+  const routingCases = [
+    ["bug", "Why are checkout requests double charging after retries?", "valdris-bug-rca"],
+    ["audit", "Audit this repo end-to-end; I am not sure what is missing.", "valdris-intake-route"],
+    ["security", "Review our RLS and tenant isolation.", "valdris-security-audit"],
+    ["release", "Ship the current build to TestFlight.", "valdris-platform-release"],
+    ["proof", "Verify this is ready to merge.", "valdris-proof-handoff"],
+    ["ai-review", "Review our AI model safety.", "valdris-genai-assurance"],
+    ["prompt-injection", "Audit prompt-injection defenses.", "valdris-security-audit"],
+  ];
+  for (const [id, request, expectedPrimary] of routingCases) {
+    const routeRoot = path.join(tempRoot, `route-${id}`);
+    await mkdir(routeRoot, { recursive: true });
+    await run(node, ["scripts/route-request.mjs", "--repo", routeRoot, "--run-id", `ROUTE-${id}`, "--request", request]);
+    const route = JSON.parse(await readFile(path.join(routeRoot, "run", "route.json"), "utf8"));
+    assert(route.skillPhases[1].primary === expectedPrimary, `${id} request routed to ${route.skillPhases[1].primary} instead of ${expectedPrimary}`);
+  }
 
   await mkdir(pyTarget, { recursive: true });
   await writeFile(path.join(pyTarget, "pyproject.toml"), "[project]\nname = \"sample\"\nversion = \"0.0.1\"\n", "utf8");

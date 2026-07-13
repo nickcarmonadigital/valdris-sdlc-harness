@@ -2,3 +2,6 @@ interface:
   display_name: "Valdris Platform and Release"
   short_description: "Prove cloud, release, and reliability changes"
   default_prompt: "Use $valdris-platform-release to plan, validate, and safely hand off this platform change."
+
+policy:
+  allow_implicit_invocation: true

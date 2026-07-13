@@ -1,6 +1,6 @@
 ---
 name: valdris-genai-assurance
-description: Apply production assurance to AI, agent, RAG, model, prompt, tool, memory, and multimodal changes. Use when a system calls a model, evaluates nondeterministic behavior, retrieves knowledge, delegates to agents, invokes tools, stores AI memory, routes providers, or exposes AI output to real users.
+description: Apply production assurance to AI, agent, RAG, model, prompt, tool, memory, and multimodal changes. Select as the primary when the requested outcome is AI assurance, evaluation, safety, model/prompt/provider behavior, RAG quality, or agent/tool governance. Use as a supporting lane when a feature or platform change merely includes AI; do not replace the main delivery skill for an otherwise product-focused build.
 ---
 
 # Valdris GenAI Assurance

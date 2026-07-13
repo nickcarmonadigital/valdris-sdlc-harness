@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Harness Maintainer"
+  short_description: "Maintain the Valdris control plane and packs"
+  default_prompt: "Use $valdris-sdlc-harness to audit or change the harness and prove the generated packs remain valid."
+
+policy:
+  allow_implicit_invocation: true

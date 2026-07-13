@@ -615,6 +615,16 @@ function renderAgents(answers) {
   return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. If \`project-adapter.json\` exists, use it as repo-specific truth and do not regenerate or re-ask stable commissioning facts unless the pack is incomplete.\n4. Read \`docs/Good Looks Like Foundation.md\`, \`docs/Code Quality Guardrails.md\`, and \`docs/Enterprise Proof Bank.md\` before architecture, infra, feature, or refactor work.\n5. Read \`docs/Operating Intelligence Layer.md\` before AI/runtime/tooling/model/eval/memory work.\n6. Run GitNexus/code intelligence before codebase, architecture, refactor, debugging, or cross-file implementation work: \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate-all.mjs --repo .\` when scripts are available. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.\n7. For Codex live runs, also read \`docs/Codex Runtime Prompt.md\` when a RUN_ID/BRIDGE_URL is supplied.\n8. Route to the smallest matching lane family.\n9. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
 }
 
+function syncValdrisSkillTree(source, target) {
+  mkdirp(target);
+  for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+    if ((entry.isDirectory() && entry.name.startsWith("valdris-")) || ["registry.json", "codex-routing.yaml"].includes(entry.name)) {
+      fs.rmSync(path.join(target, entry.name), { recursive: true, force: true });
+    }
+  }
+  fs.cpSync(source, target, { recursive: true });
+}
+
 function renderClaude(answers) {
   return `# ${answers.project_name} Claude Code Harness\n\nYou are inside a Universal Agentic SDLC Harness commissioned repo.\n\n## Required flow\n\n\`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`\n\nAsk commissioning questions only when \`project-adapter.json\` is missing or incomplete. Once the adapter exists, use it as repo-specific context and avoid re-asking stable facts.\n\n## Mode rule\n\nSeparate Blueprint, Live Run, and Replay. Do not imply live telemetry unless real connector/MCP/CLI/API/watched-artifact events exist.\n\n## Required artifacts\n\n- \`run/intake.json\`\n- \`run/route.json\`\n- \`graph/graph.json\` from GitNexus/code-intelligence scan, or explicit skip reason for docs-only/non-code work\n- \`graph/gitnexus.json\` with GitNexus index evidence when GitNexus is available; disclose local fallback if it is missing\n- \`graph/freshness.json\` proving graph commit/freshness\n- \`design/anchors.json\` for codebase claims and blast-radius reasoning\n- \`design/system_design.md\` when architecture/product/infra tradeoffs matter\n- \`production/layer-assessment.json\` for production-impacting work\n- \`cloud/service-map.json\` for cloud/platform work, or \`cloud/skip.json\` with reason\n- \`approvals/redzone.json\` when Red Zone applies\n- \`qa/qa-plan.md\` when validation scope matters\n- \`qa/break-it-results.md\` for feature/bug/refactor/security/cloud/integration work, or skip reason\n- \`proof/proof.json\` before done\n- \`smoke/smoke_proof.json\` for deployed/provider/runtime behavior, or skip reason\n- \`self_heal/self_heal_report.md\` if the harness/process failed\n- \`handoff/final.md\` for the final answer\n\n## Response contract\n\nUse: Bottom line, Why, Proof, Risk, Fix/Plan, Your call. Keep process narration out of the final answer.\n`;
 }
@@ -760,7 +770,7 @@ function renderRunTemplate(answers) {
 }
 
 function renderGoalSkillProtocol() {
-  return `\n## Valdris v0.7 goal and skill protocol\n\n1. Read \`skills/registry.json\` and select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Activate the production, AI, eval, trajectory, smoke, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n5. Use \`controls/domain-packs/\` for mobile iOS, realtime multiplayer, digital commerce, and youth-AI work.\n6. Run \`node scripts/enterprise-ai-gate-all.mjs --repo .\` for the full enterprise/AI run packet.\n7. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+  return `\n## Valdris v0.7 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`skills/codex-routing.yaml\` and the gate-authoritative \`skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Activate the production, AI, eval, trajectory, smoke, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n5. Use \`controls/domain-packs/\` for mobile iOS, realtime multiplayer, digital commerce, and youth-AI work.\n6. Run \`node scripts/enterprise-ai-gate-all.mjs --repo .\` for the full enterprise/AI run packet.\n7. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
 }
 
 function renderInstalledPathProtocol(repo, out) {
@@ -867,6 +877,8 @@ function generatePack(args, detected, answers) {
     skillRouter: {
       schema: "uash.skill-registry.v1",
       registry: "skills/registry.json",
+      codexRouting: "skills/codex-routing.yaml",
+      implicitInvocation: true,
       catalogSize: 8,
       gateCommand: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
       selection: "One primary skill plus the smallest supporting set.",
@@ -874,7 +886,7 @@ function generatePack(args, detected, answers) {
     finishLineAssurance: {
       required: true,
       gateCommand: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
-      requiredArtifacts: ["run/intake.json", "run/route.json", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "skills/registry.json"],
+      requiredArtifacts: ["run/intake.json", "run/route.json", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "skills/codex-routing.yaml", "skills/registry.json"],
       binding: ["runId", "profile", "commit", "environment"],
     },
     knowledgeVault: {
@@ -1135,7 +1147,7 @@ function generatePack(args, detected, answers) {
   fs.appendFileSync(path.join(out, "knowledge", "playbooks", "index.md"), "\n* [Goal Loop and Skill Routing](goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](genai-assurance.md) - cross-cutting AI controls.\n");
   fs.appendFileSync(path.join(out, "knowledge", "concepts", "index.md"), "\n* [Typed Evidence](typed-evidence.md) - resolvable proof contract.\n");
   write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
-  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "intake-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs"]) {
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "intake-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));
@@ -1143,9 +1155,9 @@ function generatePack(args, detected, answers) {
     fs.chmodSync(scriptTarget, 0o755);
   }
   fs.cpSync(path.join(HARNESS_ROOT, "controls"), path.join(out, "controls"), { recursive: true });
-  fs.cpSync(path.join(HARNESS_ROOT, "skills"), path.join(out, "skills"), { recursive: true });
-  fs.cpSync(path.join(HARNESS_ROOT, "skills"), path.join(out, ".agents", "skills"), { recursive: true });
-  fs.cpSync(path.join(HARNESS_ROOT, "skills"), path.join(out, ".claude", "skills"), { recursive: true });
+  syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, "skills"));
+  syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, ".agents", "skills"));
+  syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, ".claude", "skills"));
   write(path.join(out, "package.json"), JSON.stringify({
     name: `${answers.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project"}-valdris-harness`,
     version: VERSION,
@@ -1154,6 +1166,8 @@ function generatePack(args, detected, answers) {
     scripts: {
       "knowledge:gate": "node scripts/okf-vault-gate.mjs --repo .",
       "skills:gate": "node scripts/skill-registry-gate.mjs --repo .",
+      "skills:install:codex": "node scripts/install-codex-skills.mjs",
+      "skills:check:codex": "node scripts/install-codex-skills.mjs --check",
       "route:gate": `node scripts/route-gate.mjs --repo \"${repoFromPack}\"`,
       "route:request": `node scripts/route-request.mjs --repo \"${repoFromPack}\"`,
       "goal:transition": `node scripts/goal-transition.mjs --repo \"${repoFromPack}\"`,

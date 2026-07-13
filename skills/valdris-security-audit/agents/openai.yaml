@@ -2,3 +2,6 @@ interface:
   display_name: "Valdris Security Audit"
   short_description: "Audit and remediate security boundaries"
   default_prompt: "Use $valdris-security-audit to assess this security concern and produce evidence-backed remediation."
+
+policy:
+  allow_implicit_invocation: true

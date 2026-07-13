@@ -22,7 +22,7 @@ intake → route → code-intelligence → design-anchors → system-design → 
 
 ## Rules
 
-1. Read `AGENTS.md`, `project-adapter.json`, `knowledge/index.md`, `skills/registry.json`, `00_MAP.md`, `CONTEXT.md`, `docs/Validation Commands.md`, `docs/Good Looks Like Foundation.md`, `docs/Code Quality Guardrails.md`, and `docs/Enterprise Proof Bank.md` before planning. Select one primary skill for the current phase and the smallest supporting set.
+1. Let Codex discover applicable skills from their `SKILL.md` YAML frontmatter, then read `AGENTS.md`, `project-adapter.json`, `knowledge/index.md`, `skills/codex-routing.yaml`, `skills/registry.json`, `00_MAP.md`, `CONTEXT.md`, `docs/Validation Commands.md`, `docs/Good Looks Like Foundation.md`, `docs/Code Quality Guardrails.md`, and `docs/Enterprise Proof Bank.md` before planning. Select one primary skill for the current phase and the smallest supporting set.
 2. For codebase, architecture, refactor, debugging, or cross-file work, run `node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local`, then `node scripts/code-intelligence-gate-all.mjs --repo .` before design claims. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.
 3. When stable routing knowledge changes, update `knowledge/` and run `node scripts/okf-vault-gate.mjs --repo .`.
 4. Emit a real bridge event for every node/gate/artifact/approval/skip/failure when `RUN_ID` and `BRIDGE_URL` are provided.

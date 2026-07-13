@@ -1,6 +1,6 @@
 ---
 name: valdris-platform-release
-description: Plan and prove cloud, deployment, CI/CD, observability, scaling, incident, and recovery work. Use for infrastructure, hosting, provider configuration, releases, migrations, reliability changes, production incidents, SLOs, rollbacks, backups, failover, or cost/capacity decisions.
+description: Plan and prove cloud, deployment, CI/CD, observability, scaling, incident, and recovery work. Select as the primary when the requested outcome is to change infrastructure, hosting, provider configuration, deployment, TestFlight/App Store delivery, reliability, SLOs, rollback, backup, failover, incident response, or capacity. This skill owns the release operation; valdris-proof-handoff owns the final readiness decision.
 ---
 
 # Valdris Platform And Release

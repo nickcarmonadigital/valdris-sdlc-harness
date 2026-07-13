@@ -17,6 +17,8 @@
     "code-intelligence:gate": "node scripts/code-intelligence-gate-all.mjs --repo .",
     "knowledge:gate": "node scripts/okf-vault-gate.mjs --repo .",
     "skills:gate": "node scripts/skill-registry-gate.mjs --repo .",
+    "skills:install:codex": "node scripts/install-codex-skills.mjs",
+    "skills:check:codex": "node scripts/install-codex-skills.mjs --check",
     "intake:gate": "node scripts/intake-gate.mjs --repo .",
     "route:gate": "node scripts/route-gate.mjs --repo .",
     "route:request": "node scripts/route-request.mjs",
