@@ -4,17 +4,19 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { existingFileWithinRepo } from "./control-gate-lib.mjs";
+import { evidencePolicyForEffectiveTier, existingFileWithinRepo, PROFILE_EVIDENCE_MAX_AGE_HOURS } from "./control-gate-lib.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
-const PROFILE_MAX_AGE_HOURS = { prototype: 720, production: 168, enterprise: 72, regulated: 24 };
+const TECHNICAL_TRUST_RANK = { "automated-local": 0, "ci-attested": 1, "provider-attested": 2 };
 const GATES = [
   ["intake", "intake-gate.mjs"],
+  ["workload-classification", "workload-classification-gate.mjs"],
   ["route", "route-gate.mjs"],
   ["code-intelligence", "code-intelligence-gate-all.mjs"],
   ["skill-registry", "skill-registry-gate.mjs"],
   ["goal", "goal-gate.mjs"],
   ["context", "context-manifest-gate.mjs"],
+  ["foundation", "foundation-gate.mjs"],
   ["production", "production-layer-gate.mjs"],
   ["ai-assurance", "ai-assurance-gate.mjs"],
   ["domain-assurance", "domain-assurance-gate.mjs"],
@@ -34,6 +36,11 @@ function parseArgs(argv) {
   return args;
 }
 
+export function hasTokenCorrelatedUnknownApproval(condition, unknown, classification, classificationSha256) {
+  const scope = `classification-unknown:${unknown.id}`;
+  return (condition?.evidence || []).some((evidence) => evidence.type === "approval" && evidence.actorType === "human" && evidence.status === "granted" && evidence.trustTier === "human-approved" && evidence.producer?.kind === "human" && nonEmptyForBinding(evidence.bridgeEventId) && evidence.scope === scope && evidence.runId === classification.runId && evidence.workloadClassificationSha256 === classificationSha256 && evidence.unknownId === unknown.id && evidence.tokenCorrelation?.runId === classification.runId && evidence.tokenCorrelation?.workloadClassificationSha256 === classificationSha256 && evidence.tokenCorrelation?.unknownId === unknown.id);
+}
+
 function crossArtifactProblems(repoRoot) {
   const load = (relative) => {
     const target = path.join(repoRoot, relative);
@@ -42,10 +49,12 @@ function crossArtifactProblems(repoRoot) {
   };
   const goal = load("goal/goal.json");
   const routeDocument = load("run/route.json");
+  const foundationRequired = routeDocument.gateApplicability?.foundation?.status === "required";
   const productionRequired = routeDocument.gateApplicability?.production?.status === "required";
   const smokeRequired = routeDocument.gateApplicability?.smoke?.status === "required";
   const artifacts = [
     ["intake", load("run/intake.json"), "runId"],
+    ["classification", load("run/workload-classification.json"), "runId"],
     ["route", routeDocument, "runId"],
     ["context", load("context/manifest.json"), "runId"],
     ["AI", load("ai/assurance.json"), "runId"],
@@ -54,9 +63,13 @@ function crossArtifactProblems(repoRoot) {
     ["trajectory", load("trajectory/trajectory.json"), "goalId"],
     ["waivers", load("waivers/waivers.json"), "runId"],
   ];
+  if (foundationRequired) artifacts.push(["foundation", load("foundation/assessment.json"), "runId"]);
   if (productionRequired) artifacts.push(["production", load("production/layer-assessment.json"), "runId"]);
   if (smokeRequired) artifacts.push(["smoke", load("smoke/smoke_proof.json"), "runId"]);
   const problems = [];
+  const classification = artifacts.find(([name]) => name === "classification")[1];
+  const evidencePolicy = evidencePolicyForEffectiveTier(classification.effectiveTier);
+  if (!evidencePolicy) problems.push(`workload classification effective tier has no evidence policy: ${classification.effectiveTier || "missing"}`);
   for (const [name, artifact, idField] of artifacts) {
     if (artifact[idField] !== goal.goalId) problems.push(`${name}.${idField} must match goal.goalId`);
     if (artifact.profile !== goal.profile) problems.push(`${name}.profile must match goal.profile`);
@@ -66,7 +79,8 @@ function crossArtifactProblems(repoRoot) {
     if (timestamp && !Number.isNaN(Date.parse(timestamp))) {
       const ageMs = Date.now() - Date.parse(timestamp);
       if (ageMs < -5 * 60 * 1000) problems.push(`${name} timestamp is in the future`);
-      if (ageMs > (PROFILE_MAX_AGE_HOURS[goal.profile] || 168) * 60 * 60 * 1000) problems.push(`${name} is outside the current ${goal.profile} freshness window`);
+      const evidenceProfile = evidencePolicy?.profile || "production";
+      if (ageMs > (PROFILE_EVIDENCE_MAX_AGE_HOURS[evidenceProfile] || 168) * 60 * 60 * 1000) problems.push(`${name} is outside the current ${evidenceProfile} freshness window for ${classification.effectiveTier}`);
     }
   }
   const route = artifacts.find(([name]) => name === "route")[1];
@@ -78,13 +92,47 @@ function crossArtifactProblems(repoRoot) {
     if (route.ai?.features?.[feature] !== ai.features?.[feature]) problems.push(`route AI feature ${feature} must match AI assurance`);
   }
   if (intake.runId !== route.runId) problems.push("intake.runId must match route.runId");
+  if (classification.requestSha256 !== intake.requestSha256) problems.push("workload classification requestSha256 must match intake.requestSha256");
+  if (classification.profile !== route.profile || classification.effectiveTier !== route.assuranceTier?.effective) problems.push("route maturity profile and assurance tier must match workload classification");
+  const classificationSha256 = sha256JsonFile(path.join(repoRoot, "run", "workload-classification.json"));
+  if (route.workloadClassificationSha256 !== classificationSha256) problems.push("route must remain bound to the current workload classification");
+  if (goal.effectiveTier !== classification.effectiveTier) problems.push("goal effectiveTier must match workload classification");
+  if (goal.workloadClassificationSha256 !== classificationSha256) problems.push("goal must remain bound to the current workload classification");
+  for (const [name, artifact] of artifacts.filter(([name]) => ["foundation", "production", "AI", "domain"].includes(name))) {
+    if (artifact.effectiveTier !== classification.effectiveTier) problems.push(`${name}.effectiveTier must match workload classification`);
+    if (artifact.workloadClassificationSha256 !== classificationSha256) problems.push(`${name} must remain bound to the current workload classification`);
+  }
   if (goal.objective !== intake.requestText || goal.requestSha256 !== intake.requestSha256) problems.push("goal objective/requestSha256 must remain bound to the authorized intake request");
+  for (const unknown of classification.materialUnknowns || []) {
+    const condition = (goal.stoppingConditions || []).find((item) => item.id === `classification-unknown:${unknown.id}`);
+    if (!condition || condition.status !== "passed") problems.push(`material classification unknown requires a passed human-evidenced stopping condition: ${unknown.id}`);
+    else {
+      if (!hasTokenCorrelatedUnknownApproval(condition, unknown, classification, classificationSha256)) problems.push(`material classification unknown requires token-correlated human approval bound to run, classification digest, and unknown ID: ${unknown.id}`);
+    }
+  }
   if (goal.initialRouteSha256 !== sha256JsonFile(path.join(repoRoot, "run", "route.json"))) problems.push("current route must match goal.initialRouteSha256; start a reviewed new run to change the initial route");
+  const taxonomy = JSON.parse(readFileSync(path.resolve(SCRIPT_DIR, "..", "controls", "workload-taxonomy.v1.json"), "utf8"));
+  const tier = (taxonomy.assuranceTiers || []).find((candidate) => candidate.id === classification.effectiveTier);
+  if (tier && evidencePolicy && (tier.minimumTechnicalTrust !== evidencePolicy.minimumTechnicalTrust || tier.externalAttestationRequired !== evidencePolicy.externalAttestationRequired)) problems.push(`workload taxonomy evidence policy disagrees with the enforced ${classification.effectiveTier} policy`);
+  const evidenceGroups = [];
+  const foundation = artifacts.find(([name]) => name === "foundation")?.[1];
+  if (foundation) evidenceGroups.push(...(foundation.capabilities || []).flatMap((capability) => capability.controls || []));
+  const productionArtifact = artifacts.find(([name]) => name === "production")?.[1];
+  if (productionArtifact) evidenceGroups.push(...(productionArtifact.layers || []).flatMap((layer) => layer.controls || []));
+  evidenceGroups.push(...(ai.controls || []));
+  evidenceGroups.push(...(domain.packs || []).flatMap((pack) => pack.controls || []));
+  const technicalEvidence = evidenceGroups.flatMap((control) => (control.evidence || []).filter((evidence) => evidence?.type !== "approval"));
+  const minimumTrust = TECHNICAL_TRUST_RANK[evidencePolicy?.minimumTechnicalTrust];
+  if (Number.isInteger(minimumTrust)) {
+    for (const evidence of technicalEvidence) if ((TECHNICAL_TRUST_RANK[evidence.trustTier] ?? -1) < minimumTrust) problems.push(`assurance tier ${classification.effectiveTier} rejects ${evidence.subject || "unbound"} technical evidence with trust ${evidence.trustTier || "missing"}`);
+  }
+  if (evidencePolicy?.externalAttestationRequired && technicalEvidence.length > 0 && !technicalEvidence.some((evidence) => evidence.type === "provider-report" && evidence.trustTier === "provider-attested" && evidence.producer?.kind === "provider")) problems.push(`assurance tier ${classification.effectiveTier} requires a provider-attested provider report when technical controls apply`);
   const routedPacks = [...(route.domainPacks || [])].sort();
   const activePacks = [...(domain.packs || [])].map((pack) => pack.id).sort();
   if (JSON.stringify(routedPacks) !== JSON.stringify(activePacks)) problems.push("route domainPacks must match domain assurance packs");
   const mobilePack = (domain.packs || []).find((pack) => pack.id === "mobile-ios");
   if (mobilePack) {
+    if (JSON.stringify(mobilePack.features || {}) !== JSON.stringify(route.domainFeatures?.["mobile-ios"] || {})) problems.push("mobile-ios domain features must match the routed workload classification");
     if (route.mobileIos?.status !== "commissioned") problems.push("mobile-ios completion requires commissioned Apple identity in the route");
     for (const field of ["scheme", "bundleAndTeam", "commissioningSha256"]) if (mobilePack.identity?.[field] !== route.mobileIos?.[field]) problems.push(`mobile-ios domain identity.${field} must match the commissioned route`);
     if (route.gateApplicability?.smoke?.status === "required") {
@@ -124,7 +172,8 @@ async function main() {
   let gates = GATES;
   try {
     const route = JSON.parse(readFileSync(path.join(path.resolve(args.repo), "run", "route.json"), "utf8"));
-    if (route.gateApplicability?.production?.status !== "required") gates = GATES.filter(([name]) => name !== "production");
+    if (route.gateApplicability?.foundation?.status !== "required") gates = gates.filter(([name]) => name !== "foundation");
+    if (route.gateApplicability?.production?.status !== "required") gates = gates.filter(([name]) => name !== "production");
     if (route.gateApplicability?.["code-intelligence"]?.status !== "required") gates = gates.filter(([name]) => name !== "code-intelligence");
     if (route.gateApplicability?.smoke?.status !== "required") gates = gates.filter(([name]) => name !== "smoke");
   } catch {}

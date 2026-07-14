@@ -1,0 +1,13 @@
+{
+  "schema": "uash.domain-control-catalog.v1",
+  "id": "saas",
+  "version": "1.0.0",
+  "controls": [
+    {"id": "SAAS-TENANT-001", "requirement": "Tenant identity and isolation are enforced across application, data, cache, search, background work, files, analytics, and support boundaries."},
+    {"id": "SAAS-ROLES-001", "requirement": "Organization membership, invitations, roles, custom permissions, privileged administration, SSO, SCIM, and deprovisioning follow explicit least-privilege lifecycles."},
+    {"id": "SAAS-ENTITLEMENTS-001", "requirement": "Plans, features, seats, limits, trials, upgrades, downgrades, cancellations, and grace periods resolve through one authoritative entitlement model."},
+    {"id": "SAAS-METERING-001", "requirement": "Usage, seats, quotas, overages, credits, and billable events are idempotent, tenant-bound, reconcilable, and observable against authoritative records."},
+    {"id": "SAAS-LIFECYCLE-001", "requirement": "Tenant provisioning, onboarding, migration, suspension, export, retention, deletion, restoration, and offboarding are tested with named owners and recovery paths."},
+    {"id": "SAAS-AUDIT-001", "requirement": "Security-sensitive tenant and administrative actions produce immutable, access-controlled, privacy-safe audit records with actor, target, time, outcome, and correlation identity."}
+  ]
+}

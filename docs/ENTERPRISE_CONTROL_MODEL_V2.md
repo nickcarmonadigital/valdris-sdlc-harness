@@ -4,18 +4,19 @@ Valdris v0.7 replaces layer-level attestations with control-level, typed assuran
 
 ## Decision model
 
-1. Commission a workload profile: `prototype`, `production`, `enterprise`, or `regulated`.
-2. Classify every canonical layer as `required` or `not-applicable`.
-3. Apply the dependency DAG in `controls/production-layers.v2.json`.
-4. Prove every required control. A whole layer cannot pass on one generic sentence.
-5. Record residual risk and obtain a human approval where the Red Zone or policy requires it.
-6. Re-run the gate against the exact commit and environment being handed off.
+1. Select the requested evidence/maturity profile: `prototype`, `production`, `enterprise`, or `regulated`.
+2. Detect composable workload profiles such as SaaS, mobile, payments, realtime, regulated/high-impact, and AI/agentic; the strongest applicable floor determines the effective assurance tier.
+3. Classify every canonical assurance domain as `required` or `not-applicable`.
+4. Apply hard dependencies from `controls/production-layers.v2.json`; treat `conditionalDependencies` as applicability questions rather than automatic expansion.
+5. Prove every required control. A whole domain cannot pass on one generic sentence.
+6. Record residual risk and obtain a human approval where the Red Zone or policy requires it.
+7. Re-run the gate against the exact commit and environment being handed off.
 
 The catalog currently contains 39 controls across:
 
 `frontend -> backend -> data -> auth -> deployment -> cloud -> CI/CD -> security -> rate limits -> cache/CDN -> scaling -> observability -> recovery`
 
-The arrows describe an assurance map, not a fixed build order. The `dependencies` fields form the canonical acyclic prerequisite graph.
+The arrows describe an assurance map, not a fixed build order. `dependencies` form the enforced acyclic prerequisite graph; `conditionalDependencies` document common relationships that classification or human review must resolve without over-projecting unrelated systems.
 
 ## Typed evidence
 

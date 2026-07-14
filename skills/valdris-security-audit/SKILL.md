@@ -5,13 +5,14 @@ description: Audit and remediate security, privacy, identity, tenant, secret, su
 
 # Valdris Security Audit
 
-1. Confirm authorization and scope before testing.
-2. Map assets, actors, trust boundaries, data classes, threats, and plausible abuse cases.
-3. Inspect current code and configuration; do not infer controls from documentation alone.
-4. Test positive and negative authorization, tenant isolation, input handling, secrets, dependencies, and failure paths.
-5. For AI workloads, test direct and indirect prompt injection, tool authorization, retrieval permissions, memory isolation, and sensitive trace handling.
-6. Rank findings by exploitability, impact, affected users, evidence, and remediation confidence.
-7. Apply the smallest verified remediation and add regression proof when implementation is authorized.
+1. Confirm authorization and scope, then validate the intake, deterministic classification, route, and code-intelligence artifacts before testing or making repository claims.
+2. Resolve the route-required Layer 0 foundation assessment. Audit-only work may report a failing foundation; remediation cannot proceed as though it passed.
+3. Map assets, actors, trust boundaries, data classes, threats, and plausible abuse cases.
+4. Inspect current code and configuration; do not infer controls from documentation alone.
+5. Test positive and negative authorization, tenant isolation, input handling, secrets, dependencies, and failure paths.
+6. For AI workloads, test direct and indirect prompt injection, tool authorization, retrieval permissions, memory isolation, and sensitive trace handling.
+7. Rank findings by exploitability, impact, affected users, evidence, and remediation confidence.
+8. Apply the smallest verified remediation and add regression proof when implementation is authorized, then resolve every route-required production, AI, eval, trajectory, smoke, and domain gate.
 
 Human approval is mandatory for production IAM/RLS, credential rotation, destructive security testing, incident containment, customer-data access, or acceptance of residual critical risk.
 

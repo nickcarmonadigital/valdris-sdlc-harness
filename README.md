@@ -8,6 +8,8 @@ v0.7 adds a protocol-independent goal/checkpoint loop, an eight-skill workflow r
 
 The repo also includes an OKF/Obsidian-style agent knowledge vault under `knowledge/`. Treat `knowledge/index.md` as the low-token navigation layer before opening deeper docs.
 
+Every new run now begins with executable **Layer 0** assurance inside the stable `route` stage: `run/workload-classification.json` classifies workload tier and profiles, and `foundation/assessment.json` proves the Foundation / Good Looks Like controls before implementation and the 13 production-readiness domains. Async and multi-agent orchestration remain cross-cutting execution concerns governed by the applicable foundation, production, AI, trajectory, authority, and proof gates; they are not additional production domains.
+
 ## Start here: the visible lane map
 
 ![Work lanes map](docs/assets/readme/work-lanes-map.svg)
@@ -35,6 +37,24 @@ The harness is easiest to understand as **lanes → stages → gates → artifac
 8. **Reliability / observability** — logs, metrics, traces, alerts, rollback, incidents.
 9. **Handoff** — answer contract, proof paths, decision packet, next call.
 10. **Harness self-healing** — if the process failed, create a correction artifact/PR.
+
+### Layer 0 before the 13 production domains
+
+Layer 0 is the executable foundation gate, not a new connector node and not a fourteenth production domain:
+
+```text
+intake
+-> route: workload classification (`uash.workload-classification.v1`)
+-> Layer 0: foundation assessment (`uash.foundation-assessment.v1`)
+-> 13 production-readiness domains
+-> implementation and proof
+```
+
+New routes use `uash.route.v2` and digest-bind `run/workload-classification.json`. The catalog at `controls/workload-taxonomy.v1.json` recognizes SaaS, AI/agentic, mobile, regulated, payments, and realtime profiles; it can activate the SaaS, mobile-iOS, realtime multiplayer, digital-commerce, and youth-AI domain packs. The Foundation / Good Looks Like catalog at `controls/foundation-layer.v1.json` establishes product/domain intent, requirements and acceptance, quality attributes, architecture boundaries, data/transaction semantics, engineering/test strategy, and decision ownership before downstream proof is accepted.
+
+See **[Layer Zero and Assurance Taxonomy](docs/LAYER_ZERO_AND_ASSURANCE_TAXONOMY.md)** for the formal distinction between the prerequisite foundation, the thirteen shared production-assurance domains, workload profiles, domain packs, cross-cutting concerns, and proof strength.
+
+See **[Production Assurance Gap Register](docs/PRODUCTION_ASSURANCE_GAP_REGISTER.md)** for the remaining boundary between structural gate conformance and provider-backed semantic assurance. The harness does not hide those conditions behind a green local JSON packet.
 
 ### Visual maps
 
@@ -178,6 +198,8 @@ If GitNexus is unavailable, the scanner may fall back to the local static graph,
 
 ## 13-layer production readiness stack
 
+The 13 domains begin only after Layer 0 workload classification and foundation assurance have resolved. Layer 0 defines what is being built and what good looks like; the production pack then proves how that workload operates safely. Async orchestration cuts across both layers and does not change the canonical domain count.
+
 For serious product work, “done” cannot mean “the page loaded once.” The harness includes a **13-layer production readiness pack** so production-impacting runs can mark each layer as required, passed, failed, pending, or skipped with a reason.
 
 ![13-layer production readiness pack](docs/assets/readme/production-readiness-pack.svg)
@@ -198,7 +220,7 @@ For serious product work, “done” cannot mean “the page loaded once.” The
 | 12 | Error tracking / logs / observability | logs, metrics, traces, alerts, dashboards/request IDs |
 | 13 | Availability / recovery / DR | rollback, restore, graceful degradation, RTO/RPO |
 
-The current repo has 39 named controls across the thirteen layers. `uash.production-readiness.v2` rejects evidence-shaped prose: paths must resolve, enterprise artifacts must match hashes/commit/environment, metrics must satisfy their thresholds, command results need output digests, and approvals must name a human. Four domain packs add iOS, realtime multiplayer, digital-commerce, and youth-AI requirements without bloating the universal layer model.
+The current repo has 39 named controls across the thirteen layers. `uash.production-readiness.v2` rejects evidence-shaped prose: paths must resolve, enterprise artifacts must match hashes/commit/environment, metrics must satisfy their thresholds, command results need output digests, and approvals must name a human. Five domain packs add SaaS, iOS, realtime multiplayer, digital-commerce, and youth-AI requirements without bloating the universal layer model.
 
 ## Can this drive a full-stack iOS game build?
 
@@ -214,7 +236,7 @@ Start the executable route and active goal from the target repo:
 node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, and ship it to TestFlight."
 ```
 
-The deterministic router writes the intake/route/goal starting point; it does not launch Codex or certify its own output. Validate the active start with `intake-gate.mjs`, `route-gate.mjs`, and `goal-gate.mjs --allow-active`. The selected external coding runtime then executes the engineering checkpoints under the bridge-enforced finish line.
+The deterministic router writes the intake/classification/route/goal starting point; it does not launch Codex or certify its own output. Validate the active start in order with `intake-gate.mjs`, `workload-classification-gate.mjs`, `route-gate.mjs`, `foundation-gate.mjs` when required, and `goal-gate.mjs --allow-active`. The selected external coding runtime then executes the engineering checkpoints under the bridge-enforced finish line.
 
 ## Connector + proof gate model
 
@@ -275,6 +297,8 @@ CLAUDE.md
 .claude/skills/<eight Valdris skills>
 skills/codex-routing.yaml
 skills/registry.json
+controls/workload-taxonomy.v1.json
+controls/foundation-layer.v1.json
 controls/production-layers.v2.json
 controls/genai-assurance.v1.json
 controls/domain-packs/*.json
@@ -308,6 +332,10 @@ scripts/code-intelligence-gate.mjs
 scripts/anchor-gate.mjs
 scripts/code-intelligence-gate-all.mjs
 scripts/intake-gate.mjs
+scripts/workload-classifier-lib.mjs
+scripts/workload-classification-gate.mjs
+scripts/foundation-gate.mjs
+scripts/route-request.mjs
 scripts/route-gate.mjs
 scripts/control-gate-lib.mjs
 scripts/production-layer-gate.mjs
@@ -341,9 +369,11 @@ commissioning-review.md
 | `scripts/code-intelligence-local-scan.mjs` | local Code-intelligence-compatible graph generator / fallback artifact writer |
 | `scripts/code-intelligence-gate.mjs` | graph schema/freshness gate |
 | `scripts/code-intelligence-gate-all.mjs` | combined graph and anchor gate wrapper |
+| `scripts/workload-classification-gate.mjs` | route-stage workload tier/profile classifier gate for `uash.route.v2` |
+| `scripts/foundation-gate.mjs` | executable Layer 0 Foundation / Good Looks Like assessment gate |
 | `scripts/production-layer-gate.mjs` | 13-layer production readiness validator |
 | `scripts/enterprise-ai-gate-all.mjs` | current-run aggregate intake/route/goal/context/production/AI/domain/eval/trajectory/waiver finish line |
-| `controls/` | canonical production, AI, iOS, realtime, commerce, and youth-safety control catalogs |
+| `controls/` | workload taxonomy, Layer 0 foundation, production, AI, SaaS, iOS, realtime, commerce, and youth-safety catalogs |
 | `skills/` | eight phase-aware Valdris workflow skills, Codex YAML routing projection, and proof-gate registry |
 | `scripts/okf-vault-gate.mjs` | OKF-style knowledge vault validator |
 | `scripts/anchor-gate.mjs` | design-anchor file citation gate |
@@ -366,7 +396,7 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 - hashed context manifests that reject secret-like inputs and path escapes;
 - control-level production proof across all thirteen layers;
 - AI inventory, eval, safety, RAG, tool, memory, observability, cost, and lifecycle controls;
-- iOS, multiplayer, commerce, and youth-AI domain packs;
+- SaaS, iOS, multiplayer, commerce, and youth-AI domain packs;
 - adversarial fixtures for fabricated evidence, failing metrics/evals, self-approval, budget overrun, secret context, and registry escape.
 
 Research and primary-source crosswalks live under [`research/enterprise-ai-2026/`](research/enterprise-ai-2026/).
@@ -395,6 +425,8 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 | Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 31 groups / 158 questions |
 | Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
 | Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
+| Workload taxonomy classification | Built + gated | `uash.workload-classification.v1`, `controls/workload-taxonomy.v1.json`, route v2 digest binding |
+| Layer 0 foundation assurance | Built + gated | `foundation/assessment.json`, `controls/foundation-layer.v1.json`, `foundation-gate.mjs` |
 | Goal/checkpoint loop + skill router | Built + verified | `goal-gate.mjs`, YAML-frontmatter discovery, `skills/codex-routing.yaml`, `skills/registry.json`, eight Valdris workflows, forward tests |
 | Operating-intelligence enforcement core | Built + verified | executable goal, eval, trajectory, context, skill, production, AI/domain, smoke, waiver, and typed-evidence gates |
 | Extended operating-intelligence policy | Commissioned, not a runtime | memory, tool hooks, sandbox management, model routing, economics, background PR agents, MCP/A2A, and agent lifecycle are captured as policy fields/docs for external runtimes and providers |
@@ -407,7 +439,7 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 | Self-heal bypass prevention | Built + verified | verifier blocks detected-gap bypass |
 | 13 production layers | Built + adversarially verified | v2 control catalog, typed evidence, dependency DAG, bridge compatibility, negative tests |
 | Generative AI assurance | Built + adversarially verified | 10 control domains, conditional RAG/tools/memory, eval and trajectory gates |
-| Domain assurance packs | Built initial set | mobile iOS, multiplayer realtime, digital commerce, youth AI safety |
+| Domain assurance packs | Built initial set | SaaS, mobile iOS, multiplayer realtime, digital commerce, youth AI safety |
 | Agent knowledge vault | Built + verified | `knowledge/index.md`, `scripts/okf-vault-gate.mjs`, `npm run knowledge:gate` |
 | Cloud/platform lane | Built structurally | docs + node/artifact policy |
 | CI enforcement | Built + verified | `.github/workflows/ci.yml` runs the harness gates automatically |

@@ -21,7 +21,7 @@ Select exactly one primary skill. Add no more than four supporting skills, and o
 
 Codex performs implicit discovery from each skill's `SKILL.md` YAML frontmatter (`name` and `description`), not from an arbitrary global prompt. Each skill also has `agents/openai.yaml` with `policy.allow_implicit_invocation: true`. After discovery, `skills/codex-routing.yaml` gives Codex the complete phase-selection projection; it is generated from and gate-checked against the authoritative `skills/registry.json` plus the current skill descriptions. If the YAML projection drifts, `npm run skills:gate` fails.
 
-`run/intake.json` preserves the human request digest and authority boundary. `run/route.json` binds that intake to three skill phases, all thirteen initial layer decisions, AI profile/features, domain triggers, gate applicability, and SHA-256 digests for the registry and control catalogs. `npm run route:gate` rejects missing trigger-driven packs and registry/catalog drift.
+`run/intake.json` preserves the human request digest, authority boundary, and conservative execution budget. `run/workload-classification.json` deterministically projects task type, effective tier, workload profiles, cross-cutting concerns, domain packs, controlled-document status, and gate applicability. `run/route.json` binds both artifacts to three fixed skill phases, all thirteen initial domain decisions, classifier-derived supporting skills, AI profile/features, domain triggers, and SHA-256 digests for the registry and control catalogs. Intake, classification, and route gates reject rewritten scope, missing trigger-driven packs, phase/skill weakening, and registry/catalog drift.
 
 Create the starting artifacts deterministically with `npm run route:request -- --repo . --profile enterprise --actor "<owner>" --request "<request>"`. The router uses explicit keyword/risk rules and conservative defaults; it does not pretend an LLM classification is trusted policy. Review architecture-changing unknowns before delivery begins.
 
@@ -32,6 +32,9 @@ Create the starting artifacts deterministically with `npm run route:request -- -
 ```text
 request
   -> intake and authority boundary
+  -> deterministic workload classification
+  -> route and fixed skill phases
+  -> Layer 0 Foundation proof before non-docs implementation
   -> one primary skill + supporting skills
   -> objective + measurable stopping conditions + budgets
   -> checkpoint: inspect evidence and remaining risk
@@ -43,7 +46,7 @@ request
   -> finish only when every stopping condition and required gate passes
 ```
 
-Budgets cover attempts, tool calls, tokens, cost, and wall-clock minutes. A loop that exceeds a budget, enters a forbidden sequence, or repeats failures without new evidence is blocked rather than declared done.
+Budgets cover attempts, tool calls, tokens, cost, and wall-clock minutes. The router derives conservative immutable defaults from task type and effective tier; it does not grant every task a month-long, multi-million-token loop. A loop that exceeds a budget, enters a forbidden sequence, or repeats failures without new evidence is blocked rather than declared done. Materially larger scope starts a new reviewed run instead of rewriting the original intake, classification, route, or goal.
 
 Update loop state through `goal-transition.mjs` with an expected revision. It acquires an exclusive goal-file lock, compares the expected revision while holding that lock, validates the resulting goal, and atomically replaces the file. A concurrent or stale agent cannot overwrite a newer checkpoint silently. Passing a stopping condition also requires a typed-evidence JSON array.
 

@@ -12,6 +12,22 @@ repo + human interview
 → Claude Code/Codex uses that adapter instead of freelancing
 ```
 
+## Layer 0 before production assurance
+
+New commissioned runs keep the stable connector node chain, but the `route` stage now owns two executable prerequisites:
+
+```text
+run/intake.json
+-> run/workload-classification.json (`uash.workload-classification.v1`)
+-> run/route.json (`uash.route.v2`, classification digest-bound)
+-> foundation/assessment.json (`uash.foundation-assessment.v1`)
+-> 13 production-readiness domains
+```
+
+The workload catalog classifies tiers and SaaS, AI/agentic, mobile, regulated, payments, and realtime profiles. The Foundation / Good Looks Like catalog is Layer 0: it establishes product/domain intent, requirements and acceptance, quality attributes, architecture boundaries, data/transaction semantics, engineering/test strategy, and decision ownership before implementation and production evidence.
+
+Layer 0 is not a new connector node and not a fourteenth production domain. Async and multi-agent orchestration are cross-cutting execution concerns governed through the applicable foundation, production, AI, trajectory, authority, and proof gates.
+
 ## Terminology calibration
 
 | Nick-language | Best term | Semantics | Taxonomy | Domain-term calibration |
@@ -51,7 +67,8 @@ These stay the same across repos:
 7. Run packet: task, session, mode, events, proof, approvals, skipped nodes, failures, handoff.
 8. Blueprint / Live Run / Replay separation: no fake telemetry.
 9. Answer contract: bottom line, why, proof, risk, fix/plan, your call.
-10. Production readiness layer pack: 13 full-stack production layers become required/skipped checks.
+10. Layer 0 workload and foundation assurance: route v2 binds the workload classification, and the foundation gate resolves before implementation.
+11. Production readiness domain pack: 13 full-stack production domains become required/skipped checks after Layer 0.
 
 ### Project adapter
 
@@ -66,12 +83,14 @@ Generated per repo/team:
 7. Red Zone actions and approval owner.
 8. Enabled lanes and custom lanes.
 9. System design triggers and ADR policy.
-10. Production Readiness Layer Pack defaults and skip policy.
-11. Cloud/platform provider/service map, IaC policy, observability, cost/rollback policy.
-12. QA plan, break-it QA, and live-smoke criteria.
-13. Blueprint / Live Run / Replay telemetry policy.
-14. Harness self-healing PR policy.
-15. Integration map: GitHub, Linear/Jira, Vercel/AWS/Supabase/etc.
+10. Workload taxonomy catalog/artifact/gate and route v2 binding policy.
+11. Layer 0 foundation catalog/artifact/gate and enforcement policy.
+12. Production Readiness Domain Pack defaults and skip policy.
+13. Cloud/platform provider/service map, IaC policy, observability, cost/rollback policy.
+14. QA plan, break-it QA, and live-smoke criteria.
+15. Blueprint / Live Run / Replay telemetry policy.
+16. Harness self-healing PR policy.
+17. Integration map: GitHub, Linear/Jira, Vercel/AWS/Supabase/etc.
 
 ## Commissioning interview question bank
 
@@ -122,6 +141,8 @@ The recurring user problem is that teams often do not know what a proper foundat
 - `docs/Team Harness Registry.md`
 - `docs/Human Agent Protocol.md`
 
+The generated prose is now paired with executable Layer 0 artifacts: `controls/foundation-layer.v1.json` defines the canonical foundation controls, `foundation/assessment.json` records their status and evidence, and `scripts/foundation-gate.mjs` blocks implementation/finish-line claims when the route requires unresolved foundation work.
+
 See [`docs/GOOD_LOOKS_LIKE_FOUNDATION_MODEL.md`](GOOD_LOOKS_LIKE_FOUNDATION_MODEL.md) for the product pattern.
 
 ## Agent install shape
@@ -160,9 +181,9 @@ Generated `AGENTS.md` should tell Codex:
 
 1. **Local commissioning CLI** - implemented now as `npm run commission`.
 2. **Repo scanner / code intelligence** - GitNexus-backed index is now preferred via `scripts/code-intelligence-scan.mjs`; local static graph remains disclosed fallback. Extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
-3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, map/router, validation/red-zone docs, run template, review packet.
+3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, workload/foundation catalogs and gates, map/router, validation/red-zone docs, run template, review packet.
 4. **Claude/Codex command templates** - implemented now: generated Claude slash command plus Codex runtime prompt/front door.
-5. **Gate script portability** - implemented: generated packs carry gate scripts, controls, skills, package scripts, and a CI workflow template; nested packs use `node .valdris-harness/scripts/<gate> --repo .` from the target root.
+5. **Gate script portability** - implemented: generated packs carry classification, Layer 0 foundation, production, AI/domain, and finish-line gate scripts plus controls, skills, package scripts, and a CI workflow template; nested packs use `node .valdris-harness/scripts/<gate> --repo .` from the target root.
 6. **UI commissioning surface** - next: render the question groups in the web app and store adapter drafts.
 7. **Connector event enforcement** - implemented now in the local bridge: missing proof/artifacts, missing skip reasons, and missing failure recovery paths block `run.completed`.
 
@@ -171,12 +192,14 @@ Generated `AGENTS.md` should tell Codex:
 A repo is commissioned only when:
 
 - `project-adapter.json` exists and validates.
+- `workloadTaxonomy` and `foundationAssurance` point to packaged catalogs, artifacts, and executable gates.
 - `AGENTS.md` and/or `CLAUDE.md` are generated.
 - Claude slash-command and Codex runtime prompt front doors are generated.
 - Validation commands are explicit.
 - Red Zone owner and approval-required actions are explicit.
 - Source-of-truth order is explicit.
 - At least one run packet can be created.
+- New route packets generate `uash.route.v2`, bind `run/workload-classification.json`, and enforce Layer 0 foundation assurance before implementation.
 - A simulated agent run blocks completion when proof is missing.
 
 ## Current proof command

@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { existingFileWithinRepo, gateResult, nonEmpty, parseRepoFileArgs, readJson, resolveWithinRepo } from "./control-gate-lib.mjs";
 
 export const SKILL_REGISTRY_SCHEMA = "uash.skill-registry.v1";
+const REQUIRED_PHASE_TRANSITIONS = ["intake-route", "delivery", "proof-handoff"];
+const REQUIRED_PRIMARY_SKILLS = ["valdris-intake-route", "valdris-bug-rca", "valdris-feature-delivery", "valdris-architecture-refactor", "valdris-security-audit", "valdris-platform-release", "valdris-genai-assurance", "valdris-proof-handoff"];
 
 function frontmatter(markdown) {
   const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -98,7 +100,7 @@ export function validateSkillRegistry(document, repoRoot) {
   if (!Array.isArray(document.skills) || document.skills.length < 5 || document.skills.length > 8) problems.push("skill registry must contain 5-8 selectable skills");
   if (document.selection?.maxPrimary !== 1) problems.push("skill registry selection.maxPrimary must be 1");
   if (document.selection?.maxSupporting !== 4) problems.push("skill registry selection.maxSupporting must be 4");
-  if (!Array.isArray(document.selection?.phaseTransitions) || document.selection.phaseTransitions.length < 2) problems.push("skill registry must declare phaseTransitions");
+  if (JSON.stringify(document.selection?.phaseTransitions) !== JSON.stringify(REQUIRED_PHASE_TRANSITIONS)) problems.push("skill registry phaseTransitions must be exactly intake-route, delivery, proof-handoff");
   const seen = new Set();
   for (const skill of document.skills || []) {
     const name = nonEmpty(skill?.name);
@@ -131,6 +133,7 @@ export function validateSkillRegistry(document, repoRoot) {
     if (!skill.triggers?.length) problems.push(`skill ${name} must declare triggers`);
     if (!skill.requiredGates?.length) problems.push(`skill ${name} must declare requiredGates`);
   }
+  for (const skill of REQUIRED_PRIMARY_SKILLS) if (!seen.has(skill)) problems.push(`skill registry missing canonical primary skill: ${skill}`);
   const canonicalSkillRoot = path.join(repoRoot, "skills");
   for (const entry of readdirSync(canonicalSkillRoot, { withFileTypes: true })) {
     if (entry.isDirectory() && entry.name.startsWith("valdris-") && !seen.has(entry.name)) problems.push(`skills contains unregistered Valdris skill: ${entry.name}`);

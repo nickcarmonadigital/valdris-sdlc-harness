@@ -9,6 +9,19 @@ export const EVIDENCE_TYPES = new Set(["artifact", "command", "metric", "approva
 export const PROFILE_EVIDENCE_MAX_AGE_HOURS = { prototype: 720, production: 168, enterprise: 72, regulated: 24 };
 const TRUST_TIERS = new Set(["automated-local", "ci-attested", "provider-attested", "human-approved"]);
 const PRODUCER_KINDS = new Set(["tool", "ci", "provider", "human"]);
+const TRUST_PRODUCER_KIND = { "automated-local": "tool", "ci-attested": "ci", "provider-attested": "provider", "human-approved": "human" };
+const TECHNICAL_TRUST_RANK = { "automated-local": 0, "ci-attested": 1, "provider-attested": 2 };
+
+export const ASSURANCE_TIER_EVIDENCE_POLICY = Object.freeze({
+  T0: Object.freeze({ profile: "prototype", minimumTechnicalTrust: "automated-local", externalAttestationRequired: false }),
+  T1: Object.freeze({ profile: "production", minimumTechnicalTrust: "automated-local", externalAttestationRequired: false }),
+  T2: Object.freeze({ profile: "enterprise", minimumTechnicalTrust: "ci-attested", externalAttestationRequired: false }),
+  T3: Object.freeze({ profile: "regulated", minimumTechnicalTrust: "ci-attested", externalAttestationRequired: true }),
+});
+
+export function evidencePolicyForEffectiveTier(effectiveTier) {
+  return ASSURANCE_TIER_EVIDENCE_POLICY[effectiveTier] || null;
+}
 
 export function nonEmpty(value) {
   return typeof value === "string" && value.trim() ? value.trim() : "";
@@ -56,7 +69,7 @@ function compareMetric(value, operator, target) {
 }
 
 export function validateTypedEvidence(evidence, options = {}) {
-  const { repoRoot = process.cwd(), profile = "production", label = "evidence", subject, asOf, runId, commit, environment, maxAgeHours = PROFILE_EVIDENCE_MAX_AGE_HOURS[profile] } = options;
+  const { repoRoot = process.cwd(), profile = "production", label = "evidence", subject, asOf, runId, commit, environment, minimumTechnicalTrust, maxAgeHours = PROFILE_EVIDENCE_MAX_AGE_HOURS[profile] } = options;
   const problems = [];
   if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
     return [`${label} must be an object`];
@@ -77,6 +90,12 @@ export function validateTypedEvidence(evidence, options = {}) {
     if (!nonEmpty(evidence.producer.name)) problems.push(`${label}.producer.name is required`);
     if (!nonEmpty(evidence.producer.version)) problems.push(`${label}.producer.version is required`);
     if (!PRODUCER_KINDS.has(evidence.producer.kind)) problems.push(`${label}.producer.kind is invalid`);
+    else if (TRUST_PRODUCER_KIND[evidence.trustTier] && evidence.producer.kind !== TRUST_PRODUCER_KIND[evidence.trustTier]) problems.push(`${label}.producer.kind must be ${TRUST_PRODUCER_KIND[evidence.trustTier]} for trustTier ${evidence.trustTier}`);
+  }
+  if (type === "provider-report" && evidence.trustTier !== "provider-attested") problems.push(`${label}.provider-report evidence must use provider-attested trust`);
+  if (type === "approval" && evidence.trustTier !== "human-approved") problems.push(`${label}.approval evidence must use human-approved trust`);
+  if (type !== "approval" && TECHNICAL_TRUST_RANK[minimumTechnicalTrust] !== undefined && (TECHNICAL_TRUST_RANK[evidence.trustTier] ?? -1) < TECHNICAL_TRUST_RANK[minimumTechnicalTrust]) {
+    problems.push(`${label} requires ${minimumTechnicalTrust} or stronger technical evidence`);
   }
 
   if (type === "artifact") {
@@ -171,7 +190,7 @@ export function validateTypedEvidence(evidence, options = {}) {
 }
 
 export function validateControl(control, options = {}) {
-  const { repoRoot = process.cwd(), profile = "production", label = "control", allowSkipped = true, asOf, runId, commit, environment, maxAgeHours } = options;
+  const { repoRoot = process.cwd(), profile = "production", label = "control", allowSkipped = true, asOf, runId, commit, environment, minimumTechnicalTrust, maxAgeHours } = options;
   const problems = [];
   if (!control || typeof control !== "object" || Array.isArray(control)) return [`${label} must be an object`];
   const id = nonEmpty(control.id);
@@ -180,7 +199,7 @@ export function validateControl(control, options = {}) {
   if (!CONTROL_STATUSES.has(status)) problems.push(`${label} has unsupported status: ${status || "missing"}`);
   if (status === "passed") {
     if (!Array.isArray(control.evidence) || control.evidence.length === 0) problems.push(`${label} passed without typed evidence`);
-    else control.evidence.forEach((item, index) => problems.push(...validateTypedEvidence(item, { repoRoot, profile, label: `${label}.evidence[${index}]`, subject: id, asOf, runId, commit, environment, maxAgeHours })));
+    else control.evidence.forEach((item, index) => problems.push(...validateTypedEvidence(item, { repoRoot, profile, label: `${label}.evidence[${index}]`, subject: id, asOf, runId, commit, environment, minimumTechnicalTrust, maxAgeHours })));
     if (Array.isArray(control.evidence) && control.evidence.length > 0 && control.evidence.every((item) => item?.type === "approval")) problems.push(`${label} cannot pass on approval evidence alone`);
   }
   if (status === "skipped") {

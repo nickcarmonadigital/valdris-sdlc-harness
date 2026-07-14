@@ -1,9 +1,10 @@
 {
   "schema": "uash.domain-pack-index.v1",
   "packs": [
+    {"id": "saas", "path": "controls/domain-packs/saas.v1.json", "triggers": ["SaaS", "multi-tenant", "tenant", "customer organization", "organization account", "team workspace", "customer workspace", "B2B application"]},
     {"id": "mobile-ios", "path": "controls/domain-packs/mobile-ios.v1.json", "triggers": ["iOS", "iPhone", "iPad", "TestFlight", "App Store", "StoreKit", "APNs"]},
-    {"id": "multiplayer-realtime", "path": "controls/domain-packs/multiplayer-realtime.v1.json", "triggers": ["multiplayer", "matchmaking", "realtime", "WebSocket", "authoritative game state"]},
-    {"id": "digital-commerce", "path": "controls/domain-packs/digital-commerce.v1.json", "triggers": ["purchase", "subscription", "StoreKit", "billing", "entitlement", "refund"]},
+    {"id": "multiplayer-realtime", "path": "controls/domain-packs/multiplayer-realtime.v1.json", "triggers": ["multiplayer", "matchmaking", "authoritative game state", "game lobby", "game server"]},
+    {"id": "digital-commerce", "path": "controls/domain-packs/digital-commerce.v1.json", "triggers": ["payment", "purchase", "subscription", "StoreKit", "billing", "entitlement", "refund"]},
     {"id": "youth-ai-safety", "path": "controls/domain-packs/youth-ai-safety.v1.json", "triggers": ["children", "teen", "youth", "minor", "age rating", "AI game content"]}
   ]
 }

@@ -773,6 +773,39 @@ function renderGoalSkillProtocol() {
   return `\n## Valdris v0.7 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`skills/codex-routing.yaml\` and the gate-authoritative \`skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Activate the production, AI, eval, trajectory, smoke, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n5. Use \`controls/domain-packs/\` for mobile iOS, realtime multiplayer, digital commerce, and youth-AI work.\n6. Run \`node scripts/enterprise-ai-gate-all.mjs --repo .\` for the full enterprise/AI run packet.\n7. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
 }
 
+function renderLayerZeroProtocol() {
+  return `
+## Layer 0 workload and foundation assurance
+
+Layer 0 runs inside the stable \`route\` stage; do not invent a new connector node ID. First validate \`run/workload-classification.json\` as \`uash.workload-classification.v1\`, then validate \`foundation/assessment.json\` as \`uash.foundation-assessment.v1\` before implementation and before resolving the 13 production-readiness domains. The route uses \`uash.route.v2\` and digest-binds the classification so later mutation invalidates the reviewed route.
+
+The workload taxonomy can activate the \`saas\`, \`mobile-ios\`, \`multiplayer-realtime\`, \`digital-commerce\`, and \`youth-ai-safety\` domain packs. Domain-pack assurance remains separate from workload classification.
+
+The Foundation / Good Looks Like layer is numbered 0 because it establishes product/domain intent, requirements, quality attributes, architecture boundaries, data/transaction semantics, engineering/test strategy, and decision ownership before production evidence is accepted. It is not a fourteenth production domain.
+
+Async and multi-agent orchestration are cross-cutting execution concerns. Route them through the applicable foundation, production, AI, trajectory, authority, and proof gates instead of modeling orchestration as another production domain.
+`;
+}
+
+function renderLayerZeroValidation(paths) {
+  return `
+## Layer 0 validation
+
+Run these from the target repository root:
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/catalog-integrity-gate.mjs --repo .
+node ${paths.scriptFromRepo}/intake-gate.mjs --repo .
+node ${paths.scriptFromRepo}/workload-classification-gate.mjs --repo .
+node ${paths.scriptFromRepo}/route-gate.mjs --repo .
+node ${paths.scriptFromRepo}/foundation-gate.mjs --repo .
+node ${paths.scriptFromRepo}/goal-gate.mjs --repo . --allow-active
+\`\`\`
+
+New routes use \`uash.route.v2\`. Workload classification stays inside the stable \`route\` connector stage, and Layer 0 foundation assurance must resolve before implementation and the 13 production-readiness domains.
+`;
+}
+
 function renderInstalledPathProtocol(repo, out) {
   const relativePack = path.relative(repo, out).replaceAll("\\", "/") || ".";
   const scriptPrefix = relativePack === "." ? "scripts" : `${relativePack}/scripts`;
@@ -832,6 +865,29 @@ function generatePack(args, detected, answers) {
       skipAllowedOnlyFor: "docs-only or non-code work with explicit skip reasons for code-intelligence and design-anchors",
       fallbackDisclosureRequired: true,
     },
+    workloadTaxonomy: {
+      schema: "uash.workload-classification.v1",
+      catalogSchema: "uash.workload-taxonomy-catalog.v1",
+      catalog: "controls/workload-taxonomy.v1.json",
+      artifact: "run/workload-classification.json",
+      routeSchema: "uash.route.v2",
+      stableNodeId: "route",
+      gateCommand: `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`,
+      enforcement: "gate",
+      policy: "Classify workload tier and profiles before route decisions; uncertainty may widen assurance but may not silently downgrade it.",
+    },
+    foundationAssurance: {
+      schema: "uash.foundation-assessment.v1",
+      catalogSchema: "uash.foundation-control-catalog.v1",
+      catalog: "controls/foundation-layer.v1.json",
+      artifact: "foundation/assessment.json",
+      requiredBindings: ["catalogSha256", "workloadClassificationSha256", "runId", "profile", "effectiveTier", "commit", "environment"],
+      layer: { id: "foundation", number: 0, title: "Foundation / Good Looks Like" },
+      gateCommand: `node ${scriptFromRepo}/foundation-gate.mjs --repo .`,
+      enforcement: "gate",
+      requiredBefore: ["implementation", "13 production-readiness domains"],
+      asyncOrchestration: "Cross-cutting execution concern governed by foundation, production, AI, trajectory, authority, and proof gates; not a separate production domain.",
+    },
     productionReadiness: {
       layers: splitList(answers.production_layers),
       schema: "uash.production-readiness.v2",
@@ -851,7 +907,7 @@ function generatePack(args, detected, answers) {
     domainAssurance: {
       schema: "uash.domain-assurance.v1",
       index: "controls/domain-packs/index.json",
-      availablePacks: ["mobile-ios", "multiplayer-realtime", "digital-commerce", "youth-ai-safety"],
+      availablePacks: ["saas", "mobile-ios", "multiplayer-realtime", "digital-commerce", "youth-ai-safety"],
       artifact: "domain/assurance.json",
       gateCommand: `node ${scriptFromRepo}/domain-assurance-gate.mjs --repo .`,
     },
@@ -886,7 +942,7 @@ function generatePack(args, detected, answers) {
     finishLineAssurance: {
       required: true,
       gateCommand: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
-      requiredArtifacts: ["run/intake.json", "run/route.json", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "skills/codex-routing.yaml", "skills/registry.json"],
+      requiredArtifacts: ["run/intake.json", "run/workload-classification.json", "run/route.json", "foundation/assessment.json when foundation applies", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "skills/codex-routing.yaml", "skills/registry.json"],
       binding: ["runId", "profile", "commit", "environment"],
     },
     knowledgeVault: {
@@ -1075,7 +1131,7 @@ function generatePack(args, detected, answers) {
     ciEnforcement: {
       workflowTemplate: ".github/workflows/valdris-assurance.yml",
       installationRequired: "If the harness pack stays nested, copy the workflow template to the target repo's top-level .github/workflows and set the pack path.",
-      requiredCommands: [`node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local`, `node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .`, `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`],
+      requiredCommands: [`node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo .`, `node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local`, `node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .`, `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`, `node ${scriptFromRepo}/route-gate.mjs --repo .`, `node ${scriptFromRepo}/foundation-gate.mjs --repo .`, `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`],
     },
     telemetryModes: {
       policy: answers.telemetry_mode_policy,
@@ -1096,6 +1152,10 @@ function generatePack(args, detected, answers) {
       install: answers.install_command,
       knowledge: `node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`,
       skills: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
+      catalogs: `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo .`,
+      classification: `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`,
+      route: `node ${scriptFromRepo}/route-gate.mjs --repo .`,
+      foundation: `node ${scriptFromRepo}/foundation-gate.mjs --repo .`,
       activeGoal: `node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active`,
       finishLine: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
       lint: answers.lint_command,
@@ -1111,26 +1171,26 @@ function generatePack(args, detected, answers) {
   const installedPathProtocol = renderInstalledPathProtocol(repoRoot, out);
   write(path.join(out, "project-adapter.json"), JSON.stringify(adapter, null, 2));
   write(path.join(out, "project.yaml"), toYaml(adapter));
-  write(path.join(out, "AGENTS.md"), renderAgents(answers) + renderGoalSkillProtocol() + installedPathProtocol);
-  write(path.join(out, "CLAUDE.md"), renderClaude(answers) + renderGoalSkillProtocol() + installedPathProtocol);
-  write(path.join(out, ".claude/commands/valdris-sdlc-harness.md"), renderClaudeCommand(answers) + renderGoalSkillProtocol() + installedPathProtocol);
-  write(path.join(out, "docs/Codex Runtime Prompt.md"), renderCodexPrompt(answers) + renderGoalSkillProtocol() + installedPathProtocol);
-  write(path.join(out, "00_MAP.md"), renderMap(answers, detected));
+  write(path.join(out, "AGENTS.md"), renderAgents(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
+  write(path.join(out, "CLAUDE.md"), renderClaude(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
+  write(path.join(out, ".claude/commands/valdris-sdlc-harness.md"), renderClaudeCommand(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
+  write(path.join(out, "docs/Codex Runtime Prompt.md"), renderCodexPrompt(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
+  write(path.join(out, "00_MAP.md"), renderMap(answers, detected) + renderLayerZeroProtocol());
   write(path.join(out, "CONTEXT.md"), renderContext(answers));
-  write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers, { scriptFromRepo, packFromRepo }));
+  write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers, { scriptFromRepo, packFromRepo }) + renderLayerZeroValidation({ scriptFromRepo }));
   write(path.join(out, "docs/Proof Schema.md"), renderProofSchema(answers));
   write(path.join(out, "docs/Red Zone Rules.md"), renderRedZone(answers));
   write(path.join(out, "docs/Code Intelligence Graph.md"), renderCodeIntelligence(answers));
   write(path.join(out, "docs/GitNexus Code Intelligence.md"), renderCodeIntelligence(answers));
-  write(path.join(out, "docs/Production Readiness Layers.md"), renderProductionReadiness(answers));
+  write(path.join(out, "docs/Production Readiness Layers.md"), renderProductionReadiness(answers) + renderLayerZeroProtocol());
   write(path.join(out, "docs/Cloud Platform Engineering.md"), renderCloudPlatform(answers));
   write(path.join(out, "docs/QA and Live Smoke.md"), renderQaSmoke(answers));
   write(path.join(out, "docs/Modes Blueprint Live Replay.md"), renderModes(answers));
   write(path.join(out, "docs/Self-Healing Loop.md"), renderSelfHealing(answers));
-  write(path.join(out, "docs/Good Looks Like Foundation.md"), renderGoodLooksLike(answers));
+  write(path.join(out, "docs/Good Looks Like Foundation.md"), renderGoodLooksLike(answers) + renderLayerZeroProtocol());
   write(path.join(out, "docs/Code Quality Guardrails.md"), renderCodeQualityGuardrails(answers));
   write(path.join(out, "docs/Enterprise Proof Bank.md"), renderEnterpriseProofBank(answers));
-  write(path.join(out, "docs/Operating Intelligence Layer.md"), renderOperatingIntelligence(answers));
+  write(path.join(out, "docs/Operating Intelligence Layer.md"), renderOperatingIntelligence(answers) + renderLayerZeroProtocol());
   write(path.join(out, "docs/Team Harness Registry.md"), renderTeamHarnessRegistry(answers));
   write(path.join(out, "docs/Human Agent Protocol.md"), renderHumanAgentProtocol(answers));
   write(path.join(out, "docs/Agent Knowledge Vault.md"), renderAgentKnowledgeVault(answers));
@@ -1140,14 +1200,18 @@ function generatePack(args, detected, answers) {
   for (const [relativePath, content] of Object.entries(renderKnowledgeVaultFiles(answers))) {
     write(path.join(out, relativePath), content);
   }
-  for (const relativePath of ["playbooks/goal-loop-skill-routing.md", "playbooks/genai-assurance.md", "concepts/typed-evidence.md"]) {
+  for (const relativePath of ["playbooks/layer-zero-assurance.md", "playbooks/production-readiness-13-layers.md", "playbooks/goal-loop-skill-routing.md", "playbooks/genai-assurance.md", "concepts/proof-first-harness.md", "concepts/typed-evidence.md"]) {
     fs.copyFileSync(path.join(HARNESS_ROOT, "knowledge", relativePath), path.join(out, "knowledge", relativePath));
   }
-  fs.appendFileSync(path.join(out, "knowledge", "index.md"), "\n* [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](playbooks/genai-assurance.md) - cross-cutting AI controls.\n* [Typed Evidence](concepts/typed-evidence.md) - resolvable proof contract.\n");
-  fs.appendFileSync(path.join(out, "knowledge", "playbooks", "index.md"), "\n* [Goal Loop and Skill Routing](goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](genai-assurance.md) - cross-cutting AI controls.\n");
+  fs.appendFileSync(path.join(out, "knowledge", "index.md"), "\n* [Layer Zero Assurance](playbooks/layer-zero-assurance.md) - bound workload and foundation contract.\n* [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](playbooks/genai-assurance.md) - cross-cutting AI controls.\n* [Typed Evidence](concepts/typed-evidence.md) - resolvable proof contract.\n");
+  fs.appendFileSync(path.join(out, "knowledge", "playbooks", "index.md"), "\n* [Layer Zero Assurance](layer-zero-assurance.md) - bound workload and foundation contract.\n* [Goal Loop and Skill Routing](goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](genai-assurance.md) - cross-cutting AI controls.\n");
   fs.appendFileSync(path.join(out, "knowledge", "concepts", "index.md"), "\n* [Typed Evidence](typed-evidence.md) - resolvable proof contract.\n");
-  write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers));
-  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "intake-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs"]) {
+  for (const relativePath of ["knowledge/index.md", "knowledge/systems/project-system.md", "knowledge/playbooks/index.md", "knowledge/playbooks/engineering-task-routing.md"]) {
+    const target = path.join(out, relativePath);
+    fs.writeFileSync(target, fs.readFileSync(target, "utf8").replaceAll("Production Readiness 13 Layers", "Production Assurance: 13 Domains"), "utf8");
+  }
+  write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers) + renderLayerZeroProtocol());
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));
@@ -1168,6 +1232,10 @@ function generatePack(args, detected, answers) {
       "skills:gate": "node scripts/skill-registry-gate.mjs --repo .",
       "skills:install:codex": "node scripts/install-codex-skills.mjs",
       "skills:check:codex": "node scripts/install-codex-skills.mjs --check",
+      "catalog:gate": "node scripts/catalog-integrity-gate.mjs --repo .",
+      "intake:gate": `node scripts/intake-gate.mjs --repo \"${repoFromPack}\"`,
+      "classification:gate": `node scripts/workload-classification-gate.mjs --repo \"${repoFromPack}\"`,
+      "foundation:gate": `node scripts/foundation-gate.mjs --repo \"${repoFromPack}\"`,
       "route:gate": `node scripts/route-gate.mjs --repo \"${repoFromPack}\"`,
       "route:request": `node scripts/route-request.mjs --repo \"${repoFromPack}\"`,
       "goal:transition": `node scripts/goal-transition.mjs --repo \"${repoFromPack}\"`,
@@ -1175,8 +1243,14 @@ function generatePack(args, detected, answers) {
       "enterprise-ai:gate": `node scripts/enterprise-ai-gate-all.mjs --repo \"${repoFromPack}\"`
     }
   }, null, 2));
-  write(path.join(out, ".github/workflows/valdris-assurance.yml"), `name: Valdris Assurance\n\non:\n  pull_request:\n  push:\n\npermissions:\n  contents: read\n\njobs:\n  valdris:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24"\n      - run: node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local\n      - run: node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .\n      - name: Validate active goal shape\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active\n      - name: Read goal status\n        id: goal\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node -e "const fs=require('fs'); const complete=JSON.parse(fs.readFileSync('goal/goal.json','utf8')).status==='completed'; fs.appendFileSync(process.env.GITHUB_OUTPUT, 'complete='+complete+'\\n')"\n      - name: Validate completed Valdris run packet\n        if: \${{ steps.goal.outputs.complete == 'true' }}\n        run: node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\n`);
-  write(path.join(out, "commissioning-review.md"), renderReview(adapter).replace("## v0.6 commissioning + trust-boundary hardening", "## v0.7 enterprise + AI goal-loop commissioning"));
+  write(path.join(out, ".github/workflows/valdris-assurance.yml"), `name: Valdris Assurance\n\non:\n  pull_request:\n  push:\n\npermissions:\n  contents: read\n\njobs:\n  valdris:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24"\n      - run: node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local\n      - run: node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .\n      - name: Validate workload classification\n        if: \${{ hashFiles('run/route.json') != '' }}\n        run: node ${scriptFromRepo}/workload-classification-gate.mjs --repo .\n      - name: Validate route v2\n        if: \${{ hashFiles('run/route.json') != '' }}\n        run: node ${scriptFromRepo}/route-gate.mjs --repo .\n      - name: Read validated route gate applicability\n        id: route\n        if: \${{ hashFiles('run/route.json') != '' }}\n        run: node -e "const fs=require('fs'); const route=JSON.parse(fs.readFileSync('run/route.json','utf8')); const foundation=route.gateApplicability?.foundation?.status==='required'; fs.appendFileSync(process.env.GITHUB_OUTPUT, 'foundation='+foundation+'\\n')"\n      - name: Enforce Layer 0 foundation\n        if: \${{ steps.route.outputs.foundation == 'true' }}\n        run: node ${scriptFromRepo}/foundation-gate.mjs --repo .\n      - name: Validate active goal shape\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active\n      - name: Read goal status\n        id: goal\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node -e "const fs=require('fs'); const complete=JSON.parse(fs.readFileSync('goal/goal.json','utf8')).status==='completed'; fs.appendFileSync(process.env.GITHUB_OUTPUT, 'complete='+complete+'\\n')"\n      - name: Validate completed Valdris run packet\n        if: \${{ steps.goal.outputs.complete == 'true' }}\n        run: node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\n`);
+  const generatedWorkflowPath = path.join(out, ".github/workflows/valdris-assurance.yml");
+  const generatedWorkflow = fs.readFileSync(generatedWorkflowPath, "utf8").replace(
+    "      - name: Validate workload classification\n",
+    "      - name: Validate canonical catalogs\n        run: node " + scriptFromRepo + "/catalog-integrity-gate.mjs --repo .\n      - name: Validate authorized intake\n        if: ${{ hashFiles('run/route.json') != '' }}\n        run: node " + scriptFromRepo + "/intake-gate.mjs --repo .\n      - name: Validate workload classification\n",
+  );
+  fs.writeFileSync(generatedWorkflowPath, generatedWorkflow, "utf8");
+  write(path.join(out, "commissioning-review.md"), renderReview(adapter).replace("## v0.6 commissioning + trust-boundary hardening", "## v0.7 enterprise + AI goal-loop commissioning") + renderLayerZeroProtocol());
   return { out, adapter };
 }
 

@@ -503,7 +503,7 @@ visual board update
 
 ## 11. Current verdict
 
-v0.7 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 39 enterprise production controls, ten AI assurance domains, four domain packs, executable goal/context/eval/trajectory validators, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
+v0.7 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 14 Layer 0 foundation controls, 39 enterprise production controls, ten AI assurance domains, five domain packs, executable goal/context/eval/trajectory validators, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
 
 ### Historical pre-v0.7 verdict (superseded)
 
@@ -528,4 +528,4 @@ But it does not yet fully satisfy Nick's enterprise-scale proof-bank standard:
 - no hosted/daemon-grade connector runtime yet
 ```
 
-The next work is deeper provider-backed semantic validation, workload/domain coverage, hosted connector operation, and visual-board coverage of the new v0.7 gates—not another generic checklist.
+The next work is deeper provider-backed semantic validation, workload/domain coverage, hosted connector operation, and visual-board coverage of the new v0.7 gates—not another generic checklist. The release-blocking distinction between structural conformance and semantic assurance is tracked in [Production Assurance Gap Register](PRODUCTION_ASSURANCE_GAP_REGISTER.md).

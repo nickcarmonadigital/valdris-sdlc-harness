@@ -11,11 +11,12 @@ Before planning or editing, read:
 3. `skills/codex-routing.yaml`
 4. `skills/registry.json`
 5. `docs/GOAL_LOOP_AND_SKILL_ROUTER.md`
-6. `docs/ENTERPRISE_CONTROL_MODEL_V2.md`
-7. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
-8. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
-9. `docs/ARCHITECTURE.md`
-10. `docs/CONNECTOR_EVENT_CONTRACT.md`
+6. `docs/LAYER_ZERO_AND_ASSURANCE_TAXONOMY.md`
+7. `docs/ENTERPRISE_CONTROL_MODEL_V2.md`
+8. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
+9. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
+10. `docs/ARCHITECTURE.md`
+11. `docs/CONNECTOR_EVENT_CONTRACT.md`
 
 ## Product rule
 

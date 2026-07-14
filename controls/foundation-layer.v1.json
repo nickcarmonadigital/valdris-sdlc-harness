@@ -1,0 +1,137 @@
+{
+  "schema": "uash.foundation-control-catalog.v1",
+  "version": "1.0.0",
+  "layer": {
+    "id": "foundation",
+    "number": 0,
+    "title": "Foundation / Good Looks Like"
+  },
+  "capabilities": [
+    {
+      "id": "product-domain",
+      "title": "Product & Domain",
+      "description": "Establish the product outcome, users, domain language, invariants, and scope boundaries before delivery work begins.",
+      "dependencies": [],
+      "controls": [
+        {
+          "id": "FND-PRODUCT-001",
+          "requirement": "Target users, desired outcomes, in-scope behavior, exclusions, and success measures are explicit and reviewable.",
+          "proofPolicy": {"types": ["artifact"]}
+        },
+        {
+          "id": "FND-DOMAIN-001",
+          "requirement": "Domain terminology, core entities, ownership boundaries, and business invariants are defined without conflicting meanings.",
+          "proofPolicy": {"types": ["artifact"]}
+        }
+      ]
+    },
+    {
+      "id": "requirements-acceptance",
+      "title": "Requirements & Acceptance",
+      "description": "Turn the requested outcome into bounded, testable behavior and explicit acceptance conditions.",
+      "dependencies": ["product-domain"],
+      "controls": [
+        {
+          "id": "FND-REQ-001",
+          "requirement": "Functional requirements, constraints, assumptions, exclusions, and external dependencies are testable and traceable to the requested outcome.",
+          "proofPolicy": {"types": ["artifact"]}
+        },
+        {
+          "id": "FND-ACCEPTANCE-001",
+          "requirement": "Acceptance criteria cover critical success paths, negative paths, boundary cases, and externally blocked conditions.",
+          "proofPolicy": {"types": ["artifact", "command"]}
+        }
+      ]
+    },
+    {
+      "id": "quality-attributes",
+      "title": "Quality Attributes",
+      "description": "Commission measurable non-functional targets and the failure behavior expected from the workload.",
+      "dependencies": ["product-domain", "requirements-acceptance"],
+      "controls": [
+        {
+          "id": "FND-QUALITY-001",
+          "requirement": "Performance, scale, availability, security, privacy, accessibility, observability, and cost targets are explicit where applicable.",
+          "proofPolicy": {"types": ["artifact", "metric"]}
+        },
+        {
+          "id": "FND-FAILURE-001",
+          "requirement": "Critical failure modes, degraded behavior, recovery objectives, and unsafe outcomes are identified before implementation.",
+          "proofPolicy": {"types": ["artifact", "command"]}
+        }
+      ]
+    },
+    {
+      "id": "architecture-boundaries",
+      "title": "Architecture & Boundaries",
+      "description": "Define the reference architecture, dependency direction, and trust boundaries that keep delivery work out of spaghetti paths.",
+      "dependencies": ["product-domain", "quality-attributes"],
+      "controls": [
+        {
+          "id": "FND-ARCH-001",
+          "requirement": "The reference architecture names modules, responsibilities, dependency direction, asynchronous boundaries, and the normal delivery path.",
+          "proofPolicy": {"types": ["artifact"]}
+        },
+        {
+          "id": "FND-BOUNDARY-001",
+          "requirement": "Data, identity, tenant, provider, network, runtime, and human-authority boundaries are explicit with named owners.",
+          "proofPolicy": {"types": ["artifact"]}
+        }
+      ]
+    },
+    {
+      "id": "data-transactions",
+      "title": "Data & Transactions",
+      "description": "Establish authoritative data ownership and transaction invariants before features depend on them.",
+      "dependencies": ["product-domain", "architecture-boundaries"],
+      "controls": [
+        {
+          "id": "FND-DATA-001",
+          "requirement": "Authoritative data sources, schemas, classification, retention, residency, deletion, migration, and recovery expectations are defined.",
+          "proofPolicy": {"types": ["artifact"]}
+        },
+        {
+          "id": "FND-TRANSACTION-001",
+          "requirement": "Transaction boundaries, consistency, idempotency, concurrency, ordering, reconciliation, and rollback rules are explicit and testable.",
+          "proofPolicy": {"types": ["artifact", "command"]}
+        }
+      ]
+    },
+    {
+      "id": "engineering-test-strategy",
+      "title": "Engineering & Test Strategy",
+      "description": "Define how changes are built, tested, reviewed, promoted, and kept maintainable.",
+      "dependencies": ["requirements-acceptance", "architecture-boundaries", "data-transactions"],
+      "controls": [
+        {
+          "id": "FND-ENGINEERING-001",
+          "requirement": "Coding standards, module boundaries, branch policy, environments, dependency policy, migration policy, and delivery commands are commissioned.",
+          "proofPolicy": {"types": ["artifact"]}
+        },
+        {
+          "id": "FND-TEST-001",
+          "requirement": "The test and evaluation strategy assigns appropriate unit, integration, contract, end-to-end, load, security, and domain proof to owned boundaries.",
+          "proofPolicy": {"types": ["artifact", "command"]}
+        }
+      ]
+    },
+    {
+      "id": "decisions-ownership-risk",
+      "title": "Decisions, Ownership & Risk",
+      "description": "Make hard-to-reverse decisions, operational ownership, approval boundaries, and residual risk explicit.",
+      "dependencies": ["quality-attributes", "architecture-boundaries", "engineering-test-strategy"],
+      "controls": [
+        {
+          "id": "FND-DECISION-001",
+          "requirement": "Hard-to-reverse product, architecture, data, provider, security, and operational decisions have owners, rationale, alternatives, and review triggers.",
+          "proofPolicy": {"types": ["artifact"]}
+        },
+        {
+          "id": "FND-RISK-001",
+          "requirement": "Known risks, Red Zone actions, approvers, escalation paths, runbooks, rollback ownership, and accepted residual risk are recorded.",
+          "proofPolicy": {"types": ["artifact"]}
+        }
+      ]
+    }
+  ]
+}
