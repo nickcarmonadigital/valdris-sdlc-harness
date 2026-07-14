@@ -11,7 +11,8 @@ This is the agent-facing OKF bundle for the Valdris SDLC Harness. Start here, ch
 
 * [Engineering Task Routing](playbooks/engineering-task-routing.md) - use for normal Codex engineering tasks.
 * [GitNexus Code Intelligence](playbooks/gitnexus-code-intelligence.md) - use before codebase, architecture, debugging, refactor, or cross-file claims.
-* [Production Readiness 13 Layers](playbooks/production-readiness-13-layers.md) - use when a task can affect production behavior.
+* [Layer Zero Assurance](playbooks/layer-zero-assurance.md) - bind workload classification to foundation capabilities, tiers, profiles, and proof before delivery.
+* [Production Readiness 13 Domains](playbooks/production-readiness-13-layers.md) - use when a task can affect production behavior.
 * [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - turn a request into one primary skill, bounded checkpoints, and proof-bearing stopping conditions.
 * [Generative AI Assurance](playbooks/genai-assurance.md) - use when models, prompts, retrieval, tools, memory, or agents affect behavior.
 

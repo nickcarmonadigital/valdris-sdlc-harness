@@ -2,7 +2,7 @@
 
 This is a blueprint, not a claim that an iOS game has already been built or shipped. It demonstrates the exact route Valdris should create for a request such as:
 
-> Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, and ship it to TestFlight.
+> Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking for minors, asynchronous workflow orchestration, and ship it to TestFlight.
 
 ## Commission a target repository
 
@@ -19,14 +19,16 @@ Then copy the blueprint decisions from `route-blueprint.json` and `goal-blueprin
 Or generate the executable starting artifacts directly from the target root:
 
 ```bash
-node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, and ship it to TestFlight."
+node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking for minors, asynchronous workflow orchestration, and ship it to TestFlight."
 ```
 
-Review the conservative classifications, resolve architecture and authority unknowns, then run the active-start gates before implementation:
+Review the conservative classifications, resolve architecture and authority unknowns, and populate `foundation/assessment.json` with typed evidence for the applicable Layer 0 controls. Bind that assessment to `controls/foundation-layer.v1.json` with `catalogSha256`, bind it to `run/workload-classification.json` with `workloadClassificationSha256`, and copy the classification's `effectiveTier`. Then run the active-start gates before implementation:
 
 ```bash
 node .valdris-harness/scripts/intake-gate.mjs --repo .
+node .valdris-harness/scripts/workload-classification-gate.mjs --repo .
 node .valdris-harness/scripts/route-gate.mjs --repo .
+node .valdris-harness/scripts/foundation-gate.mjs --repo .
 node .valdris-harness/scripts/goal-gate.mjs --repo . --allow-active
 ```
 
@@ -36,7 +38,7 @@ node .valdris-harness/scripts/goal-gate.mjs --repo . --allow-active
 2. `valdris-feature-delivery` becomes primary for vertical delivery.
 3. `valdris-proof-handoff` becomes primary at the finish line.
 
-Supporting skills are `valdris-genai-assurance`, `valdris-security-audit`, and `valdris-platform-release`. The four domain packs are mobile iOS, multiplayer realtime, digital commerce, and youth AI safety when the intended audience includes minors.
+Supporting skills are `valdris-genai-assurance`, `valdris-security-audit`, and `valdris-platform-release`. Layer 0 is required before implementation, async orchestration is classified as a cross-cutting concern, and the four selected domain packs are mobile iOS, multiplayer realtime, digital commerce, and youth AI safety.
 
 ## First tracer bullet
 

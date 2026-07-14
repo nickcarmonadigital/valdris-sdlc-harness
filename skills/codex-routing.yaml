@@ -15,7 +15,7 @@ selection:
     - "intake when scope remains ambiguous"
 skills:
   - name: "valdris-intake-route"
-    description: "Classify a new or ambiguous Valdris request and select the smallest safe workflow. Select as the primary for generic end-to-end audits, mixed or unclear requests, greenfield discovery without a concrete build outcome, or work whose stakes, authority, production impact, and delivery workflow are not established. Do not use as the delivery primary when the user clearly asks to build a feature/application, fix a bug, perform a security review, change architecture/platform, assure AI, or verify the finish; route those to the matching Valdris skill."
+    description: "Classify a new or ambiguous Valdris request and bind it to the smallest safe workflow. Select as the primary for generic end-to-end audits, mixed or unclear requests, greenfield discovery without a concrete build outcome, or work whose workload class, stakes, authority, production impact, and delivery workflow are not established. Intake owns the workload-classification artifact and route binding; it does not replace the matching delivery primary once the outcome is clear."
     path: "skills/valdris-intake-route/SKILL.md"
     implicit_invocation: true
     primary_for:
@@ -32,7 +32,10 @@ skills:
     required_gates:
       - "goal"
       - "skill-registry"
-    conditional_gates: []
+      - "classification"
+    conditional_gates:
+      - "code-intelligence, foundation, and production for every non-docs audit or routed delivery request"
+      - "controlled assurance docs require the lightweight Foundation review path"
     red_zone_triggers: []
   - name: "valdris-bug-rca"
     description: "Diagnose and repair bugs under the Valdris proof contract. Select as the delivery primary when the requested outcome is to explain or fix broken, intermittent, slow, regressed, or unexplained behavior through reproduction, root-cause evidence, a narrow fix, regression tests, and verified handoff. Use other domain skills only as support when the defect also affects security, platform, or AI boundaries."
@@ -50,6 +53,8 @@ skills:
       - "root cause"
       - "why is"
     required_gates:
+      - "classification"
+      - "foundation"
       - "code-intelligence"
       - "production"
       - "proof"
@@ -67,7 +72,7 @@ skills:
       - "payment-provider-configuration"
       - "customer-communication"
   - name: "valdris-feature-delivery"
-    description: "Deliver a feature through Valdris as small verified vertical slices. Select as the delivery primary when the user clearly asks to build or implement new behavior, an integration, product change, API, UI, data flow, game, mobile app, or full-stack application. Establish the intake/route phase first when its artifacts are absent. Add architecture, security, platform, and GenAI skills only as supporting risk lanes; use valdris-intake-route as primary only when the requested outcome itself remains unclear."
+    description: "Deliver a feature through Valdris as small verified vertical slices. Select as the delivery primary when the user clearly asks to build or implement new behavior, an integration, product change, API, UI, data flow, game, mobile app, or full-stack application. Establish and bind workload classification, then resolve the Layer 0 foundation gate before implementation. Add architecture, security, platform, and GenAI skills only as supporting risk lanes."
     path: "skills/valdris-feature-delivery/SKILL.md"
     implicit_invocation: true
     primary_for:
@@ -82,6 +87,8 @@ skills:
       - "integration"
     required_gates:
       - "goal"
+      - "classification"
+      - "foundation"
       - "code-intelligence"
       - "production"
       - "proof"
@@ -91,7 +98,7 @@ skills:
       - "customer-data"
       - "billing"
   - name: "valdris-architecture-refactor"
-    description: "Design architecture changes and refactors with code-intelligence, dependency, blast-radius, migration, and proof discipline. Select as the primary when redesign, module boundaries, migration, large refactoring, system design, or technical-debt reduction is the requested outcome. Use as a supporting lane for a feature only when architecture is consequential; do not displace feature delivery merely because implementation spans files."
+    description: "Design architecture changes and refactors with code-intelligence, dependency, blast-radius, migration, and proof discipline. Select as the primary when redesign, module boundaries, migration, large refactoring, system design, or technical-debt reduction is the requested outcome. Require bound workload classification and a resolved Layer 0 foundation gate before implementation; use as a supporting lane for features only when architecture is consequential."
     path: "skills/valdris-architecture-refactor/SKILL.md"
     implicit_invocation: true
     primary_for:
@@ -106,6 +113,8 @@ skills:
       - "migrate"
       - "module boundaries"
     required_gates:
+      - "classification"
+      - "foundation"
       - "code-intelligence"
       - "production"
       - "proof"
@@ -132,10 +141,13 @@ skills:
       - "secret"
       - "prompt injection"
     required_gates:
+      - "classification"
+      - "foundation"
+      - "code-intelligence"
       - "production"
-      - "ai-assurance"
       - "proof"
-    conditional_gates: []
+    conditional_gates:
+      - "ai-assurance and eval when AI is involved"
     red_zone_triggers:
       - "iam"
       - "rls"
@@ -162,10 +174,13 @@ skills:
       - "SLO"
       - "incident"
     required_gates:
+      - "classification"
+      - "foundation"
+      - "code-intelligence"
       - "production"
       - "proof"
-      - "smoke"
     conditional_gates:
+      - "smoke for deployed, provider-integration, platform-native, or runtime behavior"
       - "domain pack for platform-native distribution or specialized runtime"
     red_zone_triggers:
       - "production-deploy"
@@ -204,6 +219,9 @@ skills:
       - "embedding"
       - "eval"
     required_gates:
+      - "classification"
+      - "foundation"
+      - "code-intelligence"
       - "ai-assurance"
       - "eval"
       - "trajectory"
@@ -218,7 +236,7 @@ skills:
       - "sensitive-ai-data"
       - "production-agent-promotion"
   - name: "valdris-proof-handoff"
-    description: "Validate a Valdris run packet and produce the final readiness decision and handoff. Select as the primary for verify-before-merge, release-readiness review, issue closure, final proof, or handoff after delivery work is complete. This skill decides whether evidence supports done; it does not perform feature implementation, defect repair, infrastructure changes, or the release operation itself."
+    description: "Validate a Valdris run packet and produce the final readiness decision and handoff. Select as the primary for verify-before-merge, release-readiness review, issue closure, final proof, or handoff after delivery work is complete. Validate bound workload classification and Layer 0 foundation proof whenever the route requires them; this skill decides whether evidence supports done and does not perform delivery work."
     path: "skills/valdris-proof-handoff/SKILL.md"
     implicit_invocation: true
     primary_for:
@@ -239,10 +257,13 @@ skills:
       - "skill-registry"
       - "proof"
     conditional_gates:
+      - "classification when required by the route"
+      - "code-intelligence for every non-docs route"
+      - "foundation when required by workload classification or route"
       - "production for production impact"
       - "ai-assurance and eval for AI impact"
       - "trajectory for multi-checkpoint or agentic execution"
-      - "smoke for deployed, provider, platform-native, or runtime claims"
+      - "smoke for deployed, provider-integration, platform-native, or runtime claims"
       - "commissioned domain packs"
     red_zone_triggers:
       - "approval-override"

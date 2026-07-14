@@ -3,11 +3,14 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  evidencePolicyForEffectiveTier,
+  existingFileWithinRepo,
   gateResult,
   isIsoTimestamp,
   nonEmpty,
   parseRepoFileArgs,
   readJson,
+  sha256File,
   validateTypedEvidence,
 } from "./control-gate-lib.mjs";
 
@@ -49,6 +52,17 @@ export function validateGoalDocument(document, options = {}) {
   if (!PROFILES.has(document.profile)) problems.push("goal profile is invalid");
   if (!nonEmpty(document.commit)) problems.push("goal commit is required");
   if (!nonEmpty(document.environment)) problems.push("goal environment is required");
+  const evidencePolicy = evidencePolicyForEffectiveTier(document.effectiveTier);
+  if (!evidencePolicy) problems.push("goal effectiveTier is invalid");
+  if (!/^[a-f0-9]{64}$/i.test(nonEmpty(document.workloadClassificationSha256))) problems.push("goal workloadClassificationSha256 must be a SHA-256 digest");
+  if (options.classification) {
+    if (document.goalId !== options.classification.runId) problems.push("goal goalId must match workload classification runId");
+    if (document.profile !== options.classification.requestedProfile) problems.push("goal profile must match workload classification");
+    if (document.effectiveTier !== options.classification.effectiveTier) problems.push("goal effectiveTier must match workload classification");
+    if (document.commit !== options.classification.commit) problems.push("goal commit must match workload classification");
+    if (document.environment !== options.classification.environment) problems.push("goal environment must match workload classification");
+    if (document.workloadClassificationSha256 !== options.classificationSha256) problems.push("goal workloadClassificationSha256 does not match run/workload-classification.json");
+  }
   if (!nonEmpty(document.objective)) problems.push("goal objective is required");
   if (!/^[a-f0-9]{64}$/i.test(nonEmpty(document.requestSha256))) problems.push("goal requestSha256 must be a SHA-256 digest");
   if (!/^[a-f0-9]{64}$/i.test(nonEmpty(document.initialRouteSha256))) problems.push("goal initialRouteSha256 must be a SHA-256 digest");
@@ -57,6 +71,9 @@ export function validateGoalDocument(document, options = {}) {
   if (options.requireComplete && document.status !== "completed") problems.push("finish-line goal status must be completed");
   if (options.allowActive && !new Set(["pending", "in_progress", "completed"]).has(document.status)) problems.push(`active-goal validation rejects terminal/blocking status: ${document.status}`);
   validateBudgets(document.budgets, problems);
+  if (options.route?.executionBudget) {
+    for (const field of BUDGET_FIELDS) if (document.budgets?.[field] !== options.route.executionBudget[field]) problems.push(`goal budgets.${field} must match route.executionBudget.${field}`);
+  }
 
   const conditions = Array.isArray(document.stoppingConditions) ? document.stoppingConditions : [];
   if (!Array.isArray(document.stoppingConditions) || conditions.length === 0) problems.push("goal stoppingConditions must be a non-empty array");
@@ -77,7 +94,8 @@ export function validateGoalDocument(document, options = {}) {
       else condition.evidence.forEach((evidence, evidenceIndex) => {
         problems.push(...validateTypedEvidence(evidence, {
           repoRoot,
-          profile: nonEmpty(document.profile) || "production",
+          profile: evidencePolicy?.profile || "production",
+          minimumTechnicalTrust: evidencePolicy?.minimumTechnicalTrust,
           label: `${label}.evidence[${evidenceIndex}]`,
           subject: id,
           asOf: document.generatedAt,
@@ -133,7 +151,12 @@ export function validateGoalDocument(document, options = {}) {
 
 export function validateGoal(filePath, options = {}) {
   try {
-    return validateGoalDocument(readJson(filePath), options);
+    const repoRoot = path.resolve(options.repoRoot || path.dirname(path.dirname(filePath)));
+    const classificationPath = path.resolve(options.classificationPath || path.join(repoRoot, "run", "workload-classification.json"));
+    if (!existingFileWithinRepo(repoRoot, classificationPath)) return baseFailure(["goal requires a real non-symlink run/workload-classification.json inside the repository"]);
+    const routePath = path.resolve(options.routePath || path.join(repoRoot, "run", "route.json"));
+    if (!existingFileWithinRepo(repoRoot, routePath)) return baseFailure(["goal requires a real non-symlink run/route.json inside the repository"]);
+    return validateGoalDocument(readJson(filePath), { ...options, repoRoot, classification: readJson(classificationPath), classificationSha256: sha256File(classificationPath), route: readJson(routePath) });
   } catch (error) {
     return baseFailure([`goal must be valid JSON: ${error.message}`]);
   }

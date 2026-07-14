@@ -2,6 +2,7 @@
 import { randomBytes } from "node:crypto";
 import { closeSync, existsSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { existingFileWithinRepo, readJson, sha256File } from "./control-gate-lib.mjs";
 import { validateGoalDocument } from "./goal-gate.mjs";
 
 function parseArgs(argv) {
@@ -81,7 +82,11 @@ function main() {
   goal.revision += 1;
   goal.generatedAt = now;
   goal.updatedAt = now;
-  const validation = validateGoalDocument(goal, { repoRoot, requireComplete: goal.status === "completed" });
+  const classificationPath = path.join(repoRoot, "run", "workload-classification.json");
+  if (!existingFileWithinRepo(repoRoot, classificationPath)) throw new Error("goal transition requires run/workload-classification.json");
+  const routePath = path.join(repoRoot, "run", "route.json");
+  if (!existingFileWithinRepo(repoRoot, routePath)) throw new Error("goal transition requires run/route.json");
+  const validation = validateGoalDocument(goal, { repoRoot, requireComplete: goal.status === "completed", classification: readJson(classificationPath), classificationSha256: sha256File(classificationPath), route: readJson(routePath) });
   if (!validation.valid) throw new Error(`goal transition rejected: ${validation.problems.join("; ")}`);
     atomicWrite(target, goal);
     console.log(JSON.stringify({ ok: true, goalId: goal.goalId, previousRevision: args.expectedRevision, revision: goal.revision, status: goal.status, checkpoint: args.checkpoint, condition: args.condition }, null, 2));

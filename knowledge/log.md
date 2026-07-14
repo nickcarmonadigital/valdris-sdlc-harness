@@ -1,5 +1,11 @@
 # Knowledge Vault Update Log
 
+## 2026-07-13
+
+* **Update**: Added executable Layer 0 workload classification and Foundation / Good Looks Like assurance ahead of the thirteen shared production domains.
+* **Update**: Classified asynchronous workflow orchestration as a cross-cutting concern spanning business logic, data, platform, observability, and recovery rather than a fourteenth domain.
+* **Update**: Added deterministic effective tiers, controlled-document routing, hard versus conditional production dependencies, and classifier-derived supporting skills.
+
 ## 2026-07-12
 
 * **Update**: Added the eight-skill router and protocol-independent goal/checkpoint loop.

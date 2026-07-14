@@ -1,6 +1,16 @@
 {
   "schema": "uash.route-blueprint.v1",
   "profile": "enterprise",
+  "assuranceTier": {"profileFloor": "T2", "effective": "T3"},
+  "workloadProfiles": ["ai-agentic", "mobile", "payments", "realtime"],
+  "crossCuttingConcerns": [
+    "async-workflow-orchestration",
+    "identity-access-governance",
+    "financial-transaction-integrity",
+    "generative-ai-governance",
+    "production-release-governance"
+  ],
+  "foundation": {"initialApplicability": "required"},
   "primarySkillByPhase": {
     "intake-route": "valdris-intake-route",
     "delivery": "valdris-feature-delivery",
@@ -21,13 +31,14 @@
     {"layer": "cicd-version-control", "initialApplicability": "required"},
     {"layer": "security", "initialApplicability": "required"},
     {"layer": "rate-limiting", "initialApplicability": "required"},
-    {"layer": "caching-cdn", "initialApplicability": "potentially-affected"},
+    {"layer": "caching-cdn", "initialApplicability": "required"},
     {"layer": "load-balancing-scaling", "initialApplicability": "required"},
     {"layer": "error-tracking-logs-observability", "initialApplicability": "required"},
     {"layer": "availability-recovery-dr", "initialApplicability": "required"}
   ],
   "ai": {"workloadDetected": true, "rag": "undecided", "tools": true, "memory": true},
   "domainPacks": ["mobile-ios", "multiplayer-realtime", "digital-commerce", "youth-ai-safety"],
+  "domainFeatures": {"mobile-ios": {"push": false, "distribution": true}},
   "redZone": [
     "Apple signing credentials or App Store Connect keys",
     "TestFlight upload or promotion",

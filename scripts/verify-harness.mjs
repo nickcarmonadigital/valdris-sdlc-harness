@@ -270,12 +270,26 @@ try {
   assert(adapter.codeGraph?.scanCommand?.includes("code-intelligence-scan.mjs"), "code-intelligence scan command missing");
   assert(adapter.codeGraph?.gateCommand?.includes("code-intelligence-gate-all.mjs"), "cross-platform code-intelligence gate command missing");
   assert(adapter.codeGraph?.license === "PolyForm-Noncommercial-1.0.0", "GitNexus license boundary missing");
+  assert(adapter.workloadTaxonomy?.schema === "uash.workload-classification.v1", "workload classification schema missing from adapter");
+  assert(adapter.workloadTaxonomy?.catalogSchema === "uash.workload-taxonomy-catalog.v1", "workload taxonomy catalog schema missing from adapter");
+  assert(adapter.workloadTaxonomy?.catalog === "controls/workload-taxonomy.v1.json", "workload taxonomy catalog path missing from adapter");
+  assert(adapter.workloadTaxonomy?.artifact === "run/workload-classification.json", "workload classification artifact path missing from adapter");
+  assert(adapter.workloadTaxonomy?.routeSchema === "uash.route.v2" && adapter.workloadTaxonomy?.stableNodeId === "route", "route v2 workload classification must preserve the stable route node");
+  assert(adapter.workloadTaxonomy?.gateCommand?.includes("workload-classification-gate.mjs") && adapter.workloadTaxonomy?.enforcement === "gate", "workload classification gate enforcement missing from adapter");
+  assert(adapter.foundationAssurance?.schema === "uash.foundation-assessment.v1", "foundation assessment schema missing from adapter");
+  assert(adapter.foundationAssurance?.catalogSchema === "uash.foundation-control-catalog.v1", "foundation catalog schema missing from adapter");
+  assert(adapter.foundationAssurance?.catalog === "controls/foundation-layer.v1.json", "foundation catalog path missing from adapter");
+  assert(adapter.foundationAssurance?.artifact === "foundation/assessment.json", "foundation assessment artifact path missing from adapter");
+  assert(["catalogSha256", "workloadClassificationSha256", "runId", "profile", "effectiveTier", "commit", "environment"].every((binding) => adapter.foundationAssurance?.requiredBindings?.includes(binding)), "foundation assessment bindings missing from adapter");
+  assert(adapter.foundationAssurance?.layer?.number === 0 && adapter.foundationAssurance?.enforcement === "gate", "Layer 0 foundation gate enforcement missing from adapter");
+  assert(adapter.foundationAssurance?.gateCommand?.includes("foundation-gate.mjs"), "foundation gate command missing from adapter");
   assert(adapter.productionReadiness.layers.length === 13, "production readiness layer count mismatch");
   assert(adapter.productionReadiness.schema === "uash.production-readiness.v2", "production readiness v2 schema missing");
   assert(adapter.productionReadiness.catalog === "controls/production-layers.v2.json", "production control catalog missing");
   assert(adapter.productionReadiness.gateCommand?.includes("production-layer-gate.mjs"), "production layer gate command missing");
   assert(adapter.generativeAiAssurance?.schema === "uash.ai-assurance.v1", "AI assurance commissioning missing");
   assert(adapter.domainAssurance?.availablePacks?.includes("mobile-ios"), "iOS domain pack commissioning missing");
+  assert(adapter.domainAssurance?.availablePacks?.includes("saas"), "SaaS domain pack commissioning missing");
   assert(adapter.goalLoop?.schema === "uash.goal.v1", "goal loop commissioning missing");
   assert(adapter.skillRouter?.catalogSize === 8, "eight-skill router commissioning missing");
   assert(adapter.skillRouter?.codexRouting === "skills/codex-routing.yaml" && adapter.skillRouter?.implicitInvocation === true, "Codex YAML skill routing commissioning missing");
@@ -302,13 +316,25 @@ try {
   assert(adapter.proofSchema?.schema === "uash.proof.v1", "proof schema missing from adapter");
   assert(adapter.humanApproval?.tokenRequiredForGrant, "human approval token contract missing from adapter");
   assert(adapter.ciEnforcement?.workflowTemplate === ".github/workflows/valdris-assurance.yml", "CI workflow template missing from adapter");
-  await readFile(path.join(generatedOut, "AGENTS.md"), "utf8");
-  await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
+  assert(adapter.ciEnforcement?.requiredCommands?.some((command) => command.includes("workload-classification-gate.mjs")), "classification command missing from generated CI policy");
+  assert(adapter.ciEnforcement?.requiredCommands?.some((command) => command.includes("catalog-integrity-gate.mjs")) && adapter.ciEnforcement?.requiredCommands?.some((command) => command.includes("route-gate.mjs")), "catalog-integrity or route v2 validation command missing from generated CI policy");
+  assert(adapter.ciEnforcement?.requiredCommands?.some((command) => command.includes("foundation-gate.mjs")), "foundation command missing from generated CI policy");
+  assert(adapter.finishLineAssurance?.requiredArtifacts?.includes("run/workload-classification.json"), "workload classification missing from finish-line artifacts");
+  assert(adapter.finishLineAssurance?.requiredArtifacts?.some((artifact) => artifact.includes("foundation/assessment.json")), "foundation assessment missing from finish-line artifacts");
+  const generatedAgents = await readFile(path.join(generatedOut, "AGENTS.md"), "utf8");
+  const generatedClaude = await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
+  assert(generatedAgents.includes("Layer 0 workload and foundation assurance") && generatedAgents.includes("Async and multi-agent orchestration are cross-cutting"), "generated AGENTS front door missing Layer 0 or orchestration contract");
+  assert(generatedClaude.includes("run/workload-classification.json") && generatedClaude.includes("foundation/assessment.json"), "generated Claude front door missing Layer 0 artifacts");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Codex Runtime Prompt.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Code Intelligence Graph.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "GitNexus Code Intelligence.md"), "utf8");
-  await readFile(path.join(generatedOut, "docs", "Good Looks Like Foundation.md"), "utf8");
+  const generatedFoundationDoc = await readFile(path.join(generatedOut, "docs", "Good Looks Like Foundation.md"), "utf8");
+  const generatedValidationDoc = await readFile(path.join(generatedOut, "docs", "Validation Commands.md"), "utf8");
+  const generatedRunTemplate = await readFile(path.join(generatedOut, "runs", "_run-template", "README.md"), "utf8");
+  assert(generatedFoundationDoc.includes("Foundation / Good Looks Like layer is numbered 0"), "generated foundation doc missing executable Layer 0 contract");
+  assert(generatedValidationDoc.includes("catalog-integrity-gate.mjs") && generatedValidationDoc.includes("workload-classification-gate.mjs") && generatedValidationDoc.includes("route-gate.mjs") && generatedValidationDoc.includes("foundation-gate.mjs"), "generated validation doc missing ordered catalog-integrity or Layer 0 gate commands");
+  assert(generatedRunTemplate.includes("run/workload-classification.json") && generatedRunTemplate.includes("foundation/assessment.json"), "generated run template missing Layer 0 artifacts");
   await readFile(path.join(generatedOut, "docs", "Code Quality Guardrails.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Enterprise Proof Bank.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Operating Intelligence Layer.md"), "utf8");
@@ -327,21 +353,46 @@ try {
   await readFile(path.join(generatedOut, "scripts", "code-intelligence-gate.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "code-intelligence-gate-all.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "anchor-gate.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "workload-classifier-lib.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "workload-classification-gate.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "scripts", "foundation-gate.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "production-layer-gate.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "enterprise-ai-gate-all.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "route-request.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "goal-transition.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "domain-assurance-gate.mjs"), "utf8");
+  await readFile(path.join(generatedOut, "controls", "workload-taxonomy.v1.json"), "utf8");
+  await readFile(path.join(generatedOut, "controls", "foundation-layer.v1.json"), "utf8");
   await readFile(path.join(generatedOut, "controls", "production-layers.v2.json"), "utf8");
   await readFile(path.join(generatedOut, "controls", "domain-packs", "mobile-ios.v1.json"), "utf8");
+  await readFile(path.join(generatedOut, "controls", "domain-packs", "saas.v1.json"), "utf8");
   await readFile(path.join(generatedOut, "skills", "registry.json"), "utf8");
   await readFile(path.join(generatedOut, ".agents", "skills", "registry.json"), "utf8");
   await readFile(path.join(generatedOut, ".claude", "skills", "registry.json"), "utf8");
-  await readFile(path.join(generatedOut, ".github", "workflows", "valdris-assurance.yml"), "utf8");
+  const generatedWorkflow = await readFile(path.join(generatedOut, ".github", "workflows", "valdris-assurance.yml"), "utf8");
+  const catalogGateIndex = generatedWorkflow.indexOf("catalog-integrity-gate.mjs");
+  const intakeGateIndex = generatedWorkflow.indexOf("intake-gate.mjs");
+  const classificationGateIndex = generatedWorkflow.indexOf("workload-classification-gate.mjs");
+  const routeGateIndex = generatedWorkflow.indexOf("route-gate.mjs");
+  const applicabilityIndex = generatedWorkflow.indexOf("Read validated route gate applicability");
+  const foundationGateIndex = generatedWorkflow.indexOf("foundation-gate.mjs");
+  assert(catalogGateIndex >= 0 && intakeGateIndex > catalogGateIndex && classificationGateIndex > intakeGateIndex && routeGateIndex > classificationGateIndex && applicabilityIndex > routeGateIndex && foundationGateIndex > applicabilityIndex && generatedWorkflow.includes("steps.route.outputs.foundation == 'true'"), "generated CI must validate canonical catalogs, intake, classification, and route v2 before enforcing route-applicable foundation assurance");
   const generatedPackage = JSON.parse(await readFile(path.join(generatedOut, "package.json"), "utf8"));
-  assert(generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"] && generatedPackage.scripts?.["skills:install:codex"] && generatedPackage.scripts?.["skills:check:codex"], "generated package scripts missing v0.7 router/loop/gate/install commands");
+  assert(generatedPackage.scripts?.["catalog:gate"] && generatedPackage.scripts?.["intake:gate"] && generatedPackage.scripts?.["classification:gate"] && generatedPackage.scripts?.["foundation:gate"] && generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"] && generatedPackage.scripts?.["skills:install:codex"] && generatedPackage.scripts?.["skills:check:codex"], "generated package scripts missing catalog-integrity, active-start, Layer 0, or v0.7 router/loop/gate/install commands");
+  await readFile(path.join(generatedOut, "scripts", "catalog-integrity-gate.mjs"), "utf8");
+  await run(node, ["scripts/catalog-integrity-gate.mjs", "--repo", "."], { cwd: generatedOut });
+  const generatedProductionCatalog = path.join(generatedOut, "controls", "production-layers.v2.json");
+  const originalGeneratedProductionCatalog = await readFile(generatedProductionCatalog, "utf8");
+  const weakenedGeneratedProductionCatalog = JSON.parse(originalGeneratedProductionCatalog);
+  weakenedGeneratedProductionCatalog.layers[0].controls[0].requirement = "Any frontend evidence passes.";
+  await writeFile(generatedProductionCatalog, `${JSON.stringify(weakenedGeneratedProductionCatalog, null, 2)}\n`, "utf8");
+  await expectCommandFailure(node, ["scripts/catalog-integrity-gate.mjs", "--repo", "."], { cwd: generatedOut }, "canonical catalog integrity mismatch", "unconditional catalog policy downgrade");
+  await writeFile(generatedProductionCatalog, originalGeneratedProductionCatalog, "utf8");
   await readFile(path.join(generatedOut, "scripts", "install-codex-skills.mjs"), "utf8");
   await readFile(path.join(generatedOut, "scripts", "okf-vault-gate.mjs"), "utf8");
+  const generatedKnowledgeIndex = await readFile(path.join(generatedOut, "knowledge", "index.md"), "utf8");
+  const generatedLayerZeroPlaybook = await readFile(path.join(generatedOut, "knowledge", "playbooks", "layer-zero-assurance.md"), "utf8");
+  assert(generatedKnowledgeIndex.includes("Layer Zero Assurance") && generatedKnowledgeIndex.includes("Production Assurance: 13 Domains") && generatedLayerZeroPlaybook.includes("not a fourteenth production domain"), "generated knowledge vault missing Layer 0 or assurance-domain taxonomy");
 
   const rootEnterpriseProofBank = await readFile(path.join(root, "docs", "ENTERPRISE_PROOF_BANK.md"), "utf8");
   const rootOperatingIntelligence = await readFile(path.join(root, "docs", "OPERATING_INTELLIGENCE_LAYER.md"), "utf8");
@@ -429,7 +480,75 @@ try {
     await mkdir(routeRoot, { recursive: true });
     await run(node, ["scripts/route-request.mjs", "--repo", routeRoot, "--run-id", `ROUTE-${id}`, "--request", request]);
     const route = JSON.parse(await readFile(path.join(routeRoot, "run", "route.json"), "utf8"));
+    const classification = JSON.parse(await readFile(path.join(routeRoot, "run", "workload-classification.json"), "utf8"));
+    assert(route.schema === "uash.route.v2", `${id} request did not generate route v2`);
+    assert(classification.schema === "uash.workload-classification.v1", `${id} request did not generate a workload classification`);
+    await run(node, ["scripts/workload-classification-gate.mjs", "--repo", routeRoot]);
+    await run(node, ["scripts/route-gate.mjs", "--repo", routeRoot]);
+    if (id === "bug") {
+      const routePath = path.join(routeRoot, "run", "route.json");
+      const originalRoute = await readFile(routePath, "utf8");
+      route.gateApplicability.foundation = { status: "not-applicable", reason: "Attempted Layer 0 downgrade." };
+      await writeFile(routePath, `${JSON.stringify(route, null, 2)}\n`, "utf8");
+      await expectCommandFailure(node, ["scripts/route-gate.mjs", "--repo", routeRoot], {}, "foundation", "route-required Layer 0 foundation downgrade");
+      await writeFile(routePath, originalRoute, "utf8");
+    }
     assert(route.skillPhases[1].primary === expectedPrimary, `${id} request routed to ${route.skillPhases[1].primary} instead of ${expectedPrimary}`);
+  }
+
+  const routingRegressions = [
+    {
+      id: "controlled-hipaa-docs", request: "Document our HIPAA patient data retention policy only", profile: "production",
+      check: (route, classification, intake) => classification.taskType === "docs-only" && classification.controlledDocumentation === true && classification.effectiveTier === "T3" && classification.crossCuttingConcerns.includes("privacy-data-governance") && route.gateApplicability.foundation.status === "required" && route.gateApplicability.production.status === "not-applicable" && intake.allowedActions.includes("create scoped branch changes"),
+    },
+    {
+      id: "ordinary-readme", request: "Write a README", profile: "production",
+      check: (route, classification, intake) => classification.taskType === "docs-only" && classification.controlledDocumentation === false && classification.workloadProfiles.length === 0 && classification.crossCuttingConcerns.length === 0 && route.gateApplicability.foundation.status === "not-applicable" && intake.allowedActions.includes("create scoped branch changes"),
+    },
+    {
+      id: "context-provider", request: "Refactor React context provider", profile: "production",
+      check: (route) => route.gateApplicability.smoke.status === "not-applicable",
+    },
+    {
+      id: "provider-integration", request: "Integrate an external provider and deploy it", profile: "production",
+      check: (route) => route.gateApplicability.smoke.status === "required",
+    },
+    {
+      id: "api-client-library", request: "Update API client library", profile: "production",
+      check: (route, classification) => classification.primaryArchetype === "library-cli" && route.productionLayers.filter((layer) => layer.initialApplicability === "required").length < 13,
+    },
+    {
+      id: "web-api-full-stack", request: "Build web app with API backend", profile: "production",
+      check: (route) => route.productionLayers.every((layer) => layer.initialApplicability === "required"),
+    },
+    {
+      id: "static-landing", request: "Update the static landing page", profile: "production",
+      check: (route) => route.productionLayers.find((layer) => layer.layer === "frontend")?.initialApplicability === "required" && route.productionLayers.find((layer) => layer.layer === "backend-api-logic")?.initialApplicability !== "required" && route.productionLayers.find((layer) => layer.layer === "auth-permissions-rls")?.initialApplicability !== "required",
+    },
+    {
+      id: "temporal-workflow", request: "Add a Temporal workflow", profile: "production",
+      check: (route, classification) => classification.crossCuttingConcerns.includes("async-workflow-orchestration") && route.skillPhases[1].supporting.includes("valdris-architecture-refactor") && route.skillPhases[1].supporting.includes("valdris-platform-release"),
+    },
+    {
+      id: "rbac", request: "Add RBAC", profile: "production",
+      check: (route, classification) => classification.crossCuttingConcerns.includes("identity-access-governance") && route.skillPhases[1].supporting.includes("valdris-security-audit") && !classification.workloadProfiles.includes("saas"),
+    },
+    {
+      id: "loan-decision", request: "Build a loan application decision system", profile: "production",
+      check: (route, classification) => classification.effectiveTier === "T3" && classification.crossCuttingConcerns.includes("regulated-decision-governance") && route.skillPhases[1].supporting.includes("valdris-security-audit"),
+    },
+  ];
+  for (const regression of routingRegressions) {
+    const routeRoot = path.join(tempRoot, `route-regression-${regression.id}`);
+    await mkdir(routeRoot, { recursive: true });
+    await run(node, ["scripts/route-request.mjs", "--repo", routeRoot, "--run-id", `REGRESSION-${regression.id}`, "--profile", regression.profile, "--request", regression.request]);
+    const route = JSON.parse(await readFile(path.join(routeRoot, "run", "route.json"), "utf8"));
+    const classification = JSON.parse(await readFile(path.join(routeRoot, "run", "workload-classification.json"), "utf8"));
+    const intake = JSON.parse(await readFile(path.join(routeRoot, "run", "intake.json"), "utf8"));
+    await run(node, ["scripts/intake-gate.mjs", "--repo", routeRoot]);
+    await run(node, ["scripts/workload-classification-gate.mjs", "--repo", routeRoot]);
+    await run(node, ["scripts/route-gate.mjs", "--repo", routeRoot]);
+    assert(regression.check(route, classification, intake), `route regression failed: ${regression.id}`);
   }
 
   await mkdir(pyTarget, { recursive: true });
@@ -444,10 +563,12 @@ try {
   const iosAdapter = JSON.parse(await readFile(path.join(iosPack, "project-adapter.json"), "utf8"));
   assert(iosAdapter.detected.frameworks.includes("Xcode/iOS") && iosAdapter.mobileIos?.detected === true, "iOS/Xcode repo detection missing");
   assert(iosAdapter.codeGraph.scanCommand.includes(".valdris-harness/scripts") && iosAdapter.finishLineAssurance.gateCommand.includes(".valdris-harness/scripts"), "nested adapter commands do not point at the installed pack");
+  assert(iosAdapter.workloadTaxonomy.gateCommand.includes(".valdris-harness/scripts") && iosAdapter.foundationAssurance.gateCommand.includes(".valdris-harness/scripts"), "nested Layer 0 adapter commands do not point at the installed pack");
   assert(iosAdapter.validation.knowledge.includes(".valdris-harness/scripts") && iosAdapter.validation.finishLine.includes(".valdris-harness/scripts"), "nested adapter validation commands are not target-root-relative");
   assert(String(iosAdapter.validation.build).includes("xcodebuild archive") && String(iosAdapter.validation.test).includes("xcodebuild test"), "iOS macOS-runner validation commands missing");
   const iosRequest = "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, minors, and ship it to TestFlight.";
   await run(node, ["scripts/route-request.mjs", "--repo", iosTarget, "--run-id", "IOS-ROUTE-VERIFY", "--profile", "enterprise", "--environment", "verification", "--actor", "verification-owner", "--request", iosRequest]);
+  await run(node, [path.join(iosPack, "scripts", "workload-classification-gate.mjs"), "--repo", iosTarget], { cwd: iosTarget });
   await run(node, ["scripts/intake-gate.mjs", "--repo", iosTarget]);
   await run(node, ["scripts/route-gate.mjs", "--repo", iosTarget]);
   await run(node, [path.join(iosPack, "scripts", "route-gate.mjs"), "--repo", iosTarget], { cwd: iosTarget });
@@ -464,11 +585,11 @@ try {
   assert(iosRoute.ai.aiProfile === "AI-3" && ["mobile-ios", "multiplayer-realtime", "digital-commerce", "youth-ai-safety"].every((pack) => iosRoute.domainPacks.includes(pack)), "iOS AI request router missed required assurance packs");
   assert(iosRoute.skillPhases.every((phase) => phase.supporting.includes("valdris-security-audit") && phase.supporting.includes("valdris-platform-release")), "iOS accounts/purchases route missed security or platform support skills");
   const iosGeneratedPackage = JSON.parse(await readFile(path.join(iosPack, "package.json"), "utf8"));
-  assert(iosGeneratedPackage.scripts["route:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["goal:gate:active"], "nested package scripts do not target the application repo or support active goals");
+  assert(iosGeneratedPackage.scripts["intake:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["classification:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["foundation:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["route:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["goal:gate:active"], "nested package scripts do not target the application repo or support the complete active-start sequence");
   const iosWorkflow = await readFile(path.join(iosPack, ".github", "workflows", "valdris-assurance.yml"), "utf8");
-  assert(iosWorkflow.includes(".valdris-harness/scripts") && iosWorkflow.includes("goal-gate.mjs --repo . --allow-active") && iosWorkflow.includes("steps.goal.outputs.complete"), "nested CI template paths or active-goal handling are invalid");
+  assert(iosWorkflow.includes(".valdris-harness/scripts") && iosWorkflow.includes("catalog-integrity-gate.mjs") && iosWorkflow.includes("intake-gate.mjs") && iosWorkflow.includes("workload-classification-gate.mjs") && iosWorkflow.includes("route-gate.mjs") && iosWorkflow.includes("foundation-gate.mjs") && iosWorkflow.includes("Read validated route gate applicability") && iosWorkflow.includes("steps.route.outputs.foundation") && iosWorkflow.includes("goal-gate.mjs --repo . --allow-active") && iosWorkflow.includes("steps.goal.outputs.complete"), "nested CI template paths, catalog integrity, complete active-start ordering, validated route-applicable Layer 0 gates, or active-goal handling are invalid");
   const iosValidationDoc = await readFile(path.join(iosPack, "docs", "Validation Commands.md"), "utf8");
-  assert(iosValidationDoc.includes(".valdris-harness/scripts") && iosValidationDoc.includes("--repo .valdris-harness"), "generated validation document uses pack-root commands in a nested install");
+  assert(iosValidationDoc.includes(".valdris-harness/scripts") && iosValidationDoc.includes("catalog-integrity-gate.mjs") && iosValidationDoc.includes("intake-gate.mjs") && iosValidationDoc.includes("workload-classification-gate.mjs") && iosValidationDoc.includes("route-gate.mjs") && iosValidationDoc.includes("foundation-gate.mjs") && iosValidationDoc.includes("goal-gate.mjs") && iosValidationDoc.includes("--repo .valdris-harness"), "generated validation document uses pack-root commands or omits catalog integrity / complete active-start gates in a nested install");
   await run(node, [path.join(iosPack, "scripts", "okf-vault-gate.mjs"), "--repo", iosPack], { cwd: iosTarget });
   await run(node, [path.join(iosPack, "scripts", "skill-registry-gate.mjs"), "--repo", iosPack], { cwd: iosTarget });
   await mkdir(nonAiIosTarget, { recursive: true });
@@ -808,10 +929,12 @@ try {
       {
         commissioningQuestionGroups: questionGroups.length,
         commissioningQuestions: questionGroups.reduce((count, group) => count + group.questions.length, 0),
-        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".agents/skills", ".claude/skills", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "knowledge/index.md", "controls/", "scripts/enterprise-ai-gate-all.mjs", ".github/workflows/valdris-assurance.yml"],
+        generatedFrontDoors: ["AGENTS.md", "CLAUDE.md", ".agents/skills", ".claude/skills", ".claude/commands/valdris-sdlc-harness.md", "docs/Codex Runtime Prompt.md", "knowledge/index.md", "controls/workload-taxonomy.v1.json", "controls/foundation-layer.v1.json", "scripts/workload-classification-gate.mjs", "scripts/foundation-gate.mjs", "scripts/enterprise-ai-gate-all.mjs", ".github/workflows/valdris-assurance.yml"],
         adapterSchema: adapter.schema,
         generatorVersion: adapter.generatorVersion,
         foundationBlueprint: true,
+        workloadTaxonomy: true,
+        foundationAssurance: true,
         codeQualityGuardrails: true,
         enterpriseProofBank: true,
         operatingIntelligence: true,

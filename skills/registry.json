@@ -5,14 +5,16 @@
     "catalogSize": 8,
     "maxPrimary": 1,
     "maxSupporting": 4,
-    "policy": "Select one primary skill per phase and the smallest supporting set. Ask for confirmation only when ambiguity changes scope, authority, architecture, or proof.",
+    "policy": "Select one primary skill per phase and the smallest supporting set. Classification and foundation are gates, not selectable skills. Ask for confirmation only when ambiguity changes scope, authority, architecture, or proof.",
     "phaseTransitions": ["intake-route", "delivery", "proof-handoff"],
     "tieBreakOrder": ["explicit user outcome", "highest consequential risk", "artifact being changed", "narrowest matching primaryFor", "intake when scope remains ambiguous"]
   },
   "gatePolicy": {
     "always": ["goal", "skill-registry", "context", "proof"],
+    "classification": "Intake creates run/workload-classification.json from the commissioned taxonomy and binds it to the authorized request and route. Delivery must not rely on an absent, stale, rewritten, or unbound classification.",
+    "foundation": "Layer 0 precedes implementation for every non-docs route. All delivery primaries must validate foundation/assessment.json against the required capabilities, effective assurance tier, selected profiles, and proof contract before implementation; audit-only work may report a failing foundation instead of pretending it passed.",
     "code-intelligence": "Required for code, architecture, debugging, refactor, or cross-file claims; docs-only work records a reason.",
-    "production": "Required for production-impacting work; all 13 layers begin required, potentially-affected, or not-applicable and must resolve before finish.",
+    "production": "Required for production-impacting work. The 13 canonical assurance domains are the current shared baseline, not an exhaustive list of literal runtime layers; all begin required, potentially-affected, or not-applicable and must resolve before finish. Asynchronous orchestration is assessed across affected domains as a cross-cutting concern.",
     "ai-assurance": "Required when an AI workload is detected; otherwise write an explicit skipped artifact.",
     "eval": "Required for AI/probabilistic behavior and any commissioned regression or quality threshold; otherwise record non-applicability in the route.",
     "trajectory": "Required for multi-checkpoint or agentic execution.",
@@ -25,7 +27,8 @@
       "path": "skills/valdris-intake-route/SKILL.md",
       "primaryFor": ["intake", "ambiguous", "audit", "greenfield"],
       "triggers": ["new issue", "new task", "classify", "route", "what workflow"],
-      "requiredGates": ["goal", "skill-registry"],
+      "requiredGates": ["goal", "skill-registry", "classification"],
+      "conditionalGates": ["code-intelligence, foundation, and production for every non-docs audit or routed delivery request", "controlled assurance docs require the lightweight Foundation review path"],
       "redZoneTriggers": []
     },
     {
@@ -33,7 +36,7 @@
       "path": "skills/valdris-bug-rca/SKILL.md",
       "primaryFor": ["bug", "regression", "performance", "incident-diagnosis"],
       "triggers": ["broken", "failing", "regression", "root cause", "why is"],
-      "requiredGates": ["code-intelligence", "production", "proof"],
+      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
       "conditionalGates": ["smoke when runtime behavior is claimed", "ai-assurance and eval when AI is involved"],
       "redZoneTriggers": ["production-data-access", "production-telemetry-containing-customer-data", "incident-containment", "charge", "refund", "void", "financial-reconciliation", "payment-provider-configuration", "customer-communication"]
     },
@@ -42,7 +45,7 @@
       "path": "skills/valdris-feature-delivery/SKILL.md",
       "primaryFor": ["feature", "integration", "full-stack"],
       "triggers": ["build", "add", "implement", "feature", "integration"],
-      "requiredGates": ["goal", "code-intelligence", "production", "proof"],
+      "requiredGates": ["goal", "classification", "foundation", "code-intelligence", "production", "proof"],
       "redZoneTriggers": ["production-deploy", "customer-data", "billing"]
     },
     {
@@ -50,7 +53,7 @@
       "path": "skills/valdris-architecture-refactor/SKILL.md",
       "primaryFor": ["architecture", "refactor", "migration", "technical-debt"],
       "triggers": ["architecture", "redesign", "refactor", "migrate", "module boundaries"],
-      "requiredGates": ["code-intelligence", "production", "proof"],
+      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
       "redZoneTriggers": ["breaking-contract", "production-migration"]
     },
     {
@@ -58,7 +61,8 @@
       "path": "skills/valdris-security-audit/SKILL.md",
       "primaryFor": ["security", "privacy", "auth", "permissions", "compliance"],
       "triggers": ["security", "vulnerability", "auth", "RLS", "tenant", "secret", "prompt injection"],
-      "requiredGates": ["production", "ai-assurance", "proof"],
+      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
+      "conditionalGates": ["ai-assurance and eval when AI is involved"],
       "redZoneTriggers": ["iam", "rls", "credential-rotation", "destructive-security-test", "customer-data"]
     },
     {
@@ -66,8 +70,8 @@
       "path": "skills/valdris-platform-release/SKILL.md",
       "primaryFor": ["cloud", "deployment", "release", "reliability", "incident"],
       "triggers": ["deploy", "cloud", "CI", "rollback", "backup", "failover", "SLO", "incident"],
-      "requiredGates": ["production", "proof", "smoke"],
-      "conditionalGates": ["domain pack for platform-native distribution or specialized runtime"],
+      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
+      "conditionalGates": ["smoke for deployed, provider-integration, platform-native, or runtime behavior", "domain pack for platform-native distribution or specialized runtime"],
       "redZoneTriggers": ["production-deploy", "testflight-upload", "app-store-promotion", "dns", "traffic", "secrets", "cloud-resource", "failover", "chaos", "charge", "refund", "void", "financial-reconciliation", "payment-provider-configuration", "customer-communication"]
     },
     {
@@ -75,7 +79,7 @@
       "path": "skills/valdris-genai-assurance/SKILL.md",
       "primaryFor": ["ai-product", "agent", "rag", "model", "prompt", "eval"],
       "triggers": ["AI", "LLM", "agent", "RAG", "model", "prompt", "embedding", "eval"],
-      "requiredGates": ["ai-assurance", "eval", "trajectory", "production", "proof"],
+      "requiredGates": ["classification", "foundation", "code-intelligence", "ai-assurance", "eval", "trajectory", "production", "proof"],
       "conditionalGates": ["RAG, tool, and memory controls only when each feature is active", "youth-safety domain pack for child or teen audiences"],
       "redZoneTriggers": ["consequential-tool", "model-provider-change", "sensitive-ai-data", "production-agent-promotion"]
     },
@@ -85,7 +89,7 @@
       "primaryFor": ["review", "finish", "handoff", "release-readiness"],
       "triggers": ["done", "verify", "review", "handoff", "release ready", "close issue"],
       "requiredGates": ["goal", "context", "skill-registry", "proof"],
-      "conditionalGates": ["production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider, platform-native, or runtime claims", "commissioned domain packs"],
+      "conditionalGates": ["classification when required by the route", "code-intelligence for every non-docs route", "foundation when required by workload classification or route", "production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider-integration, platform-native, or runtime claims", "commissioned domain packs"],
       "redZoneTriggers": ["approval-override", "accept-residual-risk"]
     }
   ]
