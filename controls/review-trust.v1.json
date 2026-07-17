@@ -1,0 +1,5 @@
+{
+  "schema": "valdris.review-trust.v1",
+  "description": "Project-owned Ed25519 public keys authorized to attest independent Valdris reviews. Commissioned projects must add an active key; private keys remain outside the repository and outside agent reach.",
+  "keys": []
+}

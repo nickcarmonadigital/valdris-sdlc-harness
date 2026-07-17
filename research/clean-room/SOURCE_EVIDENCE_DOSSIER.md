@@ -6,7 +6,7 @@ This dossier concatenates the source-specific evidence notes. It is clean-room: 
 
 - Evidence files: **24 / 24**
 - Video transcript content was not invented; where extraction was blocked, the evidence file says so.
-- Latest uploaded harness zip and Prompt Library are treated as Nick-provided harness inputs, not HumanLayer sources.
+- The private work-harness snapshot and prompt library are treated as restricted behavioral inputs, not HumanLayer sources and not copyable implementation sources.
 
 
 ---
@@ -158,11 +158,11 @@ URL: https://github.com/ai-that-works/ai-that-works/tree/main/2026-01-13-applyin
 
 ## Provenance
 
-- Local clone created by subagent: `/root/cleanroom_ai_that_works`
+- Local clone created in an ephemeral research workspace.
 - Commit-pinned URL: https://github.com/ai-that-works/ai-that-works/tree/8fe1d814279706cb5ac4ef35c2d0e50bfd68a595/2026-01-13-applying-12-factor-principles-to-coding-agent-sdks
 - Main HEAD observed: `8fe1d814279706cb5ac4ef35c2d0e50bfd68a595`
 - Last commit touching requested path: `802ac0d5c645375dc62f257e89117352884430e6`
-- Subagent dossier: `/root/ai_that_works_2026_01_13_cleanroom_dossier.md`
+- Research dossier stored in an ephemeral workspace during the audit.
 
 ## Key public concepts extracted
 
@@ -431,7 +431,7 @@ URL: https://www.youtube.com/watch?v=kBqRubi7dSk&t=1859s
 # Source 12: homebrew-humanlayer
 
 URL: https://github.com/humanlayer/homebrew-humanlayer
-Local path inspected: `/root/humanlayer_survey/repos/homebrew-humanlayer`
+Local path inspected: `<ephemeral-research-root>/homebrew-humanlayer`
 
 ## Provenance
 
@@ -467,7 +467,7 @@ High for packaging/version/channel/path evidence; low for internal app implement
 # Source 13: distilled
 
 URL: https://github.com/humanlayer/distilled
-Local path inspected: `/root/humanlayer_survey/repos/distilled`
+Local path inspected: `<ephemeral-research-root>/distilled`
 
 ## Provenance
 
@@ -503,7 +503,7 @@ High for static architecture/generator/package signals; medium for generated SDK
 # Source 14: pulumi-resend
 
 URL: https://github.com/humanlayer/pulumi-resend
-Local path inspected: `/root/humanlayer_survey/repos/pulumi-resend`
+Local path inspected: `<ephemeral-research-root>/pulumi-resend`
 
 ## Provenance
 
@@ -539,7 +539,7 @@ High for static resource/function/config evidence; no live Resend API validation
 # Source 15: pulumi-stripe
 
 URL: https://github.com/humanlayer/pulumi-stripe
-Local path inspected: `/root/humanlayer_survey/repos/pulumi-stripe`
+Local path inspected: `<ephemeral-research-root>/pulumi-stripe`
 
 ## Provenance
 
@@ -571,7 +571,7 @@ High for static resource/config/packaging evidence; medium for legal/license int
 # Source 16: react-hotkeys-hook
 
 URL: https://github.com/humanlayer/react-hotkeys-hook
-Local path inspected: `/root/humanlayer_survey/repos/react-hotkeys-hook`
+Local path inspected: `<ephemeral-research-root>/react-hotkeys-hook`
 
 ## Provenance
 
@@ -601,7 +601,7 @@ High for API/package evidence; medium for HumanLayer-specific product intent.
 # Source 17: skills
 
 URL: https://github.com/humanlayer/skills
-Local path inspected: `/root/humanlayer_survey/repos/skills`
+Local path inspected: `<ephemeral-research-root>/skills`
 
 ## Provenance
 
@@ -634,7 +634,7 @@ High for license/plugin structure/skill behavior.
 # Source 18: rpi-coordination-template
 
 URL: https://github.com/humanlayer/rpi-coordination-template
-Local path inspected: `/root/humanlayer_survey/repos/rpi-coordination-template`
+Local path inspected: `<ephemeral-research-root>/rpi-coordination-template`
 
 ## Provenance
 
@@ -668,7 +668,7 @@ High for template workflow; high that reuse should be reference-only unless lice
 # Source 19: 12-factor-agents
 
 URL: https://github.com/humanlayer/12-factor-agents
-Local path inspected: `/root/humanlayer_survey/repos/12-factor-agents`
+Local path inspected: `<ephemeral-research-root>/12-factor-agents`
 
 ## Provenance
 
@@ -702,7 +702,7 @@ High for principles and workflows; medium for package-level license interpretati
 # Source 20: agentcontrolplane
 
 URL: https://github.com/humanlayer/agentcontrolplane
-Local path inspected: `/root/humanlayer_survey/repos/agentcontrolplane`
+Local path inspected: `<ephemeral-research-root>/agentcontrolplane`
 
 ## Provenance
 
@@ -740,7 +740,7 @@ High for CRD/domain model extraction; medium-high for controller workflow becaus
 
 # Source 21: Latest uploaded agentic SDLC harness zip
 
-Path: `/root/.hermes/cache/documents/doc_625c778a47b8_agentic-sdlc-harness-main (3).zip`
+Path: withheld private work-harness snapshot
 
 ## Provenance
 
@@ -751,14 +751,14 @@ Path: `/root/.hermes/cache/documents/doc_625c778a47b8_agentic-sdlc-harness-main 
 
 ## Clean-room evidence value
 
-This is Nick's updated project harness reference, not a HumanLayer source. It supplies the universalization target: a filesystem-native agentic SDLC harness with lanes, gates, run packets, prompts, and anti-skip flow enforcement.
+This is a restricted project harness reference, not a HumanLayer source. It contributes behavioral requirements for lanes, gates, run packets, prompts, and anti-skip flow enforcement; its project content is excluded.
 
 
 ---
 
 # Source 22: Latest extracted harness
 
-Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main`
+Path: `<restricted-private-harness-extraction>`
 
 ## Inventory signals
 
@@ -766,21 +766,21 @@ Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main`
 - Root files: ['README.md', 'CONTEXT.md', '00_MAP.md', 'INDEX.md', 'REVIEW_ORDER.md', 'CLAUDE.md', '.mcp.json', '.pre-commit-config.yaml', '.gitignore', 'AGENTS.md']
 - Workspace CONTEXT files: 61
 - Core gate scripts: 12
-- Prompt Library path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main/references/Prompt Library.md`
+- Prompt Library path: `<restricted-private-prompt-library>`
 
 ## Clean-room evidence value
 
-This source defines the project-specific Utari implementation that should be split into:
+This source defines a project-specific implementation that should be split into:
 
 1. Universal core: lanes/stages, run packets, gate scripts, Answer Contract, GitNexus code-intelligence pattern, ADR/self-heal pattern.
-2. Project adapter: Utari-specific source truth, branch/deploy rules, Red Zone, validation commands, Linear/Jelani/team style, runtime maps.
+2. Project adapter: project-specific source truth, branch and deploy rules, Red Zone, validation commands, tracker and team style, and runtime maps.
 
 
 ---
 
 # Source 23: Prompt Library local
 
-Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main/references/Prompt Library.md`
+Path: `<restricted-private-prompt-library>`
 
 ## Provenance
 
@@ -827,7 +827,7 @@ High — file read directly from latest uploaded zip extraction.
 
 # Source 24: Prompt Library GitHub
 
-URL: `https://raw.githubusercontent.com/Nickmegladon/agentic-sdlc-harness/main/references/Prompt%20Library.md`
+URL: withheld private prompt-library mirror
 
 ## Fetch result
 

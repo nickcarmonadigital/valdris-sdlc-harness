@@ -18,6 +18,10 @@ export const CANONICAL_CATALOG_SHA256 = Object.freeze({
   "controls/domain-packs/multiplayer-realtime.v1.json": "953a499cdef8496e899b5e6d4118ead694d9a191d26c443cc32e5d93f3065da6",
   "controls/domain-packs/digital-commerce.v1.json": "cc57dbf35907911909104ed0821287a641782be33b9788d64c3b077486d2647f",
   "controls/domain-packs/youth-ai-safety.v1.json": "52796b6f8724e98843e569449ea703a91234a960663720a5eb78a26257790074",
+  "controls/provenance/thirteen-layers.upstream.v1.json": "8e5901e1894f94e0ecec37433718d9b51a11a7e143c76519c066074846ea9260",
+  "controls/crosswalks/thirteen-layers-to-uash.v1.json": "41269ae1176199c79a7693438497b61bcaa4440d142ccdf4a32ea911ad2ed00e",
+  "controls/assurance-execution-policy.v1.json": "8c44818fbdedf8c7bb3333e76fa53e5cd7256b035390fe49abf4abb899b62655",
+  "controls/capability-packs/async-workflows.v1.json": "dbe9b82d84aa66be8285b057467b049bcba55a71a81b13cb54276d205dd87392",
 });
 
 function semanticSha256(filePath) {

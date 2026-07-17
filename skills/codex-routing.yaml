@@ -255,6 +255,12 @@ skills:
       - "goal"
       - "context"
       - "skill-registry"
+      - "provenance"
+      - "neutrality"
+      - "privacy"
+      - "schema-compat"
+      - "run-packet"
+      - "review"
       - "proof"
     conditional_gates:
       - "classification when required by the route"
@@ -265,6 +271,7 @@ skills:
       - "trajectory for multi-checkpoint or agentic execution"
       - "smoke for deployed, provider-integration, platform-native, or runtime claims"
       - "commissioned domain packs"
+      - "rca for bug, regression, incident, or self-heal routes"
     red_zone_triggers:
       - "approval-override"
       - "accept-residual-risk"

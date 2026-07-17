@@ -19,7 +19,7 @@ Then copy the blueprint decisions from `route-blueprint.json` and `goal-blueprin
 Or generate the executable starting artifacts directly from the target root:
 
 ```bash
-node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking for minors, asynchronous workflow orchestration, and ship it to TestFlight."
+node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "operator" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking for minors, asynchronous workflow orchestration, and ship it to TestFlight."
 ```
 
 Review the conservative classifications, resolve architecture and authority unknowns, and populate `foundation/assessment.json` with typed evidence for the applicable Layer 0 controls. Bind that assessment to `controls/foundation-layer.v1.json` with `catalogSha256`, bind it to `run/workload-classification.json` with `workloadClassificationSha256`, and copy the classification's `effectiveTier`. Then run the active-start gates before implementation:
@@ -50,15 +50,14 @@ Build deterministic tests and the first AI eval dataset before expanding into pu
 
 A Windows agent may author iOS source and complete backend/control-plane work, but it cannot truthfully produce macOS/Xcode, simulator/device, signing, App Store Connect, or TestFlight proof. `IOS-QUALITY-001` requires CI-attested native tests, `IOS-BUILD-001` requires CI-attested `xcodebuild archive` evidence plus an external build receipt, and `IOS-DISTRIBUTION-001` requires an App Store Connect/TestFlight provider report plus scoped human approval. Those artifacts and Apple smoke must share the commissioned scheme, bundle/team reference, adapter digest, and immutable build ID. The stopping conditions remain open until that evidence exists.
 
-For Apple release approval, first emit the matching `approval.requested` event, then predeclare a unique grant event ID, store it as `bridgeEventId` in the `IOS-DISTRIBUTION-001` approval evidence, and grant against the exact domain packet:
+For Apple release approval, first emit the matching `approval.requested` event, then predeclare a unique grant event ID, store it as `bridgeEventId` in the `IOS-DISTRIBUTION-001` approval evidence, and grant against the exact domain packet. Run the grant from a human operator shell containing both `UASH_BRIDGE_ACCESS_TOKEN` and `UASH_HUMAN_APPROVAL_TOKEN`; the emitter reads those credentials from the operator-only environment and sends the access and human headers. Never place either token in command arguments or request bodies. Neither the bridge-only `UASH_BRIDGE_INTEGRITY_KEY` nor either raw token belongs in the evidence packet:
 
 ```bash
 UASH_BRIDGE_URL="$BRIDGE_URL" node .valdris-harness/scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved this TestFlight build" \
   --event-id "$RELEASE_EVENT_ID" \
   --artifact domain/assurance.json \
   --status ok --actor human \
-  --approval-owner "$RELEASE_OWNER" --approval-scope testflight-release \
-  --human-token "$UASH_HUMAN_APPROVAL_TOKEN"
+  --approval-owner "$RELEASE_OWNER" --approval-scope testflight-release
 ```
 
 The bridge hashes `domain/assurance.json` at grant time. Rewriting the build identity or domain packet after approval invalidates completion.

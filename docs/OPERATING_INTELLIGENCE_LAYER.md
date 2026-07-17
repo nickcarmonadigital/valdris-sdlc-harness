@@ -26,6 +26,51 @@ This document is the durable map for that layer. The v0.7 commissioning generato
 | Team harness registry | Prompts, evals, connectors, skills, and proof banks need owners. | team harness registry | registry/owner map, drift checks |
 | Human-agent protocol | Approvals and escalations must be scoped, durable, and auditable. | human-agent operating protocol | approval contract, contact channels, SLA |
 
+## Portable context-quality A/B contract
+
+A context manifest is not proof that the loaded context helped. Every non-empty `context/manifest.json` must therefore include a provider-neutral `contextQuality` contract using `uash.context-quality-eval.v1`. The contract commissions one suite ID, a `no-context` or `limited-context` baseline, a versioned repo-specific case set, a versioned answer key, and a metric with `direction`, a positive `minDelta`, and a `candidateThreshold`. Case-set and answer-key entries carry repository-relative paths, SHA-256 digests, and matching positive case counts.
+
+```json
+{
+  "contextQuality": {
+    "schema": "uash.context-quality-eval.v1",
+    "suiteId": "context-lane-quality",
+    "baselineMode": "no-context",
+    "caseSet": { "id": "repo-context-cases", "version": "v1", "path": "evals/context-cases.json", "sha256": "<sha256>", "caseCount": 1 },
+    "answerKey": { "id": "repo-context-answer-key", "version": "v1", "path": "evals/context-answer-key.json", "sha256": "<sha256>", "caseCount": 1 },
+    "metric": { "id": "answer-key-score", "direction": "higher-is-better", "minDelta": 0.1, "candidateThreshold": 0.8 }
+  }
+}
+```
+
+`evals/results.json` must contain exactly one suite with that ID and a `uash.context-comparison.v1` `contextComparison`. Its SHA-256 binds the exact current context manifest. Baseline and candidate arms must use identical case-set, answer-key, evaluator, model, prompt, and config identities; each arm has a distinct repository-local JSON result using `uash.context-arm-result.v1` and a verified digest. The baseline arm uses the commissioned baseline mode, while the candidate uses `loaded-context`.
+
+Each typed arm result binds the exact manifest and run identity, suite/context mode, case set, answer key, evaluator, model, prompt, config, and metric. Its ordered `cases` array contains one numeric `value` and boolean `criticalRegression` per commissioned case. The only v1 aggregation method is `arithmetic-mean`; the gate derives `aggregate.value`, `aggregate.caseCount`, and `aggregate.criticalRegressions` from those rows, then requires the arm, suite, delta, and comparison to agree. Unstructured logs and detached declared scores are rejected.
+
+```json
+{
+  "schema": "uash.context-arm-result.v1",
+  "suiteId": "context-lane-quality",
+  "contextManifestSha256": "<sha256>",
+  "runId": "example-run",
+  "profile": "enterprise",
+  "commit": "<commit>",
+  "environment": "verification",
+  "contextMode": "loaded-context",
+  "caseSet": { "id": "repo-context-cases", "version": "v1", "path": "evals/context-cases.json", "sha256": "<sha256>", "caseCount": 1 },
+  "answerKey": { "id": "repo-context-answer-key", "version": "v1", "path": "evals/context-answer-key.json", "sha256": "<sha256>", "caseCount": 1 },
+  "evaluator": { "name": "project-evaluator", "version": "v1" },
+  "model": { "provider": "provider-or-local", "name": "model-or-engine", "version": "v1" },
+  "promptVersion": "context-eval-v1",
+  "configDigest": "<sha256>",
+  "metric": { "id": "answer-key-score", "direction": "higher-is-better", "minDelta": 0.1, "candidateThreshold": 0.8 },
+  "cases": [{ "caseId": "routing", "value": 1, "criticalRegression": false }],
+  "aggregate": { "method": "arithmetic-mean", "caseCount": 1, "value": 1, "criticalRegressions": 0 }
+}
+```
+
+The gate recomputes improvement as `candidate - baseline` for `higher-is-better`, or `baseline - candidate` for `lower-is-better`. It rejects a missing arm, identity drift, result tampering, a stale manifest binding, a false or evidence-detached score/delta, a missed candidate threshold, improvement below `minDelta`, or any non-zero critical-regression count. Verification uses deterministic local fixtures and never requires a live model call.
+
 ## Pattern from paper-gap mining
 
 The recurring missing/partial patterns are:
@@ -55,7 +100,7 @@ The recurring missing/partial patterns are:
 | Generated adapter fields | Built structurally | `project-adapter.json` includes `operatingIntelligence`, `enterpriseProofBank`, `teamHarnessRegistry`, `humanAgentProtocol`. |
 | Generated docs | Built structurally | Generated packs include Good Looks Like, Code Quality, Enterprise Proof Bank, Operating Intelligence, Team Registry, Human Agent Protocol. |
 | Verifier assertions | Built structurally | `npm run verify:harness` checks expanded groups, adapter fields, and generated docs. |
-| Executable goal/context/skill/eval/trajectory gates | Built + adversarially verified | Strict JSON validators reject incomplete goals, secret context, registry escapes, failing thresholds, violations, and budget overruns. |
+| Executable goal/context/skill/eval/trajectory gates | Built + adversarially verified | Strict JSON validators reject incomplete goals, secret context, registry escapes, failing thresholds, violations, budget overruns, and context A/B comparisons that are missing, unbound, mismatched, tampered, regressive, or below the commissioned delta. |
 | Enterprise production controls | Built + adversarially verified | 39 catalog controls use typed evidence under `uash.production-readiness.v2`. |
 | Generative AI assurance | Built + adversarially verified | Ten cross-cutting controls plus RAG/tool/memory activation, eval, and trajectory gates. |
 | Domain packs | Built initial set | iOS, realtime multiplayer, digital commerce, and youth-AI catalogs with a generic assurance gate. |

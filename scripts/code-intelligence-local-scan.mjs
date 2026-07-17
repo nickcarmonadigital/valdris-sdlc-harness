@@ -174,7 +174,7 @@ const graph = {
   codeIntelligenceCompatible: true,
   codeIntelligence,
   generatedAt,
-  repoRoot: repo,
+  repoRoot: "<repo-root>",
   git: { commit, branch, dirty: dirtyFileCount > 0, dirtyFileCount },
   summary: {
     nodes: nodes.length,

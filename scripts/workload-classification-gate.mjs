@@ -13,8 +13,8 @@ import {
 
 const ASSET_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-function sha256File(filePath) {
-  return createHash("sha256").update(readFileSync(filePath)).digest("hex");
+function jsonValueSha256(filePath) {
+  return createHash("sha256").update(JSON.stringify(JSON.parse(readFileSync(filePath, "utf8")))).digest("hex");
 }
 
 function assetPaths(assetRoot) {
@@ -44,7 +44,7 @@ export function validateWorkloadClassificationFile(filePath, options = {}) {
     const productionControlIds = (production.layers || []).flatMap((layer) => (layer.controls || []).map((control) => control.id));
     const aiControlIds = (ai.controls || []).map((control) => control.id);
     const domainPackIds = (domainIndex.packs || []).map((pack) => pack.id);
-    const catalogDigests = Object.fromEntries(Object.entries(paths).map(([name, target]) => [name, sha256File(target)]));
+    const catalogDigests = Object.fromEntries(Object.entries(paths).map(([name, target]) => [name, jsonValueSha256(target)]));
     const problems = [
       ...validateCatalogIntegrity(assetRoot).problems,
       ...validateWorkloadTaxonomy(taxonomy, { productionLayers: PRODUCTION_LAYERS, productionControlIds, aiControlIds, domainPackIds }),

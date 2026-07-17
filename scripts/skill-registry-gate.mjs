@@ -101,6 +101,7 @@ export function validateSkillRegistry(document, repoRoot) {
   if (document.selection?.maxPrimary !== 1) problems.push("skill registry selection.maxPrimary must be 1");
   if (document.selection?.maxSupporting !== 4) problems.push("skill registry selection.maxSupporting must be 4");
   if (JSON.stringify(document.selection?.phaseTransitions) !== JSON.stringify(REQUIRED_PHASE_TRANSITIONS)) problems.push("skill registry phaseTransitions must be exactly intake-route, delivery, proof-handoff");
+  if (!nonEmpty(document.gatePolicy?.review).startsWith("Every completion requires an Ed25519-attested independent review artifact")) problems.push("skill registry review policy must require independent review for every completion");
   const seen = new Set();
   for (const skill of document.skills || []) {
     const name = nonEmpty(skill?.name);
@@ -134,6 +135,8 @@ export function validateSkillRegistry(document, repoRoot) {
     if (!skill.requiredGates?.length) problems.push(`skill ${name} must declare requiredGates`);
   }
   for (const skill of REQUIRED_PRIMARY_SKILLS) if (!seen.has(skill)) problems.push(`skill registry missing canonical primary skill: ${skill}`);
+  const proofHandoff = (document.skills || []).find((skill) => skill?.name === "valdris-proof-handoff");
+  if (!["run-packet", "review", "proof"].every((gate) => proofHandoff?.requiredGates?.includes(gate))) problems.push("valdris-proof-handoff must require run-packet, review, and proof gates for every completion");
   const canonicalSkillRoot = path.join(repoRoot, "skills");
   for (const entry of readdirSync(canonicalSkillRoot, { withFileTypes: true })) {
     if (entry.isDirectory() && entry.name.startsWith("valdris-") && !seen.has(entry.name)) problems.push(`skills contains unregistered Valdris skill: ${entry.name}`);

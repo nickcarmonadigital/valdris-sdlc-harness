@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PRODUCTION_LAYERS } from "./production-layer-gate.mjs";
-import { hasTokenCorrelatedUnknownApproval } from "./enterprise-ai-gate-all.mjs";
+import { hasTokenCorrelatedUnknownApproval, runEnterpriseValidator } from "./enterprise-ai-gate-all.mjs";
 import { classifyWorkload, deliveryPrimaryForTask, executionBudgetForClassification, MANDATORY_FORBIDDEN_ACTIONS, MANDATORY_RED_ZONE, supportingSkillsForClassification } from "./workload-classifier-lib.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,6 +23,10 @@ function relativeIso(hours) {
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function jsonValueSha256(file) {
+  return sha256(JSON.stringify(JSON.parse(readFileSync(file, "utf8"))));
 }
 
 function writeJson(root, relative, value) {
@@ -98,6 +102,8 @@ function buildFixture(root) {
   writeFileSync(path.join(root, "AGENTS.md"), "# Verification context\n");
   mkdirSync(path.join(root, "src"), { recursive: true });
   writeFileSync(path.join(root, "src", "verification-fixture.js"), "export function verifiedFixture() { return 'verified'; }\n");
+  writeJson(root, "evals/context-quality-cases.json", { schema: "uash.context-case-set.v1", cases: [{ id: "routing", prompt: "Select the correct Valdris lane." }, { id: "proof", prompt: "Name the required finish-line proof." }] });
+  writeJson(root, "evals/context-quality-answer-key.json", { schema: "uash.context-answer-key.v1", answers: [{ caseId: "routing", expected: "route before delivery" }, { caseId: "proof", expected: "completed goal and run packet" }] });
   const digest = sha256(readFileSync(path.join(root, "proof", "evidence.txt")));
   const contextDigest = sha256(readFileSync(path.join(root, "AGENTS.md")));
   const productionCatalog = JSON.parse(readFileSync(path.join(root, "controls", "production-layers.v2.json"), "utf8"));
@@ -108,11 +114,11 @@ function buildFixture(root) {
   const registryPath = path.join(root, "skills", "registry.json");
   const requestText = "Evaluate an enterprise AI agent harness with RAG, tools, memory, async workflow orchestration, and typed controls.";
   const catalogDigests = {
-    taxonomy: sha256(readFileSync(path.join(root, "controls", "workload-taxonomy.v1.json"))),
-    foundation: sha256(readFileSync(path.join(root, "controls", "foundation-layer.v1.json"))),
-    production: sha256(readFileSync(path.join(root, "controls", "production-layers.v2.json"))),
-    ai: sha256(readFileSync(path.join(root, "controls", "genai-assurance.v1.json"))),
-    domainIndex: sha256(readFileSync(path.join(root, "controls", "domain-packs", "index.json"))),
+    taxonomy: jsonValueSha256(path.join(root, "controls", "workload-taxonomy.v1.json")),
+    foundation: jsonValueSha256(path.join(root, "controls", "foundation-layer.v1.json")),
+    production: jsonValueSha256(path.join(root, "controls", "production-layers.v2.json")),
+    ai: jsonValueSha256(path.join(root, "controls", "genai-assurance.v1.json")),
+    domainIndex: jsonValueSha256(path.join(root, "controls", "domain-packs", "index.json")),
   };
   const classification = classifyWorkload({
     runId: "VERIFY-001", generatedAt: NOW, requestText, requestSha256: sha256(requestText), requestedProfile: PROFILE,
@@ -134,7 +140,7 @@ function buildFixture(root) {
   const binding = classificationBinding(root, classification);
   writeJson(root, "run/route.json", {
     schema: "uash.route.v2", runId: "VERIFY-001", generatedAt: NOW, profile: PROFILE, requestedProfile: PROFILE, commit: COMMIT, environment: ENVIRONMENT, taskType: classification.taskType, controlledDocumentation: classification.controlledDocumentation, executionBudget,
-    requestSignals: classification.matchedSignals, intakeSha256: sha256(readFileSync(intakePath)), workloadClassificationSha256: sha256(readFileSync(classificationPath)), registrySha256: sha256(readFileSync(registryPath)),
+    requestSignals: classification.matchedSignals, intakeSha256: sha256(readFileSync(intakePath)), workloadClassificationSha256: sha256(readFileSync(classificationPath)), registrySha256: jsonValueSha256(registryPath),
     catalogDigests: {
       ...catalogDigests, domainPacks: {}
     },
@@ -170,7 +176,7 @@ function buildFixture(root) {
     schema: "uash.foundation-assessment.v1", generatedAt: NOW, runId: "VERIFY-001", status: "passed",
     summary: "Layer 0 product, requirements, architecture, strategy, ownership, and risk controls are evidence-backed.",
     profile: PROFILE, effectiveTier: classification.effectiveTier, environment: ENVIRONMENT, commit: COMMIT, owner: "verification-owner",
-    catalogSha256: catalogDigests.foundation,
+    catalogSha256: sha256(readFileSync(path.join(root, "controls", "foundation-layer.v1.json"))),
     workloadClassificationSha256: sha256(readFileSync(classificationPath)),
     capabilities: foundationCatalog.capabilities.map((capability) => ({
       id: capability.id, applicability: "required", status: "passed", owner: "verification-owner",
@@ -202,6 +208,37 @@ function buildFixture(root) {
   };
   writeJson(root, "goal/goal.json", goal);
 
+  const contextCaseSet = { id: "repo-context-cases", version: "v1", path: "evals/context-quality-cases.json", sha256: sha256(readFileSync(path.join(root, "evals", "context-quality-cases.json"))), caseCount: 2 };
+  const contextAnswerKey = { id: "repo-context-answer-key", version: "v1", path: "evals/context-quality-answer-key.json", sha256: sha256(readFileSync(path.join(root, "evals", "context-quality-answer-key.json"))), caseCount: 2 };
+  const contextMetric = { id: "answer-key-score", direction: "higher-is-better", minDelta: 0.25, candidateThreshold: 0.9 };
+  writeJson(root, "context/manifest.json", {
+    schema: "uash.context-manifest.v1", generatedAt: NOW, runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT,
+    loadedFiles: [{ path: "AGENTS.md", sha256: contextDigest, loadedAt: NOW }],
+    contextQuality: { schema: "uash.context-quality-eval.v1", suiteId: "context-lane-quality", baselineMode: "no-context", caseSet: contextCaseSet, answerKey: contextAnswerKey, metric: contextMetric },
+  });
+  const contextManifestSha256 = sha256(readFileSync(path.join(root, "context", "manifest.json")));
+  const contextEvaluator = { name: "valdris-context-verifier", version: "1.0.0" };
+  const contextModel = { provider: "synthetic", name: "deterministic-fixture", version: "v1" };
+  const contextPromptVersion = "context-verification-v1";
+  const contextConfigDigest = sha256("context-verifier-config-v1");
+  const contextArmIdentity = { caseSet: contextCaseSet, answerKey: contextAnswerKey, evaluator: contextEvaluator, model: contextModel, promptVersion: contextPromptVersion, configDigest: contextConfigDigest };
+  const contextResultIdentity = {
+    schema: "uash.context-arm-result.v1", suiteId: "context-lane-quality", contextManifestSha256,
+    runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT,
+    ...contextArmIdentity, metric: contextMetric,
+  };
+  const baselineContextResult = {
+    ...contextResultIdentity, contextMode: "no-context",
+    cases: [{ caseId: "routing", value: 0, criticalRegression: false }, { caseId: "proof", value: 1, criticalRegression: false }],
+    aggregate: { method: "arithmetic-mean", caseCount: 2, value: 0.5, criticalRegressions: 0 },
+  };
+  const candidateContextResult = {
+    ...contextResultIdentity, contextMode: "loaded-context",
+    cases: [{ caseId: "routing", value: 1, criticalRegression: false }, { caseId: "proof", value: 1, criticalRegression: false }],
+    aggregate: { method: "arithmetic-mean", caseCount: 2, value: 1, criticalRegressions: 0 },
+  };
+  writeJson(root, "proof/context-baseline-results.json", baselineContextResult);
+  writeJson(root, "proof/context-candidate-results.json", candidateContextResult);
   writeJson(root, "evals/results.json", {
     schema: "uash.eval-results.v1", runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT, generatedAt: NOW, status: "passed",
     suites: [{
@@ -213,6 +250,19 @@ function buildFixture(root) {
       slices: [{ id: "adversarial", threshold: 1, value: 1, operator: ">=" }],
       resultPath: "proof/eval-results.jsonl", resultDigest: sha256("{\"case\":\"synthetic\",\"passed\":true}\n"),
       threshold: 1, value: 1, operator: ">=", startedAt: NOW, completedAt: NOW
+    }, {
+      id: "context-lane-quality", kind: "ai",
+      datasets: [{ id: contextCaseSet.id, version: contextCaseSet.version, sha256: contextCaseSet.sha256, caseCount: contextCaseSet.caseCount }],
+      rubrics: [{ id: contextAnswerKey.id, version: contextAnswerKey.version, sha256: contextAnswerKey.sha256 }],
+      evaluator: contextEvaluator, configDigest: contextConfigDigest, model: contextModel, promptVersion: contextPromptVersion, criticalFailures: 0,
+      slices: [{ id: "context-quality", threshold: 0.9, value: 1, operator: ">=" }],
+      resultPath: "proof/context-candidate-results.json", resultDigest: sha256(readFileSync(path.join(root, "proof", "context-candidate-results.json"))),
+      threshold: 0.9, value: 1, operator: ">=", startedAt: NOW, completedAt: NOW,
+      contextComparison: {
+        schema: "uash.context-comparison.v1", contextManifestSha256, baselineMode: "no-context", metric: contextMetric, criticalRegressions: 0, delta: 0.5,
+        baseline: { contextMode: "no-context", ...contextArmIdentity, value: 0.5, resultPath: "proof/context-baseline-results.json", resultDigest: sha256(readFileSync(path.join(root, "proof", "context-baseline-results.json"))) },
+        candidate: { contextMode: "loaded-context", ...contextArmIdentity, value: 1, resultPath: "proof/context-candidate-results.json", resultDigest: sha256(readFileSync(path.join(root, "proof", "context-candidate-results.json"))) },
+      },
     }],
   });
   writeJson(root, "trajectory/trajectory.json", {
@@ -221,10 +271,6 @@ function buildFixture(root) {
     attempts: [{ id: "attempt-1", outcome: "succeeded", startedAt: NOW, completedAt: NOW, usage: { toolCalls: 20, tokens: 5000, costUsd: 1, wallClockMinutes: 2 }, actions: ["write-temporary-fixtures", "run-gates"] }],
     forbiddenActions: ["agent-self-approval", "fabricated-evidence"], violations: [],
     tracePath: "proof/trajectory.jsonl", traceDigest: sha256("{\"attempt\":\"attempt-1\",\"outcome\":\"succeeded\"}\n")
-  });
-  writeJson(root, "context/manifest.json", {
-    schema: "uash.context-manifest.v1", generatedAt: NOW, runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT,
-    loadedFiles: [{ path: "AGENTS.md", sha256: contextDigest, loadedAt: NOW }],
   });
   writeJson(root, "waivers/waivers.json", { schema: "uash.waiver-ledger.v1", generatedAt: NOW, runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT, waivers: [] });
   const graph = spawnSync(process.execPath, [path.join(ROOT, "scripts", "code-intelligence-scan.mjs"), "--repo", root, "--provider", "local"], { encoding: "utf8" });
@@ -250,6 +296,7 @@ async function main() {
   try {
     const baseline = buildFixture(root);
     const baselineEval = JSON.parse(readFileSync(path.join(root, "evals", "results.json"), "utf8"));
+    const baselineContextCandidateResult = JSON.parse(readFileSync(path.join(root, "proof", "context-candidate-results.json"), "utf8"));
     const unknown = { id: "regulatory-applicability" };
     const classificationDigest = baseline.binding.workloadClassificationSha256;
     const localOnlyApproval = { type: "approval", actorType: "human", status: "granted", trustTier: "human-approved", producer: { kind: "human" }, scope: `classification-unknown:${unknown.id}`, runId: baseline.classification.runId, workloadClassificationSha256: classificationDigest, unknownId: unknown.id };
@@ -257,6 +304,21 @@ async function main() {
     const correlatedApproval = { ...localOnlyApproval, bridgeEventId: "VERIFY-MATERIAL-UNKNOWN-001", tokenCorrelation: { runId: baseline.classification.runId, workloadClassificationSha256: classificationDigest, unknownId: unknown.id } };
     assert(hasTokenCorrelatedUnknownApproval({ evidence: [correlatedApproval] }, unknown, baseline.classification, classificationDigest), "token-correlated material-unknown approval was rejected");
     negative.push("local-only material-unknown approval");
+
+    const hangingGate = path.join(root, "synthetic-hanging-gate.mjs");
+    writeFileSync(hangingGate, "setInterval(() => {}, 1000);\n", "utf8");
+    const timedOutGate = runEnterpriseValidator(hangingGate, root, { timeoutMs: 100, maxBufferBytes: 1024 });
+    assert(timedOutGate.status !== 0 && timedOutGate.error?.code === "ETIMEDOUT", "enterprise aggregate did not terminate a hung validator");
+    rmSync(hangingGate, { force: true });
+    negative.push("hung aggregate validator timeout");
+
+    const noisyGate = path.join(root, "synthetic-noisy-gate.mjs");
+    writeFileSync(noisyGate, "process.stdout.write('x'.repeat(4096));\n", "utf8");
+    const boundedOutputGate = runEnterpriseValidator(noisyGate, root, { timeoutMs: 1000, maxBufferBytes: 256 });
+    assert(boundedOutputGate.status !== 0 && boundedOutputGate.error, "enterprise aggregate accepted validator output above its buffer bound");
+    rmSync(noisyGate, { force: true });
+    negative.push("aggregate validator output bound");
+
     const all = runGate(root, "enterprise-ai-gate-all.mjs");
     assert(all.status === 0, `positive enterprise/AI golden path failed:\n${all.stdout}\n${all.stderr}`);
 
@@ -361,7 +423,7 @@ async function main() {
     writeJson(root, "goal/goal.json", downgradedGoal);
     writeJson(root, "ai/assurance.json", { schema: "uash.ai-assurance.v1", generatedAt: NOW, runId: "VERIFY-001", status: "skipped", profile: PROFILE, ...downgradedBinding, environment: ENVIRONMENT, commit: COMMIT, workloadDetected: false, aiProfile: "AI-0", features: downgradedRoute.ai.features, controls: [], skipReason: "Rewritten intake claims no AI workload." });
     writeJson(root, "domain/assurance.json", { schema: "uash.domain-assurance.v1", generatedAt: NOW, runId: "VERIFY-001", status: "skipped", profile: PROFILE, ...downgradedBinding, environment: ENVIRONMENT, commit: COMMIT, packs: [], skipReason: "Rewritten intake has no product domain pack." });
-    writeJson(root, "evals/results.json", { schema: "uash.eval-results.v1", runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT, generatedAt: NOW, status: "skipped", suites: [], skipReason: "Rewritten docs-only scope." });
+    writeJson(root, "evals/results.json", baselineEval);
     negative.push(expectFailure(root, "enterprise-ai-gate-all.mjs", "intake and route rewrite downgrade", "goal objective/requestSha256 must remain bound"));
     writeJson(root, "run/intake.json", intake);
     writeJson(root, "run/workload-classification.json", baseline.classification);
@@ -420,7 +482,7 @@ async function main() {
     negative.push(expectFailure(root, "enterprise-ai-gate-all.mjs", "insufficient T2 technical trust", "requires ci-attested or stronger technical evidence"));
     writeJson(root, "foundation/assessment.json", baseline.foundation);
     writeJson(root, "ai/assurance.json", baseline.ai);
-    writeJson(root, "evals/results.json", { schema: "uash.eval-results.v1", runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT, generatedAt: NOW, status: "passed", suites: [{ id: "adversarial-gates", kind: "ai", datasets: [{ id: "negative-fixtures", version: "v1", sha256: sha256("negative-fixtures-v1"), caseCount: 12 }], rubrics: [{ id: "invalid-evidence-must-fail", version: "v1", sha256: sha256("invalid evidence must fail") }], evaluator: { name: "valdris-verifier", version: "0.7.0" }, configDigest: sha256("verifier-config-v1"), model: { provider: "synthetic", name: "deterministic-fixture", version: "v1" }, promptVersion: "verification-v1", criticalFailures: 0, slices: [{ id: "adversarial", threshold: 1, value: 1, operator: ">=" }], resultPath: "proof/eval-results.jsonl", resultDigest: sha256("{\"case\":\"synthetic\",\"passed\":true}\n"), threshold: 1, value: 1, operator: ">=", startedAt: NOW, completedAt: NOW }] });
+    writeJson(root, "evals/results.json", baselineEval);
 
     writeJson(root, "smoke/smoke_proof.json", {
       schema: "uash.live-smoke.v1", generatedAt: NOW, runId: "VERIFY-001", profile: PROFILE, commit: COMMIT, environment: ENVIRONMENT, status: "passed",
@@ -551,9 +613,215 @@ async function main() {
     evals.suites[0].value = 0;
     writeJson(root, "evals/results.json", evals);
     negative.push(expectFailure(root, "eval-gate.mjs", "failed eval threshold", "does not meet its threshold"));
+    writeJson(root, "evals/results.json", baselineEval);
+
+    const absoluteSuiteResult = structuredClone(baselineEval);
+    absoluteSuiteResult.suites[0].resultPath = path.join(root, absoluteSuiteResult.suites[0].resultPath);
+    writeJson(root, "evals/results.json", absoluteSuiteResult);
+    negative.push(expectFailure(root, "eval-gate.mjs", "absolute eval result path", "eval suite[0].resultPath must be a canonical repository-relative artifact path"));
+
+    const absoluteContextResult = structuredClone(baselineEval);
+    const absoluteContextSuite = absoluteContextResult.suites.find((suite) => suite.id === "context-lane-quality");
+    absoluteContextSuite.contextComparison.candidate.resultPath = path.join(root, absoluteContextSuite.contextComparison.candidate.resultPath);
+    writeJson(root, "evals/results.json", absoluteContextResult);
+    negative.push(expectFailure(root, "eval-gate.mjs", "absolute context-arm result path", "context comparison candidate.resultPath must be a canonical repository-relative artifact path"));
+    writeJson(root, "evals/results.json", baselineEval);
+
+    const baselineContext = JSON.parse(readFileSync(path.join(root, "context", "manifest.json"), "utf8"));
+    const missingContextContract = structuredClone(baselineContext);
+    delete missingContextContract.contextQuality;
+    writeJson(root, "context/manifest.json", missingContextContract);
+    negative.push(expectFailure(root, "context-manifest-gate.mjs", "missing context quality contract", "contextQuality is required when loadedFiles are present"));
+    writeJson(root, "context/manifest.json", baselineContext);
+
+    const zeroContextDeltaPolicy = structuredClone(baselineContext);
+    zeroContextDeltaPolicy.contextQuality.metric.minDelta = 0;
+    writeJson(root, "context/manifest.json", zeroContextDeltaPolicy);
+    negative.push(expectFailure(root, "context-manifest-gate.mjs", "non-positive context delta policy", "metric.minDelta must be greater than 0"));
+    writeJson(root, "context/manifest.json", baselineContext);
+
+    for (const [label, contextPath, expectedProblem] of [
+      ["Windows absolute loaded context path", "C:\\outside\\context.md", "must be repository-relative"],
+      ["Windows drive-relative loaded context path", "C:context.md", "must not use NTFS alternate data streams or drive-relative forms"],
+      ["backslash loaded context path", "evals\\context-quality-cases.json", "must use canonical repository-relative POSIX form"],
+      ["dot-prefixed loaded context path", "./AGENTS.md", "must use canonical repository-relative POSIX form"],
+    ]) {
+      const nonCanonicalContext = structuredClone(baselineContext);
+      nonCanonicalContext.loadedFiles[0].path = contextPath;
+      writeJson(root, "context/manifest.json", nonCanonicalContext);
+      negative.push(expectFailure(root, "context-manifest-gate.mjs", label, expectedProblem));
+    }
+    writeJson(root, "context/manifest.json", baselineContext);
+
+    const missingComparison = structuredClone(baselineEval);
+    delete missingComparison.suites.find((suite) => suite.id === "context-lane-quality").contextComparison;
+    writeJson(root, "evals/results.json", missingComparison);
+    negative.push(expectFailure(root, "eval-gate.mjs", "missing paired context baseline", "context quality comparison is required for suite context-lane-quality"));
+
+    const missingBaselineArm = structuredClone(baselineEval);
+    delete missingBaselineArm.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.baseline;
+    writeJson(root, "evals/results.json", missingBaselineArm);
+    negative.push(expectFailure(root, "eval-gate.mjs", "missing context baseline arm", "context comparison baseline must be an object"));
+
+    const mismatchedCases = structuredClone(baselineEval);
+    mismatchedCases.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.candidate.caseSet.sha256 = "f".repeat(64);
+    writeJson(root, "evals/results.json", mismatchedCases);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context arm case-set mismatch", "candidate caseSet must match baseline and the context manifest contract"));
+
+    const mismatchedEvaluator = structuredClone(baselineEval);
+    mismatchedEvaluator.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.candidate.evaluator.version = "2.0.0";
+    writeJson(root, "evals/results.json", mismatchedEvaluator);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context arm evaluator mismatch", "candidate evaluator must match baseline and suite evaluator"));
+
+    const mismatchedModel = structuredClone(baselineEval);
+    mismatchedModel.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.candidate.model.name = "different-model";
+    writeJson(root, "evals/results.json", mismatchedModel);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context arm model mismatch", "candidate model must match baseline and suite model"));
+
+    const mismatchedPrompt = structuredClone(baselineEval);
+    mismatchedPrompt.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.candidate.promptVersion = "different-prompt";
+    writeJson(root, "evals/results.json", mismatchedPrompt);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context arm prompt mismatch", "candidate promptVersion must match baseline and suite promptVersion"));
+
+    const noContextImprovement = structuredClone(baselineEval);
+    const noImprovementComparison = noContextImprovement.suites.find((suite) => suite.id === "context-lane-quality").contextComparison;
+    noImprovementComparison.candidate.value = noImprovementComparison.baseline.value;
+    noImprovementComparison.delta = 0;
+    writeJson(root, "evals/results.json", noContextImprovement);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context candidate without improvement", "context candidate improvement does not meet minDelta"));
+
+    const missedContextThreshold = structuredClone(baselineEval);
+    const missedThresholdComparison = missedContextThreshold.suites.find((suite) => suite.id === "context-lane-quality").contextComparison;
+    missedThresholdComparison.candidate.value = 0.8;
+    missedThresholdComparison.delta = 0.3;
+    missedContextThreshold.suites.find((suite) => suite.id === "context-lane-quality").value = 0.8;
+    writeJson(root, "evals/results.json", missedContextThreshold);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context candidate below threshold", "context candidate does not meet candidateThreshold"));
+
+    const tamperedContextResult = structuredClone(baselineEval);
+    tamperedContextResult.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.candidate.resultDigest = "0".repeat(64);
+    writeJson(root, "evals/results.json", tamperedContextResult);
+    negative.push(expectFailure(root, "eval-gate.mjs", "tampered context candidate result", "context comparison candidate.resultDigest must match resultPath"));
+
+    const detachedBaselineScore = structuredClone(baselineEval);
+    const detachedBaselineComparison = detachedBaselineScore.suites.find((suite) => suite.id === "context-lane-quality").contextComparison;
+    detachedBaselineComparison.baseline.value = -1000;
+    detachedBaselineComparison.delta = 1001;
+    writeJson(root, "evals/results.json", detachedBaselineScore);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context baseline score detached from result evidence", "context comparison baseline.value must match the result document aggregate"));
+
+    const detachedCandidateScore = structuredClone(baselineEval);
+    const detachedCandidateSuite = detachedCandidateScore.suites.find((suite) => suite.id === "context-lane-quality");
+    detachedCandidateSuite.value = 2;
+    detachedCandidateSuite.contextComparison.candidate.value = 2;
+    detachedCandidateSuite.contextComparison.delta = 1.5;
+    writeJson(root, "evals/results.json", detachedCandidateScore);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context candidate score detached from result evidence", "context comparison candidate.value must match the result document aggregate"));
+
+    const detachedDelta = structuredClone(baselineEval);
+    detachedDelta.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.delta = 999;
+    writeJson(root, "evals/results.json", detachedDelta);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context delta detached from arm results", "delta must equal the direction-aware candidate improvement"));
+
+    const detachedCriticalRegression = structuredClone(baselineEval);
+    detachedCriticalRegression.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.criticalRegressions = 1;
+    writeJson(root, "evals/results.json", detachedCriticalRegression);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context critical-regression count detached from result evidence", "criticalRegressions must match the candidate result document"));
+
+    const detachedIdentity = structuredClone(baselineEval);
+    const detachedIdentitySuite = detachedIdentity.suites.find((suite) => suite.id === "context-lane-quality");
+    detachedIdentitySuite.model.name = "forged-model";
+    detachedIdentitySuite.contextComparison.baseline.model.name = "forged-model";
+    detachedIdentitySuite.contextComparison.candidate.model.name = "forged-model";
+    writeJson(root, "evals/results.json", detachedIdentity);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context model identity detached from result evidence", "result document.model must match the arm and suite"));
+
+    const forgedCandidateAggregate = structuredClone(baselineContextCandidateResult);
+    forgedCandidateAggregate.aggregate.value = 2;
+    writeJson(root, "proof/context-candidate-results.json", forgedCandidateAggregate);
+    const forgedAggregateEval = structuredClone(baselineEval);
+    const forgedAggregateSuite = forgedAggregateEval.suites.find((suite) => suite.id === "context-lane-quality");
+    const forgedAggregateDigest = sha256(readFileSync(path.join(root, "proof", "context-candidate-results.json")));
+    forgedAggregateSuite.resultDigest = forgedAggregateDigest;
+    forgedAggregateSuite.contextComparison.candidate.resultDigest = forgedAggregateDigest;
+    forgedAggregateSuite.value = 2;
+    forgedAggregateSuite.contextComparison.candidate.value = 2;
+    forgedAggregateSuite.contextComparison.delta = 1.5;
+    writeJson(root, "evals/results.json", forgedAggregateEval);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context aggregate detached from per-case evidence", "aggregate.value must equal the arithmetic mean of per-case values"));
+    writeJson(root, "proof/context-candidate-results.json", baselineContextCandidateResult);
+
+    const incompleteCandidateCases = structuredClone(baselineContextCandidateResult);
+    incompleteCandidateCases.cases = incompleteCandidateCases.cases.slice(0, 1);
+    incompleteCandidateCases.aggregate.caseCount = 1;
+    incompleteCandidateCases.aggregate.value = 1;
+    writeJson(root, "proof/context-candidate-results.json", incompleteCandidateCases);
+    const incompleteCasesEval = structuredClone(baselineEval);
+    const incompleteCasesSuite = incompleteCasesEval.suites.find((suite) => suite.id === "context-lane-quality");
+    const incompleteCasesDigest = sha256(readFileSync(path.join(root, "proof", "context-candidate-results.json")));
+    incompleteCasesSuite.resultDigest = incompleteCasesDigest;
+    incompleteCasesSuite.contextComparison.candidate.resultDigest = incompleteCasesDigest;
+    writeJson(root, "evals/results.json", incompleteCasesEval);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context result omits a commissioned case", "result document.cases count must match the commissioned case set"));
+    writeJson(root, "proof/context-candidate-results.json", baselineContextCandidateResult);
+
+    const staleContextBinding = structuredClone(baselineEval);
+    staleContextBinding.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.contextManifestSha256 = "0".repeat(64);
+    writeJson(root, "evals/results.json", staleContextBinding);
+    negative.push(expectFailure(root, "enterprise-ai-gate-all.mjs", "context comparison manifest drift", "contextManifestSha256 must match context/manifest.json"));
+
+    const criticalContextRegression = structuredClone(baselineEval);
+    criticalContextRegression.suites.find((suite) => suite.id === "context-lane-quality").contextComparison.criticalRegressions = 1;
+    writeJson(root, "evals/results.json", criticalContextRegression);
+    negative.push(expectFailure(root, "eval-gate.mjs", "critical context regression", "criticalRegressions must be 0"));
+    writeJson(root, "evals/results.json", baselineEval);
+
+    const secretContextDirectory = path.join(root, "secrets");
+    const safeContextAlias = path.join(root, "safe-context-alias");
+    mkdirSync(secretContextDirectory, { recursive: true });
+    writeFileSync(path.join(secretContextDirectory, "context.md"), "secret-classified context bytes\n");
+    symlinkSync(secretContextDirectory, safeContextAlias, process.platform === "win32" ? "junction" : "dir");
+    const aliasedSecretContext = structuredClone(baselineContext);
+    aliasedSecretContext.loadedFiles = [{
+      path: "safe-context-alias/context.md",
+      sha256: sha256("secret-classified context bytes\n"),
+      loadedAt: NOW,
+    }];
+    writeJson(root, "context/manifest.json", aliasedSecretContext);
+    negative.push(expectFailure(root, "context-manifest-gate.mjs", "innocuous alias to canonical secret context", "canonical target is secret-like"));
+    writeJson(root, "context/manifest.json", baselineContext);
+
+    const linkedQualityDirectory = path.join(root, "linked-quality-real");
+    const linkedQualityAlias = path.join(root, "linked-quality-alias");
+    mkdirSync(linkedQualityDirectory, { recursive: true });
+    const linkedCases = readFileSync(path.join(root, "evals", "context-quality-cases.json"));
+    const linkedAnswers = readFileSync(path.join(root, "evals", "context-quality-answer-key.json"));
+    writeFileSync(path.join(linkedQualityDirectory, "cases.json"), linkedCases);
+    writeFileSync(path.join(linkedQualityDirectory, "answers.json"), linkedAnswers);
+    symlinkSync(linkedQualityDirectory, linkedQualityAlias, process.platform === "win32" ? "junction" : "dir");
+    const linkedCaseContext = structuredClone(baselineContext);
+    Object.assign(linkedCaseContext.contextQuality.caseSet, { path: "linked-quality-alias/cases.json", sha256: sha256(linkedCases) });
+    writeJson(root, "context/manifest.json", linkedCaseContext);
+    negative.push(expectFailure(root, "context-manifest-gate.mjs", "context case set through an intermediate symlink", "symbolic-link component"));
+
+    const linkedAnswerContext = structuredClone(baselineContext);
+    Object.assign(linkedAnswerContext.contextQuality.answerKey, { path: "linked-quality-alias/answers.json", sha256: sha256(linkedAnswers) });
+    writeJson(root, "context/manifest.json", linkedAnswerContext);
+    negative.push(expectFailure(root, "context-manifest-gate.mjs", "context answer key through an intermediate symlink", "symbolic-link component"));
+    writeJson(root, "context/manifest.json", baselineContext);
+
+    const linkedResultAlias = path.join(root, "linked-result-alias");
+    symlinkSync(path.join(root, "proof"), linkedResultAlias, process.platform === "win32" ? "junction" : "dir");
+    const linkedResultEval = structuredClone(baselineEval);
+    const linkedResultSuite = linkedResultEval.suites.find((suite) => suite.id === "context-lane-quality");
+    linkedResultSuite.resultPath = "linked-result-alias/context-candidate-results.json";
+    linkedResultSuite.contextComparison.candidate.resultPath = linkedResultSuite.resultPath;
+    writeJson(root, "evals/results.json", linkedResultEval);
+    negative.push(expectFailure(root, "eval-gate.mjs", "context result through an intermediate symlink", "symbolic"));
+    writeJson(root, "evals/results.json", baselineEval);
 
     writeFileSync(path.join(root, ".env"), "SECRET=value\n");
-    const context = JSON.parse(readFileSync(path.join(root, "context", "manifest.json"), "utf8"));
+    const context = structuredClone(baselineContext);
     context.loadedFiles = [{ path: ".env", sha256: sha256("SECRET=value\n"), loadedAt: NOW }];
     writeJson(root, "context/manifest.json", context);
     negative.push(expectFailure(root, "context-manifest-gate.mjs", "secret context load", "secret-like"));

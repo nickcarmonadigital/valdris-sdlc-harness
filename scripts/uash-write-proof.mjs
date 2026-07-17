@@ -15,7 +15,7 @@ function parseArgs(argv) {
     else if (arg === "--command" || arg === "-c") args.commands.push(argv[++i]);
     else if (arg === "--help" || arg === "-h") {
       console.log(`Usage:
-  node scripts/uash-write-proof.mjs --run-id RUN-123 --command "npm run typecheck" --command "npm run build" [--out proof/proof.json]
+  node scripts/uash-write-proof.mjs --run-id EXAMPLE-RUN-123 --command "npm run typecheck" --command "npm run build" [--out proof/proof.json]
 
 Writes a schema-validated ${PROOF_SCHEMA} artifact. Exits non-zero if any command fails.`);
       process.exit(0);

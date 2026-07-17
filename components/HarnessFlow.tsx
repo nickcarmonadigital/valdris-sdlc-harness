@@ -13,7 +13,7 @@ export function HarnessFlow({ steps }: { steps: HarnessStep[] }) {
       <div className="flowHeader">
         <p className="eyebrow">Live harness flow</p>
         <h2>Bug fix run</h2>
-        <span className="runId">RUN-0001</span>
+        <span className="runId">EXAMPLE-RUN-0001</span>
       </div>
       <div className="flowRail">
         {steps.map((step, index) => (

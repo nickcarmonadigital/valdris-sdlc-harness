@@ -1,8 +1,0 @@
-{
-  "schema": "uash.intake.v1",
-  "runId": "SELF-HEAL-20260703T225515Z",
-  "task": "Remove retired code-map vendor naming from Valdris SDLC Harness after Nick correction; migrate node/scripts/docs/templates to GitNexus/code-intelligence only.",
-  "repo": "nickcarmonadigital/valdris-sdlc-harness",
-  "risk": "medium",
-  "operator": "Nick Carmona"
-}

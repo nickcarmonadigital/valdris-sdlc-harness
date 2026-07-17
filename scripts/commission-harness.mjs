@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import readline from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  ROOT_DISCOVERY_LOADER_FILES,
+  ROOT_LOADER_END,
+  ROOT_LOADER_START,
+  renderRootDiscoveryLoader,
+} from "./discovery-loader-contract.mjs";
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_ROOT = path.resolve(SCRIPT_DIR, "..");
 
@@ -240,7 +247,7 @@ const QUESTION_GROUPS = [
       { id: "eval_dataset_owner", label: "Who owns eval datasets/examples?", default: "product/AI owner plus domain reviewer" },
       { id: "eval_acceptance_threshold", label: "What eval score blocks merge or deploy?", default: "project-specific; default block on critical regression, unsafe answer, tool misuse, or below agreed score threshold" },
       { id: "eval_run_location", label: "Where should evals run?", default: "local during development and CI before merge for AI behavior changes" },
-      { id: "eval_artifacts", label: "What eval artifacts must be attached?", default: "evals/results.json, failing examples, judge/config version, model/provider used" },
+      { id: "eval_artifacts", label: "What eval artifacts must be attached?", default: "evals/results.json, repo-specific context case set and answer key, paired baseline/candidate uash.context-arm-result.v1 JSON files, failing examples, evaluator/config version, model/provider used" },
     ],
   },
   {
@@ -263,7 +270,7 @@ const QUESTION_GROUPS = [
       { id: "approval_required_context", label: "What context should never be loaded or used unless approved?", default: "secrets, production data, private customer data, billing/provider dashboards, sensitive logs" },
       { id: "stale_context_policy", label: "How should stale or conflicting context be handled?", default: "check live system/git first, mark stale docs, cite source date, ask before Red Zone decisions" },
       { id: "context_budget", label: "What is the token/context budget policy?", default: "load smallest sufficient lane context; summarize long docs; keep source links; fail if required context cannot fit or be retrieved" },
-      { id: "context_artifacts", label: "What context artifacts must exist?", default: "context/manifest.json, context/budget.json, context/sources.json, context/loaded.md" },
+      { id: "context_artifacts", label: "What context artifacts must exist?", default: "context/manifest.json, repo-specific context cases and answer key governed by uash.context-quality-eval.v1, context/budget.json, context/sources.json, context/loaded.md" },
     ],
   },
   {
@@ -416,7 +423,7 @@ const QUESTION_GROUPS = [
 ];
 
 function parseArgs(argv) {
-  const args = { repo: process.cwd(), out: "generated-harness", answers: null, projectName: null, printQuestions: false, yes: false, force: false };
+  const args = { repo: process.cwd(), out: null, answers: null, projectName: null, printQuestions: false, yes: false, force: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--repo") args.repo = argv[++i];
@@ -437,7 +444,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out ./generated-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Repo to scan. Defaults to cwd.\n  --out <path>           Output harness pack directory. Defaults to generated-harness.\n  --answers <json>       Optional answers JSON file. Missing values are asked interactively.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use defaults for missing answers.\n  --force                Replace an existing generated pack; never permits --out to equal --repo.\n  --print-questions      Print the commissioning question bank and exit.\n`);
+  console.log(`Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional answers JSON file. Missing values are asked interactively.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use defaults for missing answers.\n  --force                Replace an existing recognized .valdris-harness pack.\n  --print-questions      Print the commissioning question bank and exit.\n`);
 }
 
 function exists(repo, file) {
@@ -611,6 +618,190 @@ function write(file, content) {
   fs.writeFileSync(file, content.endsWith("\n") ? content : `${content}\n`, "utf8");
 }
 
+function normalizeGeneratedJsonLineEndings(root) {
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const target = path.join(root, entry.name);
+    if (entry.isDirectory()) normalizeGeneratedJsonLineEndings(target);
+    else if (entry.isFile() && entry.name.endsWith(".json")) {
+      const current = fs.readFileSync(target, "utf8");
+      const normalized = current.replace(/\r\n?/g, "\n");
+      if (normalized !== current) fs.writeFileSync(target, normalized, "utf8");
+    }
+  }
+}
+
+function contentSha256(content) {
+  return createHash("sha256").update(content).digest("hex");
+}
+
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function reviewTrustStoreSha256(file) {
+  return contentSha256(canonicalJson(JSON.parse(fs.readFileSync(file, "utf8"))));
+}
+
+function planRootDiscoveryLoader(repoRoot, fileName) {
+  const target = path.join(repoRoot, fileName);
+  const loader = renderRootDiscoveryLoader(fileName);
+  let stats;
+  try {
+    stats = fs.lstatSync(target);
+  } catch (error) {
+    if (error?.code === "ENOENT") return { fileName, target, action: "created", content: loader, original: { exists: false } };
+    throw error;
+  }
+  if (stats.isSymbolicLink() || !stats.isFile()) {
+    throw new Error(`Cannot install Valdris discovery loader: target-root ${fileName} must be a regular file, not a symlink or directory`);
+  }
+  const bytes = fs.readFileSync(target);
+  const current = bytes.toString("utf8");
+  if (bytes.includes(0) || !Buffer.from(current, "utf8").equals(bytes)) {
+    throw new Error(`Cannot install Valdris discovery loader: target-root ${fileName} is not a supported UTF-8 text file`);
+  }
+  const start = current.indexOf(ROOT_LOADER_START);
+  const end = current.indexOf(ROOT_LOADER_END);
+  const hasStart = start !== -1;
+  const hasEnd = end !== -1;
+  if (hasStart !== hasEnd || (hasStart && (start > end || current.indexOf(ROOT_LOADER_START, start + ROOT_LOADER_START.length) !== -1 || current.indexOf(ROOT_LOADER_END, end + ROOT_LOADER_END.length) !== -1))) {
+    throw new Error(`Cannot install Valdris discovery loader: target-root ${fileName} contains malformed or duplicate Valdris loader markers; repair it manually before commissioning`);
+  }
+  if (hasStart) {
+    const suffixStart = end + ROOT_LOADER_END.length;
+    const suffix = current.slice(suffixStart).replace(/^\r?\n/, "");
+    return { fileName, target, action: "refreshed", content: `${current.slice(0, start)}${loader}${suffix}`, original: { exists: true, bytes, sha256: contentSha256(bytes), mode: stats.mode & 0o777 } };
+  }
+
+  const separator = current.length === 0 ? "" : current.endsWith("\n\n") ? "" : current.endsWith("\n") ? "\n" : "\n\n";
+  return { fileName, target, action: "merged", content: `${current}${separator}${loader}`, original: { exists: true, bytes, sha256: contentSha256(bytes), mode: stats.mode & 0o777 } };
+}
+
+function assertRootLoaderPlanUnchanged(plan) {
+  let stats;
+  try {
+    stats = fs.lstatSync(plan.target);
+  } catch (error) {
+    if (error?.code === "ENOENT" && plan.original.exists === false) return;
+    if (error?.code === "ENOENT") throw new Error(`Cannot install Valdris discovery loaders: target-root ${plan.fileName} changed after commissioning inspection (file was removed)`);
+    throw error;
+  }
+  if (plan.original.exists === false) throw new Error(`Cannot install Valdris discovery loaders: target-root ${plan.fileName} changed after commissioning inspection (file was created)`);
+  if (stats.isSymbolicLink() || !stats.isFile()) throw new Error(`Cannot install Valdris discovery loaders: target-root ${plan.fileName} changed after commissioning inspection (path is no longer a regular file)`);
+  const digest = contentSha256(fs.readFileSync(plan.target));
+  if (digest !== plan.original.sha256) throw new Error(`Cannot install Valdris discovery loaders: target-root ${plan.fileName} changed after commissioning inspection (content digest differs)`);
+}
+
+function stageAtomicFile(target, content, mode, purpose) {
+  const temporary = path.join(path.dirname(target), `.${path.basename(target)}.valdris-${purpose}-${process.pid}-${randomUUID()}.tmp`);
+  let descriptor;
+  try {
+    descriptor = fs.openSync(temporary, "wx", mode);
+    fs.writeFileSync(descriptor, content);
+    fs.fsyncSync(descriptor);
+  } catch (error) {
+    try { if (descriptor !== undefined) fs.closeSync(descriptor); } catch {}
+    fs.rmSync(temporary, { force: true });
+    throw error;
+  }
+  fs.closeSync(descriptor);
+  return temporary;
+}
+
+function atomicReplacePlan(plan, staged) {
+  const stagedStats = fs.lstatSync(staged);
+  const installedState = { dev: stagedStats.dev, ino: stagedStats.ino, sha256: contentSha256(fs.readFileSync(staged)) };
+  if (plan.original.exists === false) {
+    fs.linkSync(staged, plan.target);
+    fs.rmSync(staged, { force: true });
+  } else {
+    fs.renameSync(staged, plan.target);
+  }
+  return installedState;
+}
+
+function rollbackRootLoaderPlan(plan, installedState) {
+  let currentStats;
+  try { currentStats = fs.lstatSync(plan.target); }
+  catch (error) {
+    if (error?.code === "ENOENT") throw new Error("rollback conflict: installed loader was removed concurrently");
+    throw error;
+  }
+  if (currentStats.isSymbolicLink() || !currentStats.isFile()) throw new Error("rollback conflict: installed loader path changed type concurrently");
+  const currentDigest = contentSha256(fs.readFileSync(plan.target));
+  if (currentDigest !== installedState.sha256 || currentStats.dev !== installedState.dev || currentStats.ino !== installedState.ino) {
+    throw new Error("rollback conflict: installed loader was replaced or edited concurrently; preserving current content");
+  }
+  if (plan.original.exists === false) {
+    fs.rmSync(plan.target, { force: true });
+    return;
+  }
+  const restore = stageAtomicFile(plan.target, plan.original.bytes, plan.original.mode || 0o644, "rollback");
+  try {
+    fs.renameSync(restore, plan.target);
+  } finally {
+    fs.rmSync(restore, { force: true });
+  }
+}
+
+export function installRootDiscoveryLoaders(plans, options = {}) {
+  for (const plan of plans) assertRootLoaderPlanUnchanged(plan);
+  const staged = [];
+  try {
+    for (const plan of plans) staged.push({ plan, temporary: stageAtomicFile(plan.target, plan.content, plan.original.mode || 0o644, "install") });
+  } catch (error) {
+    for (const entry of staged) fs.rmSync(entry.temporary, { force: true });
+    throw error;
+  }
+  const installed = [];
+  try {
+    for (const [index, entry] of staged.entries()) {
+      options.beforeReplace?.(entry.plan, index);
+      assertRootLoaderPlanUnchanged(entry.plan);
+      const installedState = atomicReplacePlan(entry.plan, entry.temporary);
+      entry.temporary = null;
+      installed.push({ plan: entry.plan, installedState });
+    }
+  } catch (error) {
+    const rollbackProblems = [];
+    for (const { plan, installedState } of installed.reverse()) {
+      try { rollbackRootLoaderPlan(plan, installedState); }
+      catch (rollbackError) { rollbackProblems.push(`${plan.fileName}: ${rollbackError.message}`); }
+    }
+    if (rollbackProblems.length > 0) throw new Error(`${error.message}; discovery-loader rollback failed: ${rollbackProblems.join("; ")}`);
+    throw error;
+  } finally {
+    for (const entry of staged) {
+      if (entry.temporary) fs.rmSync(entry.temporary, { force: true });
+    }
+  }
+}
+
+function targetRootRuntimePaths(content) {
+  return String(content)
+    .replaceAll("node scripts/", "node .valdris-harness/scripts/")
+    .replaceAll("`project-adapter.json`", "`.valdris-harness/project-adapter.json`")
+    .replaceAll("`project.yaml`", "`.valdris-harness/project.yaml`")
+    .replaceAll("`AGENTS.md`", "`.valdris-harness/AGENTS.md`")
+    .replaceAll("`CLAUDE.md`", "`.valdris-harness/CLAUDE.md`")
+    .replaceAll("`00_MAP.md`", "`.valdris-harness/00_MAP.md`")
+    .replaceAll("`CONTEXT.md`", "`.valdris-harness/CONTEXT.md`")
+    .replaceAll("`docs/", "`.valdris-harness/docs/")
+    .replaceAll("`knowledge/", "`.valdris-harness/knowledge/")
+    .replaceAll("`skills/", "`.valdris-harness/skills/")
+    .replaceAll("`controls/", "`.valdris-harness/controls/")
+    .replaceAll("`scripts/", "`.valdris-harness/scripts/")
+    .replaceAll("`runs/", "`.valdris-harness/runs/")
+    .replaceAll("`.agents/", "`.valdris-harness/.agents/")
+    .replaceAll("`.claude/", "`.valdris-harness/.claude/")
+    .replaceAll("Commit that entire directory before portable proof, signed review, or run-packet creation", "Commit that entire directory plus the bounded target-root `AGENTS.md` and `CLAUDE.md` discovery loaders before portable proof, signed review, or run-packet creation")
+    .replaceAll("git add .valdris-harness\n", "git add .valdris-harness AGENTS.md CLAUDE.md\n");
+}
+
 function renderAgents(answers) {
   return `# ${answers.project_name} Agent Instructions\n\nThis repo is commissioned into the Universal Agentic SDLC Harness. Use this file as the Codex/agent front door.\n\n## Start here\n\n1. Read \`00_MAP.md\`.\n2. Read \`CONTEXT.md\`.\n3. If \`project-adapter.json\` exists, use it as repo-specific truth and do not regenerate or re-ask stable commissioning facts unless the pack is incomplete.\n4. Read \`docs/Good Looks Like Foundation.md\`, \`docs/Code Quality Guardrails.md\`, and \`docs/Enterprise Proof Bank.md\` before architecture, infra, feature, or refactor work.\n5. Read \`docs/Operating Intelligence Layer.md\` before AI/runtime/tooling/model/eval/memory work.\n6. Run GitNexus/code intelligence before codebase, architecture, refactor, debugging, or cross-file implementation work: \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate-all.mjs --repo .\` when scripts are available. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.\n7. For Codex live runs, also read \`docs/Codex Runtime Prompt.md\` when a RUN_ID/BRIDGE_URL is supplied.\n8. Route to the smallest matching lane family.\n9. Create or update a run packet before risky, ambiguous, architecture-impacting, production-impacting, or handoff-heavy work.\n\n## Human operating style\n\n- Primary operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Autonomy: ${answers.autonomy_level}\n- Avoid: ${answers.annoyances}\n\n## Source-of-truth order\n\n${answers.truth_order}\n\nWhen sources conflict, stop before Red Zone actions and ask ${answers.approval_owner}.\n\n## Parent taxonomy\n\nThe parent product is **Agentic SDLC Harness**. System design, production readiness, cloud/platform, QA/release, security, reliability, and self-healing are lane families inside the SDLC lifecycle.\n\n## Red Zone\n\nRead-only investigation is allowed: ${answers.read_only_allowed}.\n\nExplicit approval required before: ${answers.red_zone_actions}.\n\n## Finish line\n\nDone means: ${answers.done_definition}.\n\nNever claim done without proof artifacts, skip reasons for irrelevant nodes, and a human-readable handoff.\n`;
 }
@@ -630,12 +821,12 @@ function renderClaude(answers) {
 }
 
 function renderClaudeCommand(answers) {
-  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until \`proof/proof.json\` validates as passing \`uash.proof.v1\`, \`production/layer-assessment.json\` validates all 13 production layers, and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --artifact-root "$PWD"\n\`\`\`\n\nOnly a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator grant requires the operator-held bridge token:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --human-token "$UASH_HUMAN_APPROVAL_TOKEN" --artifact-root "$PWD"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} / Valdris SDLC Harness\n\nUse this slash command when the user wants Claude Code to work under the Valdris SDLC Harness.\n\n## Required inputs\n\nThe user should provide:\n\n\`RUN_ID=<run-id>\`\n\`BRIDGE_URL=http://127.0.0.1:8787\`\n\`<task text>\`\n\nIf RUN_ID is missing, ask for it before changing files. Do not invent one.\n\n## Runtime protocol\n\n1. Read \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`.\n2. Follow the node flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n3. Emit a bridge event before/after every node, gate, artifact, approval, skip, failure, and completion.\n4. Use explicit skip reasons for irrelevant nodes.\n5. Use failure reasons plus recovery paths for failed nodes.\n6. Do not emit \`run.completed\` until \`proof/proof.json\` validates as passing \`uash.proof.v1\`, \`production/layer-assessment.json\` validates all 13 production layers, and every required node is passed or skipped with a reason. The bridge should reject early completion.\n\n## Event command\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.entered intake "Claude Code started harness intake" --artifact run/intake.json --status ok --actor claude-code --mode live --source bridge --artifact-root "$PWD"\n\`\`\`\n\nCommissioned packs include \`scripts/uash-emit-event.mjs\`; run event commands from the generated pack root or from a repo where that script has been installed.\n\nRed Zone approval request example:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" --artifact approvals/redzone.json --status needs_approval --actor harness --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --artifact-root "$PWD"\n\`\`\`\n\nOnly a real operator/human approval event may grant/deny approval. Agents must not self-approve. The operator runs the grant from a separate shell holding both bridge credentials; the emitter reads the human approval token from that operator-only environment and never from process arguments or request bodies:\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" --artifact approvals/redzone.json --status ok --actor human --mode live --source bridge --approval-owner "${answers.approval_owner}" --approval-scope "redzone" --artifact-root "$PWD"\n\`\`\`\n\n## Final answer\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderCodexPrompt(answers) {
-  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`. If the commissioned files exist, do not regenerate the pack or re-ask stable commissioning facts unless required files/scripts are missing.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. For codebase, architecture, refactor, debugging, or cross-file work, run \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate-all.mjs --repo .\`. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.\n5. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n6. In live mode, set \`UASH_BRIDGE_URL="$BRIDGE_URL"\`, run event commands from the artifact root that contains the pack, and include \`--artifact-root "$PWD"\` on the first event or create/sync the run with the correct artifactRoot first.\n7. Never claim done until \`proof/proof.json\` validates as passing \`uash.proof.v1\`, \`production/layer-assessment.json\` validates all 13 production layers, and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --artifact-root "$PWD" \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."] \\
-  [--human-token "$UASH_HUMAN_APPROVAL_TOKEN"]\n\`\`\`\n\n## Red Zone approval events\n\nAgents may request approval, but only a token-gated human approval event may grant or deny it. Use \`--human-token\` with the operator-held \`UASH_HUMAN_APPROVAL_TOKEN\`; the token is sent as a header, is never accepted from \`POST /runs\`, and is never persisted.\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" \\\n  --artifact approvals/redzone.json \\\n  --status needs_approval \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" \\\n  --artifact approvals/redzone.json \\\n  --status ok \\\n  --actor human \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone" \\\n  --human-token "$UASH_HUMAN_APPROVAL_TOKEN"\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
+  return `# ${answers.project_name} Codex Runtime Prompt\n\nCodex should treat \`AGENTS.md\` as the primary front door and this file as the copy/paste run prompt when a specific harness run is started.\n\n## Start protocol\n\n1. Read \`AGENTS.md\`, \`project-adapter.json\`, \`00_MAP.md\`, \`CONTEXT.md\`, and \`docs/Validation Commands.md\`. If the commissioned files exist, do not regenerate the pack or re-ask stable commissioning facts unless required files/scripts are missing.\n2. Classify the task into the smallest matching lane family.\n3. Use the flow: \`intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff\`.\n4. For codebase, architecture, refactor, debugging, or cross-file work, run \`node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local\`, then \`node scripts/code-intelligence-gate-all.mjs --repo .\`. If it falls back to local static graph, disclose that and do not claim GitNexus-backed analysis.\n5. Emit real bridge events when RUN_ID and BRIDGE_URL are provided; otherwise write the same artifacts locally and say telemetry is not live.\n6. In live mode, set \`UASH_BRIDGE_URL="$BRIDGE_URL"\`, run event commands from the artifact root that contains the pack, and include \`--artifact-root "$PWD"\` on the first event or create/sync the run with the correct artifactRoot first.\n7. Never claim done until \`proof/proof.json\` validates as passing \`uash.proof.v1\`, \`production/layer-assessment.json\` validates all 13 production layers, and every required node is passed or skipped with an explicit reason.\n\n## Event command shape\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" <event-type> <node-id> "<message>" \\\n  --artifact <path> \\\n  --status <ok|warn|blocked|skipped|failed|needs_approval> \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --artifact-root "$PWD" \\\n  [--approval-owner "..."] \\\n  [--approval-scope "..."] \\\n  [--skip-reason "..."] \\\n  [--failure-reason "..."] \\\n  [--recovery-path "..."] \\\n  [--self-heal-pr-url "..."]
+\`\`\`\n\n## Red Zone approval events\n\nAgents may request approval, then must stop. A real operator grants or denies from a separate shell holding both bridge credentials. The emitter reads \`UASH_HUMAN_APPROVAL_TOKEN\` from that operator-only environment and sends it as a header; it never accepts the human token through process arguments or request bodies, and neither credential is persisted.\n\n\`\`\`bash\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required" \\\n  --artifact approvals/redzone.json \\\n  --status needs_approval \\\n  --actor codex \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\nUASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action" \\\n  --artifact approvals/redzone.json \\\n  --status ok \\\n  --actor human \\\n  --mode live \\\n  --source bridge \\\n  --approval-owner "${answers.approval_owner}" \\\n  --approval-scope "redzone"\n\`\`\`\n\n## Required handoff\n\nBottom line, Why, Proof, Risk, Fix/Plan, Your call, Lane taken, Gates/artifacts, Skipped nodes/reasons, Self-heal needed/opened.\n`;
 }
 
 function renderMap(answers, detected) {
@@ -646,8 +837,66 @@ function renderContext(answers) {
   return `# ${answers.project_name} Context Router\n\nUse this after \`00_MAP.md\`. Pick the smallest matching lane and load only the docs needed for that risk area.\n\n## Router\n\n| If the request is about | Use lane | Gate emphasis |\n|---|---|---|\n| Normal bug, feature, UI, backend, API, PR | engineering-default | design anchors + proof |\n| New architecture, API/data model, scale, tradeoffs | system-design | SDD/ADR + anchors |\n| Production readiness, deployability, real full-stack layers | production-readiness | layer assessment + skip reasons |\n| AWS/Azure/GCP/Vercel/Supabase infra, deploy, IAM, secrets | cloud-platform | service map + approval + rollback/live smoke |\n| Production/user-facing incident | incidents | runtime evidence + Red Zone |\n| Data, schema, migrations, auth/RLS | data | migration/schema proof + Red Zone |\n| Security, billing, auth, permissions | security | human approval + security checklist |\n| QA, release, regression, smoke | qa-release | QA plan + break-it + live smoke |\n| Docs, process, harness changes | docs-product | coherence + review + no fake telemetry |\n\n## Safe edit paths\n\n${answers.safe_edit_paths}\n\n## Review-required paths\n\n${answers.review_required_paths}\n\n## Branch/deploy model\n\n- Default work branch: ${answers.default_work_branch}\n- Staging: ${answers.staging_branch}\n- Production: ${answers.production_branch}\n- Merge/deploy owner: ${answers.merge_owner}\n- Deployment proof: ${answers.deployment_proof}\n\n## System design triggers\n\n${answers.system_design_triggers}\n\n## ADR policy\n\n${answers.adr_policy}\n`;
 }
 
+function renderOrderedV08Closure(paths) {
+  return `## Ordered v0.8 completion closure
+
+Run this sequence from the target repository root. Proof is not complete until the final packet gate passes.
+
+Before freezing evidence, an operator or protected CI context must supply \`UASH_REVIEW_TRUST_SHA256\` as the canonical-JSON SHA-256 of the reviewed \`.valdris-harness/controls/review-trust.v1.json\`. Review, packet, and bridge validators fail closed when it is missing, malformed, or different from either the live or reviewed-commit store. This environment value is an external authority input: an agent-controlled shell setting its own digest does not establish trust. For rotation, the operator reviews the new store and updates the protected pin out of band before accepting it; validators never auto-enroll from repository bytes.
+
+### 1. Completed goal
+
+\`goal/goal.json\` must be complete, not merely active, and every stopping condition must pass.
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/goal-gate.mjs --repo .
+\`\`\`
+
+### 2. Enterprise and AI assurance
+
+Validate every route-required foundation, context, production, AI, domain, eval, trajectory, smoke, waiver, and portable-proof artifact.
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .
+\`\`\`
+
+### 3. RCA when applicable
+
+Bug, regression, incident, and self-heal routes require \`rca/rca.json\`. Any RCA artifact that exists is validated even when the route did not originally require one. Documentation/process repairs must declare repeatable proof-runner \`--causal-input\` paths and bind their exact pre/post Git bytes into both portable proofs.
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/rca-gate.mjs --repo .
+\`\`\`
+
+### 4. Freeze the pre-review evidence bundle
+
+Supply one repeated \`--gate name=artifact/path.json\` argument for every gate required by the validated route, and add \`--rca rca/rca.json\` when RCA is required or present. The printed \`evidenceBundleSha256\` is the independent review subject.
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/run-create.mjs --repo . --run-id "$RUN_ID" --commit "$COMMIT" --environment "$ENVIRONMENT" --proof proof/portable.json --gate "<required-gate>=<artifact-path>" --print-evidence-bundle
+\`\`\`
+
+### 5. Four-role signed review
+
+Create \`review/review.json\` as \`valdris.review.v2\` with exactly \`scout\`, \`implementer\`, \`verifier\`, and \`independentReviewer\`. The \`actorId\`, \`sessionId\`, and \`executionId\` values must each be pairwise distinct across all four roles. The trusted independent reviewer signs the frozen evidence bundle and complete role roster with Ed25519 using an active public key already commissioned in \`.valdris-harness/controls/review-trust.v1.json\`; an agent may not add or trust its own key.
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/review-gate.mjs --repo .
+\`\`\`
+
+### 6. Create and validate the final run packet
+
+Repeat the identical route-required \`--gate\` arguments and conditional \`--rca\` argument used for the evidence bundle. Creation fails if any reviewed input changed. The immutable output is \`valdris.run-packet.v2\`.
+
+\`\`\`bash
+node ${paths.scriptFromRepo}/run-create.mjs --repo . --run-id "$RUN_ID" --commit "$COMMIT" --environment "$ENVIRONMENT" --proof proof/portable.json --review review/review.json --gate "<required-gate>=<artifact-path>" --output run/packet.json
+node ${paths.scriptFromRepo}/run-packet-gate.mjs --repo .
+\`\`\`
+`;
+}
+
 function renderValidation(answers, paths) {
-  return `# Validation Commands\n\nRun these from the target repository root and attach proof before claiming done.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Knowledge vault | \`node ${paths.scriptFromRepo}/okf-vault-gate.mjs --repo ${paths.packFromRepo}\` |\n| Skill registry | \`node ${paths.scriptFromRepo}/skill-registry-gate.mjs --repo ${paths.packFromRepo}\` |\n| Active goal shape | \`node ${paths.scriptFromRepo}/goal-gate.mjs --repo . --allow-active\` |\n| Enterprise + AI finish line | \`node ${paths.scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason, except proof and handoff, which are non-skippable. Failed nodes need a recovery path. The \`prove\` node requires passing \`uash.proof.v1\`; production-impacting work requires typed control evidence in \`uash.production-readiness.v2\`; AI work requires \`uash.ai-assurance.v1\`; and a completed goal requires every stopping condition plus token-gated route approval to pass. Runtime-native loops do not override these gates or human approvals.\n`;
+  return `# Validation Commands\n\nRun these from the target repository root and attach proof before claiming done. The complete \`.valdris-harness\` directory must already be committed in this target worktree.\n\n| Check | Command |\n|---|---|\n| Install | \`${answers.install_command}\` |\n| Knowledge vault | \`node ${paths.scriptFromRepo}/okf-vault-gate.mjs --repo ${paths.packFromRepo}\` |\n| Skill registry | \`node ${paths.scriptFromRepo}/skill-registry-gate.mjs --repo ${paths.packFromRepo}\` |\n| Clean-room pack privacy | \`node ${paths.scriptFromRepo}/privacy-gate.mjs --repo ${paths.packFromRepo}\` |\n| Generated graph/anchor privacy | \`node ${paths.scriptFromRepo}/privacy-gate.mjs --repo . --include graph --include design/anchors.json\` |\n| Active goal shape | \`node ${paths.scriptFromRepo}/goal-gate.mjs --repo . --allow-active\` |\n| Completed goal | \`node ${paths.scriptFromRepo}/goal-gate.mjs --repo .\` |\n| Enterprise + AI finish line | \`node ${paths.scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\` |\n| RCA when applicable | \`node ${paths.scriptFromRepo}/rca-gate.mjs --repo .\` |\n| Independent review | \`node ${paths.scriptFromRepo}/review-gate.mjs --repo .\` |\n| Final run packet | \`node ${paths.scriptFromRepo}/run-packet-gate.mjs --repo .\` |\n| Hydrated CI acceptance | \`node ${paths.scriptFromRepo}/run-acceptance.mjs --repo . --bundle <extracted-artifact-directory> --source-commit <full-git-sha>\` |\n| Lint | \`${answers.lint_command}\` |\n| Typecheck | \`${answers.typecheck_command}\` |\n| Test | \`${answers.test_command}\` |\n| Build | \`${answers.build_command}\` |\n| Smoke/e2e | \`${answers.smoke_command}\` |\n\nDo not run the clean-room full-tree binary policy over the product repository. Product binaries are governed by the commissioned product asset/security policy; only generated graph and anchor evidence uses the bounded \`--include\` scan above.\n\n## CI workflow split\n\n\`.github/workflows/valdris-assurance.yml\` is the always-on structural commissioning check and never assumes a run packet exists. \`.github/workflows/valdris-run-acceptance.yml\` is an explicit protected-environment acceptance action. Configure required reviewers and the operator-held \`UASH_REVIEW_TRUST_SHA256\` environment variable on the \`valdris-run-acceptance\` environment. It checks out the exact full commit SHA, downloads an artifact bundle outside the checkout, and invokes the commissioned acceptance CLI.\n\nThe extracted bundle must contain \`valdris-run-artifacts.json\` with schema \`valdris.run-artifact-bundle.v1\`, the exact \`sourceCommit\`, and a strictly sorted \`files\` array of \`path\`, lowercase \`sha256\`, and integer \`size\`. Bundle paths are limited to Valdris evidence namespaces; the CLI rejects symlinks, undeclared files, portable path collisions, pre-existing destinations, source/validator overwrites, an unclean checkout, and a packet whose commit differs from checkout \`HEAD\`.\n\n## Done definition\n\n${answers.done_definition}.\n\n## Finish-line rule\n\nEvery required node must be passed or skipped with an explicit reason, except proof and handoff, which are non-skippable. Failed nodes need a recovery path. The \`prove\` node requires passing \`uash.proof.v1\`; production-impacting work requires typed control evidence in \`uash.production-readiness.v2\`; AI work requires \`uash.ai-assurance.v1\`; and a completed goal requires every stopping condition plus token-gated route approval to pass. Runtime-native loops do not override these gates or human approvals.\n\n${renderOrderedV08Closure(paths)}`;
 }
 
 function renderAgentKnowledgeVault(answers) {
@@ -711,7 +960,11 @@ function renderEnterpriseProofBank(answers) {
 }
 
 function renderOperatingIntelligence(answers) {
-  return `# Operating Intelligence Layer\n\nThis is the maturity layer above the basic control-plane skeleton: evals, trajectory, context, skills, memory, tools, sandboxing, model routing, economics, PR agents, interop, and production-agent lifecycle.\n\n## Eval gate\n\n- Required for: ${answers.eval_required_for}\n- Dataset owner: ${answers.eval_dataset_owner}\n- Blocking threshold: ${answers.eval_acceptance_threshold}\n- Run location: ${answers.eval_run_location}\n- Artifacts: ${answers.eval_artifacts}\n\n## Trajectory evaluation\n\n- Bad trajectory: ${answers.bad_agent_trajectory}\n- Retry/loop limit: ${answers.retry_loop_limit}\n- Forbidden sequences: ${answers.forbidden_tool_sequences}\n- Score dimensions: ${answers.trajectory_scores}\n- Artifacts: ${answers.trajectory_artifacts}\n\n## Context manifest / ICM\n\n- Always loaded: ${answers.always_load_context}\n- Lane/task context: ${answers.lane_context_rules}\n- Approval-required context: ${answers.approval_required_context}\n- Stale/conflict policy: ${answers.stale_context_policy}\n- Budget: ${answers.context_budget}\n- Artifacts: ${answers.context_artifacts}\n\n## Skill registry\n\n- Inventory: ${answers.skill_inventory}\n- Owners/review: ${answers.skill_owner_policy}\n- Activation: ${answers.skill_activation_rules}\n- Tool permissions: ${answers.skill_tool_permissions}\n- Proof: ${answers.skill_proof}\n- Registry artifacts: ${answers.skill_registry_artifacts}\n\n## Memory substrate\n\n- Remember: ${answers.memory_should_remember}\n- Never remember: ${answers.memory_never_remember}\n- Review owner: ${answers.memory_review_owner}\n- Retention: ${answers.memory_retention_policy}\n- Handoff rule: ${answers.memory_handoff_rule}\n- Eval policy: ${answers.memory_eval_policy}\n\n## Tool registry and hooks\n\n- Free tools: ${answers.free_tools}\n- Approval tools: ${answers.approval_tools}\n- Forbidden tools: ${answers.forbidden_tools}\n- Pre-tool hooks: ${answers.pre_tool_hooks}\n- Post-edit hooks: ${answers.post_edit_hooks}\n- Audit log: ${answers.tool_audit_log}\n\n## Sandbox manager\n\n- Isolation: ${answers.execution_isolation}\n- Filesystem roots: ${answers.filesystem_roots}\n- Network: ${answers.network_policy}\n- Secrets: ${answers.secrets_policy}\n- Cleanup: ${answers.sandbox_cleanup}\n- Escape proof: ${answers.sandbox_escape_proof}\n\n## Model routing\n\n- Lane model policy: ${answers.lane_model_policy}\n- Strong model required for: ${answers.strong_model_required_for}\n- Cheap model allowed for: ${answers.cheap_model_allowed_for}\n- Fallback: ${answers.model_fallback_path}\n- Logging: ${answers.model_logging}\n- Quality gate: ${answers.model_quality_gate}\n\n## AI economics\n\n- Run budget: ${answers.run_budget}\n- Token tracking: ${answers.token_tracking}\n- Human review tracking: ${answers.human_review_tracking}\n- Retry cost limit: ${answers.retry_cost_limit}\n- Spend approval: ${answers.spend_approval_policy}\n- Cost handoff: ${answers.cost_handoff}\n\n## Background PR agents\n\n- Allowed: ${answers.background_agents_allowed}\n- Branch policy: ${answers.agent_branch_policy}\n- PR policy: ${answers.agent_pr_policy}\n- Reviewer: ${answers.background_pr_reviewer}\n- Proof: ${answers.background_pr_proof}\n- Stale cleanup: ${answers.stale_agent_cleanup}\n\n## MCP / A2A interoperability\n\n- MCP required: ${answers.mcp_required}\n- MCP tools: ${answers.mcp_tools}\n- Allowed runtimes: ${answers.agent_runtimes}\n- A2A needed: ${answers.a2a_needed}\n- Auth/roots: ${answers.interop_auth_roots}\n- Live event definition: ${answers.live_event_definition}\n\n## Production-agent lifecycle\n\n- Deploys agents: ${answers.deploys_agents}\n- Agent definition: ${answers.agent_definition}\n- States: ${answers.agent_lifecycle_states}\n- Promotion gate: ${answers.agent_promotion_gate}\n- Observability: ${answers.agent_observability}\n- Rollback owner: ${answers.agent_rollback_owner}\n`;
+  return `# Operating Intelligence Layer\n\nThis is the maturity layer above the basic control-plane skeleton: evals, trajectory, context, skills, memory, tools, sandboxing, model routing, economics, PR agents, interop, and production-agent lifecycle.\n\n## Eval gate\n\n- Required for: ${answers.eval_required_for}\n- Dataset owner: ${answers.eval_dataset_owner}\n- Blocking threshold: ${answers.eval_acceptance_threshold}\n- Run location: ${answers.eval_run_location}\n- Artifacts: ${answers.eval_artifacts}\n- Context quality: every loaded context manifest must commission one repo-specific case set and answer key, then bind a paired no-context or limited-context baseline and loaded-context candidate in \`evals/results.json\`. Both arms use the same cases, evaluator, model, prompt, and config. The candidate must meet its threshold, improve by the commissioned direction-aware minimum delta, and have zero critical regressions.\n\n## Trajectory evaluation\n\n- Bad trajectory: ${answers.bad_agent_trajectory}\n- Retry/loop limit: ${answers.retry_loop_limit}\n- Forbidden sequences: ${answers.forbidden_tool_sequences}\n- Score dimensions: ${answers.trajectory_scores}\n- Artifacts: ${answers.trajectory_artifacts}\n\n## Context manifest / ICM\n\n- Always loaded: ${answers.always_load_context}\n- Lane/task context: ${answers.lane_context_rules}\n- Approval-required context: ${answers.approval_required_context}\n- Stale/conflict policy: ${answers.stale_context_policy}\n- Budget: ${answers.context_budget}\n- Artifacts: ${answers.context_artifacts}\n- Quality contract: \`context/manifest.json.contextQuality\` uses \`uash.context-quality-eval.v1\`; its suite ID, baseline mode, versioned case-set and answer-key identities, metric direction, threshold, and positive minimum delta are mandatory whenever context is loaded.\n\n## Skill registry\n\n- Inventory: ${answers.skill_inventory}\n- Owners/review: ${answers.skill_owner_policy}\n- Activation: ${answers.skill_activation_rules}\n- Tool permissions: ${answers.skill_tool_permissions}\n- Proof: ${answers.skill_proof}\n- Registry artifacts: ${answers.skill_registry_artifacts}\n\n## Memory substrate\n\n- Remember: ${answers.memory_should_remember}\n- Never remember: ${answers.memory_never_remember}\n- Review owner: ${answers.memory_review_owner}\n- Retention: ${answers.memory_retention_policy}\n- Handoff rule: ${answers.memory_handoff_rule}\n- Eval policy: ${answers.memory_eval_policy}\n\n## Tool registry and hooks\n\n- Free tools: ${answers.free_tools}\n- Approval tools: ${answers.approval_tools}\n- Forbidden tools: ${answers.forbidden_tools}\n- Pre-tool hooks: ${answers.pre_tool_hooks}\n- Post-edit hooks: ${answers.post_edit_hooks}\n- Audit log: ${answers.tool_audit_log}\n\n## Sandbox manager\n\n- Isolation: ${answers.execution_isolation}\n- Filesystem roots: ${answers.filesystem_roots}\n- Network: ${answers.network_policy}\n- Secrets: ${answers.secrets_policy}\n- Cleanup: ${answers.sandbox_cleanup}\n- Escape proof: ${answers.sandbox_escape_proof}\n\n## Model routing\n\n- Lane model policy: ${answers.lane_model_policy}\n- Strong model required for: ${answers.strong_model_required_for}\n- Cheap model allowed for: ${answers.cheap_model_allowed_for}\n- Fallback: ${answers.model_fallback_path}\n- Logging: ${answers.model_logging}\n- Quality gate: ${answers.model_quality_gate}\n\n## AI economics\n\n- Run budget: ${answers.run_budget}\n- Token tracking: ${answers.token_tracking}\n- Human review tracking: ${answers.human_review_tracking}\n- Retry cost limit: ${answers.retry_cost_limit}\n- Spend approval: ${answers.spend_approval_policy}\n- Cost handoff: ${answers.cost_handoff}\n\n## Background PR agents\n\n- Allowed: ${answers.background_agents_allowed}\n- Branch policy: ${answers.agent_branch_policy}\n- PR policy: ${answers.agent_pr_policy}\n- Reviewer: ${answers.background_pr_reviewer}\n- Proof: ${answers.background_pr_proof}\n- Stale cleanup: ${answers.stale_agent_cleanup}\n\n## MCP / A2A interoperability\n\n- MCP required: ${answers.mcp_required}\n- MCP tools: ${answers.mcp_tools}\n- Allowed runtimes: ${answers.agent_runtimes}\n- A2A needed: ${answers.a2a_needed}\n- Auth/roots: ${answers.interop_auth_roots}\n- Live event definition: ${answers.live_event_definition}\n\n## Production-agent lifecycle\n\n- Deploys agents: ${answers.deploys_agents}\n- Agent definition: ${answers.agent_definition}\n- States: ${answers.agent_lifecycle_states}\n- Promotion gate: ${answers.agent_promotion_gate}\n- Observability: ${answers.agent_observability}\n- Rollback owner: ${answers.agent_rollback_owner}\n`;
+}
+
+function renderContextArmResultProtocol() {
+  return `\n## Deterministic context arm result contract\n\nEach baseline and loaded-context candidate must point to a digested JSON document using \`uash.context-arm-result.v1\`. The document binds the exact context manifest, run/profile/commit/environment, suite and context mode, case-set and answer-key identities, evaluator, model, prompt, config, and metric. It records one ordered value and critical-regression flag per commissioned case. \`aggregate.method\` is \`arithmetic-mean\`; the gate derives aggregate value, case count, and critical-regression count from those rows and cross-binds them to the arm, suite, and comparison. Unstructured result logs or detached declared scores do not satisfy the finish line.\n`;
 }
 
 function renderTeamHarnessRegistry(answers) {
@@ -723,7 +976,7 @@ function renderHumanAgentProtocol(answers) {
 }
 
 
-function renderProofSchema(answers) {
+function renderProofSchema(answers, paths) {
   return `# UASH Proof Schema v1
 
 The finish line accepts proof only when \`proof/proof.json\` conforms to passing \`uash.proof.v1\`: \`status: "passed"\`, at least one command, and every command \`exitCode: 0\`. A file that only says \`{"exitCode":0}\`, or a schema-shaped failed proof, is not enough.
@@ -734,7 +987,7 @@ The finish line accepts proof only when \`proof/proof.json\` conforms to passing
 {
   "schema": "uash.proof.v1",
   "generatedAt": "2026-07-03T00:00:00.000Z",
-  "runId": "RUN-123",
+  "runId": "EXAMPLE-RUN-123",
   "status": "passed",
   "summary": "All required validation commands passed.",
   "commands": [
@@ -762,15 +1015,56 @@ node scripts/uash-write-proof.mjs --run-id "$RUN_ID" \\
 ## Bridge rule
 
 When \`artifact.written\` is emitted for the \`prove\` node, the bridge parses the file and rejects it unless this schema, \`status: "passed"\`, and zero-exit command evidence are present.
+
+## v0.8 completion envelope
+
+proof/proof.json is necessary but not sufficient. Final completion also requires the ordered goal, enterprise/AI, conditional RCA, frozen pre-review evidence, signed four-role review, and immutable run-packet closure below. \`review/review.json\` uses \`valdris.review.v2\`; \`run/packet.json\` uses \`valdris.run-packet.v2\`.
+
+${renderOrderedV08Closure(paths)}
 `;
 }
 
-function renderRunTemplate(answers) {
-  return `# Run Packet Template\n\nProject: ${answers.project_name}\n\n## Required artifacts\n\n- run/mode.json\n- run/intake.json\n- run/route.json\n- graph/graph.json from GitNexus/code-intelligence scan, or graph skip reason for docs-only/non-code work\n- graph/gitnexus.json with GitNexus index evidence when available, or a disclosed local-fallback reason\n- graph/freshness.json proving graph commit/freshness\n- design/anchors.json for codebase claims and blast-radius reasoning\n- design/system_design.md when design/architecture matters\n- production/layer-assessment.json for production-impacting work\n- cloud/service-map.json for cloud/platform work, or cloud/skip.json with reason\n- approvals/redzone.json when Red Zone applies\n- qa/qa-plan.md when validation scope matters\n- qa/break-it-results.md or explicit skip reason\n- proof/proof.json (passing uash.proof.v1) before done\n- smoke/smoke_proof.json or explicit skip reason\n- self_heal/self_heal_report.md when process/harness gap is found\n- handoff/final.md\n\n## Final handoff shape\n\nBottom line\nWhy\nProof\nRisk\nFix/Plan\nYour call\nSkipped nodes / reasons\n`;
+function renderRunTemplate(answers, finishLineArtifacts) {
+  const requiredArtifactLines = finishLineArtifacts.map((artifact) => `- \`${artifact}\``).join("\n");
+  return `# Run Packet Template\n\nProject: ${answers.project_name}\n\n## Required finish-line artifacts\n\nThese entries are generated from \`project-adapter.json.finishLineAssurance.requiredArtifacts\` so the operator front door and machine-readable policy stay aligned:\n\n${requiredArtifactLines}\n\n## Supporting node artifacts\n\n- \`run/mode.json\`\n- \`graph/gitnexus.json\` with GitNexus index evidence when available, or a disclosed local-fallback reason\n- \`graph/freshness.json\` proving graph commit/freshness\n- \`design/system_design.md\` when design/architecture matters\n- \`cloud/service-map.json\` for cloud/platform work, or \`cloud/skip.json\` with reason\n- \`approvals/redzone.json\` when Red Zone applies\n- \`qa/qa-plan.md\` when validation scope matters\n- \`qa/break-it-results.md\` or explicit skip reason\n- \`proof/proof.json\` (passing \`uash.proof.v1\`) before done\n- \`self_heal/self_heal_report.md\` when a process/harness gap is found\n- \`handoff/final.md\`\n\nThe complete .valdris-harness runtime and trust store must be committed in the same target worktree before portable proof. After every non-review gate artifact exists, run .valdris-harness/scripts/run-create.mjs with --print-evidence-bundle; the independent reviewer must sign the returned evidenceBundleSha256 before final packet creation. Any later input, RCA, gate, runtime, or application-source change is rejected. Clean-room privacy scans the pack; the scoped evidence check scans graph/ and design/anchors.json without applying the harness binary allowlist to arbitrary product assets.\n\n## Final handoff shape\n\nBottom line\nWhy\nProof\nRisk\nFix/Plan\nYour call\nSkipped nodes / reasons\n`;
+}
+
+function renderFourRoleProtocol() {
+  return `
+## Four-role portable closure
+
+- \`review/review.json\` uses \`valdris.review.v2\` and declares exactly \`scout\`, \`implementer\`, \`verifier\`, and \`independentReviewer\`.
+- \`actorId\`, \`sessionId\`, and \`executionId\` are pairwise distinct across all four roles. There is no implicit same-actor or same-session relaxation.
+- Scout evidence binds \`run/route.json\`; implementer and verifier evidence bind \`proof/portable.json\`; the independent reviewer binds the pre-review \`evidenceBundleSha256\`.
+- The trusted Ed25519 review signature covers the entire role roster. \`valdris.run-packet.v2\` exposes \`roleProvenanceSha256\` and binds it into the final envelope.
+- Any future tier-scaled relaxation requires a versioned contract change and an explicit governed waiver.
+`;
 }
 
 function renderGoalSkillProtocol() {
-  return `\n## Valdris v0.7 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`skills/codex-routing.yaml\` and the gate-authoritative \`skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Activate the production, AI, eval, trajectory, smoke, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n5. Use \`controls/domain-packs/\` for mobile iOS, realtime multiplayer, digital commerce, and youth-AI work.\n6. Run \`node scripts/enterprise-ai-gate-all.mjs --repo .\` for the full enterprise/AI run packet.\n7. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+  return `\n## Valdris v0.8 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n5. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n6. Treat async workflows as a cross-cutting capability pack over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n7. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed \`.valdris-harness/controls/review-trust.v1.json\` and validate \`run/packet.json\` before completion. Agents may not add or trust their own review key.\n8. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+}
+
+function renderBridgeCredentialBoundary(agentName) {
+  return `
+## Bridge credential boundary
+
+This section is authoritative for every bridge command above. Launch the ${agentName} process with only \`UASH_BRIDGE_ACCESS_TOKEN\`; the emitter supplies it as \`x-uash-bridge-token\` for ordinary API reads and writes. Never put the bridge-only \`UASH_BRIDGE_INTEGRITY_KEY\` or operator-held \`UASH_HUMAN_APPROVAL_TOKEN\` in an agent prompt, environment, client bundle, or generated evidence.
+
+An agent may emit \`approval.requested\`, then must stop. A real operator grants or denies from a separate shell that has both \`UASH_BRIDGE_ACCESS_TOKEN\` for API access and the distinct \`UASH_HUMAN_APPROVAL_TOKEN\` for the human decision. The emitter reads both credentials from that operator-only environment and sends them as headers; it never accepts the human token through process arguments or request bodies. Possession of the access token alone cannot self-approve.
+`;
+}
+
+function hardenGeneratedConnectorPrompt(content, agentName) {
+  return String(content)
+    .replace(
+      "If RUN_ID is missing, ask for it before changing files. Do not invent one.",
+      `If RUN_ID is missing, ask for it before changing files. Do not invent one. Launch ${agentName} with only UASH_BRIDGE_ACCESS_TOKEN; never load the integrity or human-approval credential into the agent process.`,
+    )
+    .replace(
+      "Only a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator grant requires the operator-held bridge token:",
+      "Only a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator runs the grant from a separate shell holding both the bridge access token and the distinct human approval token:",
+    );
 }
 
 function renderLayerZeroProtocol() {
@@ -810,20 +1104,31 @@ function renderInstalledPathProtocol(repo, out) {
   const relativePack = path.relative(repo, out).replaceAll("\\", "/") || ".";
   const scriptPrefix = relativePack === "." ? "scripts" : `${relativePack}/scripts`;
   const adapterPath = relativePack === "." ? "project-adapter.json" : `${relativePack}/project-adapter.json`;
-  return `\n## Installed pack command paths\n\nRun these commands from the **target repository root**. This generated pack is at \`${relativePack}\`; earlier \`node scripts/... --repo .\` examples apply only when the pack itself is installed at the target root.\n\n\`\`\`bash\nnode ${scriptPrefix}/route-request.mjs --repo . --request \"<task>\" --actor \"<human>\"\nnode ${scriptPrefix}/enterprise-ai-gate-all.mjs --repo .\nUASH_BRIDGE_URL=\"$BRIDGE_URL\" node ${scriptPrefix}/uash-emit-event.mjs \"$RUN_ID\" node.entered intake \"Agent started intake\" --artifact run/intake.json --status ok --actor codex --artifact-root \"$PWD\" --adapter-path ${adapterPath}\n\`\`\`\n\nEvery first nested-pack bridge event must include both \`--artifact-root\` and \`--adapter-path\` so the v0.7 adapter cannot be bypassed.\n`;
+  return `\n## Installed pack command paths\n\nRun these commands from the **target repository root**. The only supported v0.8 installation is the target-nested, same-worktree pack at \`${relativePack}\`. Commit that entire directory before portable proof, signed review, or run-packet creation; validators reject an untracked, dirty, external, or differently located validation runtime.\n\n\`\`\`bash\ngit add ${relativePack}\ngit commit -m \"chore: commission Valdris harness\"\nnode ${scriptPrefix}/route-request.mjs --repo . --request \"<task>\" --actor \"<human>\"\nnode ${scriptPrefix}/enterprise-ai-gate-all.mjs --repo .\nUASH_BRIDGE_URL=\"$BRIDGE_URL\" node ${scriptPrefix}/uash-emit-event.mjs \"$RUN_ID\" node.entered intake \"Agent started intake\" --artifact run/intake.json --status ok --actor codex --artifact-root \"$PWD\" --adapter-path ${adapterPath}\n\`\`\`\n\nEvery first nested-pack bridge event must include both \`--artifact-root\` and \`--adapter-path\` so the v0.8 adapter cannot be bypassed. Clean-room privacy applies to \`${relativePack}\`; product assets follow the target project's reviewed asset/security policy. After code-intelligence generation, separately scan \`graph/\` and \`design/anchors.json\` with the scoped evidence command from \`docs/Validation Commands.md\`.\n`;
 }
 
 function renderReview(adapter) {
   const answers = adapter.answers;
-  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at this output directory. Agents can now load \`AGENTS.md\`, \`CLAUDE.md\`, the Claude slash command, or the Codex runtime prompt, route by \`CONTEXT.md\`, and block done on proof artifacts, skip reasons, QA/live-smoke, and self-healing checks.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.6 commissioning + trust-boundary hardening\n\n- Commissioning question groups: ${adapter.commissioning.questionGroups}\n- Commissioning questions: ${adapter.commissioning.questionCount}\n- GitNexus/code intelligence policy: ${answers.code_graph}\n- Code-intelligence backend: GitNexus preferred, local static graph fallback disclosed\n- System Design lane triggers: ${answers.system_design_triggers}\n- Foundation blueprint: ${answers.reference_architecture}\n- Anti-spaghetti guardrails: ${answers.anti_spaghetti_rules}\n- Enterprise proof-bank domain pack: ${answers.domain_pack}\n- Operating intelligence: evals, trajectory, context, skills, memory, tools/hooks, sandbox, model routing, economics, PR agents, MCP/A2A, agent lifecycle\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n\n## Next gate\n\nReview \`project-adapter.json\` and edit any defaults that are wrong before handing the pack to Claude Code/Codex.\n`;
+  return `# Commissioning Review Packet\n\n## Bottom line\n\nGenerated a project-specific harness pack for **${answers.project_name}** at \`.valdris-harness\`. This target-nested directory is the validation runtime and must be committed in the same Git worktree as the product before portable proof, signed review, or run-packet creation.\n\n## What was detected\n\n- Repo: \`${adapter.detected.repoPath}\`\n- Role: ${answers.repo_role}\n- Frameworks/tools: ${adapter.detected.frameworks.join(", ") || "none detected"}\n- Package manager: ${adapter.detected.packageManager}\n\n## Human-supplied operating rules\n\n- Operator: ${answers.operator_name}\n- Answer style: ${answers.answer_style}\n- Approval owner: ${answers.approval_owner}\n- Red Zone: ${answers.red_zone_actions}\n\n## v0.6 commissioning + trust-boundary hardening\n\n- Commissioning question groups: ${adapter.commissioning.questionGroups}\n- Commissioning questions: ${adapter.commissioning.questionCount}\n- Target-root discovery loaders: ${Object.entries(adapter.installation.discoveryLoaders).map(([file, loader]) => `${file} (${loader.action})`).join(", ")}\n- GitNexus/code intelligence policy: ${answers.code_graph}\n- Code-intelligence backend: GitNexus preferred, local static graph fallback disclosed\n- System Design lane triggers: ${answers.system_design_triggers}\n- Foundation blueprint: ${answers.reference_architecture}\n- Anti-spaghetti guardrails: ${answers.anti_spaghetti_rules}\n- Enterprise proof-bank domain pack: ${answers.domain_pack}\n- Operating intelligence: evals, trajectory, context, skills, memory, tools/hooks, sandbox, model routing, economics, PR agents, MCP/A2A, agent lifecycle\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n- Clean-room privacy scope: \`.valdris-harness\`; generated \`graph/\` and \`design/anchors.json\` are checked separately, while product binaries use the target's reviewed asset policy\n- Signed review trust: configure at least one operator-owned Ed25519 public key in \`.valdris-harness/controls/review-trust.v1.json\`; the generated empty trust store intentionally blocks final completion\n\n## Next gate\n\nReview \`.valdris-harness/project-adapter.json\` plus the bounded Valdris loader blocks installed in target-root \`AGENTS.md\` and \`CLAUDE.md\`, commission the review trust store without exposing the private key to agents, and commit the complete pack and root discovery loaders before handing the repo to Claude Code/Codex.\n`;
+}
+
+function renderReviewTrustPinProtocol(adapter) {
+  return `\n## Operator-held review trust pin\n\n- Generated trust-store digest: \`${adapter.reviewTrust.generatedDigest}\` using canonical-JSON SHA-256. This commissioning value is informational, not its own authority.\n- Configure the reviewed digest out of band as protected \`UASH_REVIEW_TRUST_SHA256\` before review, packet, bridge, or CI validation.\n- A delivery-agent-controlled shell cannot establish this external trust boundary merely by setting its own environment variable.\n- For governed rotation, a human operator reviews the new store and updates the protected pin before accepting it; validators never learn or auto-update the pin from the checkout under validation.\n`;
 }
 
 function generatePack(args, detected, answers) {
-  const out = path.resolve(args.out);
   const repoRoot = path.resolve(detected.repoPath);
-  if (out === repoRoot) throw new Error("Refusing to commission directly over the target repository; use a nested pack such as --out <repo>/.valdris-harness");
-  const repoInsideOutput = path.relative(out, repoRoot);
-  if (repoInsideOutput === "" || (!repoInsideOutput.startsWith("..") && !path.isAbsolute(repoInsideOutput))) throw new Error("Refusing an output directory that contains the target repository");
+  const canonicalOut = path.join(repoRoot, ".valdris-harness");
+  const out = path.resolve(args.out || canonicalOut);
+  if (path.relative(canonicalOut, out) !== "" || path.relative(out, canonicalOut) !== "") {
+    throw new Error(`Valdris v0.8 requires the committed target-nested pack at ${canonicalOut}; set --out to <repo>/.valdris-harness`);
+  }
+  if (fs.existsSync(out)) {
+    const outputStats = fs.lstatSync(out);
+    if (outputStats.isSymbolicLink() || !outputStats.isDirectory()) {
+      throw new Error("Refusing a .valdris-harness output that is a symbolic link or is not a directory");
+    }
+  }
   const outputIsNonEmpty = fs.existsSync(out) && fs.readdirSync(out).length > 0;
   if (outputIsNonEmpty && !args.force) throw new Error(`Output directory is not empty: ${out}. Use --force only to replace a reviewed generated pack.`);
   if (outputIsNonEmpty && args.force) {
@@ -833,16 +1138,29 @@ function generatePack(args, detected, answers) {
   const packFromRepo = path.relative(repoRoot, out).replaceAll("\\", "/") || ".";
   const repoFromPack = path.relative(out, repoRoot).replaceAll("\\", "/") || ".";
   const scriptFromRepo = packFromRepo === "." ? "scripts" : `${packFromRepo}/scripts`;
+  const rootLoaderPlans = ROOT_DISCOVERY_LOADER_FILES.map((fileName) => planRootDiscoveryLoader(repoRoot, fileName));
+  const generatedReviewTrustSha256 = reviewTrustStoreSha256(path.join(HARNESS_ROOT, "controls", "review-trust.v1.json"));
   const adapter = {
     schema: "uash.project-adapter.v2",
     generatedAt: new Date().toISOString(),
     generatorVersion: VERSION,
-    detected,
+    detected: { ...detected, repoPath: "." },
     answers,
     commissioning: {
       questionGroups: QUESTION_GROUPS.length,
       questionCount: questionList().length,
       version: VERSION,
+    },
+    installation: {
+      pathBasis: "target-repository-root",
+      targetRoot: ".",
+      packRoot: ".valdris-harness",
+      commitRequired: true,
+      sameGitWorktreeRequired: true,
+      discoveryLoaders: Object.fromEntries(rootLoaderPlans.map((plan) => [plan.fileName, { target: plan.fileName, loads: `.valdris-harness/${plan.fileName}`, action: plan.action }])),
+      discoveryLoadersCommitRequired: true,
+      discoveryLoaderPolicy: "Commissioning creates or safely merges bounded Valdris loader blocks at the target root; unsafe files or malformed/duplicate markers block installation.",
+      policy: "The complete .valdris-harness directory and its bounded target-root AGENTS.md/CLAUDE.md discovery loaders must be committed in the target repository before portable proof, independent review, or run-packet creation.",
     },
     laneFamilies: DEFAULT_LANE_FAMILIES,
     lanes: splitList(answers.enabled_lanes),
@@ -939,11 +1257,65 @@ function generatePack(args, detected, answers) {
       gateCommand: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
       selection: "One primary skill plus the smallest supporting set.",
     },
+    cleanRoomAssurance: {
+      provenanceManifest: "controls/provenance/thirteen-layers.upstream.v1.json",
+      crosswalk: "controls/crosswalks/thirteen-layers-to-uash.v1.json",
+      executionPolicy: "controls/assurance-execution-policy.v1.json",
+      gates: ["provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs"],
+      policy: "Restricted project inputs contribute behavioral requirements only; public copied assets require pinned provenance and integrity verification.",
+      privacyScope: {
+        pack: ".valdris-harness",
+        packCommand: `node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}`,
+        generatedEvidence: ["graph", "design/anchors.json"],
+        generatedEvidenceCommand: `node ${scriptFromRepo}/privacy-gate.mjs --repo . --include graph --include design/anchors.json`,
+        productAssetsPolicy: "Product binaries are outside the clean-room import gate and remain governed by the target repository's commissioned asset, privacy, security, and supply-chain policies.",
+      },
+    },
+    crossCuttingCapabilities: {
+      asyncWorkflows: {
+        catalog: "controls/capability-packs/async-workflows.v1.json",
+        productionLayer: false,
+        policy: "Assess async workflows across every affected existing domain; never create Layer 14 for orchestration.",
+      },
+    },
+    portableExecution: {
+      proofCommand: `node ${scriptFromRepo}/proof-runner.mjs --repo . --run-id <id> --commit <sha> --environment <name> --output proof/portable.json [--causal-input <repo/path> ...] -- <executable> [args...]`,
+      rcaGateCommand: `node ${scriptFromRepo}/rca-gate.mjs --repo .`,
+      reviewGateCommand: `node ${scriptFromRepo}/review-gate.mjs --repo .`,
+      runPacketGateCommand: `node ${scriptFromRepo}/run-packet-gate.mjs --repo .`,
+      roleSeparation: {
+        schema: "valdris.review-role-provenance.v1",
+        reviewSchema: "valdris.review.v2",
+        runPacketSchema: "valdris.run-packet.v2",
+        requiredRoles: ["scout", "implementer", "verifier", "independentReviewer"],
+        pairwiseDistinctIdentityFields: ["actorId", "sessionId", "executionId"],
+        evidenceBindings: { scout: "run/route.json", implementer: "proof/portable.json", verifier: "proof/portable.json", independentReviewer: "review evidenceBundleSha256" },
+        waiverPolicy: "Role collapse is forbidden. Any future tier-scaled relaxation requires an explicit governed waiver and a versioned contract change.",
+      },
+    },
+    reviewTrust: {
+      schema: "valdris.review-trust.v1",
+      path: ".valdris-harness/controls/review-trust.v1.json",
+      algorithm: "ed25519",
+      privateKeyPolicy: "Private review keys remain outside the repository and outside agent reach; agents may not add or activate their own trusted key.",
+      pinEnvironment: "UASH_REVIEW_TRUST_SHA256",
+      pinDigestScheme: "sha256-canonical-json",
+      generatedDigest: generatedReviewTrustSha256,
+      generatedDigestAuthority: "Informational commissioning handoff only. The authoritative pin is operator/CI-held outside the repository under validation.",
+      rotationPolicy: "A human operator updates the protected out-of-band pin before a reviewed trust-store rotation is accepted; validators never auto-enroll from repository bytes.",
+      commissioned: false,
+    },
     finishLineAssurance: {
       required: true,
       gateCommand: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
-      requiredArtifacts: ["run/intake.json", "run/workload-classification.json", "run/route.json", "foundation/assessment.json when foundation applies", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "skills/codex-routing.yaml", "skills/registry.json"],
-      binding: ["runId", "profile", "commit", "environment"],
+      packetRequired: true,
+      independentReviewRequired: true,
+      rcaRequiredFor: ["bug", "regression", "incident", "self-heal"],
+      packetGateCommand: `node ${scriptFromRepo}/run-packet-gate.mjs --repo .`,
+      reviewGateCommand: `node ${scriptFromRepo}/review-gate.mjs --repo .`,
+      rcaGateCommand: `node ${scriptFromRepo}/rca-gate.mjs --repo .`,
+      requiredArtifacts: ["run/intake.json", "run/workload-classification.json", "run/route.json", "foundation/assessment.json when foundation applies", "goal/goal.json", "context/manifest.json", "graph + anchors when code intelligence applies", "production/layer-assessment.json when production applies", "ai/assurance.json", "domain/assurance.json", "evals/results.json", "paired uash.context-arm-result.v1 JSON files referenced by evals/results.json", "trajectory/trajectory.json", "smoke/smoke_proof.json when smoke applies", "waivers/waivers.json", "proof/portable.json", "rca/rca.json when RCA applies", ".valdris-harness/controls/review-trust.v1.json with an operator-commissioned active key", "review/review.json", "run/packet.json", ".valdris-harness/skills/codex-routing.yaml", ".valdris-harness/skills/registry.json"],
+      binding: ["runId", "profile", "commit", "environment", "roleProvenanceSha256"],
     },
     knowledgeVault: {
       format: "OKF v0.1",
@@ -1000,6 +1372,9 @@ function generatePack(args, detected, answers) {
         threshold: answers.eval_acceptance_threshold,
         runLocation: answers.eval_run_location,
         artifacts: splitList(answers.eval_artifacts),
+        contextQualityComparisonRequired: true,
+        contextComparisonSchema: "uash.context-comparison.v1",
+        contextArmResultSchema: "uash.context-arm-result.v1",
       },
       trajectoryGate: {
         badTrajectory: answers.bad_agent_trajectory,
@@ -1015,6 +1390,14 @@ function generatePack(args, detected, answers) {
         stalePolicy: answers.stale_context_policy,
         budget: answers.context_budget,
         artifacts: splitList(answers.context_artifacts),
+        contextQuality: {
+          schema: "uash.context-quality-eval.v1",
+          requiredWhenContextLoaded: true,
+          baselineModes: ["no-context", "limited-context"],
+          resultsArtifact: "evals/results.json",
+          armResultSchema: "uash.context-arm-result.v1",
+          invariant: "same repo case set, answer key, evaluator, model, prompt, and config; direction-aware positive delta; candidate threshold; zero critical regressions",
+        },
       },
       skillRegistry: {
         inventory: splitList(answers.skill_inventory),
@@ -1123,15 +1506,20 @@ function generatePack(args, detected, answers) {
     humanApproval: {
       tokenRequiredForGrant: true,
       preferredHeader: "x-uash-human-token",
-      cliFlag: "--human-token",
-      bodyFallback: "humanToken",
+      operatorEnvironment: "UASH_HUMAN_APPROVAL_TOKEN",
+      processArgvAccepted: false,
+      requestBodyAccepted: false,
       neverPersistRawToken: true,
       approvalOwner: answers.approval_owner,
     },
     ciEnforcement: {
       workflowTemplate: ".github/workflows/valdris-assurance.yml",
-      installationRequired: "If the harness pack stays nested, copy the workflow template to the target repo's top-level .github/workflows and set the pack path.",
-      requiredCommands: [`node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo .`, `node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local`, `node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .`, `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`, `node ${scriptFromRepo}/route-gate.mjs --repo .`, `node ${scriptFromRepo}/foundation-gate.mjs --repo .`, `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`],
+      structuralWorkflowTemplate: ".github/workflows/valdris-assurance.yml",
+      acceptanceWorkflowTemplate: ".github/workflows/valdris-run-acceptance.yml",
+      installationRequired: "Copy both workflow templates to the target repo's top-level .github/workflows. Protect the valdris-run-acceptance environment with required reviewers and set its UASH_REVIEW_TRUST_SHA256 variable from operator-held state.",
+      alwaysOnCommands: [`node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/provenance-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/neutrality-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}`],
+      acceptanceCommand: `node ${scriptFromRepo}/run-acceptance.mjs --repo . --bundle <extracted-artifact-directory> --source-commit <full-git-sha>`,
+      requiredCommands: [`node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/provenance-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/neutrality-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}`, `node ${scriptFromRepo}/run-acceptance.mjs --repo . --bundle <extracted-artifact-directory> --source-commit <full-git-sha>`],
     },
     telemetryModes: {
       policy: answers.telemetry_mode_policy,
@@ -1152,11 +1540,25 @@ function generatePack(args, detected, answers) {
       install: answers.install_command,
       knowledge: `node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}`,
       skills: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
-      catalogs: `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo .`,
+      catalogs: `node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo ${packFromRepo}`,
+      provenance: `node ${scriptFromRepo}/provenance-gate.mjs --repo ${packFromRepo}`,
+      neutrality: `node ${scriptFromRepo}/neutrality-gate.mjs --repo ${packFromRepo}`,
+      privacy: `node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}`,
+      generatedEvidencePrivacy: `node ${scriptFromRepo}/privacy-gate.mjs --repo . --include graph --include design/anchors.json`,
+      schemaCompatibility: `node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}`,
       classification: `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`,
       route: `node ${scriptFromRepo}/route-gate.mjs --repo .`,
       foundation: `node ${scriptFromRepo}/foundation-gate.mjs --repo .`,
       activeGoal: `node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active`,
+      completedGoal: `node ${scriptFromRepo}/goal-gate.mjs --repo .`,
+      enterpriseAi: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
+      rcaWhenApplicable: `node ${scriptFromRepo}/rca-gate.mjs --repo .`,
+      preReviewEvidenceBundle: `node ${scriptFromRepo}/run-create.mjs --repo . --run-id <runId> --commit <commit> --environment <environment> --proof proof/portable.json [--rca rca/rca.json] --gate <name>=<artifact-path> --print-evidence-bundle`,
+      review: `node ${scriptFromRepo}/review-gate.mjs --repo .`,
+      runPacketCreate: `node ${scriptFromRepo}/run-create.mjs --repo . --run-id <runId> --commit <commit> --environment <environment> --proof proof/portable.json --review review/review.json [--rca rca/rca.json] --gate <name>=<artifact-path> --output run/packet.json`,
+      runPacket: `node ${scriptFromRepo}/run-packet-gate.mjs --repo .`,
+      runAcceptance: `node ${scriptFromRepo}/run-acceptance.mjs --repo . --bundle <extracted-artifact-directory> --source-commit <full-git-sha>`,
+      orderedClosure: ["completedGoal", "enterpriseAi", "rcaWhenApplicable", "preReviewEvidenceBundle", "review", "runPacketCreate", "runPacket"],
       finishLine: `node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .`,
       lint: answers.lint_command,
       typecheck: answers.typecheck_command,
@@ -1168,50 +1570,52 @@ function generatePack(args, detected, answers) {
 
   if (args.force && fs.existsSync(out)) fs.rmSync(out, { recursive: true, force: true });
   mkdirp(out);
+  fs.copyFileSync(path.join(HARNESS_ROOT, "THIRD_PARTY_NOTICES.md"), path.join(out, "THIRD_PARTY_NOTICES.md"));
   const installedPathProtocol = renderInstalledPathProtocol(repoRoot, out);
+  const writePackText = (relativePath, content) => write(path.join(out, relativePath), targetRootRuntimePaths(content));
   write(path.join(out, "project-adapter.json"), JSON.stringify(adapter, null, 2));
   write(path.join(out, "project.yaml"), toYaml(adapter));
-  write(path.join(out, "AGENTS.md"), renderAgents(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
-  write(path.join(out, "CLAUDE.md"), renderClaude(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
-  write(path.join(out, ".claude/commands/valdris-sdlc-harness.md"), renderClaudeCommand(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
-  write(path.join(out, "docs/Codex Runtime Prompt.md"), renderCodexPrompt(answers) + renderGoalSkillProtocol() + renderLayerZeroProtocol() + installedPathProtocol);
-  write(path.join(out, "00_MAP.md"), renderMap(answers, detected) + renderLayerZeroProtocol());
-  write(path.join(out, "CONTEXT.md"), renderContext(answers));
-  write(path.join(out, "docs/Validation Commands.md"), renderValidation(answers, { scriptFromRepo, packFromRepo }) + renderLayerZeroValidation({ scriptFromRepo }));
-  write(path.join(out, "docs/Proof Schema.md"), renderProofSchema(answers));
-  write(path.join(out, "docs/Red Zone Rules.md"), renderRedZone(answers));
-  write(path.join(out, "docs/Code Intelligence Graph.md"), renderCodeIntelligence(answers));
-  write(path.join(out, "docs/GitNexus Code Intelligence.md"), renderCodeIntelligence(answers));
-  write(path.join(out, "docs/Production Readiness Layers.md"), renderProductionReadiness(answers) + renderLayerZeroProtocol());
-  write(path.join(out, "docs/Cloud Platform Engineering.md"), renderCloudPlatform(answers));
-  write(path.join(out, "docs/QA and Live Smoke.md"), renderQaSmoke(answers));
-  write(path.join(out, "docs/Modes Blueprint Live Replay.md"), renderModes(answers));
-  write(path.join(out, "docs/Self-Healing Loop.md"), renderSelfHealing(answers));
-  write(path.join(out, "docs/Good Looks Like Foundation.md"), renderGoodLooksLike(answers) + renderLayerZeroProtocol());
-  write(path.join(out, "docs/Code Quality Guardrails.md"), renderCodeQualityGuardrails(answers));
-  write(path.join(out, "docs/Enterprise Proof Bank.md"), renderEnterpriseProofBank(answers));
-  write(path.join(out, "docs/Operating Intelligence Layer.md"), renderOperatingIntelligence(answers) + renderLayerZeroProtocol());
-  write(path.join(out, "docs/Team Harness Registry.md"), renderTeamHarnessRegistry(answers));
-  write(path.join(out, "docs/Human Agent Protocol.md"), renderHumanAgentProtocol(answers));
-  write(path.join(out, "docs/Agent Knowledge Vault.md"), renderAgentKnowledgeVault(answers));
+  writePackText("AGENTS.md", renderAgents(answers) + renderGoalSkillProtocol() + renderFourRoleProtocol() + renderLayerZeroProtocol() + renderOrderedV08Closure({ scriptFromRepo }) + installedPathProtocol);
+  writePackText("CLAUDE.md", renderClaude(answers) + renderGoalSkillProtocol() + renderFourRoleProtocol() + renderLayerZeroProtocol() + renderOrderedV08Closure({ scriptFromRepo }) + installedPathProtocol);
+  writePackText(".claude/commands/valdris-sdlc-harness.md", hardenGeneratedConnectorPrompt(renderClaudeCommand(answers), "Claude Code") + renderBridgeCredentialBoundary("Claude Code") + renderGoalSkillProtocol() + renderFourRoleProtocol() + renderLayerZeroProtocol() + renderOrderedV08Closure({ scriptFromRepo }) + installedPathProtocol);
+  writePackText("docs/Codex Runtime Prompt.md", hardenGeneratedConnectorPrompt(renderCodexPrompt(answers), "Codex") + renderBridgeCredentialBoundary("Codex") + renderGoalSkillProtocol() + renderFourRoleProtocol() + renderLayerZeroProtocol() + renderOrderedV08Closure({ scriptFromRepo }) + installedPathProtocol);
+  writePackText("00_MAP.md", renderMap(answers, adapter.detected) + renderLayerZeroProtocol());
+  writePackText("CONTEXT.md", renderContext(answers));
+  writePackText("docs/Validation Commands.md", renderValidation(answers, { scriptFromRepo, packFromRepo }) + renderLayerZeroValidation({ scriptFromRepo }));
+  writePackText("docs/Proof Schema.md", renderProofSchema(answers, { scriptFromRepo }));
+  writePackText("docs/Red Zone Rules.md", renderRedZone(answers));
+  writePackText("docs/Code Intelligence Graph.md", renderCodeIntelligence(answers));
+  writePackText("docs/GitNexus Code Intelligence.md", renderCodeIntelligence(answers));
+  writePackText("docs/Production Readiness Layers.md", renderProductionReadiness(answers) + renderLayerZeroProtocol());
+  writePackText("docs/Cloud Platform Engineering.md", renderCloudPlatform(answers));
+  writePackText("docs/QA and Live Smoke.md", renderQaSmoke(answers));
+  writePackText("docs/Modes Blueprint Live Replay.md", renderModes(answers));
+  writePackText("docs/Self-Healing Loop.md", renderSelfHealing(answers));
+  writePackText("docs/Good Looks Like Foundation.md", renderGoodLooksLike(answers) + renderLayerZeroProtocol());
+  writePackText("docs/Code Quality Guardrails.md", renderCodeQualityGuardrails(answers));
+  writePackText("docs/Enterprise Proof Bank.md", renderEnterpriseProofBank(answers));
+  writePackText("docs/Operating Intelligence Layer.md", renderOperatingIntelligence(answers) + renderContextArmResultProtocol() + renderLayerZeroProtocol());
+  writePackText("docs/Team Harness Registry.md", renderTeamHarnessRegistry(answers));
+  writePackText("docs/Human Agent Protocol.md", renderHumanAgentProtocol(answers));
+  writePackText("docs/Agent Knowledge Vault.md", renderAgentKnowledgeVault(answers));
   for (const docName of ["ENTERPRISE_CONTROL_MODEL_V2.md", "GENERATIVE_AI_ASSURANCE_PACK.md", "GOAL_LOOP_AND_SKILL_ROUTER.md"]) {
-    fs.copyFileSync(path.join(HARNESS_ROOT, "docs", docName), path.join(out, "docs", docName));
+    writePackText(path.join("docs", docName), fs.readFileSync(path.join(HARNESS_ROOT, "docs", docName), "utf8"));
   }
   for (const [relativePath, content] of Object.entries(renderKnowledgeVaultFiles(answers))) {
-    write(path.join(out, relativePath), content);
+    writePackText(relativePath, content);
   }
-  for (const relativePath of ["playbooks/layer-zero-assurance.md", "playbooks/production-readiness-13-layers.md", "playbooks/goal-loop-skill-routing.md", "playbooks/genai-assurance.md", "concepts/proof-first-harness.md", "concepts/typed-evidence.md"]) {
-    fs.copyFileSync(path.join(HARNESS_ROOT, "knowledge", relativePath), path.join(out, "knowledge", relativePath));
+  for (const relativePath of ["playbooks/layer-zero-assurance.md", "playbooks/production-readiness-13-layers.md", "playbooks/goal-loop-skill-routing.md", "playbooks/genai-assurance.md", "playbooks/clean-room-assurance-import.md", "concepts/proof-first-harness.md", "concepts/typed-evidence.md"]) {
+    writePackText(path.join("knowledge", relativePath), fs.readFileSync(path.join(HARNESS_ROOT, "knowledge", relativePath), "utf8"));
   }
-  fs.appendFileSync(path.join(out, "knowledge", "index.md"), "\n* [Layer Zero Assurance](playbooks/layer-zero-assurance.md) - bound workload and foundation contract.\n* [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](playbooks/genai-assurance.md) - cross-cutting AI controls.\n* [Typed Evidence](concepts/typed-evidence.md) - resolvable proof contract.\n");
-  fs.appendFileSync(path.join(out, "knowledge", "playbooks", "index.md"), "\n* [Layer Zero Assurance](layer-zero-assurance.md) - bound workload and foundation contract.\n* [Goal Loop and Skill Routing](goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](genai-assurance.md) - cross-cutting AI controls.\n");
+  fs.appendFileSync(path.join(out, "knowledge", "index.md"), "\n* [Layer Zero Assurance](playbooks/layer-zero-assurance.md) - bound workload and foundation contract.\n* [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](playbooks/genai-assurance.md) - cross-cutting AI controls.\n* [Clean-room Assurance Import](playbooks/clean-room-assurance-import.md) - provenance, neutrality, privacy, and schema-compatibility boundary.\n* [Typed Evidence](concepts/typed-evidence.md) - resolvable proof contract.\n");
+  fs.appendFileSync(path.join(out, "knowledge", "playbooks", "index.md"), "\n* [Layer Zero Assurance](layer-zero-assurance.md) - bound workload and foundation contract.\n* [Goal Loop and Skill Routing](goal-loop-skill-routing.md) - bounded durable execution.\n* [Generative AI Assurance](genai-assurance.md) - cross-cutting AI controls.\n* [Clean-room Assurance Import](clean-room-assurance-import.md) - restricted-source integration boundary.\n");
   fs.appendFileSync(path.join(out, "knowledge", "concepts", "index.md"), "\n* [Typed Evidence](typed-evidence.md) - resolvable proof contract.\n");
   for (const relativePath of ["knowledge/index.md", "knowledge/systems/project-system.md", "knowledge/playbooks/index.md", "knowledge/playbooks/engineering-task-routing.md"]) {
     const target = path.join(out, relativePath);
     fs.writeFileSync(target, fs.readFileSync(target, "utf8").replaceAll("Production Readiness 13 Layers", "Production Assurance: 13 Domains"), "utf8");
   }
-  write(path.join(out, "runs/_run-template/README.md"), renderRunTemplate(answers) + renderLayerZeroProtocol());
-  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs"]) {
+  writePackText("runs/_run-template/README.md", renderRunTemplate(answers, adapter.finishLineAssurance.requiredArtifacts) + renderFourRoleProtocol() + renderLayerZeroProtocol());
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs", "discovery-loader-contract.mjs", "proof-runner.mjs", "rca-gate.mjs", "review-gate.mjs", "run-create.mjs", "run-packet-gate.mjs", "run-acceptance.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));
@@ -1222,6 +1626,9 @@ function generatePack(args, detected, answers) {
   syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, "skills"));
   syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, ".agents", "skills"));
   syncValdrisSkillTree(path.join(HARNESS_ROOT, "skills"), path.join(out, ".claude", "skills"));
+  for (const generatedJsonRoot of ["controls", "skills", path.join(".agents", "skills"), path.join(".claude", "skills")]) {
+    normalizeGeneratedJsonLineEndings(path.join(out, generatedJsonRoot));
+  }
   write(path.join(out, "package.json"), JSON.stringify({
     name: `${answers.project_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project"}-valdris-harness`,
     version: VERSION,
@@ -1233,6 +1640,11 @@ function generatePack(args, detected, answers) {
       "skills:install:codex": "node scripts/install-codex-skills.mjs",
       "skills:check:codex": "node scripts/install-codex-skills.mjs --check",
       "catalog:gate": "node scripts/catalog-integrity-gate.mjs --repo .",
+      "provenance:gate": "node scripts/provenance-gate.mjs --repo .",
+      "neutrality:gate": "node scripts/neutrality-gate.mjs --repo .",
+      "privacy:gate": "node scripts/privacy-gate.mjs --repo .",
+      "evidence:privacy:gate": `node scripts/privacy-gate.mjs --repo "${repoFromPack}" --include graph --include design/anchors.json`,
+      "schema:compat:gate": "node scripts/schema-compat-gate.mjs --repo .",
       "intake:gate": `node scripts/intake-gate.mjs --repo \"${repoFromPack}\"`,
       "classification:gate": `node scripts/workload-classification-gate.mjs --repo \"${repoFromPack}\"`,
       "foundation:gate": `node scripts/foundation-gate.mjs --repo \"${repoFromPack}\"`,
@@ -1240,18 +1652,121 @@ function generatePack(args, detected, answers) {
       "route:request": `node scripts/route-request.mjs --repo \"${repoFromPack}\"`,
       "goal:transition": `node scripts/goal-transition.mjs --repo \"${repoFromPack}\"`,
       "goal:gate:active": `node scripts/goal-gate.mjs --repo \"${repoFromPack}\" --allow-active`,
+      "run:packet:gate": `node scripts/run-packet-gate.mjs --repo \"${repoFromPack}\"`,
+      "run:accept": `node scripts/run-acceptance.mjs --repo \"${repoFromPack}\"`,
+      "proof:run": "node scripts/proof-runner.mjs",
+      "rca:gate": `node scripts/rca-gate.mjs --repo \"${repoFromPack}\"`,
+      "review:gate": `node scripts/review-gate.mjs --repo \"${repoFromPack}\"`,
       "enterprise-ai:gate": `node scripts/enterprise-ai-gate-all.mjs --repo \"${repoFromPack}\"`
     }
   }, null, 2));
-  write(path.join(out, ".github/workflows/valdris-assurance.yml"), `name: Valdris Assurance\n\non:\n  pull_request:\n  push:\n\npermissions:\n  contents: read\n\njobs:\n  valdris:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: "24"\n      - run: node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}\n      - run: node ${scriptFromRepo}/code-intelligence-scan.mjs --repo . --provider local\n      - run: node ${scriptFromRepo}/code-intelligence-gate-all.mjs --repo .\n      - name: Validate workload classification\n        if: \${{ hashFiles('run/route.json') != '' }}\n        run: node ${scriptFromRepo}/workload-classification-gate.mjs --repo .\n      - name: Validate route v2\n        if: \${{ hashFiles('run/route.json') != '' }}\n        run: node ${scriptFromRepo}/route-gate.mjs --repo .\n      - name: Read validated route gate applicability\n        id: route\n        if: \${{ hashFiles('run/route.json') != '' }}\n        run: node -e "const fs=require('fs'); const route=JSON.parse(fs.readFileSync('run/route.json','utf8')); const foundation=route.gateApplicability?.foundation?.status==='required'; fs.appendFileSync(process.env.GITHUB_OUTPUT, 'foundation='+foundation+'\\n')"\n      - name: Enforce Layer 0 foundation\n        if: \${{ steps.route.outputs.foundation == 'true' }}\n        run: node ${scriptFromRepo}/foundation-gate.mjs --repo .\n      - name: Validate active goal shape\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node ${scriptFromRepo}/goal-gate.mjs --repo . --allow-active\n      - name: Read goal status\n        id: goal\n        if: \${{ hashFiles('goal/goal.json') != '' }}\n        run: node -e "const fs=require('fs'); const complete=JSON.parse(fs.readFileSync('goal/goal.json','utf8')).status==='completed'; fs.appendFileSync(process.env.GITHUB_OUTPUT, 'complete='+complete+'\\n')"\n      - name: Validate completed Valdris run packet\n        if: \${{ steps.goal.outputs.complete == 'true' }}\n        run: node ${scriptFromRepo}/enterprise-ai-gate-all.mjs --repo .\n`);
-  const generatedWorkflowPath = path.join(out, ".github/workflows/valdris-assurance.yml");
-  const generatedWorkflow = fs.readFileSync(generatedWorkflowPath, "utf8").replace(
-    "      - name: Validate workload classification\n",
-    "      - name: Validate canonical catalogs\n        run: node " + scriptFromRepo + "/catalog-integrity-gate.mjs --repo .\n      - name: Validate authorized intake\n        if: ${{ hashFiles('run/route.json') != '' }}\n        run: node " + scriptFromRepo + "/intake-gate.mjs --repo .\n      - name: Validate workload classification\n",
-  );
-  fs.writeFileSync(generatedWorkflowPath, generatedWorkflow, "utf8");
-  write(path.join(out, "commissioning-review.md"), renderReview(adapter).replace("## v0.6 commissioning + trust-boundary hardening", "## v0.7 enterprise + AI goal-loop commissioning") + renderLayerZeroProtocol());
-  return { out, adapter };
+  write(path.join(out, ".github/workflows/valdris-assurance.yml"), `name: Valdris Structural Assurance
+
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+jobs:
+  structural-assurance:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: \${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Validate knowledge vault
+        run: node ${scriptFromRepo}/okf-vault-gate.mjs --repo ${packFromRepo}
+      - name: Validate skill registry
+        run: node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}
+      - name: Validate canonical catalogs
+        run: node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo ${packFromRepo}
+      - name: Validate public-source provenance
+        run: node ${scriptFromRepo}/provenance-gate.mjs --repo ${packFromRepo}
+      - name: Validate project neutrality
+        run: node ${scriptFromRepo}/neutrality-gate.mjs --repo ${packFromRepo}
+      - name: Validate privacy boundary
+        run: node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}
+      - name: Validate assurance schema compatibility
+        run: node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}
+`);
+  write(path.join(out, ".github/workflows/valdris-run-acceptance.yml"), `name: Valdris Run Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_commit:
+        description: Full Git commit SHA bound by the completed Valdris packet
+        required: true
+        type: string
+      artifact_run_id:
+        description: GitHub Actions run ID that uploaded the completed artifact bundle
+        required: true
+        type: string
+      artifact_name:
+        description: Name of the uploaded Valdris artifact bundle
+        required: true
+        default: valdris-run-artifacts
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  run-acceptance:
+    environment: valdris-run-acceptance
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: \${{ matrix.os }}
+    env:
+      UASH_REVIEW_TRUST_SHA256: \${{ vars.UASH_REVIEW_TRUST_SHA256 }}
+    steps:
+      - name: Validate exact source commit input
+        env:
+          VALDRIS_SOURCE_COMMIT: \${{ inputs.source_commit }}
+        run: node -e "if(!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(process.env.VALDRIS_SOURCE_COMMIT||'')) throw new Error('source_commit must be a lowercase full Git object ID')"
+      - uses: actions/checkout@v4
+        with:
+          ref: \${{ inputs.source_commit }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Materialize canonical Git bytes
+        run: |
+          git config core.autocrlf false
+          git checkout-index --force --all
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Require operator-held review trust pin
+        run: node -e "if(!/^[a-f0-9]{64}$/.test(process.env.UASH_REVIEW_TRUST_SHA256||'')) throw new Error('Configure UASH_REVIEW_TRUST_SHA256 on the protected valdris-run-acceptance environment')"
+      - name: Download completed Valdris artifact bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: \${{ inputs.artifact_name }}
+          path: \${{ runner.temp }}/valdris-run-artifacts
+          run-id: \${{ inputs.artifact_run_id }}
+          github-token: \${{ secrets.GITHUB_TOKEN }}
+      - name: Hydrate and validate the exact completed run
+        env:
+          VALDRIS_SOURCE_COMMIT: \${{ inputs.source_commit }}
+          VALDRIS_ARTIFACT_BUNDLE: \${{ runner.temp }}/valdris-run-artifacts
+        run: node ${scriptFromRepo}/run-acceptance.mjs --repo .
+`);
+  writePackText("commissioning-review.md", renderReview(adapter).replace("## v0.6 commissioning + trust-boundary hardening", "## v0.8 clean-room assurance commissioning") + renderReviewTrustPinProtocol(adapter) + renderLayerZeroProtocol());
+  installRootDiscoveryLoaders(rootLoaderPlans);
+  return { out, adapter, rootLoaderPlans };
 }
 
 async function main() {
@@ -1260,18 +1775,26 @@ async function main() {
     console.log(JSON.stringify(QUESTION_GROUPS, null, 2));
     return;
   }
-  const repo = path.resolve(args.repo);
-  if (!fs.existsSync(repo) || !fs.statSync(repo).isDirectory()) throw new Error(`Repo path not found: ${repo}`);
+  const requestedRepo = path.resolve(args.repo);
+  if (!fs.existsSync(requestedRepo) || !fs.statSync(requestedRepo).isDirectory()) throw new Error(`Repo path not found: ${requestedRepo}`);
+  const repo = fs.realpathSync(requestedRepo);
   const detected = detectRepo(repo);
   const answers = await collectAnswers(args, detected);
   const result = generatePack(args, detected, answers);
   console.log(`Generated Valdris SDLC harness pack: ${result.out}`);
   console.log(`Project: ${answers.project_name}`);
   console.log(`Front doors: ${path.join(result.out, "AGENTS.md")}, ${path.join(result.out, "CLAUDE.md")}, ${path.join(result.out, ".claude/commands/valdris-sdlc-harness.md")}, and ${path.join(result.out, "docs/Codex Runtime Prompt.md")}`);
+  console.log(`Target-root discovery loaders: ${result.rootLoaderPlans.map((plan) => `${plan.target} (${plan.action})`).join(", ")}`);
   console.log(`Review packet: ${path.join(result.out, "commissioning-review.md")}`);
+  console.log(`Generated review trust digest (canonical JSON SHA-256, informational until operator-approved): ${result.adapter.reviewTrust.generatedDigest}`);
+  console.log("Operator action: after reviewing the trust store, set its digest out of band as protected UASH_REVIEW_TRUST_SHA256 before review, packet, bridge, or CI validation.");
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+export { planRootDiscoveryLoader };
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}

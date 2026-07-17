@@ -23,6 +23,8 @@ import {
 
 const STORAGE_KEY = "uash.control-plane.runs.v1";
 const BRIDGE_URL = "http://127.0.0.1:8787";
+const BRIDGE_API_URL = "/api/bridge";
+const BRIDGE_UI_HEADERS = { "x-uash-ui-request": "1" };
 const lanes = [
   "engineering-default",
   "system-design",
@@ -35,13 +37,13 @@ const lanes = [
   "connector-runtime",
   "support-triage",
   "incidents",
-  "data-supabase",
+  "data-platform",
 ];
 
 const nodeById = Object.fromEntries(workflowNodes.map((node) => [node.id, node]));
 
 function makeRunId() {
-  return `RUN-${Math.floor(1000 + Math.random() * 9000)}`;
+  return `LOCAL-EXEC-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 function nowIso() {
@@ -309,7 +311,7 @@ export function ControlPlaneApp() {
 
   async function checkBridge() {
     try {
-      const response = await fetch(`${BRIDGE_URL}/health`, { cache: "no-store" });
+      const response = await fetch(`${BRIDGE_API_URL}/health`, { cache: "no-store", headers: BRIDGE_UI_HEADERS });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const payload = (await response.json()) as { service?: string; dataDir?: string };
       setBridgeStatus("connected");
@@ -324,9 +326,9 @@ export function ControlPlaneApp() {
   async function syncSelectedToBridge() {
     if (!selectedRun) return;
     try {
-      const response = await fetch(`${BRIDGE_URL}/runs`, {
+      const response = await fetch(`${BRIDGE_API_URL}/runs`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { ...BRIDGE_UI_HEADERS, "content-type": "application/json" },
         body: JSON.stringify(selectedRun),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -342,7 +344,7 @@ export function ControlPlaneApp() {
   async function pullSelectedFromBridge(showNotice = true) {
     if (!selectedRun) return;
     try {
-      const response = await fetch(`${BRIDGE_URL}/runs/${encodeURIComponent(selectedRun.id)}`, { cache: "no-store" });
+      const response = await fetch(`${BRIDGE_API_URL}/runs/${encodeURIComponent(selectedRun.id)}`, { cache: "no-store", headers: BRIDGE_UI_HEADERS });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const run = (await response.json()) as AppRun;
       upsertRunFromBridge(run);

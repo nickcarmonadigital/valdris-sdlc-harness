@@ -10,7 +10,11 @@
     "tieBreakOrder": ["explicit user outcome", "highest consequential risk", "artifact being changed", "narrowest matching primaryFor", "intake when scope remains ambiguous"]
   },
   "gatePolicy": {
-    "always": ["goal", "skill-registry", "context", "proof"],
+    "always": ["goal", "skill-registry", "context", "provenance", "neutrality", "privacy", "schema-compat", "proof"],
+    "provenance": "The universal pack may copy only allowlisted public upstream material with an integrity-locked manifest. Restricted work-harness inputs contribute behavioral requirements only.",
+    "neutrality": "Canonical assets and generated packs must remain project-neutral. Company, product, people, provider, branch, account, customer, incident, and private topology facts belong only in commissioned project adapters.",
+    "privacy": "Before handoff, scan canonical and generated artifacts for private paths, identifiers, credentials, customer data, live incident material, and restricted-source residue.",
+    "schema-compat": "Imported assurance concepts must map explicitly into Valdris-native schemas. Layer 0 plus the 13 production-assurance domains remain authoritative; new technologies use capability or domain packs unless the canonical taxonomy itself is deliberately versioned.",
     "classification": "Intake creates run/workload-classification.json from the commissioned taxonomy and binds it to the authorized request and route. Delivery must not rely on an absent, stale, rewritten, or unbound classification.",
     "foundation": "Layer 0 precedes implementation for every non-docs route. All delivery primaries must validate foundation/assessment.json against the required capabilities, effective assurance tier, selected profiles, and proof contract before implementation; audit-only work may report a failing foundation instead of pretending it passed.",
     "code-intelligence": "Required for code, architecture, debugging, refactor, or cross-file claims; docs-only work records a reason.",
@@ -19,6 +23,9 @@
     "eval": "Required for AI/probabilistic behavior and any commissioned regression or quality threshold; otherwise record non-applicability in the route.",
     "trajectory": "Required for multi-checkpoint or agentic execution.",
     "smoke": "Required for deployed, provider, platform-native, or runtime behavior; otherwise record non-applicability.",
+    "run-packet": "Every completion claim must produce valdris.run-packet.v2 binding intake, route, goal, proof, the valdris.review.v2 role provenance, and any applicable RCA artifacts into one coherent immutable run packet.",
+    "review": "Every completion requires an Ed25519-attested independent review artifact using valdris.review.v2 with exactly scout, implementer, verifier, and independentReviewer. The actorId, sessionId, and executionId values are each pairwise distinct across all four roles; an authorized independent reviewer from the committed project trust store signs the frozen evidence bundle and complete role roster.",
+    "rca": "Bug, regression, incident, and self-heal work requires a typed root-cause artifact that binds reproduction, causal evidence, fix, and regression proof.",
     "domain-packs": "Activate commissioned domain catalogs such as mobile-iOS, multiplayer-realtime, commerce, or youth-safety."
   },
   "skills": [
@@ -88,8 +95,8 @@
       "path": "skills/valdris-proof-handoff/SKILL.md",
       "primaryFor": ["review", "finish", "handoff", "release-readiness"],
       "triggers": ["done", "verify", "review", "handoff", "release ready", "close issue"],
-      "requiredGates": ["goal", "context", "skill-registry", "proof"],
-      "conditionalGates": ["classification when required by the route", "code-intelligence for every non-docs route", "foundation when required by workload classification or route", "production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider-integration, platform-native, or runtime claims", "commissioned domain packs"],
+      "requiredGates": ["goal", "context", "skill-registry", "provenance", "neutrality", "privacy", "schema-compat", "run-packet", "review", "proof"],
+      "conditionalGates": ["classification when required by the route", "code-intelligence for every non-docs route", "foundation when required by workload classification or route", "production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider-integration, platform-native, or runtime claims", "commissioned domain packs", "rca for bug, regression, incident, or self-heal routes"],
       "redZoneTriggers": ["approval-override", "accept-residual-risk"]
     }
   ]

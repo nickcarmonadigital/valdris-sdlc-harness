@@ -1,6 +1,6 @@
 # Prompt Library Integration — Universal Anti-Skip Flow Enforcement
 
-Source: latest uploaded harness zip `/root/.hermes/cache/documents/doc_625c778a47b8_agentic-sdlc-harness-main (3).zip`, file `references/Prompt Library.md`.
+Source: a restricted private work-harness snapshot. Only behavioral requirements were retained.
 
 ## Bottom line
 
@@ -10,7 +10,7 @@ The new Prompt Library is the missing enforcement layer. It converts the harness
 
 ## Core rule to universalize
 
-In the Utari harness, the prompt library names these gate artifacts:
+In the restricted source harness, the prompt library names these gate artifacts:
 
 | Gate | Required artifact |
 |---|---|
@@ -122,7 +122,7 @@ During harness commissioning, ask:
 
 ## Clean-room implementation note
 
-Do not hard-code Utari terms. Universalize by replacing Utari-specific fields with project config:
+Do not hard-code project terms. Universalize by replacing project-specific fields with commissioned configuration:
 
 ```yaml
 project:

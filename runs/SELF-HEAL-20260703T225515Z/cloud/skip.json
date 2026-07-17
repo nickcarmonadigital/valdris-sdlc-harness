@@ -1,6 +1,0 @@
-{
-  "schema": "uash.skip.v1",
-  "nodeId": "cloud-platform",
-  "status": "skipped",
-  "reason": "No cloud/IAM/secret/network/deployment mutation; local repo naming and validation update only."
-}

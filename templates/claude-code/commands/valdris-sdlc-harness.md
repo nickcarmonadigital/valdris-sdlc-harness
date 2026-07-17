@@ -12,6 +12,8 @@ BRIDGE_URL=http://127.0.0.1:8787
 
 If `RUN_ID` is not provided, ask for it before doing work. Do not invent a run ID.
 
+The Claude Code process must already have `UASH_BRIDGE_ACCESS_TOKEN`; the emitter sends it as `x-uash-bridge-token`. Do not request or load the bridge-only `UASH_BRIDGE_INTEGRITY_KEY` or operator-held `UASH_HUMAN_APPROVAL_TOKEN` into the agent process.
+
 ## Non-negotiable rule
 
 Do not just answer. Walk the Valdris SDLC Harness / ICM flow node-by-node and emit a bridge event for each node, gate, artifact, approval, skip, failure, and self-heal blocker.
@@ -27,8 +29,7 @@ node scripts/uash-emit-event.mjs <RUN_ID> <event-type> <node-id> "<message>" \
   [--failure-reason "..."] \
   [--recovery-path "..."] \
   [--approval-owner "..."] \
-  [--approval-scope "..."] \
-  [--human-token "$UASH_HUMAN_APPROVAL_TOKEN"]
+  [--approval-scope "..."]
 ```
 
 If this script is not available in the target repo, tell the user to copy it from the Universal Harness repo or run the command from that repo with the same `RUN_ID`.
@@ -67,7 +68,7 @@ Clarify task, repo, branch, environment, affected user/account/run IDs, screensh
 node scripts/uash-emit-event.mjs "$RUN_ID" agent.connected route "Claude Code attached and selected the Valdris SDLC Harness lane" --artifact run/route.json --status ok --actor claude-code
 ```
 
-Name the lane family and work type. Examples: engineering-default, system-design, production-readiness, cloud-platform, qa-release, agent-runtime, incidents, support-triage, data-supabase, provider-config, voice-vapi.
+Name the lane family and work type. Examples: engineering-default, system-design, production-readiness, cloud-platform, qa-release, agent-runtime, incidents, support-triage, data-platform, provider-config, communications.
 
 ### 3. GitNexus / Code Intelligence
 
@@ -138,10 +139,10 @@ If the change touches auth, billing, data deletion, provider config, deployments
 node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone "Red Zone approval required before continuing" --artifact approvals/redzone.json --status needs_approval --actor harness --approval-owner "primary operator" --approval-scope "specific risky action"
 ```
 
-Wait for human approval. The agent must not approve itself. A real operator grant uses the operator-held token configured on the bridge process:
+Wait for human approval. The agent must not approve itself. A real operator runs the grant from a separate shell containing the ordinary `UASH_BRIDGE_ACCESS_TOKEN` for the API write and the separate `UASH_HUMAN_APPROVAL_TOKEN` for the human decision. The emitter reads the human token from that operator-only environment and sends it as a header; never place it in command arguments or request bodies:
 
 ```bash
-node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action"   --artifact approvals/redzone.json   --status ok   --actor human   --mode live   --source bridge   --approval-owner "primary operator"   --approval-scope "specific risky action"   --human-token "$UASH_HUMAN_APPROVAL_TOKEN"
+node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone "Human approved scoped Red Zone action"   --artifact approvals/redzone.json   --status ok   --actor human   --mode live   --source bridge   --approval-owner "primary operator"   --approval-scope "specific risky action"
 ```
 
 If no Red Zone applies:
@@ -208,7 +209,16 @@ node scripts/uash-emit-event.mjs "$RUN_ID" node.skipped self-heal "Self-heal ski
 
 ### 13. Handoff
 
-Only after required proof exists and irrelevant nodes have skip reasons. The bridge rejects `run.completed` when required artifacts are missing, failed, or skipped without reasons:
+Before `run.completed`, execute the ordered v0.8 closure:
+
+1. Validate the completed goal with `node scripts/goal-gate.mjs --repo .`; `--allow-active` is not a completion check.
+2. Validate all route-required enterprise and AI evidence with `node scripts/enterprise-ai-gate-all.mjs --repo .`.
+3. For bug, regression, incident, or self-heal work—or whenever `rca/rca.json` exists—run `node scripts/rca-gate.mjs --repo .` and include `--rca rca/rca.json` in both packet-builder commands below.
+4. Freeze the pre-review subject with `node scripts/run-create.mjs --repo . --run-id "$RUN_ID" --commit "$COMMIT" --environment "$ENVIRONMENT" --proof proof/portable.json --gate "<required-gate>=<artifact-path>" --print-evidence-bundle`, repeating `--gate` for every gate required by the validated route.
+5. Obtain `review/review.json` as `valdris.review.v2` with exactly `scout`, `implementer`, `verifier`, and `independentReviewer`. The `actorId`, `sessionId`, and `executionId` values must each be pairwise distinct across the four roles. The independent reviewer must use an authorized Ed25519 key from the already committed trust store to sign the frozen evidence bundle and complete role roster. Then run `node scripts/review-gate.mjs --repo .`.
+6. Create `valdris.run-packet.v2` with the same gate/RCA arguments plus `--review review/review.json --output run/packet.json`, then run `node scripts/run-packet-gate.mjs --repo .`.
+
+Only after that closure passes and irrelevant nodes have skip reasons may the handoff complete. The bridge rejects `run.completed` when required artifacts are missing, failed, drifted after review, or skipped without reasons:
 
 ```bash
 node scripts/uash-emit-event.mjs "$RUN_ID" run.completed handoff "All required artifacts are present or skipped with reasons; Answer Contract handoff ready" --artifact handoff/final.md --status ok --actor harness

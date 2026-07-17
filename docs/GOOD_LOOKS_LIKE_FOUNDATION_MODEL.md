@@ -14,7 +14,7 @@ The solution is a three-part product pattern:
 
 ## Term calibration
 
-| Nick-language | Best term | Meaning |
+| Operator language | Best term | Meaning |
 |---|---|---|
 | “People don't know what good looks like” | Reference architecture / quality model | A concrete target shape agents and humans compare work against. |
 | “Proper foundation of infrastructure” | Platform foundation / production readiness baseline | The minimum infra, CI/CD, security, data, observability, rollback, and ownership layers needed before serious velocity. |

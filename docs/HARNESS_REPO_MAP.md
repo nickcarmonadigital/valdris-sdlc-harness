@@ -1,10 +1,10 @@
 # Valdris SDLC Harness Repo Map — Current State
 
-Generated as a grounded repo-readout for Nick. This file is intentionally blunt: it separates **built**, **policy/docs**, **verified gates**, and **missing enterprise proof-bank work**.
+Generated as a grounded repo readout for operators and maintainers. This file is intentionally blunt: it separates **built**, **policy/docs**, **verified gates**, and **missing enterprise proof-bank work**.
 
 ## Verification snapshot
 
-Commands run against `/root/valdris-sdlc-harness`:
+Commands run from the repository root:
 
 ```bash
 npm run code-intelligence:scan && npm run code-intelligence:gate
@@ -73,7 +73,7 @@ Use `knowledge/index.md` as the first progressive-disclosure map after `AGENTS.m
 
 ```mermaid
 flowchart TB
-  Human["Human / operator<br/>Nick or team"]
+  Human["Human / operator<br/>release owner or team"]
   Idea["Idea / task / repo ask"]
   Router["Universal SDLC Router<br/>classify work type"]
   Commission["Repo Commissioning<br/>questions + GitNexus/code intelligence + adapter"]
@@ -201,7 +201,7 @@ valdris-sdlc-harness/
 │   ├── claude-code/commands/valdris-sdlc-harness.md
 │   └── codex/valdris-sdlc-harness.md
 ├── research/clean-room/              # source research + clean-room product specs
-├── runs/SELF-HEAL-*/                 # example real run packet with proof artifacts
+├── runs/_run-template/               # sanitized synthetic artifact template only
 ├── graph/                            # generated code-intelligence artifacts, untracked
 │   ├── gitnexus.json
 │   ├── graph.json
@@ -393,7 +393,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | 13 production layers | Built as v2 control catalog + enforced gate | 39 controls, typed evidence, dependency DAG, verifier negative tests | Domain-specific packs extend the universal model |
 | Cloud/platform lane | Built as lane/policy | docs + artifact path | Needs real provider adapters/scripts |
 | QA/break-it/live smoke | Partial | docs + artifacts + gate positions | Needs serious automated smoke/e2e harness |
-| Evals | Partial / commissioned | `OPERATING_INTELLIGENCE_LAYER.md`, adapter eval fields | Needs executable `eval-gate` script + UI coverage |
+| Evals | Built + adversarially verified | `OPERATING_INTELLIGENCE_LAYER.md`, `context-manifest-gate.mjs`, `eval-gate.mjs`, typed arm-result fixtures | UI coverage can deepen; executable context/eval enforcement exists |
 | Observability | Partial / policy | `ENTERPRISE_PROOF_BANK.md`, production layer pack | Needs actual observability proof gate/scripts |
 | Enterprise load/concurrency proof | Partial / policy | `ENTERPRISE_PROOF_BANK.md` scale/concurrency dimensions | Needs load/k6/artillery/Locust validator |
 | Game development domain pack | Partial / policy | serious game section in `ENTERPRISE_PROOF_BANK.md` | Needs dedicated game domain-pack artifact + gates |
@@ -404,9 +404,9 @@ Current repo status: this layer pack is documented, included in commissioning, a
 
 ## 9. The proof-bank correction delivered in v0.7
 
-The pre-v0.7 harness proof standard was not high enough for Nick's target. v0.7 closes the structural-proof gap with control IDs, a dependency DAG, typed evidence, hashes, commit/environment binding, executable metrics/evals, human-only approvals, and domain catalogs.
+The pre-v0.7 harness proof standard was not high enough for the target operating model. v0.7 closes the structural-proof gap with control IDs, a dependency DAG, typed evidence, hashes, commit/environment binding, executable metrics/evals, human-only approvals, and domain catalogs.
 
-Nick's target proof standard:
+Target proof standard:
 
 ```text
 enterprise-scale by default
@@ -503,7 +503,7 @@ visual board update
 
 ## 11. Current verdict
 
-v0.7 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 14 Layer 0 foundation controls, 39 enterprise production controls, ten AI assurance domains, five domain packs, executable goal/context/eval/trajectory validators, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
+v0.8 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 14 Layer 0 foundation controls, 39 enterprise production controls, ten AI assurance domains, five domain packs, executable goal/context/eval/trajectory validators, portable proof, signed four-role review, coherent run packets, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
 
 ### Historical pre-v0.7 verdict (superseded)
 
@@ -519,7 +519,7 @@ The repo has a real universal harness MVP:
 - 13 production-readiness layer pack
 - visual monitor shell
 
-But it does not yet fully satisfy Nick's enterprise-scale proof-bank standard:
+But it does not yet fully satisfy the enterprise-scale proof-bank standard:
 - load/concurrency proof is policy-only; no executable gate
 - external eval execution is provider/project-specific; the executable `eval-gate.mjs` validates versioned datasets, rubrics, evaluator configuration, slice thresholds, critical failures, and result digests
 - observability proof is policy-only; no logs/metrics/traces gate implementation
