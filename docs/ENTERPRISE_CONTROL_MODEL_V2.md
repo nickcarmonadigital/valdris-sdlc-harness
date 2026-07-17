@@ -1,6 +1,6 @@
 # Enterprise Control Model v2
 
-Valdris v0.7 replaces layer-level attestations with control-level, typed assurance. The thirteen production layers remain the full-stack map, but each required layer now expands into named controls whose evidence is machine-resolved before the run can finish.
+Valdris v0.8 retains the v0.7 control-level typed-assurance model and adds provenance, neutrality, privacy, schema compatibility, portable proof, independent review, typed RCA, and coherent run-packet enforcement. The thirteen production layers remain the full-stack map, but each required layer expands into named controls whose evidence is machine-resolved before the run can finish.
 
 ## Decision model
 

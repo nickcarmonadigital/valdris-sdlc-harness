@@ -1,0 +1,805 @@
+{
+  "schema": "uash.thirteen-layers-crosswalk.v1",
+  "version": "1.0.0",
+  "source": {
+    "repository": "https://github.com/nickcarmonadigital/13-layers-sdlc-harness",
+    "commit": "77853d410438ce7a2909a94c2db41d258e3d04a0",
+    "license": "MIT",
+    "installationMode": "crosswalk-only",
+    "files": [
+      {
+        "path": "harness/controls/baseline/L01-frontend-foundations.json",
+        "sha256": "8e312a1e01c54b3594685b97a4dbe4c62c4c07f09e16e28ac88add05d3fa1863",
+        "controlIds": [
+          "L01.FRONTEND.STATES.001",
+          "L01.ACCESSIBILITY.BASELINE.001",
+          "L01.PERFORMANCE.BUDGET.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L02-apis-and-backend-logic.json",
+        "sha256": "6adaf3666ebff974f5d6758a95e14727cda648a99dcccbb8f4d9990f5ebaa80a",
+        "controlIds": [
+          "L02.API.CONTRACT.001",
+          "L02.LOGIC.INVARIANTS.001",
+          "L02.ASYNC.IDEMPOTENCY.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L03-database-and-storage.json",
+        "sha256": "e1825ca409746a109a86f19847b1ecba999bb48bbb5ee71b91206fe3988beaf3",
+        "controlIds": [
+          "L03.DATA.INTEGRITY.001",
+          "L03.DATA.MIGRATION.001",
+          "L03.DATA.LIFECYCLE.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L04-authentication-and-permissions.json",
+        "sha256": "a2db62990420f8ccaa8cb46d7a919dd123d46e440b8d74ac5fb2b215157a54e6",
+        "controlIds": [
+          "L04.AUTHN.SESSION.001",
+          "L04.AUTHZ.NEGATIVE.001",
+          "L04.IDENTITY.SERVICE.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L05-hosting-and-deployment.json",
+        "sha256": "9fd7732dbfa38d66bee7139c48458d47f8ce047516789133ffeedc71749e336d",
+        "controlIds": [
+          "L05.DEPLOY.TOPOLOGY.001",
+          "L05.DEPLOY.HEALTH.001",
+          "L05.DEPLOY.ROLLBACK.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L06-cloud-compute.json",
+        "sha256": "48f804acae8137094de81db70e664951de7e40a500922dd6cca162505f6a3cb2",
+        "controlIds": [
+          "L06.COMPUTE.PROCESS.001",
+          "L06.COMPUTE.RESOURCE.001",
+          "L06.QUEUE.DLQ.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L07-ci-cd-and-version-control.json",
+        "sha256": "6a2dda364b0e2b841c65a83185eb33379a833e403c111794d463037cae3fe4aa",
+        "controlIds": [
+          "L07.CI.REQUIRED.001",
+          "L07.QUALITY.STRATEGY.001",
+          "L07.ARTIFACT.PROVENANCE.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L08-security-and-rls.json",
+        "sha256": "ff4b70c28bc78a8ea90cc7bbe3d2a32536c43dd933c149e1fcaf8bd2a26d206b",
+        "controlIds": [
+          "L08.SECURITY.THREAT.001",
+          "L08.SECURITY.SECRETS.001",
+          "L08.SECURITY.DEPENDENCIES.001",
+          "L08.SECURITY.DATA.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L09-rate-limiting.json",
+        "sha256": "e1ef940b4111578bf5a2caecbd9c4f1c5f9521109356587d221cde038be75193",
+        "controlIds": [
+          "L09.LIMIT.REQUEST.001",
+          "L09.LIMIT.BACKPRESSURE.001",
+          "L09.LIMIT.PROVIDER.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L10-caching-and-cdn.json",
+        "sha256": "5ba8bc3e225cb39d371575230008cd348526c2038bacb6557924ce8c9916abf1",
+        "controlIds": [
+          "L10.CACHE.POLICY.001",
+          "L10.CACHE.INVALIDATION.001",
+          "L10.CACHE.ISOLATION.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L11-load-balancing-and-scaling.json",
+        "sha256": "70673428b1d54622d48c75e97dea2e31ec1cbc413179f06717096ea453bbf9ac",
+        "controlIds": [
+          "L11.SCALE.CAPACITY.001",
+          "L11.SCALE.AUTOSCALING.001",
+          "L11.SCALE.DEPENDENCY.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L12-observability.json",
+        "sha256": "f074b5caf9a34785b988ad62e9f91f32d74260e74dcf66121c4d9b284c6da755",
+        "controlIds": [
+          "L12.OBS.LOGS.001",
+          "L12.OBS.ALERTS.001",
+          "L12.OBS.SLO.001",
+          "L12.OBS.TRACES.001"
+        ]
+      },
+      {
+        "path": "harness/controls/baseline/L13-availability-and-recovery.json",
+        "sha256": "f7567cb136aa91eb20a8130319ad0a5dd32423f44018e82abad56c7ba77dc739",
+        "controlIds": [
+          "L13.RECOVERY.MONITORING.001",
+          "L13.RECOVERY.BACKUP.001",
+          "L13.RECOVERY.RESTORE.001",
+          "L13.RECOVERY.INCIDENT.001"
+        ]
+      },
+      {
+        "path": "harness/controls/profiles/ai-agentic.json",
+        "sha256": "5165c5b4b5bae81ca501c4867b84c0f2defc516b98708013851a1824986254f4",
+        "controlIds": [
+          "AI.CONTEXT.BOUNDARY.001",
+          "AI.EVAL.REGRESSION.001",
+          "AI.TOOLS.AUTHZ.001",
+          "AI.RAG.GROUNDING.001",
+          "AI.SECURITY.INJECTION.001",
+          "AI.BUDGET.USAGE.001",
+          "AI.RECOVERY.PROVIDER.001"
+        ]
+      },
+      {
+        "path": "harness/controls/profiles/saas.json",
+        "sha256": "170a5a037d3843c5e36cd22e6e952ad1e5b99457eef379d658e51c0a042842e3",
+        "controlIds": [
+          "SAAS.UI.DASHBOARD.001",
+          "SAAS.API.WEBHOOK.001",
+          "SAAS.DATA.TENANCY.001",
+          "SAAS.AUTH.TEAMS.001",
+          "SAAS.DEPLOY.TENANT.001",
+          "SAAS.USAGE.METERING.001",
+          "SAAS.OBS.TENANT.001"
+        ]
+      },
+      {
+        "path": "harness/controls/capabilities/async-workflows.json",
+        "sha256": "0efbd3137c13e79bda6b1f48d9072deec2ac92982f460266c6ff92537f8c9e8d",
+        "controlIds": [
+          "CAP.ASYNC.STATE.001",
+          "CAP.ASYNC.HANDOFF.001",
+          "CAP.ASYNC.REPLAY.001",
+          "CAP.ASYNC.OBSERVABILITY.001",
+          "CAP.ASYNC.VERSIONING.001"
+        ]
+      }
+    ]
+  },
+  "target": {
+    "foundationCatalog": "controls/foundation-layer.v1.json",
+    "productionCatalog": "controls/production-layers.v2.json",
+    "aiCatalog": "controls/genai-assurance.v1.json",
+    "domainCatalogs": [
+      "controls/domain-packs/saas.v1.json"
+    ],
+    "executionPolicy": "controls/assurance-execution-policy.v1.json",
+    "capabilityPacks": [
+      "controls/capability-packs/async-workflows.v1.json"
+    ]
+  },
+  "domainMapping": [
+    {
+      "sourceDomain": "FND",
+      "targetLayer": "foundation",
+      "classification": "layer-zero"
+    },
+    {
+      "sourceDomain": "L01",
+      "targetLayer": "frontend",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L02",
+      "targetLayer": "backend-api-logic",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L03",
+      "targetLayer": "database-storage",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L04",
+      "targetLayer": "auth-permissions-rls",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L05",
+      "targetLayer": "hosting-deployment",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L06",
+      "targetLayer": "cloud-compute",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L07",
+      "targetLayer": "cicd-version-control",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L08",
+      "targetLayer": "security",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L09",
+      "targetLayer": "rate-limiting",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L10",
+      "targetLayer": "caching-cdn",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L11",
+      "targetLayer": "load-balancing-scaling",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L12",
+      "targetLayer": "error-tracking-logs-observability",
+      "classification": "production-domain"
+    },
+    {
+      "sourceDomain": "L13",
+      "targetLayer": "availability-recovery-dr",
+      "classification": "production-domain"
+    }
+  ],
+  "stateMapping": {
+    "sourceVocabulary": [
+      "PASS",
+      "FAIL",
+      "BLOCKED",
+      "NOT_APPLICABLE",
+      "WAIVED",
+      "UNKNOWN"
+    ],
+    "uashVocabulary": [
+      "passed",
+      "skipped",
+      "required",
+      "pending",
+      "failed",
+      "blocked",
+      "needs_approval"
+    ],
+    "sourceToUash": [
+      {
+        "source": "PASS",
+        "controlStatus": "passed",
+        "countsAsPass": true
+      },
+      {
+        "source": "FAIL",
+        "controlStatus": "failed",
+        "countsAsPass": false
+      },
+      {
+        "source": "BLOCKED",
+        "controlStatus": "blocked",
+        "countsAsPass": false
+      },
+      {
+        "source": "NOT_APPLICABLE",
+        "controlStatus": "skipped",
+        "countsAsPass": true,
+        "requiresReason": true
+      },
+      {
+        "source": "WAIVED",
+        "controlStatus": null,
+        "waiverLedgerStatus": "active",
+        "countsAsPass": false,
+        "requiresHumanApproval": true
+      },
+      {
+        "source": "UNKNOWN",
+        "controlStatus": "pending",
+        "countsAsPass": false
+      }
+    ],
+    "uashToSource": [
+      {
+        "uash": "passed",
+        "source": "PASS"
+      },
+      {
+        "uash": "skipped",
+        "source": "NOT_APPLICABLE"
+      },
+      {
+        "uash": "required",
+        "source": "UNKNOWN"
+      },
+      {
+        "uash": "pending",
+        "source": "UNKNOWN"
+      },
+      {
+        "uash": "failed",
+        "source": "FAIL"
+      },
+      {
+        "uash": "blocked",
+        "source": "BLOCKED"
+      },
+      {
+        "uash": "needs_approval",
+        "source": "BLOCKED"
+      }
+    ],
+    "waiverInvariant": "WAIVED is represented only by a separately validated waiver-ledger entry; it never changes a control to passed."
+  },
+  "mappings": [
+    {
+      "sourceControlId": "L01.FRONTEND.STATES.001",
+      "targetControlIds": [
+        "FE-BEHAVIOR-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L01.ACCESSIBILITY.BASELINE.001",
+      "targetControlIds": [
+        "FE-ACCESSIBILITY-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L01.PERFORMANCE.BUDGET.001",
+      "targetControlIds": [
+        "FE-PERFORMANCE-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L02.API.CONTRACT.001",
+      "targetControlIds": [
+        "API-CONTRACT-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L02.LOGIC.INVARIANTS.001",
+      "targetControlIds": [
+        "FND-DOMAIN-001",
+        "API-FAILURE-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L02.ASYNC.IDEMPOTENCY.001",
+      "targetControlIds": [
+        "API-FAILURE-001",
+        "DATA-INTEGRITY-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L03.DATA.INTEGRITY.001",
+      "targetControlIds": [
+        "DATA-INTEGRITY-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L03.DATA.MIGRATION.001",
+      "targetControlIds": [
+        "DATA-MIGRATION-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L03.DATA.LIFECYCLE.001",
+      "targetControlIds": [
+        "FND-DATA-001",
+        "DATA-INTEGRITY-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L04.AUTHN.SESSION.001",
+      "targetControlIds": [
+        "AUTH-AUTHZ-001",
+        "AUTH-LIFECYCLE-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L04.AUTHZ.NEGATIVE.001",
+      "targetControlIds": [
+        "AUTH-AUTHZ-001",
+        "AUTH-TENANT-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L04.IDENTITY.SERVICE.001",
+      "targetControlIds": [
+        "AUTH-LIFECYCLE-001",
+        "CLOUD-BOUNDARY-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L05.DEPLOY.TOPOLOGY.001",
+      "targetControlIds": [
+        "DEPLOY-PROMOTION-001",
+        "CLOUD-IAC-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L05.DEPLOY.HEALTH.001",
+      "targetControlIds": [
+        "DEPLOY-HEALTH-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L05.DEPLOY.ROLLBACK.001",
+      "targetControlIds": [
+        "DEPLOY-ROLLBACK-001",
+        "DR-RESTORE-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L06.COMPUTE.PROCESS.001",
+      "targetControlIds": [
+        "CLOUD-IAC-001"
+      ],
+      "relationship": "contributes-to",
+      "targetExtension": "The UASH target additionally governs reproducibility and drift detection beyond process inventory."
+    },
+    {
+      "sourceControlId": "L06.COMPUTE.RESOURCE.001",
+      "targetControlIds": [
+        "CLOUD-COST-001",
+        "SCALE-CAPACITY-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L06.QUEUE.DLQ.001",
+      "targetControlIds": [
+        "API-FAILURE-001",
+        "RATE-FAILURE-001",
+        "DR-INCIDENT-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L07.CI.REQUIRED.001",
+      "targetControlIds": [
+        "CI-GATES-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L07.QUALITY.STRATEGY.001",
+      "targetControlIds": [
+        "FND-TEST-001",
+        "CI-GATES-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L07.ARTIFACT.PROVENANCE.001",
+      "targetControlIds": [
+        "CI-PROVENANCE-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L08.SECURITY.THREAT.001",
+      "targetControlIds": [
+        "SEC-THREAT-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L08.SECURITY.SECRETS.001",
+      "targetControlIds": [
+        "SEC-SECRETS-001",
+        "CI-SUPPLYCHAIN-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L08.SECURITY.DEPENDENCIES.001",
+      "targetControlIds": [
+        "SEC-VULNERABILITY-001",
+        "CI-SUPPLYCHAIN-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L08.SECURITY.DATA.001",
+      "targetControlIds": [
+        "DATA-INTEGRITY-001",
+        "SEC-THREAT-001",
+        "OBS-REDACTION-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L09.LIMIT.REQUEST.001",
+      "targetControlIds": [
+        "RATE-POLICY-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L09.LIMIT.BACKPRESSURE.001",
+      "targetControlIds": [
+        "RATE-FAILURE-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L09.LIMIT.PROVIDER.001",
+      "targetControlIds": [
+        "RATE-POLICY-001",
+        "RATE-METERING-001",
+        "CLOUD-COST-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L10.CACHE.POLICY.001",
+      "targetControlIds": [
+        "CACHE-KEY-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L10.CACHE.INVALIDATION.001",
+      "targetControlIds": [
+        "CACHE-INVALIDATION-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L10.CACHE.ISOLATION.001",
+      "targetControlIds": [
+        "CACHE-ISOLATION-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L11.SCALE.CAPACITY.001",
+      "targetControlIds": [
+        "SCALE-CAPACITY-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "L11.SCALE.AUTOSCALING.001",
+      "targetControlIds": [
+        "SCALE-PROGRESSIVE-001",
+        "SCALE-FAILOVER-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L11.SCALE.DEPENDENCY.001",
+      "targetControlIds": [
+        "SCALE-FAILOVER-001",
+        "RATE-FAILURE-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L12.OBS.LOGS.001",
+      "targetControlIds": [
+        "OBS-TELEMETRY-001",
+        "OBS-REDACTION-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L12.OBS.ALERTS.001",
+      "targetControlIds": [
+        "OBS-SLO-001"
+      ],
+      "relationship": "contributes-to",
+      "targetExtension": "The UASH target additionally governs service indicators, objectives, windows, error budgets, and ownership."
+    },
+    {
+      "sourceControlId": "L12.OBS.SLO.001",
+      "targetControlIds": [
+        "OBS-SLO-001",
+        "DR-OBJECTIVES-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L12.OBS.TRACES.001",
+      "targetControlIds": [
+        "API-TRACE-001",
+        "OBS-TELEMETRY-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L13.RECOVERY.MONITORING.001",
+      "targetControlIds": [
+        "DEPLOY-HEALTH-001",
+        "DR-OBJECTIVES-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L13.RECOVERY.BACKUP.001",
+      "targetControlIds": [
+        "DR-OBJECTIVES-001",
+        "DATA-RECOVERY-001",
+        "DR-RESTORE-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L13.RECOVERY.RESTORE.001",
+      "targetControlIds": [
+        "DATA-RECOVERY-001",
+        "DR-RESTORE-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "L13.RECOVERY.INCIDENT.001",
+      "targetControlIds": [
+        "DR-INCIDENT-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "AI.CONTEXT.BOUNDARY.001",
+      "targetControlIds": [
+        "FND-BOUNDARY-001",
+        "AI-INVENTORY-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "AI.EVAL.REGRESSION.001",
+      "targetControlIds": [
+        "AI-EVAL-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "AI.TOOLS.AUTHZ.001",
+      "targetControlIds": [
+        "AI-TOOLS-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "AI.RAG.GROUNDING.001",
+      "targetControlIds": [
+        "AI-RAG-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "AI.SECURITY.INJECTION.001",
+      "targetControlIds": [
+        "AI-SAFETY-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "AI.BUDGET.USAGE.001",
+      "targetControlIds": [
+        "AI-COST-001",
+        "AI-OBS-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "AI.RECOVERY.PROVIDER.001",
+      "targetControlIds": [
+        "AI-LIFECYCLE-001"
+      ],
+      "relationship": "contributes-to",
+      "targetExtension": "The UASH target additionally governs regression evaluation, canaries, rollback, and incident response across AI changes."
+    },
+    {
+      "sourceControlId": "SAAS.UI.DASHBOARD.001",
+      "targetControlIds": [
+        "FE-BEHAVIOR-001",
+        "SAAS-TENANT-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "SAAS.API.WEBHOOK.001",
+      "targetControlIds": [
+        "API-FAILURE-001",
+        "SAAS-AUDIT-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "SAAS.DATA.TENANCY.001",
+      "targetControlIds": [
+        "AUTH-TENANT-001",
+        "SAAS-TENANT-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "SAAS.AUTH.TEAMS.001",
+      "targetControlIds": [
+        "SAAS-ROLES-001"
+      ],
+      "relationship": "equivalent"
+    },
+    {
+      "sourceControlId": "SAAS.DEPLOY.TENANT.001",
+      "targetControlIds": [
+        "SAAS-LIFECYCLE-001"
+      ],
+      "relationship": "contributes-to",
+      "targetExtension": "The UASH target additionally governs provisioning, onboarding, suspension, export, retention, deletion, restoration, and offboarding."
+    },
+    {
+      "sourceControlId": "SAAS.USAGE.METERING.001",
+      "targetControlIds": [
+        "SAAS-ENTITLEMENTS-001",
+        "SAAS-METERING-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "SAAS.OBS.TENANT.001",
+      "targetControlIds": [
+        "OBS-TELEMETRY-001",
+        "SAAS-AUDIT-001"
+      ],
+      "relationship": "distributed"
+    },
+    {
+      "sourceControlId": "CAP.ASYNC.STATE.001",
+      "targetControlIds": [
+        "ASYNC-STATE-001"
+      ],
+      "relationship": "capability-overlay"
+    },
+    {
+      "sourceControlId": "CAP.ASYNC.HANDOFF.001",
+      "targetControlIds": [
+        "ASYNC-HANDOFF-001"
+      ],
+      "relationship": "capability-overlay"
+    },
+    {
+      "sourceControlId": "CAP.ASYNC.REPLAY.001",
+      "targetControlIds": [
+        "ASYNC-REPLAY-001"
+      ],
+      "relationship": "capability-overlay"
+    },
+    {
+      "sourceControlId": "CAP.ASYNC.OBSERVABILITY.001",
+      "targetControlIds": [
+        "ASYNC-OBSERVABILITY-001"
+      ],
+      "relationship": "capability-overlay"
+    },
+    {
+      "sourceControlId": "CAP.ASYNC.VERSIONING.001",
+      "targetControlIds": [
+        "ASYNC-VERSIONING-001"
+      ],
+      "relationship": "capability-overlay"
+    }
+  ]
+}

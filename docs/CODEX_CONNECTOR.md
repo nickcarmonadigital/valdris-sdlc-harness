@@ -25,21 +25,20 @@ npm run commission -- --repo /path/to/target-repo --project-name "Target Project
 npm run bridge:claude
 ```
 
-Then either:
-
-1. Install the generated front doors, `.agents/skills`, `.claude/skills`, scripts, controls, and workflow into the target repo root, or
-2. Keep it in `.valdris-harness/`, copy/merge the discovery front doors into the target root, and invoke gates from the target root with separate pack and project paths.
+Keep the generated runtime at `.valdris-harness/`, commit that complete directory in the target worktree, copy or merge only the discovery front-door loaders into the target root, and invoke gates from the target root with separate pack and project paths. External packs and root-installed runtime copies are not supported by the v0.8 proof/runtime binding.
 
 Nested-pack command shape:
 
 ```bash
 node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .
 node .valdris-harness/scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback local
+node .valdris-harness/scripts/privacy-gate.mjs --repo .valdris-harness
+node .valdris-harness/scripts/privacy-gate.mjs --repo . --include graph --include design/anchors.json
 ```
 
-Do not `cd .valdris-harness` and claim the resulting scan proves the target application. Gate scripts resolve catalogs/skills from the pack while evidence and run artifacts resolve from `--repo`.
+Do not `cd .valdris-harness` and claim the resulting code-intelligence scan proves the target application. Gate scripts resolve catalogs/skills from the pack while evidence and run artifacts resolve from `--repo`. The first privacy command is the clean-room pack policy; the second checks generated graph/anchor evidence only. Do not apply the harness binary allowlist to the arbitrary product tree.
 
-On the first nested-pack bridge event, include `--artifact-root "$PWD" --adapter-path .valdris-harness/project-adapter.json` so the bridge loads the commissioned v0.7 finish-line policy.
+On the first nested-pack bridge event, include `--artifact-root "$PWD" --adapter-path .valdris-harness/project-adapter.json` so the bridge loads the commissioned v0.8 finish-line policy.
 
 For normal Codex CLI/app usage, `AGENTS.md` is the primary front door. The generated `docs/Codex Runtime Prompt.md` is the run-level prompt to paste when you have a `RUN_ID` and bridge URL.
 
@@ -48,9 +47,9 @@ For normal Codex CLI/app usage, `AGENTS.md` is the primary front door. The gener
 Use:
 
 ```text
-RUN_ID=RUN-1042
+RUN_ID=EXAMPLE-RUN-1042
 BRIDGE_URL=http://127.0.0.1:8787
-Use the Valdris SDLC Harness. Read the installed root front doors or their explicit `.valdris-harness/` equivalents. Follow intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff. Write the v0.7 intake, route, goal, context, production, AI, domain, eval, and trajectory artifacts. Run the relevant scripts with `--repo` set to the target project. Emit bridge events for every node/gate/artifact/approval/skip/failure. Do not emit `run.completed` until the bridge-enforced v0.7 finish line passes.
+Use the Valdris SDLC Harness. Read the installed root front-door loader and its explicit `.valdris-harness/` sources. Follow intake -> route -> code-intelligence -> design-anchors -> system-design -> production-readiness -> cloud-platform -> implement -> redzone -> qa-break-it -> prove -> live-smoke -> self-heal -> handoff. Write the v0.8 intake, route, goal, context, production, AI, domain, eval, trajectory, portable-proof, review, and run-packet artifacts. RCA is required for bug work (including regressions), incidents, and self-heal corrective work; it must run one bound regression command against distinct existing pre-fix/post-fix commits and preserve the failure signature. Before review, print the canonical evidence bundle with `run-create.mjs --print-evidence-bundle`; the independent Ed25519 signature must bind that digest and use an active key in the committed `.valdris-harness/controls/review-trust.v1.json`. Agents cannot create or commission their own trusted key. Run the relevant scripts with `--repo` set to the target project. Emit bridge events for every node/gate/artifact/approval/skip/failure. Do not emit `run.completed` until the bridge-enforced v0.8 finish line passes.
 
 Task: <your task>
 ```
@@ -75,7 +74,7 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node .valdris-harness/scripts/uash-emit-event.mjs 
 
 Agents may request approval, but only a token-gated human approval event may grant or deny it. Use `--human-token` with the operator-held `UASH_HUMAN_APPROVAL_TOKEN`; the token is sent as a header, is never accepted from `POST /runs`, and is never persisted.
 
-For v0.7 completion, the operator must also review the current route. Emit `approval.requested` and then a token-gated human `approval.granted` with `--approval-scope route --artifact run/route.json`; the bridge hashes that file at grant time and rejects completion if it later changes.
+For v0.8 completion, the operator must also review the current route. Emit `approval.requested` and then a token-gated human `approval.granted` with `--approval-scope route --artifact run/route.json`; the bridge hashes that file at grant time and rejects completion if it later changes. The independent reviewer and delivery actor must differ, the review signature must verify against the committed project trust store, and `run/packet.json` must match the signed evidence bundle, native validators, application-source projection, and proof set.
 
 ```bash
 UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.requested redzone \
@@ -110,6 +109,7 @@ The bridge rejects early completion:
 - skipped proof or handoff invariant → blocked
 - skipped node without `skipReason` → blocked
 - failed node without recovery path → blocked
+- bug (including regression), incident, or self-heal corrective work without confirmed RCA using the same command identity across distinct pre-fix/post-fix commits → blocked
 - Red Zone approval missing when requested → remains approval/blocked
 - `self_heal.detected` without later `self_heal.pr_opened` or `self_heal.pr_proposed` → blocked
 

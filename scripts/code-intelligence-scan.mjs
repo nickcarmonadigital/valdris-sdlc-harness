@@ -9,6 +9,42 @@ const DEFAULT_EVIDENCE = "graph/gitnexus.json";
 const GITNEXUS_PACKAGE = "gitnexus@latest";
 const GITNEXUS_REPO = "https://github.com/abhigyanpatwari/GitNexus";
 const GITNEXUS_LICENSE = "PolyForm-Noncommercial-1.0.0";
+export const REPO_ROOT_MARKER = "<repo-root>";
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function repoPathVariants(repo) {
+  const resolved = path.resolve(repo);
+  return [...new Set([
+    path.toNamespacedPath(resolved),
+    resolved,
+    resolved.replaceAll("\\", "/"),
+    resolved.replaceAll("/", "\\"),
+  ])]
+    .filter(Boolean)
+    .sort((left, right) => right.length - left.length);
+}
+
+export function sanitizeCodeIntelligenceEvidence(value, repo) {
+  const variants = repoPathVariants(repo);
+  const caseInsensitive = /^[A-Za-z]:[\\/]/.test(path.resolve(repo));
+  function sanitize(current) {
+    if (typeof current === "string") {
+      return variants.reduce(
+        (text, variant) => text.replace(new RegExp(escapeRegex(variant), caseInsensitive ? "gi" : "g"), REPO_ROOT_MARKER),
+        current,
+      );
+    }
+    if (Array.isArray(current)) return current.map(sanitize);
+    if (current && typeof current === "object") {
+      return Object.fromEntries(Object.entries(current).map(([key, nested]) => [key, sanitize(nested)]));
+    }
+    return current;
+  }
+  return sanitize(value);
+}
 
 function parseArgs(argv) {
   const args = {
@@ -144,8 +180,9 @@ function runGitNexus(repo, args) {
       status,
     },
   };
-  writeJsonInside(repo, args.evidence, evidence);
-  return evidence;
+  const sanitizedEvidence = sanitizeCodeIntelligenceEvidence(evidence, repo);
+  writeJsonInside(repo, args.evidence, sanitizedEvidence);
+  return sanitizedEvidence;
 }
 
 function runLocalGraph(repo, args, provider, evidence) {
@@ -174,39 +211,43 @@ function runLocalGraph(repo, args, provider, evidence) {
   return result;
 }
 
-const args = parseArgs(process.argv.slice(2));
-const repo = realpathSync(path.resolve(args.repo));
-let evidence = null;
-let providerUsed = "local-static-code-graph";
-let warning = null;
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const repo = realpathSync(path.resolve(args.repo));
+  let evidence = null;
+  let providerUsed = "local-static-code-graph";
+  let warning = null;
 
-if (args.provider === "gitnexus") {
-  evidence = runGitNexus(repo, args);
-  if (evidence.ok) {
-    providerUsed = "gitnexus";
-  } else if (args.strict || args.fallback === "none") {
-    console.error(JSON.stringify({ ok: false, providerRequested: args.provider, providerUsed: null, evidence: args.evidence, problems: ["GitNexus indexing failed and fallback is disabled"], gitnexusExitCode: evidence.commands.analyze.exitCode }, null, 2));
-    process.exit(1);
-  } else {
-    warning = "GitNexus indexing failed; fell back to local static code graph. Do not claim GitNexus ran for this scan.";
+  if (args.provider === "gitnexus") {
+    evidence = runGitNexus(repo, args);
+    if (evidence.ok) {
+      providerUsed = "gitnexus";
+    } else if (args.strict || args.fallback === "none") {
+      console.error(JSON.stringify({ ok: false, providerRequested: args.provider, providerUsed: null, evidence: args.evidence, problems: ["GitNexus indexing failed and fallback is disabled"], gitnexusExitCode: evidence.commands.analyze.exitCode }, null, 2));
+      process.exit(1);
+    } else {
+      warning = "GitNexus indexing failed; fell back to local static code graph. Do not claim GitNexus ran for this scan.";
+    }
   }
+
+  const localGraph = runLocalGraph(repo, args, providerUsed, evidence);
+
+  console.log(JSON.stringify({
+    ok: true,
+    providerRequested: args.provider,
+    providerUsed,
+    fallback: warning,
+    graph: args.graph,
+    freshness: args.freshness,
+    anchors: args.anchors,
+    gitnexusEvidence: evidence ? args.evidence : null,
+    gitnexusOk: evidence ? evidence.ok : false,
+    localGraph: {
+      exitCode: localGraph.exitCode,
+      stdout: localGraph.stdout,
+      stderr: localGraph.stderr,
+    },
+  }, null, 2));
 }
 
-const localGraph = runLocalGraph(repo, args, providerUsed, evidence);
-
-console.log(JSON.stringify({
-  ok: true,
-  providerRequested: args.provider,
-  providerUsed,
-  fallback: warning,
-  graph: args.graph,
-  freshness: args.freshness,
-  anchors: args.anchors,
-  gitnexusEvidence: evidence ? args.evidence : null,
-  gitnexusOk: evidence ? evidence.ok : false,
-  localGraph: {
-    exitCode: localGraph.exitCode,
-    stdout: localGraph.stdout,
-    stderr: localGraph.stderr,
-  },
-}, null, 2));
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

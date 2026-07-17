@@ -1,10 +1,10 @@
 # Valdris SDLC Harness Repo Map — Current State
 
-Generated as a grounded repo-readout for Nick. This file is intentionally blunt: it separates **built**, **policy/docs**, **verified gates**, and **missing enterprise proof-bank work**.
+Generated as a grounded repo readout for operators and maintainers. This file is intentionally blunt: it separates **built**, **policy/docs**, **verified gates**, and **missing enterprise proof-bank work**.
 
 ## Verification snapshot
 
-Commands run against `/root/valdris-sdlc-harness`:
+Commands run from the repository root:
 
 ```bash
 npm run code-intelligence:scan && npm run code-intelligence:gate
@@ -73,7 +73,7 @@ Use `knowledge/index.md` as the first progressive-disclosure map after `AGENTS.m
 
 ```mermaid
 flowchart TB
-  Human["Human / operator<br/>Nick or team"]
+  Human["Human / operator<br/>release owner or team"]
   Idea["Idea / task / repo ask"]
   Router["Universal SDLC Router<br/>classify work type"]
   Commission["Repo Commissioning<br/>questions + GitNexus/code intelligence + adapter"]
@@ -201,7 +201,7 @@ valdris-sdlc-harness/
 │   ├── claude-code/commands/valdris-sdlc-harness.md
 │   └── codex/valdris-sdlc-harness.md
 ├── research/clean-room/              # source research + clean-room product specs
-├── runs/SELF-HEAL-*/                 # example real run packet with proof artifacts
+├── run-template/                     # sanitized synthetic artifact template only
 ├── graph/                            # generated code-intelligence artifacts, untracked
 │   ├── gitnexus.json
 │   ├── graph.json
@@ -404,9 +404,9 @@ Current repo status: this layer pack is documented, included in commissioning, a
 
 ## 9. The proof-bank correction delivered in v0.7
 
-The pre-v0.7 harness proof standard was not high enough for Nick's target. v0.7 closes the structural-proof gap with control IDs, a dependency DAG, typed evidence, hashes, commit/environment binding, executable metrics/evals, human-only approvals, and domain catalogs.
+The pre-v0.7 harness proof standard was not high enough for the target operating model. v0.7 closes the structural-proof gap with control IDs, a dependency DAG, typed evidence, hashes, commit/environment binding, executable metrics/evals, human-only approvals, and domain catalogs.
 
-Nick's target proof standard:
+Target proof standard:
 
 ```text
 enterprise-scale by default
@@ -519,7 +519,7 @@ The repo has a real universal harness MVP:
 - 13 production-readiness layer pack
 - visual monitor shell
 
-But it does not yet fully satisfy Nick's enterprise-scale proof-bank standard:
+But it does not yet fully satisfy the enterprise-scale proof-bank standard:
 - load/concurrency proof is policy-only; no executable gate
 - external eval execution is provider/project-specific; the executable `eval-gate.mjs` validates versioned datasets, rubrics, evaluator configuration, slice thresholds, critical failures, and result digests
 - observability proof is policy-only; no logs/metrics/traces gate implementation

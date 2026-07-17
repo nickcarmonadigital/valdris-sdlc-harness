@@ -15,6 +15,7 @@ This is the agent-facing OKF bundle for the Valdris SDLC Harness. Start here, ch
 * [Production Readiness 13 Domains](playbooks/production-readiness-13-layers.md) - use when a task can affect production behavior.
 * [Goal Loop and Skill Routing](playbooks/goal-loop-skill-routing.md) - turn a request into one primary skill, bounded checkpoints, and proof-bearing stopping conditions.
 * [Generative AI Assurance](playbooks/genai-assurance.md) - use when models, prompts, retrieval, tools, memory, or agents affect behavior.
+* [Clean-Room Assurance Import](playbooks/clean-room-assurance-import.md) - port reusable assurance behavior without importing private project identity, evidence, or topology.
 
 # Concepts
 

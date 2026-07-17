@@ -1,0 +1,1074 @@
+{
+  "schema": "uash.assurance-execution-policy.v1",
+  "version": "1.0.0",
+  "appliesToCatalog": "controls/production-layers.v2.json",
+  "sourceCrosswalk": "controls/crosswalks/thirteen-layers-to-uash.v1.json",
+  "tierVocabulary": [
+    "T0",
+    "T1",
+    "T2",
+    "T3"
+  ],
+  "lifecycleVocabulary": [
+    "specify",
+    "design",
+    "implement",
+    "verify",
+    "review",
+    "release",
+    "operate",
+    "evolve"
+  ],
+  "failurePolicyVocabulary": [
+    "block-stage",
+    "block-release"
+  ],
+  "evidenceCategoryMapping": {
+    "static": [
+      "artifact"
+    ],
+    "executable": [
+      "command"
+    ],
+    "runtime": [
+      "metric",
+      "provider-report"
+    ],
+    "recovery": [
+      "command",
+      "provider-report"
+    ],
+    "human": [
+      "approval"
+    ]
+  },
+  "controls": [
+    {
+      "controlId": "FE-ACCESSIBILITY-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "implement",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/frontend/**",
+          "**/web/**",
+          "**/ui/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "accessibility-check"
+        ]
+      }
+    },
+    {
+      "controlId": "FE-BEHAVIOR-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/frontend/**",
+          "**/web/**",
+          "**/ui/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "surface-map"
+        ],
+        "executable": [
+          "browser-smoke"
+        ]
+      }
+    },
+    {
+      "controlId": "FE-PERFORMANCE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/frontend/**",
+          "**/web/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "performance-budget"
+        ],
+        "executable": [
+          "bundle-or-lighthouse-report"
+        ],
+        "runtime": [
+          "client-performance-metric"
+        ]
+      }
+    },
+    {
+      "controlId": "API-CONTRACT-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/api/**",
+          "**/routes/**",
+          "**/controllers/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "api-or-event-contract"
+        ],
+        "executable": [
+          "contract-tests"
+        ]
+      }
+    },
+    {
+      "controlId": "API-FAILURE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/api/**",
+          "**/services/**",
+          "**/domain/**",
+          "**/workers/**",
+          "**/jobs/**",
+          "**/webhooks/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "business-invariants",
+          "idempotency-design"
+        ],
+        "executable": [
+          "invariant-tests",
+          "duplicate-delivery-test",
+          "dependency-failure-test"
+        ]
+      }
+    },
+    {
+      "controlId": "API-TRACE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "implement",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/api/**",
+          "**/workers/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "correlation-propagation-test"
+        ],
+        "runtime": [
+          "request-or-workflow-trace"
+        ]
+      }
+    },
+    {
+      "controlId": "DATA-MIGRATION-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/migrations/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "migration-plan"
+        ],
+        "executable": [
+          "clean-apply-test",
+          "upgrade-test"
+        ],
+        "human": [
+          "data-owner-approval"
+        ]
+      }
+    },
+    {
+      "controlId": "DATA-INTEGRITY-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/models/**",
+          "**/schema/**",
+          "**/migrations/**",
+          "**/storage/**",
+          "**/workers/**",
+          "**/jobs/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "schema-map",
+          "data-lifecycle-policy"
+        ],
+        "executable": [
+          "integrity-tests",
+          "duplicate-delivery-test"
+        ],
+        "runtime": [
+          "retention-job-evidence"
+        ]
+      }
+    },
+    {
+      "controlId": "DATA-RECOVERY-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/database/**",
+          "**/storage/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "runtime": [
+          "backup-job-evidence"
+        ],
+        "recovery": [
+          "restore-exercise",
+          "restored-data-integrity"
+        ]
+      }
+    },
+    {
+      "controlId": "AUTH-AUTHZ-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/auth/**",
+          "**/middleware/**",
+          "**/permissions/**",
+          "**/policies/**",
+          "**/api/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "identity-boundary"
+        ],
+        "executable": [
+          "unauthenticated-access-tests",
+          "wrong-role-tests",
+          "cross-scope-tests"
+        ]
+      }
+    },
+    {
+      "controlId": "AUTH-TENANT-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/auth/**",
+          "**/permissions/**",
+          "**/policies/**",
+          "**/api/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "cross-scope-read-tests",
+          "cross-scope-write-tests"
+        ]
+      }
+    },
+    {
+      "controlId": "AUTH-LIFECYCLE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/auth/**",
+          "**/middleware/**",
+          "**/infra/**",
+          "**/workers/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "identity-boundary",
+          "service-identity-map"
+        ],
+        "executable": [
+          "session-and-deprovisioning-tests"
+        ],
+        "runtime": [
+          "deployed-identity-evidence"
+        ]
+      }
+    },
+    {
+      "controlId": "DEPLOY-PROMOTION-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/deploy/**",
+          "**/Dockerfile*",
+          "**/.github/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "deployment-topology",
+          "environment-map"
+        ],
+        "runtime": [
+          "release-artifact-identity"
+        ]
+      }
+    },
+    {
+      "controlId": "DEPLOY-HEALTH-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "release",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/deploy/**",
+          "**/health/**",
+          "**/api/**",
+          "**/.github/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "executable": [
+          "deployment-smoke"
+        ],
+        "runtime": [
+          "environment-health",
+          "uptime-monitor-evidence"
+        ]
+      }
+    },
+    {
+      "controlId": "DEPLOY-ROLLBACK-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "release",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/deploy/**",
+          "**/.github/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "rollback-plan"
+        ],
+        "recovery": [
+          "rollback-exercise"
+        ]
+      }
+    },
+    {
+      "controlId": "CLOUD-IAC-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/workers/**",
+          "**/Dockerfile*",
+          "**/Procfile"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "process-inventory",
+          "deployment-topology"
+        ],
+        "executable": [
+          "infrastructure-drift-check"
+        ]
+      }
+    },
+    {
+      "controlId": "CLOUD-BOUNDARY-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/workers/**",
+          "**/auth/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "service-identity-map",
+          "cloud-boundary-map"
+        ],
+        "runtime": [
+          "deployed-identity-evidence"
+        ],
+        "human": [
+          "privileged-boundary-approval"
+        ]
+      }
+    },
+    {
+      "controlId": "CLOUD-COST-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/integrations/**",
+          "**/providers/**",
+          "**/ai/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "resource-policy",
+          "provider-budget"
+        ],
+        "runtime": [
+          "resource-and-cost-metrics",
+          "usage-and-spend-alert"
+        ]
+      }
+    },
+    {
+      "controlId": "CI-GATES-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "verify",
+        "review"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/*"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "test-strategy"
+        ],
+        "executable": [
+          "ci-required-checks",
+          "test-results"
+        ]
+      }
+    },
+    {
+      "controlId": "CI-SUPPLYCHAIN-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "verify",
+        "review",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/*",
+          "**/package*.json",
+          "**/requirements*.txt",
+          "**/pyproject.toml",
+          "**/lock*"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "dependency-lock"
+        ],
+        "executable": [
+          "secret-scan",
+          "dependency-audit"
+        ]
+      }
+    },
+    {
+      "controlId": "CI-PROVENANCE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/.github/**",
+          "**/ci/**",
+          "**/deploy/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "source-revision"
+        ],
+        "runtime": [
+          "artifact-identity"
+        ]
+      }
+    },
+    {
+      "controlId": "SEC-THREAT-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "review"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/auth/**",
+          "**/api/**",
+          "**/infra/**",
+          "**/payments/**",
+          "**/models/**",
+          "**/storage/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "threat-review",
+          "data-classification"
+        ]
+      }
+    },
+    {
+      "controlId": "SEC-SECRETS-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "verify",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/*"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "executable": [
+          "secret-scan"
+        ],
+        "runtime": [
+          "secret-provider-metadata"
+        ]
+      }
+    },
+    {
+      "controlId": "SEC-VULNERABILITY-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "verify",
+        "review"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/package*.json",
+          "**/requirements*.txt",
+          "**/pyproject.toml",
+          "**/lock*"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "dependency-lock"
+        ],
+        "executable": [
+          "dependency-audit"
+        ]
+      }
+    },
+    {
+      "controlId": "RATE-POLICY-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/api/**",
+          "**/middleware/**",
+          "**/integrations/**",
+          "**/providers/**",
+          "**/ai/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "rate-limit-policy",
+          "provider-budget"
+        ],
+        "executable": [
+          "threshold-test"
+        ]
+      }
+    },
+    {
+      "controlId": "RATE-FAILURE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/workers/**",
+          "**/queues/**",
+          "**/api/**",
+          "**/integrations/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "backpressure-policy",
+          "queue-failure-policy"
+        ],
+        "executable": [
+          "concurrency-test",
+          "retry-and-dlq-test",
+          "saturation-test"
+        ],
+        "runtime": [
+          "saturation-metric"
+        ]
+      }
+    },
+    {
+      "controlId": "RATE-METERING-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/integrations/**",
+          "**/providers/**",
+          "**/ai/**",
+          "**/billing/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "provider-budget"
+        ],
+        "runtime": [
+          "usage-and-spend-alert",
+          "authoritative-usage-reconciliation"
+        ]
+      }
+    },
+    {
+      "controlId": "CACHE-KEY-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/cache/**",
+          "**/redis/**",
+          "**/cdn/**",
+          "**/api/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "cache-map",
+          "cache-scope-design"
+        ],
+        "executable": [
+          "cache-key-boundary-test"
+        ]
+      }
+    },
+    {
+      "controlId": "CACHE-INVALIDATION-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/cache/**",
+          "**/services/**",
+          "**/api/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "cache-invalidation-test"
+        ]
+      }
+    },
+    {
+      "controlId": "CACHE-ISOLATION-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/cache/**",
+          "**/cdn/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "cache-scope-design"
+        ],
+        "executable": [
+          "cross-scope-cache-test"
+        ]
+      }
+    },
+    {
+      "controlId": "SCALE-CAPACITY-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/api/**",
+          "**/workers/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "capacity-model"
+        ],
+        "executable": [
+          "load-test-or-model"
+        ],
+        "runtime": [
+          "resource-and-cost-metrics"
+        ]
+      }
+    },
+    {
+      "controlId": "SCALE-PROGRESSIVE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "release",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/deploy/**",
+          "**/.github/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "autoscaling-and-progressive-delivery-policy"
+        ],
+        "executable": [
+          "abort-criteria-test"
+        ],
+        "recovery": [
+          "rollback-exercise"
+        ]
+      }
+    },
+    {
+      "controlId": "SCALE-FAILOVER-001",
+      "minimumEffectiveTier": "T3",
+      "lifecycleStages": [
+        "design",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/database/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "dependency-capacity-map"
+        ],
+        "executable": [
+          "saturation-test",
+          "failover-test"
+        ],
+        "runtime": [
+          "pool-and-dependency-metrics"
+        ]
+      }
+    },
+    {
+      "controlId": "OBS-TELEMETRY-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "implement",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/logging/**",
+          "**/api/**",
+          "**/workers/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "forced-error-capture",
+          "trace-propagation-test"
+        ],
+        "runtime": [
+          "structured-log-sample",
+          "distributed-trace"
+        ]
+      }
+    },
+    {
+      "controlId": "OBS-SLO-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "release",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/monitoring/**",
+          "**/logging/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "alert-route",
+          "slo-definition"
+        ],
+        "runtime": [
+          "test-alert-evidence",
+          "sli-dashboard"
+        ]
+      }
+    },
+    {
+      "controlId": "OBS-REDACTION-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "implement",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/logging/**",
+          "**/models/**",
+          "**/storage/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "data-classification"
+        ],
+        "executable": [
+          "sensitive-log-test",
+          "sensitive-data-tests"
+        ],
+        "runtime": [
+          "encryption-and-log-evidence"
+        ]
+      }
+    },
+    {
+      "controlId": "DR-OBJECTIVES-001",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "design",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/health/**",
+          "**/api/**",
+          "**/database/**",
+          "**/storage/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "recovery-objectives",
+          "backup-policy"
+        ],
+        "runtime": [
+          "uptime-monitor-evidence",
+          "health-check-evidence",
+          "backup-job-evidence"
+        ]
+      }
+    },
+    {
+      "controlId": "DR-RESTORE-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "verify",
+        "release",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/database/**",
+          "**/storage/**",
+          "**/deploy/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "rollback-plan"
+        ],
+        "recovery": [
+          "restore-exercise",
+          "restored-data-integrity",
+          "rollback-exercise"
+        ]
+      }
+    },
+    {
+      "controlId": "DR-INCIDENT-001",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "operate",
+        "evolve"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/infra/**",
+          "**/runbooks/**",
+          "**/workers/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "incident-runbook"
+        ],
+        "recovery": [
+          "recovery-drill",
+          "operator-replay-exercise"
+        ]
+      }
+    }
+  ]
+}

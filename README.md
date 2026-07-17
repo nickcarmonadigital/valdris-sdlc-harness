@@ -4,7 +4,7 @@
 
 It commissions a repo/team, generates a project-specific harness pack, connects to Claude Code, Codex, Hermes, or future coding-agent runtimes, streams run events/artifacts, and blocks “done” until proof exists.
 
-v0.7 adds a protocol-independent goal/checkpoint loop, an eight-skill workflow router, 39 typed enterprise controls, executable generative-AI assurance/eval/trajectory gates, and initial iOS, realtime multiplayer, digital-commerce, and youth-AI domain packs.
+v0.8 adds a clean-room assurance import boundary, an integrity-locked public-source crosswalk, a cross-cutting async-workflow capability pack, Git/worktree-bound portable proof execution, required typed RCA for corrective-work routes, signed independent review, and coherent run-packet enforcement. It preserves the v0.7 goal/checkpoint loop, eight-skill router, typed enterprise controls, GenAI assurance, and domain packs.
 
 The repo also includes an OKF/Obsidian-style agent knowledge vault under `knowledge/`. Treat `knowledge/index.md` as the low-token navigation layer before opening deeper docs.
 
@@ -22,15 +22,15 @@ The harness is easiest to understand as **lanes → stages → gates → artifac
 
 - **Lanes** decide what kind of work this is: engineering, cloud, security, incident, QA, agent-runtime, support, etc.
 - **Stages** move the work through intake, route, graph scan, design, implementation, validation, and handoff.
-- **Gates** block fake completion: RCA, GitNexus/code-intelligence + anchor, Red Zone approval, proof, live smoke, finish-line, self-heal.
-- **Artifacts** prove the gate ran: `graph/graph.json`, `design/anchors.json`, `proof/proof.json`, `smoke/smoke_proof.json`, `handoff/final.md`.
+- **Gates** block fake completion: provenance, neutrality, privacy, schema compatibility, conditional RCA, GitNexus/code-intelligence + anchor, Red Zone approval, portable proof, independent review, run-packet coherence, live smoke, finish-line, and self-heal. RCA is mandatory for bugs (including regressions), incidents, and self-heal corrective work.
+- **Artifacts** prove the gate ran: `graph/graph.json`, `design/anchors.json`, `proof/portable.json`, `rca/rca.json`, `review/review.json`, `run/packet.json`, `smoke/smoke_proof.json`, and `handoff/final.md`.
 
 ### Core lane families
 
 1. **Intake / classify** — capture the ask, affected users, repo, risk, and work type.
 2. **Product + app SDLC** — bug fixes, features, refactors, frontend/backend/product work.
 3. **System design** — architecture, APIs, scale, data models, tradeoffs, ADRs.
-4. **Cloud / platform engineering** — AWS/Vercel/Supabase/IAM/secrets/deploy/runtime infra.
+4. **Cloud / platform engineering** — cloud providers, hosting, IAM, secrets, deployment, and runtime infrastructure.
 5. **Data + integrations** — DB, migrations, webhooks, queues, providers, sync paths.
 6. **Security + compliance** — auth, permissions, RLS, secrets, tenant boundaries.
 7. **QA + release** — acceptance, break-it QA, regression, smoke, release proof.
@@ -81,7 +81,7 @@ commission repo/team
 → hand off with evidence paths
 ```
 
-It is built for the shape Nick has been pushing toward:
+It is built for the operating shape the project requires:
 
 - **not an IDE** — agents can keep working in Claude Code, Codex, Hermes, or another runtime;
 - **not a prompt library** — prompts are front doors into a gated workflow;
@@ -115,7 +115,7 @@ The harness turns “I did it” into a verifiable run packet:
 | Weak agent claim | Harness requirement |
 |---|---|
 | “I inspected the code” | GitNexus/code-intelligence evidence + graph/code anchor artifacts exist and cite real files |
-| “I found the cause” | RCA artifact exists when debugging |
+| “I found the cause and fixed it” | For bugs (including regressions), incidents, and self-heal corrective work, typed RCA runs the same regression command against distinct real pre-fix/post-fix commits and binds the failure signature, source change, fix, and passing post-fix proof |
 | “I built it” | implementation events + proof artifact exist |
 | “It passed” | proof gate emits `proof/proof.json` |
 | “No live smoke needed” | smoke node is skipped with an explicit reason |
@@ -233,7 +233,7 @@ The local validators verify shape, subject binding, paths, digests, timestamps, 
 Start the executable route and active goal from the target repo:
 
 ```bash
-node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, and ship it to TestFlight."
+node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "operator" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking, and ship it to TestFlight."
 ```
 
 The deterministic router writes the intake/classification/route/goal starting point; it does not launch Codex or certify its own output. Validate the active start in order with `intake-gate.mjs`, `workload-classification-gate.mjs`, `route-gate.mjs`, `foundation-gate.mjs` when required, and `goal-gate.mjs --allow-active`. The selected external coding runtime then executes the engineering checkpoints under the bridge-enforced finish line.
@@ -285,7 +285,7 @@ Rule: **Demo data must be labeled Demo and must never pretend to be Live Run or 
 
 ![Generated harness pack](docs/assets/readme/generated-harness-pack.svg)
 
-`npm run commission` scans a target repo, merges human answers, and generates a project-specific harness pack:
+`npm run commission` scans a target repo, merges human answers, and generates a project-specific harness pack at the one supported v0.8 location: `<target>/.valdris-harness`. The complete pack must be committed in the target's Git worktree before portable proof, signed review, or run-packet creation.
 
 ```text
 project-adapter.json
@@ -382,12 +382,27 @@ commissioning-review.md
 | `docs/TEST_DAY_ACCEPTANCE_GATES.md` | acceptance gates for proving the harness update itself |
 | `docs/` | architecture, connector, production, QA, cloud, mode, lane docs |
 | `templates/` | generated Claude Code and Codex front-door templates |
-| `runs/` | example run packet/proof artifacts |
+| `runs/_run-template/` | project-neutral run packet contract; real operational runs stay outside the public harness |
 | `research/clean-room/` | public-source/clean-room product research and specs |
 
 For a deeper generated map, see [`docs/HARNESS_REPO_MAP.md`](docs/HARNESS_REPO_MAP.md).
 
 For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAID_MAPS.md).
+
+## v0.8 clean-room assurance and portable proof
+
+- offline provenance verification for the allowlisted public assurance kernel;
+- project-neutrality, recursive privacy, and schema-compatibility gates for the canonical tree, release artifacts, and newly generated commissioned packs;
+- an explicit public-source-to-Valdris crosswalk that preserves Layer 0 plus the thirteen production-assurance domains;
+- asynchronous workflows as a cross-cutting capability pack, with an adversarial rejection test for `layer-14`;
+- cross-platform proof execution with argv-safe process spawning, Windows npm/pnpm/yarn shim resolution without `shell:true`, bounded output, timeouts, repetition, red-baseline support, local-path/secret redaction, exact Git HEAD, worktree, validator, and artifact-aware application-source bindings;
+- required typed RCA for bugs (including regressions), incidents, and self-heal corrective work, with one command identity across distinct real pre-fix/post-fix commits, a declared failure signature, and root-cause/fix paths verified against the real source diff;
+- Ed25519-attested independent review using project-owned public keys in `.valdris-harness/controls/review-trust.v1.json`; the signature binds the full pre-review input/evidence bundle, validator runtime, scheme, and key identity before native-validator-bound final packet creation;
+- Linux and Windows CI plus a full-history secret scan.
+
+The clean-room privacy gate walks the canonical harness tree or generated `.valdris-harness` pack recursively and fails closed on binary files unless a shipped public asset matches an approved path and SHA-256. It is not a universal product-asset policy: commissioned product binaries remain governed by that target's asset, privacy, security, and supply-chain rules. After code-intelligence generation, CI runs the same detector only over `graph/` and `design/anchors.json` with explicit `--include` scopes. The clean-room guarantee covers the current canonical tree, release artifacts made from it, and newly generated commissioned packs. A normal PR does not purge earlier public Git objects: older commits may retain content removed from the current tree, and the full-history secret scan detects supported findings without deleting them. History rewriting is a separate destructive operation; [ADR-0001](docs/decisions/ADR-0001-public-history-retention.md) records the owner decision to retain that pre-existing public history for this non-destructive merge without claiming it was purged.
+
+See [Private Work Harness Import Decision](docs/import/PRIVATE_WORK_HARNESS_IMPORT_DECISION.md) and [Clean-room Assurance Import](knowledge/playbooks/clean-room-assurance-import.md).
 
 ## v0.7 enterprise + AI goal-loop assurance
 
@@ -428,6 +443,9 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 | Workload taxonomy classification | Built + gated | `uash.workload-classification.v1`, `controls/workload-taxonomy.v1.json`, route v2 digest binding |
 | Layer 0 foundation assurance | Built + gated | `foundation/assessment.json`, `controls/foundation-layer.v1.json`, `foundation-gate.mjs` |
 | Goal/checkpoint loop + skill router | Built + verified | `goal-gate.mjs`, YAML-frontmatter discovery, `skills/codex-routing.yaml`, `skills/registry.json`, eight Valdris workflows, forward tests |
+| Clean-room import boundary | Built + adversarially verified | `provenance-gate.mjs`, `neutrality-gate.mjs`, `privacy-gate.mjs`, `schema-compat-gate.mjs` |
+| Assurance execution overlay | Built + integrity locked | public-source crosswalk, execution policy, async-workflows capability pack, catalog hashes |
+| Portable proof, conditional RCA, review, and run packet | Built + adversarially verified | `proof-runner.mjs`, `rca-gate.mjs`, `review-gate.mjs`, `run-packet-gate.mjs`, focused verifiers; proof binds Git/worktree/application/validator state, review signs the complete evidence bundle, and RCA is mandatory for bugs/regressions, incidents, and self-heal corrective work |
 | Operating-intelligence enforcement core | Built + verified | executable goal, eval, trajectory, context, skill, production, AI/domain, smoke, waiver, and typed-evidence gates |
 | Extended operating-intelligence policy | Commissioned, not a runtime | memory, tool hooks, sandbox management, model routing, economics, background PR agents, MCP/A2A, and agent lifecycle are captured as policy fields/docs for external runtimes and providers |
 | Enterprise proof-bank map | Built + executable controls | 39 controls, typed evidence, dependency DAG, `production-layer-gate.mjs` |
@@ -461,6 +479,9 @@ npm run skills:install:codex
 npm run skills:check:codex
 npm run code-intelligence:scan
 npm run code-intelligence:gate
+npm run verify:proof-security
+npm run verify:run-packet-trust
+npm run verify:commissioned-portability
 npm run verify:enterprise-ai
 npm run verify:harness
 npm run route:request -- --repo /path/to/target --profile enterprise --actor "<owner>" --request "<work request>"
@@ -482,16 +503,16 @@ http://127.0.0.1:3000
 npm run commission -- \
   --repo /path/to/repo \
   --project-name "Example" \
-  --out ./generated-harness
+  --out /path/to/repo/.valdris-harness
 ```
 
 Non-interactive/default answer mode:
 
 ```bash
 npm run commission -- \
-  --repo . \
-  --project-name "Valdris SDLC Harness" \
-  --out /tmp/valdris-commissioned \
+  --repo /path/to/repo \
+  --project-name "Example" \
+  --out /path/to/repo/.valdris-harness \
   --yes
 ```
 
@@ -512,7 +533,7 @@ npm run bridge:claude
 Emit an event from another shell:
 
 ```bash
-npm run bridge:emit -- RUN-123 node.entered intake "intake started" --status ok --actor codex
+npm run bridge:emit -- EXAMPLE-RUN-123 node.entered intake "intake started" --status ok --actor codex
 ```
 
 Run the verifier:

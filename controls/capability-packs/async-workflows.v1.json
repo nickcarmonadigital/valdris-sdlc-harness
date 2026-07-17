@@ -1,0 +1,234 @@
+{
+  "schema": "uash.cross-cutting-capability-catalog.v1",
+  "id": "async-workflows",
+  "version": "1.0.0",
+  "title": "Asynchronous Workflow Assurance",
+  "classification": {
+    "kind": "cross-cutting-capability",
+    "productionLayer": false,
+    "rationale": "Asynchronous work spans Foundation and multiple existing production-assurance domains; it is not a fourteenth layer."
+  },
+  "sourceCrosswalk": "controls/crosswalks/thirteen-layers-to-uash.v1.json",
+  "routingProjection": {
+    "concernId": "async-workflow-orchestration",
+    "selectedBy": "controls/workload-taxonomy.v1.json#crossCuttingConcerns",
+    "activation": "trigger-match",
+    "routedProductionLayers": [
+      "backend-api-logic",
+      "database-storage",
+      "rate-limiting",
+      "error-tracking-logs-observability",
+      "availability-recovery-dr"
+    ],
+    "routedControlIds": [
+      "API-CONTRACT-001",
+      "API-FAILURE-001",
+      "API-TRACE-001",
+      "DATA-INTEGRITY-001",
+      "RATE-FAILURE-001",
+      "OBS-TELEMETRY-001",
+      "DR-INCIDENT-001"
+    ],
+    "applicabilityDeferredProductionLayers": [
+      "hosting-deployment",
+      "cloud-compute",
+      "cicd-version-control"
+    ]
+  },
+  "controls": [
+    {
+      "id": "ASYNC-STATE-001",
+      "capability": "state",
+      "requirement": "Long-running work defines owned states, valid transitions, terminal outcomes, timeout behavior, and recovery expectations.",
+      "minimumEffectiveTier": "T1",
+      "lifecycleStages": [
+        "specify",
+        "design"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/workers/**",
+          "**/jobs/**",
+          "**/workflows/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "workflow-state-model"
+        ]
+      },
+      "mappedControlIds": [
+        "FND-ARCH-001",
+        "FND-TRANSACTION-001",
+        "API-CONTRACT-001",
+        "DATA-INTEGRITY-001"
+      ],
+      "mappedProductionLayers": [
+        "backend-api-logic",
+        "database-storage"
+      ]
+    },
+    {
+      "id": "ASYNC-HANDOFF-001",
+      "capability": "handoff",
+      "requirement": "State changes and message publication use a durable handoff with reconciliation when either side fails.",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "design",
+        "verify"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/workers/**",
+          "**/jobs/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "static": [
+          "durable-handoff-design"
+        ],
+        "executable": [
+          "enqueue-failure-test"
+        ]
+      },
+      "mappedControlIds": [
+        "FND-BOUNDARY-001",
+        "FND-TRANSACTION-001",
+        "API-FAILURE-001",
+        "DATA-INTEGRITY-001",
+        "CLOUD-IAC-001",
+        "RATE-FAILURE-001"
+      ],
+      "mappedProductionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "cloud-compute",
+        "rate-limiting"
+      ]
+    },
+    {
+      "id": "ASYNC-REPLAY-001",
+      "capability": "replay",
+      "requirement": "Failed, delayed, or duplicate work can be replayed within bounded policy without duplicating externally visible effects.",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/workers/**",
+          "**/jobs/**",
+          "**/queues/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "replay-test",
+          "duplicate-delivery-test"
+        ],
+        "recovery": [
+          "operator-replay-exercise"
+        ]
+      },
+      "mappedControlIds": [
+        "FND-TRANSACTION-001",
+        "API-FAILURE-001",
+        "DATA-INTEGRITY-001",
+        "DR-RESTORE-001",
+        "DR-INCIDENT-001"
+      ],
+      "mappedProductionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "availability-recovery-dr"
+      ]
+    },
+    {
+      "id": "ASYNC-OBSERVABILITY-001",
+      "capability": "observability",
+      "requirement": "Operators can correlate workflow state, message identity, retries, worker attempts, dependencies, and terminal outcome.",
+      "minimumEffectiveTier": "T2",
+      "lifecycleStages": [
+        "implement",
+        "verify",
+        "operate"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/workers/**",
+          "**/jobs/**",
+          "**/queues/**",
+          "**/workflows/**"
+        ]
+      },
+      "failurePolicy": "block-stage",
+      "requiredEvidence": {
+        "executable": [
+          "correlation-propagation-test"
+        ],
+        "runtime": [
+          "workflow-trajectory-trace"
+        ]
+      },
+      "mappedControlIds": [
+        "API-TRACE-001",
+        "OBS-TELEMETRY-001",
+        "OBS-SLO-001"
+      ],
+      "mappedProductionLayers": [
+        "backend-api-logic",
+        "error-tracking-logs-observability"
+      ]
+    },
+    {
+      "id": "ASYNC-VERSIONING-001",
+      "capability": "versioning",
+      "requirement": "Deployments preserve or explicitly migrate in-flight workflow compatibility and retain a bounded rollback path.",
+      "minimumEffectiveTier": "T3",
+      "lifecycleStages": [
+        "design",
+        "release"
+      ],
+      "applicability": {
+        "anyChangedPath": [
+          "**/workers/**",
+          "**/workflows/**",
+          "**/deploy/**",
+          "**/.github/**"
+        ]
+      },
+      "failurePolicy": "block-release",
+      "requiredEvidence": {
+        "static": [
+          "workflow-versioning-plan"
+        ],
+        "executable": [
+          "inflight-upgrade-test"
+        ],
+        "recovery": [
+          "rollback-with-inflight-work"
+        ],
+        "human": [
+          "release-owner-approval"
+        ]
+      },
+      "mappedControlIds": [
+        "FND-ARCH-001",
+        "DEPLOY-PROMOTION-001",
+        "DEPLOY-ROLLBACK-001",
+        "CI-PROVENANCE-001",
+        "DR-RESTORE-001"
+      ],
+      "mappedProductionLayers": [
+        "hosting-deployment",
+        "cicd-version-control",
+        "availability-recovery-dr"
+      ]
+    }
+  ]
+}

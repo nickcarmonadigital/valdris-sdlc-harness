@@ -35,13 +35,13 @@ const lanes = [
   "connector-runtime",
   "support-triage",
   "incidents",
-  "data-supabase",
+  "data-platform",
 ];
 
 const nodeById = Object.fromEntries(workflowNodes.map((node) => [node.id, node]));
 
 function makeRunId() {
-  return `RUN-${Math.floor(1000 + Math.random() * 9000)}`;
+  return `LOCAL-EXEC-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
 function nowIso() {

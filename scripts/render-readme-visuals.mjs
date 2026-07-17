@@ -205,7 +205,7 @@ function workLanesMap() {
   const lanes = [
     ["engineering-default", colors.cyan], ["system-design", colors.indigo], ["production-readiness", colors.teal], ["cloud-platform", colors.amber], ["qa-release", colors.green],
     ["incidents", colors.rose], ["docs-product", colors.blue], ["infra", colors.amber], ["data", colors.teal], ["security", colors.rose],
-    ["agent-runtime", colors.violet], ["support-triage", colors.blue], ["provider-config", colors.amber], ["voice-vapi", colors.teal], ["rag-kb-evals", colors.indigo],
+    ["agent-runtime", colors.violet], ["support-triage", colors.blue], ["provider-config", colors.amber], ["communications", colors.teal], ["rag-kb-evals", colors.indigo],
   ];
   const startX = 80;
   const startY = 530;

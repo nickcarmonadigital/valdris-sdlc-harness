@@ -79,8 +79,8 @@ Every AI proof artifact must use a shared envelope. A path or prose assertion al
 ~~~json
 {
   "schema": "uash.ai-evidence.v1",
-  "runId": "RUN-123",
-  "taskId": "ISSUE-456",
+  "runId": "EXAMPLE-RUN-123",
+  "taskId": "EXAMPLE-ISSUE-456",
   "generatedAt": "2026-07-12T15:00:00.000Z",
   "expiresAt": "2026-07-19T15:00:00.000Z",
   "environment": "staging",
@@ -149,7 +149,7 @@ An eval pass is meaningful only when its subject, data, method, thresholds, and 
 ~~~json
 {
   "schema": "uash.ai-eval-results.v1",
-  "runId": "RUN-123",
+  "runId": "EXAMPLE-RUN-123",
   "generatedAt": "2026-07-12T15:00:00.000Z",
   "environment": "staging",
   "status": "passed",
@@ -573,17 +573,17 @@ The implementation is complete only when a golden-path AI-3 reference applicatio
 
 ### Supplied source pack reviewed
 
-- <code>C:\Users\conva\Downloads\Telegram Desktop\1317.pdf</code>, 51 pages.
-- <code>C:\Users\conva\Desktop\Layer-1-Frontend-Foundations-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-2-APIs-Backend-Logic-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-3-Database-Storage-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-4-Auth-Permissions-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-5-Hosting-Deployment-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-6-Cloud-Compute-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-7-CI-CD-Version-Control-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-8-Security-RLS-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-9-Rate-Limiting-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-10-Caching-CDN-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-11-Load-Balancing-Scaling-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-12-Error-Tracking-Logs-Tier-3-Enterprise-Kit.pdf</code>.
-- <code>C:\Users\conva\Desktop\Layer-13-Availability-Recovery-Tier-3-Enterprise-Kit.pdf</code>.
+- Operator-provided enterprise assurance source PDF, 51 pages.
+- Layer 1: Frontend Foundations, Tier 3 Enterprise Kit.
+- Layer 2: APIs and Backend Logic, Tier 3 Enterprise Kit.
+- Layer 3: Database and Storage, Tier 3 Enterprise Kit.
+- Layer 4: Authentication and Permissions, Tier 3 Enterprise Kit.
+- Layer 5: Hosting and Deployment, Tier 3 Enterprise Kit.
+- Layer 6: Cloud Compute, Tier 3 Enterprise Kit.
+- Layer 7: CI/CD and Version Control, Tier 3 Enterprise Kit.
+- Layer 8: Security and Row-Level Security, Tier 3 Enterprise Kit.
+- Layer 9: Rate Limiting, Tier 3 Enterprise Kit.
+- Layer 10: Caching and CDN, Tier 3 Enterprise Kit.
+- Layer 11: Load Balancing and Scaling, Tier 3 Enterprise Kit.
+- Layer 12: Error Tracking and Logs, Tier 3 Enterprise Kit.
+- Layer 13: Availability and Recovery, Tier 3 Enterprise Kit.

@@ -2,7 +2,7 @@
 
 ## Bottom line
 
-The uploaded Utari harness should not be made universal by watering down its rules. It should become a **commissioning system**: scan a repo, interview the human/operator, generate a repo-specific **project adapter**, then install front-door instructions for Claude Code/Codex that force every run through lanes, artifacts, proof gates, and Red Zone approvals.
+The restricted project harness pattern should not be made universal by watering down its rules. It should become a **commissioning system**: scan a repo, interview the human/operator, generate a repo-specific **project adapter**, then install front-door instructions for Claude Code/Codex that force every run through lanes, artifacts, proof gates, and Red Zone approvals.
 
 ```text
 repo + human interview
@@ -30,7 +30,7 @@ Layer 0 is not a new connector node and not a fourteenth production domain. Asyn
 
 ## Terminology calibration
 
-| Nick-language | Best term | Semantics | Taxonomy | Domain-term calibration |
+| Operator language | Best term | Semantics | Taxonomy | Domain-term calibration |
 |---|---|---|---|---|
 | “Make my harness universal” | Harness commissioning | Convert repo/team facts into an AI-operable harness pack | Internal Developer Platform / Agentic SDLC | Emerging, strong product term |
 | “Questions asked to understand the person and repo” | Commissioning interview | Structured intake that captures facts code scanning cannot infer | Onboarding / discovery workflow | Standard pattern, product-specific use |
@@ -41,7 +41,7 @@ Layer 0 is not a new connector node and not a fourteenth production domain. Asyn
 
 ## What we extracted from the uploaded harness
 
-The uploaded zip is a repo-native Utari/JeremyAI harness with:
+The restricted source is a repo-native, project-commissioned harness with:
 
 - `AGENTS.md` and `CLAUDE.md` front doors.
 - `00_MAP.md` and `CONTEXT.md` routing.
@@ -50,7 +50,7 @@ The uploaded zip is a repo-native Utari/JeremyAI harness with:
 - Stable docs for validation, red zone, support, incidents, deployment, Code Intelligence, answer contracts, and evals.
 - Run packet scaffolds under `runs/`.
 
-That is the **project-specific adapter** for Utari. The universal product should generate the same class of pack for any repo.
+That is the **project-specific adapter** for its original environment. The universal product should generate the same class of pack for any repo.
 
 ## Universal core vs generated adapter
 
@@ -183,7 +183,7 @@ Generated `AGENTS.md` should tell Codex:
 2. **Repo scanner / code intelligence** - GitNexus-backed index is now preferred via `scripts/code-intelligence-scan.mjs`; local static graph remains disclosed fallback. Extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
 3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, workload/foundation catalogs and gates, map/router, validation/red-zone docs, run template, review packet.
 4. **Claude/Codex command templates** - implemented now: generated Claude slash command plus Codex runtime prompt/front door.
-5. **Gate script portability** - implemented: generated packs carry classification, Layer 0 foundation, production, AI/domain, and finish-line gate scripts plus controls, skills, package scripts, and a CI workflow template; nested packs use `node .valdris-harness/scripts/<gate> --repo .` from the target root.
+5. **Gate script portability** - implemented: generated packs carry classification, Layer 0 foundation, production, AI/domain, and finish-line gate scripts plus controls, skills, package scripts, and a CI workflow template. v0.8 supports one layout: a committed `.valdris-harness` directory in the target Git worktree, invoked as `node .valdris-harness/scripts/<gate> --repo .` from the target root.
 6. **UI commissioning surface** - next: render the question groups in the web app and store adapter drafts.
 7. **Connector event enforcement** - implemented now in the local bridge: missing proof/artifacts, missing skip reasons, and missing failure recovery paths block `run.completed`.
 
@@ -191,11 +191,13 @@ Generated `AGENTS.md` should tell Codex:
 
 A repo is commissioned only when:
 
-- `project-adapter.json` exists and validates.
+- `.valdris-harness/project-adapter.json` exists and validates.
+- the complete `.valdris-harness` runtime and review trust store are committed in the target Git worktree before proof execution;
 - `workloadTaxonomy` and `foundationAssurance` point to packaged catalogs, artifacts, and executable gates.
-- `AGENTS.md` and/or `CLAUDE.md` are generated.
+- `.valdris-harness/AGENTS.md` and/or `.valdris-harness/CLAUDE.md` are generated, with the required discovery loader merged into the target root.
 - Claude slash-command and Codex runtime prompt front doors are generated.
 - Validation commands are explicit.
+- clean-room privacy targets `.valdris-harness`, and generated graph/anchor evidence uses the bounded include scan instead of a full product-tree binary policy.
 - Red Zone owner and approval-required actions are explicit.
 - Source-of-truth order is explicit.
 - At least one run packet can be created.
@@ -207,7 +209,6 @@ A repo is commissioned only when:
 ```bash
 npm run code-intelligence:scan
 npm run code-intelligence:gate
-npm run commission -- --repo /root/valdris-sdlc-harness --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
-node -e "JSON.parse(require('fs').readFileSync('/tmp/valdris-commissioned/project-adapter.json','utf8')); console.log('adapter ok')"
+npm run verify:commissioned-portability
 npm run verify:harness
 ```

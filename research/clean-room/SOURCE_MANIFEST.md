@@ -24,7 +24,7 @@ Every supplied source is tracked here. Evidence is public/open-source/visible-so
 | 18 | repo | rpi-coordination-template | `https://github.com/humanlayer/rpi-coordination-template` | inspected | `clean_room_run/evidence/18-rpi-coordination-template.md` | evidence file written |
 | 19 | repo | 12-factor-agents | `https://github.com/humanlayer/12-factor-agents` | inspected | `clean_room_run/evidence/19-12-factor-agents.md` | evidence file written |
 | 20 | repo | agentcontrolplane | `https://github.com/humanlayer/agentcontrolplane` | inspected | `clean_room_run/evidence/20-agentcontrolplane.md` | evidence file written |
-| 21 | zip | Latest uploaded agentic SDLC harness zip | `/root/.hermes/cache/documents/doc_625c778a47b8_agentic-sdlc-harness-main (3).zip` | inspected | `clean_room_run/evidence/21-latest-uploaded-agentic-sdlc-harness-zip.md` | evidence file written |
-| 22 | local | Latest extracted harness | `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main` | inspected | `clean_room_run/evidence/22-latest-extracted-harness.md` | evidence file written |
-| 23 | local | Prompt Library local | `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main/references/Prompt Library.md` | inspected | `clean_room_run/evidence/23-prompt-library-local.md` | evidence file written |
-| 24 | doc | Prompt Library GitHub | `https://github.com/Nickmegladon/agentic-sdlc-harness/blob/main/references/Prompt%20Library.md` | inspected | `clean_room_run/evidence/24-prompt-library-github.md` | evidence file written |
+| 21 | restricted snapshot | Private work harness | path withheld | behavior inspected; content excluded | `clean_room_run/evidence/21-latest-uploaded-agentic-sdlc-harness-zip.md` | restricted-source boundary recorded |
+| 22 | restricted snapshot | Extracted private work harness | path withheld | behavior inspected; content excluded | `clean_room_run/evidence/22-latest-extracted-harness.md` | restricted-source boundary recorded |
+| 23 | restricted document | Private prompt library | path withheld | behavior inspected; content excluded | `clean_room_run/evidence/23-prompt-library-local.md` | restricted-source boundary recorded |
+| 24 | restricted document | Private prompt-library mirror | URL withheld | behavior inspected; content excluded | `clean_room_run/evidence/24-prompt-library-github.md` | restricted-source boundary recorded |

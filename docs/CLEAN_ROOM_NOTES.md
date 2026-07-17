@@ -4,13 +4,13 @@ This repo is a clean-room functional reimplementation project.
 
 ## Inputs
 
-Public/visible sources provided by Nick:
+Public and operator-provided sources:
 
 - HumanLayer public site/blog
 - HumanLayer public GitHub repos
 - public YouTube metadata/transcript attempts
 - public context-engineering docs
-- Nick's updated agentic SDLC harness zip
+- a restricted project SDLC harness snapshot used only for behavioral comparison
 
 ## Boundary
 
@@ -33,4 +33,4 @@ This is not “copying HumanLayer.” It is:
 
 ## Product difference
 
-HumanLayer is a reference input. The product here is specifically focused on universalizing Nick's artifact-gated ICM/SDLC harness into a connector-first platform.
+HumanLayer is a reference input. The product here is specifically focused on universalizing an artifact-gated ICM/SDLC operating pattern into a connector-first platform.

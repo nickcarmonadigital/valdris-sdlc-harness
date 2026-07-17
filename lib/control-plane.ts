@@ -286,7 +286,7 @@ export const baseArtifacts: RunArtifact[] = workflowNodes.map((node) => ({
 
 export const demoRuns: AppRun[] = [
   {
-    id: "RUN-2042",
+    id: "EXAMPLE-RUN-2042",
     title: "Production readiness pack merge",
     task: "Merge the 13-layer production readiness pack, system design, QA/break-it, and self-healing into the universal harness model.",
     repo: "nickcarmonadigital/valdris-sdlc-harness",
@@ -408,7 +408,7 @@ export const demoRuns: AppRun[] = [
     ],
   },
   {
-    id: "RUN-2043",
+    id: "EXAMPLE-RUN-2043",
     title: "AWS deploy lane approval",
     task: "Prototype AWS/cloud platform lane checks for service maps, IAM/secrets, observability, cost, rollback, and live smoke.",
     repo: "nickcarmonadigital/valdris-sdlc-harness",

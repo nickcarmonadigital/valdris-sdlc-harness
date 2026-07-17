@@ -17,6 +17,8 @@ Before planning or editing, read:
 9. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
 10. `docs/ARCHITECTURE.md`
 11. `docs/CONNECTOR_EVENT_CONTRACT.md`
+12. `knowledge/playbooks/clean-room-assurance-import.md`
+13. `docs/import/PRIVATE_WORK_HARNESS_IMPORT_DECISION.md`
 
 ## Product rule
 
@@ -58,6 +60,8 @@ Keep universal:
 - lane-context eval pattern
 - GitNexus/code-intelligence gate
 - OKF-style agent knowledge vault
+- provenance, neutrality, privacy, and schema-compatibility gates
+- Git/worktree- and application-source-bound portable proof, same-command/pre-post/path-bound RCA, Ed25519-attested full-evidence review, and native-validator-bound run-packet contracts
 
 Move into generated adapters:
 
@@ -69,6 +73,7 @@ Move into generated adapters:
 - safe edit paths and review-required paths
 - enabled lanes
 - human answer style
+- provider/account identities, private topology, customer data, incidents, and real run packets
 
 ## Validation
 
@@ -79,14 +84,20 @@ npm run typecheck
 npm run build
 npm run knowledge:gate
 npm run skills:gate
+npm run catalog:gate
+npm run provenance:gate
+npm run neutrality:gate
+npm run privacy:gate
+npm run schema:compat:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:enterprise-ai
+npm run verify:work-harness-import
+npm run verify:commissioned-portability
 npm run verify:harness
-npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
 ```
 
-Verify `/tmp/valdris-commissioned/project-adapter.json` parses and required generated front doors, scripts, eight skills, control catalogs, and domain packs exist.
+The commissioned-portability verifier creates a temporary Git target, generates and commits `.valdris-harness`, retains an iOS-like binary product asset outside the clean-room scope, and executes the generated route, proof, signed-review, and run-packet path.
 
 ## Answer style
 

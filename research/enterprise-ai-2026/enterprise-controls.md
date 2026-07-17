@@ -57,7 +57,7 @@ Every run needs a machine-readable assurance plan generated from intake. At mini
 ```json
 {
   "schema": "valdris.assurance-plan.v2",
-  "runId": "RUN-123",
+  "runId": "EXAMPLE-RUN-123",
   "subject": {
     "repository": "owner/repo",
     "commit": "<40-hex-sha>",

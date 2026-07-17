@@ -23,7 +23,7 @@ Options:
   --event-id id (predeclared ID used to correlate approval evidence)
 
 Example:
-  node scripts/uash-emit-event.mjs RUN-1042 node.skipped cloud-platform "Cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness`);
+  node scripts/uash-emit-event.mjs EXAMPLE-RUN-1042 node.skipped cloud-platform "Cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness`);
   process.exit(2);
 }
 

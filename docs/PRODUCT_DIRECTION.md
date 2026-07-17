@@ -1,6 +1,6 @@
 # Product Direction
 
-## Correction from Nick
+## Operator correction
 
 The platform should **not** become a full IDE.
 
@@ -13,7 +13,7 @@ It should be a connector/control plane that sits next to existing coding-agent p
 
 ## Best terminology
 
-| Nick wording | Calibrated term |
+| Operator wording | Calibrated term |
 |---|---|
 | “Claude Code connector or Codex connector” | coding-agent runtime adapter |
 | “visual on the left-hand side” | workflow telemetry panel / run visualizer |

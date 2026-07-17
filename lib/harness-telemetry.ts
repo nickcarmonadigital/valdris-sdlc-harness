@@ -440,7 +440,7 @@ export const scenarios: Scenario[] = [
     reasons: {
       "code-intelligence": "Skipped because this run changes harness docs/model/UI copy, not code architecture claims. If code-path claims appear, GitNexus/code intelligence reopens.",
       "debug-skill": "Skipped because this is not a reproduced bug.",
-      "grill-skill": "Skipped because requirements were already specified by Nick in conversation.",
+      "grill-skill": "Skipped because requirements were already specified by the operator in conversation.",
       "refactor-skill": "Skipped because this is product model expansion, not behavior-preserving code movement.",
       "cloud-platform": "Skipped: no AWS/cloud resource, deploy, IAM, secret, network, or provider setting changed.",
       "iam-secrets-check": "Skipped: no auth, role, RLS, token, key, or env-var change in this run.",

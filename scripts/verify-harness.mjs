@@ -219,9 +219,10 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
 
 const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-"));
-const generatedOut = path.join(tempRoot, "commissioned");
+const generatedTarget = path.join(tempRoot, "commissioned-target");
+const generatedOut = path.join(generatedTarget, ".valdris-harness");
 const pyTarget = path.join(tempRoot, "pyproject-only");
-const pyPack = path.join(tempRoot, "py-pack");
+const pyPack = path.join(pyTarget, ".valdris-harness");
 const iosTarget = path.join(tempRoot, "ios-target");
 const iosPack = path.join(iosTarget, ".valdris-harness");
 const nonAiIosTarget = path.join(tempRoot, "non-ai-ios-target");
@@ -239,22 +240,24 @@ try {
   const questionGroups = JSON.parse(questions.stdout);
   assert(questionGroups.length === 31, `expected 31 commissioning groups, got ${questionGroups.length}`);
 
-  await run(node, ["scripts/commission-harness.mjs", "--repo", ".", "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes"]);
+  await mkdir(generatedTarget, { recursive: true });
+  await writeFile(path.join(generatedTarget, "package.json"), '{"name":"commissioned-verifier","private":true}\n', "utf8");
+  await run(node, ["scripts/commission-harness.mjs", "--repo", generatedTarget, "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes"]);
   let nonEmptyOutputBlocked = false;
   try {
-    await run(node, ["scripts/commission-harness.mjs", "--repo", ".", "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes"]);
+    await run(node, ["scripts/commission-harness.mjs", "--repo", generatedTarget, "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes"]);
   } catch (error) {
     nonEmptyOutputBlocked = error.message.includes("Output directory is not empty");
   }
   assert(nonEmptyOutputBlocked, "commissioning did not protect a non-empty output directory");
-  await run(node, ["scripts/commission-harness.mjs", "--repo", ".", "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes", "--force"]);
+  await run(node, ["scripts/commission-harness.mjs", "--repo", generatedTarget, "--project-name", "Valdris SDLC Harness", "--out", generatedOut, "--yes", "--force"]);
   await mkdir(overwriteTarget, { recursive: true });
   await writeFile(path.join(overwriteTarget, "package.json"), '{"name":"must-survive"}\n', "utf8");
   let directRepoOverwriteBlocked = false;
   try {
     await run(node, ["scripts/commission-harness.mjs", "--repo", overwriteTarget, "--project-name", "Unsafe", "--out", overwriteTarget, "--yes"]);
   } catch (error) {
-    directRepoOverwriteBlocked = error.message.includes("Refusing to commission directly over the target repository");
+    directRepoOverwriteBlocked = error.message.includes("requires the committed target-nested pack");
   }
   assert(directRepoOverwriteBlocked, "commissioning did not refuse --out equal to --repo");
   assert((await readFile(path.join(overwriteTarget, "package.json"), "utf8")).includes("must-survive"), "commissioning overwrote the target package manifest");
@@ -321,9 +324,18 @@ try {
   assert(adapter.ciEnforcement?.requiredCommands?.some((command) => command.includes("foundation-gate.mjs")), "foundation command missing from generated CI policy");
   assert(adapter.finishLineAssurance?.requiredArtifacts?.includes("run/workload-classification.json"), "workload classification missing from finish-line artifacts");
   assert(adapter.finishLineAssurance?.requiredArtifacts?.some((artifact) => artifact.includes("foundation/assessment.json")), "foundation assessment missing from finish-line artifacts");
+  assert(adapter.finishLineAssurance?.packetRequired && adapter.finishLineAssurance?.independentReviewRequired, "v0.8 run-packet or independent-review finish-line policy missing");
+  assert(adapter.finishLineAssurance?.requiredArtifacts?.includes("run/packet.json") && adapter.finishLineAssurance?.requiredArtifacts?.includes("review/review.json"), "v0.8 finish-line artifacts missing run packet or independent review");
+  assert(adapter.reviewTrust?.schema === "valdris.review-trust.v1" && adapter.reviewTrust?.algorithm === "ed25519" && adapter.reviewTrust?.commissioned === false, "generated pack must expose an uncommissioned Ed25519 review trust boundary");
+  assert(adapter.installation?.targetRoot === "." && adapter.installation?.packRoot === ".valdris-harness" && adapter.installation?.commitRequired === true && adapter.installation?.sameGitWorktreeRequired === true, "generated pack must bind the committed target-nested installation model");
+  assert(adapter.reviewTrust?.path === ".valdris-harness/controls/review-trust.v1.json", "generated review trust path must be target-root-relative and pack-aware");
+  assert(adapter.cleanRoomAssurance?.privacyScope?.pack === ".valdris-harness" && adapter.cleanRoomAssurance?.privacyScope?.generatedEvidenceCommand?.includes("--include graph --include design/anchors.json"), "generated privacy policy must separate clean-room pack and generated evidence scopes");
+  assert(adapter.finishLineAssurance?.requiredArtifacts?.some((artifact) => artifact.includes("controls/review-trust.v1.json")), "generated finish line must require the project review trust store");
+  assert(adapter.detected?.repoPath === ".", "generated adapter must not persist an absolute local repository path");
   const generatedAgents = await readFile(path.join(generatedOut, "AGENTS.md"), "utf8");
   const generatedClaude = await readFile(path.join(generatedOut, "CLAUDE.md"), "utf8");
   assert(generatedAgents.includes("Layer 0 workload and foundation assurance") && generatedAgents.includes("Async and multi-agent orchestration are cross-cutting"), "generated AGENTS front door missing Layer 0 or orchestration contract");
+  assert(!generatedAgents.includes("node scripts/") && !generatedClaude.includes("node scripts/") && generatedAgents.includes(".valdris-harness/scripts/"), "generated front doors contain unsupported root-runtime command paths");
   assert(generatedClaude.includes("run/workload-classification.json") && generatedClaude.includes("foundation/assessment.json"), "generated Claude front door missing Layer 0 artifacts");
   await readFile(path.join(generatedOut, ".claude", "commands", "valdris-sdlc-harness.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "Codex Runtime Prompt.md"), "utf8");
@@ -332,6 +344,9 @@ try {
   const generatedFoundationDoc = await readFile(path.join(generatedOut, "docs", "Good Looks Like Foundation.md"), "utf8");
   const generatedValidationDoc = await readFile(path.join(generatedOut, "docs", "Validation Commands.md"), "utf8");
   const generatedRunTemplate = await readFile(path.join(generatedOut, "runs", "_run-template", "README.md"), "utf8");
+  const rootThirdPartyNotices = await readFile(path.join(root, "THIRD_PARTY_NOTICES.md"), "utf8");
+  const generatedThirdPartyNotices = await readFile(path.join(generatedOut, "THIRD_PARTY_NOTICES.md"), "utf8");
+  assert(generatedThirdPartyNotices === rootThirdPartyNotices, "generated pack must preserve THIRD_PARTY_NOTICES.md exactly");
   assert(generatedFoundationDoc.includes("Foundation / Good Looks Like layer is numbered 0"), "generated foundation doc missing executable Layer 0 contract");
   assert(generatedValidationDoc.includes("catalog-integrity-gate.mjs") && generatedValidationDoc.includes("workload-classification-gate.mjs") && generatedValidationDoc.includes("route-gate.mjs") && generatedValidationDoc.includes("foundation-gate.mjs"), "generated validation doc missing ordered catalog-integrity or Layer 0 gate commands");
   assert(generatedRunTemplate.includes("run/workload-classification.json") && generatedRunTemplate.includes("foundation/assessment.json"), "generated run template missing Layer 0 artifacts");
@@ -377,8 +392,9 @@ try {
   const applicabilityIndex = generatedWorkflow.indexOf("Read validated route gate applicability");
   const foundationGateIndex = generatedWorkflow.indexOf("foundation-gate.mjs");
   assert(catalogGateIndex >= 0 && intakeGateIndex > catalogGateIndex && classificationGateIndex > intakeGateIndex && routeGateIndex > classificationGateIndex && applicabilityIndex > routeGateIndex && foundationGateIndex > applicabilityIndex && generatedWorkflow.includes("steps.route.outputs.foundation == 'true'"), "generated CI must validate canonical catalogs, intake, classification, and route v2 before enforcing route-applicable foundation assurance");
+  assert(generatedWorkflow.includes("privacy-gate.mjs --repo .valdris-harness") && generatedWorkflow.includes("privacy-gate.mjs --repo . --include graph --include design/anchors.json") && !generatedWorkflow.includes("privacy-gate.mjs --repo .\n"), "generated CI must scope privacy to the pack and generated graph/anchor evidence, not the arbitrary product tree");
   const generatedPackage = JSON.parse(await readFile(path.join(generatedOut, "package.json"), "utf8"));
-  assert(generatedPackage.scripts?.["catalog:gate"] && generatedPackage.scripts?.["intake:gate"] && generatedPackage.scripts?.["classification:gate"] && generatedPackage.scripts?.["foundation:gate"] && generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"] && generatedPackage.scripts?.["skills:install:codex"] && generatedPackage.scripts?.["skills:check:codex"], "generated package scripts missing catalog-integrity, active-start, Layer 0, or v0.7 router/loop/gate/install commands");
+  assert(generatedPackage.scripts?.["catalog:gate"] && generatedPackage.scripts?.["provenance:gate"] && generatedPackage.scripts?.["neutrality:gate"] && generatedPackage.scripts?.["privacy:gate"] && generatedPackage.scripts?.["evidence:privacy:gate"] && generatedPackage.scripts?.["schema:compat:gate"] && generatedPackage.scripts?.["intake:gate"] && generatedPackage.scripts?.["classification:gate"] && generatedPackage.scripts?.["foundation:gate"] && generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"] && generatedPackage.scripts?.["review:gate"] && generatedPackage.scripts?.["run:packet:gate"] && generatedPackage.scripts?.["skills:install:codex"] && generatedPackage.scripts?.["skills:check:codex"], "generated package scripts missing clean-room, scoped-evidence, active-start, Layer 0, or v0.8 proof commands");
   await readFile(path.join(generatedOut, "scripts", "catalog-integrity-gate.mjs"), "utf8");
   await run(node, ["scripts/catalog-integrity-gate.mjs", "--repo", "."], { cwd: generatedOut });
   const generatedProductionCatalog = path.join(generatedOut, "controls", "production-layers.v2.json");
@@ -856,15 +872,15 @@ try {
   const redzoneRoot = path.join(tempRoot, redzoneRunId);
   const redzoneCreated = await postRun(port, { id: redzoneRunId, artifactRoot: redzoneRoot });
   await satisfyCoreArtifacts(port, redzoneRunId, redzoneRoot, { leaveRedzoneOpen: true });
-  await postEvent(port, redzoneRunId, baseEvent("approval.requested", "redzone", "red zone approval requested", { status: "needs_approval", approvalOwner: "Nick", approvalScope: "redzone" }));
-  const agentGrant = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "agent tried to grant red zone", { actor: "codex", approvalOwner: "Nick", approvalScope: "redzone" }), 400);
+  await postEvent(port, redzoneRunId, baseEvent("approval.requested", "redzone", "red zone approval requested", { status: "needs_approval", approvalOwner: "release-owner", approvalScope: "redzone" }));
+  const agentGrant = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "agent tried to grant red zone", { actor: "codex", approvalOwner: "release-owner", approvalScope: "redzone" }), 400);
   assertProblem(agentGrant, "actor human", "agent grant");
-  const humanGrantNoToken = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "human grant missing token", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 409);
+  const humanGrantNoToken = await postEvent(port, redzoneRunId, baseEvent("approval.granted", "redzone", "human grant missing token", { actor: "human", approvalOwner: "release-owner", approvalScope: "redzone" }), 409);
   assertProblem(humanGrantNoToken, "human approval token", "human grant no token");
   const redzoneBlocked = await postEvent(port, redzoneRunId, baseEvent("run.completed", "handoff", "try completion without approval", { artifact: "handoff/final.md" }), 409);
   assertProblem(redzoneBlocked, "approval pending", "redzone completion");
 
-  const grantNoPending = await postEvent(port, "VERIFY-GRANT-NO-PENDING", baseEvent("approval.granted", "redzone", "human grant without request", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 409, { "x-uash-human-token": "verify-human-token" });
+  const grantNoPending = await postEvent(port, "VERIFY-GRANT-NO-PENDING", baseEvent("approval.granted", "redzone", "human grant without request", { actor: "human", approvalOwner: "release-owner", approvalScope: "redzone" }), 409, { "x-uash-human-token": "verify-human-token" });
   assert(grantNoPending.error === "event_state_violation", "grant without pending approval did not return state violation");
 
 
@@ -873,8 +889,8 @@ try {
   const tokenCreated = await postRun(port, { id: tokenRunId, artifactRoot: tokenRoot });
   assert(!Object.prototype.hasOwnProperty.call(tokenCreated, "humanApprovalToken"), "POST /runs leaked a raw human approval token");
   assert(!Object.prototype.hasOwnProperty.call(tokenCreated, "auth"), "POST /runs leaked human approval auth metadata");
-  await postEvent(port, tokenRunId, baseEvent("approval.requested", "redzone", "token-gated approval requested", { status: "needs_approval", approvalOwner: "Nick", approvalScope: "redzone" }));
-  await postEvent(port, tokenRunId, baseEvent("approval.granted", "redzone", "token-gated human grant", { actor: "human", approvalOwner: "Nick", approvalScope: "redzone" }), 200, { "x-uash-human-token": "verify-human-token" });
+  await postEvent(port, tokenRunId, baseEvent("approval.requested", "redzone", "token-gated approval requested", { status: "needs_approval", approvalOwner: "release-owner", approvalScope: "redzone" }));
+  await postEvent(port, tokenRunId, baseEvent("approval.granted", "redzone", "token-gated human grant", { actor: "human", approvalOwner: "release-owner", approvalScope: "redzone" }), 200, { "x-uash-human-token": "verify-human-token" });
   const tokenRunFromHttp = await (await fetch(`http://127.0.0.1:${port}/runs/${encodeURIComponent(tokenRunId)}`)).json();
   assert(!Object.prototype.hasOwnProperty.call(tokenRunFromHttp, "auth"), "GET /runs/:id leaked human approval auth metadata");
   const tokenEventsJsonl = await readFile(path.join(dataDir, tokenRunId, "events.jsonl"), "utf8");

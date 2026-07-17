@@ -29,7 +29,7 @@ npm run build
 npm run verify:harness
 npm run code-intelligence:scan
 npm run code-intelligence:gate
-npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
+npm run verify:commissioned-portability
 ```
 
 Then verify the generated pack contains:

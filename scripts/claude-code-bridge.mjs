@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateProductionLayerAssessment } from "./production-layer-gate.mjs";
+import { routeRequiresRca } from "./run-packet-gate.mjs";
 
 const PORT = Number(process.env.UASH_BRIDGE_PORT || 8787);
 const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
@@ -15,6 +16,7 @@ const DATA_DIR = path.resolve(process.env.UASH_DATA_DIR || path.join(os.homedir(
 const SERVICE = "uash-claude-code-bridge";
 const CONTRACT_VERSION = "uash.connector-events.v0.5";
 const PROOF_SCHEMA = "uash.proof.v1";
+const FINISH_LINE_GATE_TIMEOUT_MS = 120_000;
 const REPO_ROOT = path.resolve(process.env.UASH_REPO_ROOT || process.cwd());
 const EXTRA_ADAPTER_ROOTS = (process.env.UASH_ADAPTER_ROOTS || "")
   .split(path.delimiter)
@@ -214,6 +216,7 @@ function adapterPolicyFrom(adapter) {
     proofSchema: adapter.proofSchema?.schema || PROOF_SCHEMA,
     productionReadinessSchema: adapter.productionReadiness?.schema,
     enterpriseFinishLineRequired: adapter.finishLineAssurance?.required === true,
+    portableFinishLineRequired: adapter.finishLineAssurance?.packetRequired === true,
   };
 }
 
@@ -683,9 +686,38 @@ function finishLineProblems(run) {
 
 function enterpriseFinishLineProblems(run) {
   if (!run.adapterPolicy?.enterpriseFinishLineRequired) return [];
-  if (!run.artifactRoot || !existsSync(run.artifactRoot)) return ["v0.7 finish-line artifactRoot is missing"];
-  const result = spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), "enterprise-ai-gate-all.mjs"), "--repo", run.artifactRoot], { encoding: "utf8" });
-  if (result.status !== 0) return [`v0.7 enterprise/AI finish line failed: ${(result.stderr || result.stdout || "no gate output").trim().slice(-4000)}`];
+  const finishLineVersion = run.adapterPolicy?.portableFinishLineRequired ? "v0.8" : "v0.7";
+  if (!run.artifactRoot || !existsSync(run.artifactRoot)) return [`${finishLineVersion} finish-line artifactRoot is missing`];
+  const runGate = (script) => spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), script), "--repo", run.artifactRoot], {
+    encoding: "utf8",
+    shell: false,
+    windowsHide: true,
+    timeout: FINISH_LINE_GATE_TIMEOUT_MS,
+    killSignal: "SIGTERM",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  const failureOutput = (result) => result.error?.code === "ETIMEDOUT"
+    ? `timed out after ${FINISH_LINE_GATE_TIMEOUT_MS}ms`
+    : String(result.stderr || result.stdout || result.error?.message || "no gate output").trim().slice(-4000);
+  const result = runGate("enterprise-ai-gate-all.mjs");
+  if (result.status !== 0) return [`${finishLineVersion} enterprise/AI finish line failed: ${failureOutput(result)}`];
+  if (run.adapterPolicy?.portableFinishLineRequired) {
+    const portableGates = [
+      ["independent review", "review-gate.mjs"],
+      ["run packet", "run-packet-gate.mjs"],
+    ];
+    try {
+      const route = JSON.parse(readFileSync(path.join(run.artifactRoot, "run", "route.json"), "utf8"));
+      const intake = JSON.parse(readFileSync(path.join(run.artifactRoot, "run", "intake.json"), "utf8"));
+      if (routeRequiresRca(route, intake) || existsSync(path.join(run.artifactRoot, "rca", "rca.json"))) portableGates.unshift(["RCA", "rca-gate.mjs"]);
+    } catch (error) {
+      return [`v0.8 RCA applicability read failed: ${error.message}`];
+    }
+    for (const [label, script] of portableGates) {
+      const gate = runGate(script);
+      if (gate.status !== 0) return [`v0.8 ${label} finish line failed: ${failureOutput(gate)}`];
+    }
+  }
   try {
     const routePath = path.join(run.artifactRoot, "run", "route.json");
     const routeBytes = readFileSync(routePath);
@@ -716,7 +748,7 @@ function enterpriseFinishLineProblems(run) {
     }
     return problems;
   } catch (error) {
-    return [`v0.7 finish-line binding read failed: ${error.message}`];
+    return [`${finishLineVersion} finish-line binding read failed: ${error.message}`];
   }
 }
 

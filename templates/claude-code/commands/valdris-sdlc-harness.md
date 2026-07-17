@@ -67,7 +67,7 @@ Clarify task, repo, branch, environment, affected user/account/run IDs, screensh
 node scripts/uash-emit-event.mjs "$RUN_ID" agent.connected route "Claude Code attached and selected the Valdris SDLC Harness lane" --artifact run/route.json --status ok --actor claude-code
 ```
 
-Name the lane family and work type. Examples: engineering-default, system-design, production-readiness, cloud-platform, qa-release, agent-runtime, incidents, support-triage, data-supabase, provider-config, voice-vapi.
+Name the lane family and work type. Examples: engineering-default, system-design, production-readiness, cloud-platform, qa-release, agent-runtime, incidents, support-triage, data-platform, provider-config, communications.
 
 ### 3. GitNexus / Code Intelligence
 

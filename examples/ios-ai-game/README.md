@@ -19,7 +19,7 @@ Then copy the blueprint decisions from `route-blueprint.json` and `goal-blueprin
 Or generate the executable starting artifacts directly from the target root:
 
 ```bash
-node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "Nick" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking for minors, asynchronous workflow orchestration, and ship it to TestFlight."
+node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "operator" --request "Build a multiplayer iOS game with an AI dungeon master, accounts, purchases, cloud saves, matchmaking for minors, asynchronous workflow orchestration, and ship it to TestFlight."
 ```
 
 Review the conservative classifications, resolve architecture and authority unknowns, and populate `foundation/assessment.json` with typed evidence for the applicable Layer 0 controls. Bind that assessment to `controls/foundation-layer.v1.json` with `catalogSha256`, bind it to `run/workload-classification.json` with `workloadClassificationSha256`, and copy the classification's `effectiveTier`. Then run the active-start gates before implementation:

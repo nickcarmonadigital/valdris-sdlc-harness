@@ -238,7 +238,7 @@ flowchart TB
     RUNTIME["agent-runtime"]
     SUPPORT["support-triage"]
     PROVIDER["provider-config"]
-    VOICE["voice-vapi"]
+    COMMS["communications"]
     RAG["rag-kb-evals"]
   end
 
@@ -255,7 +255,7 @@ flowchart TB
   CLASSIFY --> RUNTIME
   CLASSIFY --> SUPPORT
   CLASSIFY --> PROVIDER
-  CLASSIFY --> VOICE
+  CLASSIFY --> COMMS
   CLASSIFY --> RAG
 
   LANES --> STAGES["Shared stage flow: intake → route → code-intelligence → design anchors → implement → validate → handoff"]
@@ -263,7 +263,7 @@ flowchart TB
   GATES --> ARTIFACTS["Run packet artifacts: graph.json / anchors.json / proof.json / smoke_proof.json / final.md"]
 
   class FD,ORIENT,CLASSIFY orient
-  class ENG,DESIGN,PROD,CLOUD,QA,INCIDENT,DOCS,INFRA,DATA,SECURITY,RUNTIME,SUPPORT,PROVIDER,VOICE,RAG lane
+  class ENG,DESIGN,PROD,CLOUD,QA,INCIDENT,DOCS,INFRA,DATA,SECURITY,RUNTIME,SUPPORT,PROVIDER,COMMS,RAG lane
   class STAGES core
   class GATES gate
   class ARTIFACTS artifact

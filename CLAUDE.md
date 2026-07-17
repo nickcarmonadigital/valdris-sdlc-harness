@@ -15,6 +15,8 @@ Read:
 7. `docs/GENERATIVE_AI_ASSURANCE_PACK.md`
 8. `docs/UNIVERSAL_COMMISSIONING_FLOW.md`
 9. `docs/CLAUDE_CODE_CONNECTOR.md`
+10. `knowledge/playbooks/clean-room-assurance-import.md`
+11. `docs/import/PRIVATE_WORK_HARNESS_IMPORT_DECISION.md`
 
 ## Non-negotiable product boundary
 
@@ -29,14 +31,20 @@ npm run typecheck
 npm run build
 npm run knowledge:gate
 npm run skills:gate
+npm run catalog:gate
+npm run provenance:gate
+npm run neutrality:gate
+npm run privacy:gate
+npm run schema:compat:gate
 npm run verify:enterprise-ai
+npm run verify:work-harness-import
 npm run verify:harness
 ```
 
 When modifying commissioning behavior, also run:
 
 ```bash
-npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out /tmp/valdris-commissioned --yes
+npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out ./tmp/valdris-commissioned --yes
 ```
 
 ## Final-answer shape
