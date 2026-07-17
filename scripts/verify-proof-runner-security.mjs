@@ -112,7 +112,7 @@ try {
       "--output", "proof/symlink-causal-input.json", "--causal-input", "causal-link.md",
       "--", process.execPath, "-e", "process.exit(0)",
     ]);
-    expectRejected(symlinkCausalInput, /causal input path must not traverse a symbolic link/);
+    expectRejected(symlinkCausalInput, /symbolic link: causal-link\.md/);
     symlinkCase = "causal input symlink rejection";
   } catch (error) {
     if (existsSync(causalLink)) throw error;
