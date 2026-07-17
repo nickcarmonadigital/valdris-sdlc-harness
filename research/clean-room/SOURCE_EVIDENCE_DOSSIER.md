@@ -758,7 +758,7 @@ This is a restricted project harness reference, not a HumanLayer source. It cont
 
 # Source 22: Latest extracted harness
 
-Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main`
+Path: `<restricted-private-harness-extraction>`
 
 ## Inventory signals
 
@@ -766,7 +766,7 @@ Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main`
 - Root files: ['README.md', 'CONTEXT.md', '00_MAP.md', 'INDEX.md', 'REVIEW_ORDER.md', 'CLAUDE.md', '.mcp.json', '.pre-commit-config.yaml', '.gitignore', 'AGENTS.md']
 - Workspace CONTEXT files: 61
 - Core gate scripts: 12
-- Prompt Library path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main/references/Prompt Library.md`
+- Prompt Library path: `<restricted-private-prompt-library>`
 
 ## Clean-room evidence value
 
@@ -780,7 +780,7 @@ This source defines a project-specific implementation that should be split into:
 
 # Source 23: Prompt Library local
 
-Path: `/tmp/agentic-sdlc-harness-main-3/agentic-sdlc-harness-main/references/Prompt Library.md`
+Path: `<restricted-private-prompt-library>`
 
 ## Provenance
 

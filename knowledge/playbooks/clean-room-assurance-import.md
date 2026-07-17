@@ -36,13 +36,15 @@ Do not equate a clean current tree with purged Git history. A normal merge leave
 provenance
 -> neutrality
 -> privacy
+-> release-artifact privacy behavior verification
+-> release-artifact privacy gate
 -> schema compatibility
 -> portable execution verification
 -> existing enterprise/AI verification
 -> commissioned-pack verification
 ```
 
-Every gate is fail-closed. For this canonical repository, privacy walks the harness tree recursively, excluding only explicit non-shipping dependency and cache directories; a binary file is rejected unless its path and SHA-256 match the approved shipped-public-asset inventory. A commissioned target uses the same rule over its committed `.valdris-harness` pack, not over arbitrary product binaries. After code-intelligence generation, use explicit `--include graph --include design/anchors.json` scope to inspect generated evidence. Product assets remain governed by the target's commissioned asset, privacy, security, and supply-chain policy. A waiver remains a separate approval object and never becomes a passing control result.
+Every gate is fail-closed. For this canonical repository, privacy walks the harness tree recursively, excluding only explicit non-shipping dependency and cache directories; a binary file is rejected unless its path and SHA-256 match the approved shipped-public-asset inventory. After `npm run build`, `npm run verify:release-privacy` proves the release scanner's adversarial behavior and `npm run privacy:release` scans the deployable `.next` output. A commissioned target uses the pack rule over its committed `.valdris-harness`, not over arbitrary product binaries. After code-intelligence generation, use explicit `--include graph --include design/anchors.json` scope to inspect generated evidence. Product assets remain governed by the target's commissioned asset, privacy, security, and supply-chain policy. A waiver remains a separate approval object and never becomes a passing control result.
 
 ## Portable execution
 

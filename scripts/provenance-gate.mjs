@@ -89,11 +89,11 @@ export function validateProvenance(repo) {
   }
 
   for (const [sourcePath, digest] of Object.entries(EXPECTED.files)) {
-    if (!(sourcePath in files)) findings.push(finding("SOURCE_FILE_MISSING", `approved source inventory is missing ${sourcePath}`));
+    if (!Object.hasOwn(files, sourcePath)) findings.push(finding("SOURCE_FILE_MISSING", `approved source inventory is missing ${sourcePath}`));
     else if (files[sourcePath] !== digest) findings.push(finding("SOURCE_DIGEST_MISMATCH", `approved digest does not match for ${sourcePath}`));
   }
   for (const sourcePath of Object.keys(files)) {
-    if (!(sourcePath in EXPECTED.files)) findings.push(finding("UNAPPROVED_SOURCE_FILE", "manifest contains a file outside the approved source inventory"));
+    if (!Object.hasOwn(EXPECTED.files, sourcePath)) findings.push(finding("UNAPPROVED_SOURCE_FILE", "manifest contains a file outside the approved source inventory"));
   }
   return result(findings, Object.keys(files).length);
 }

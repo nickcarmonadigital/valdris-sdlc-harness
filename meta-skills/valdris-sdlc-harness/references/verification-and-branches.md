@@ -57,10 +57,14 @@ Prefer repo validation commands from `docs/Validation Commands.md` or `project-a
 ```bash
 npm run typecheck
 npm run build
+npm run verify:release-privacy
+npm run privacy:release
 npm run knowledge:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:harness
 ```
+
+This compact meta-skill stack delegates the remaining repository gates to the canonical release sequence in root `AGENTS.md`; it does not replace that sequence.
 
 Use `npm run code-intelligence:scan:strict` when proving the Windows-safe GitNexus path itself.

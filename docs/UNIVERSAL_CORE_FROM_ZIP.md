@@ -25,9 +25,9 @@ The universal value of the uploaded zip is the **agentic SDLC operating model**.
    - Default lane set: engineering-default, incidents, data, infra/provider-config, security, docs-product.
 
 5. **Stage flow**
-   - Default sequence:
+   - Current v0.8 execution sequence:
      ```text
-     intake -> route -> investigate -> design -> implement -> redzone -> prove -> handoff
+     intake -> workload classification + Layer 0 -> route -> code intelligence + design -> implement -> Red Zone -> QA -> prove -> live smoke -> self-heal -> signed review -> run packet -> handoff
      ```
    - Every stage either writes an artifact or validates one.
 
@@ -35,18 +35,34 @@ The universal value of the uploaded zip is the **agentic SDLC operating model**.
    - Keep a durable folder/file structure for every non-trivial run.
    - Required artifact families:
      - `run/intake.json`
+     - `run/workload-classification.json`
      - `run/route.json`
+     - `foundation/assessment.json`
+     - `goal/goal.json`
+     - `context/manifest.json`
+     - `ai/assurance.json`
+     - `domain/assurance.json`
+     - `evals/results.json` plus its typed context-arm result files
+     - `trajectory/trajectory.json`
+     - `waivers/waivers.json`
      - `design/anchors.json`
      - `session/events.jsonl`
      - `approvals/redzone.json`
      - `proof/proof.json`
+     - `proof/portable.json`
+     - `rca/rca.json` when corrective-work RCA is required or supplied
+     - `review/review.json` using the signed four-role `valdris.review.v2` contract
+     - `run/packet.json` using `valdris.run-packet.v2`
      - `handoff/final.md`
 
 7. **Mechanical gates**
    - Proof gate: no proof artifact, no done.
+   - Layer 0 gate: no workload classification and required foundation assurance, no implementation.
    - Red Zone gate: no explicit approval, no risky mutation.
    - RCA gate: no runtime evidence, no confirmed cause claim.
    - Anchor gate: no fresh code anchors, no architecture claim.
+   - Enterprise/AI aggregate gate: no coherent goal, context, control, eval, trajectory, and waiver state, no completion.
+   - Review and run-packet gates: no authorized four-role signature and digest-bound final packet, no completion.
    - Smoke/deploy/migration gates as optional project modules.
 
 8. **Answer contract**
@@ -72,6 +88,7 @@ The universal value of the uploaded zip is the **agentic SDLC operating model**.
 10. **Context-quality evals**
     - Keep the A/B pattern that measures whether lane context improves agent answers.
     - Each commissioned repo gets its own cases and answer keys.
+    - Executable mapping: `context/manifest.json.contextQuality` commissions the provider-neutral case/answer identities and improvement policy; the matching `evals/results.json` suite binds the exact manifest and proves paired baseline/candidate `uash.context-arm-result.v1` JSON documents through `uash.context-comparison.v1`. The gate derives each aggregate and critical-regression count from ordered per-case evidence, so detached declared scores cannot pass.
 
 ## Move into the generated project adapter
 

@@ -201,7 +201,7 @@ valdris-sdlc-harness/
 │   ├── claude-code/commands/valdris-sdlc-harness.md
 │   └── codex/valdris-sdlc-harness.md
 ├── research/clean-room/              # source research + clean-room product specs
-├── run-template/                     # sanitized synthetic artifact template only
+├── runs/_run-template/               # sanitized synthetic artifact template only
 ├── graph/                            # generated code-intelligence artifacts, untracked
 │   ├── gitnexus.json
 │   ├── graph.json
@@ -393,7 +393,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | 13 production layers | Built as v2 control catalog + enforced gate | 39 controls, typed evidence, dependency DAG, verifier negative tests | Domain-specific packs extend the universal model |
 | Cloud/platform lane | Built as lane/policy | docs + artifact path | Needs real provider adapters/scripts |
 | QA/break-it/live smoke | Partial | docs + artifacts + gate positions | Needs serious automated smoke/e2e harness |
-| Evals | Partial / commissioned | `OPERATING_INTELLIGENCE_LAYER.md`, adapter eval fields | Needs executable `eval-gate` script + UI coverage |
+| Evals | Built + adversarially verified | `OPERATING_INTELLIGENCE_LAYER.md`, `context-manifest-gate.mjs`, `eval-gate.mjs`, typed arm-result fixtures | UI coverage can deepen; executable context/eval enforcement exists |
 | Observability | Partial / policy | `ENTERPRISE_PROOF_BANK.md`, production layer pack | Needs actual observability proof gate/scripts |
 | Enterprise load/concurrency proof | Partial / policy | `ENTERPRISE_PROOF_BANK.md` scale/concurrency dimensions | Needs load/k6/artillery/Locust validator |
 | Game development domain pack | Partial / policy | serious game section in `ENTERPRISE_PROOF_BANK.md` | Needs dedicated game domain-pack artifact + gates |
@@ -503,7 +503,7 @@ visual board update
 
 ## 11. Current verdict
 
-v0.7 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 14 Layer 0 foundation controls, 39 enterprise production controls, ten AI assurance domains, five domain packs, executable goal/context/eval/trajectory validators, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
+v0.8 is a usable commissioning and proof-gate harness for goal-loop delivery. It now has eight workflow skills, 14 Layer 0 foundation controls, 39 enterprise production controls, ten AI assurance domains, five domain packs, executable goal/context/eval/trajectory validators, portable proof, signed four-role review, coherent run packets, and adversarial tests. It is not a certification engine, an autonomous source of human authority, an Apple build service, or a hosted fleet orchestrator.
 
 ### Historical pre-v0.7 verdict (superseded)
 

@@ -10,6 +10,7 @@ const ASSET_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".
 
 function readJson(file) { return JSON.parse(readFileSync(file, "utf8")); }
 function writeJson(file, value) { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`); }
+function jsonValueSha256(file) { return sha256(JSON.stringify(readJson(file))); }
 
 function mobileIosCommissioning(repoRoot) {
   const candidates = [path.join(repoRoot, "project-adapter.json"), path.join(repoRoot, ".valdris-harness", "project-adapter.json")];
@@ -68,11 +69,11 @@ function main() {
   const domainIndex = readJson(domainIndexPath);
   const request = args.request.trim();
   const catalogDigests = {
-    taxonomy: sha256(readFileSync(workloadTaxonomy)),
-    foundation: sha256(readFileSync(foundationCatalog)),
-    production: sha256(readFileSync(productionCatalog)),
-    ai: sha256(readFileSync(aiCatalog)),
-    domainIndex: sha256(readFileSync(domainIndexPath)),
+    taxonomy: jsonValueSha256(workloadTaxonomy),
+    foundation: jsonValueSha256(foundationCatalog),
+    production: jsonValueSha256(productionCatalog),
+    ai: jsonValueSha256(aiCatalog),
+    domainIndex: jsonValueSha256(domainIndexPath),
   };
   const classification = classifyWorkload({
     runId,
@@ -110,13 +111,13 @@ function main() {
 
   const domainDigests = Object.fromEntries(domainPacks.map((id) => {
     const entry = domainIndex.packs.find((pack) => pack.id === id);
-    return [id, sha256(readFileSync(path.join(catalogRoot, entry.path)))];
+    return [id, jsonValueSha256(path.join(catalogRoot, entry.path))];
   }));
   const decision = (required, reason) => required ? { status: "required" } : { status: "not-applicable", reason };
   const route = {
     schema: "uash.route.v2", runId, generatedAt: now, profile: args.profile, requestedProfile: args.profile, commit, environment: args.environment, taskType, controlledDocumentation: classification.controlledDocumentation, executionBudget,
     requestSignals: classification.matchedSignals,
-    intakeSha256: sha256(readFileSync(outputs[0])), workloadClassificationSha256: sha256(readFileSync(outputs[1])), registrySha256: sha256(readFileSync(registryPath)),
+    intakeSha256: sha256(readFileSync(outputs[0])), workloadClassificationSha256: sha256(readFileSync(outputs[1])), registrySha256: jsonValueSha256(registryPath),
     catalogDigests: { ...catalogDigests, domainPacks: domainDigests },
     skillPhases: [
       { phase: "intake-route", primary: "valdris-intake-route", supporting },

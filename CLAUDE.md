@@ -35,17 +35,18 @@ npm run catalog:gate
 npm run provenance:gate
 npm run neutrality:gate
 npm run privacy:gate
+npm run verify:release-privacy
+npm run privacy:release
 npm run schema:compat:gate
+npm run code-intelligence:scan
+npm run code-intelligence:gate
 npm run verify:enterprise-ai
 npm run verify:work-harness-import
+npm run verify:commissioned-portability
 npm run verify:harness
 ```
 
-When modifying commissioning behavior, also run:
-
-```bash
-npm run commission -- --repo . --project-name "Valdris SDLC Harness" --out ./tmp/valdris-commissioned --yes
-```
+When modifying commissioning behavior, the required `verify:commissioned-portability` and `verify:harness` commands above create isolated temporary target repositories, exercise commissioning, and clean them up. Do not commission this harness repository into a non-canonical output path.
 
 ## Final-answer shape
 

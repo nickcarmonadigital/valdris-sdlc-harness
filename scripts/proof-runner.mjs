@@ -6,19 +6,29 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const PORTABLE_PROOF_SCHEMA = "valdris.portable-proof.v1";
+export const EXECUTION_INPUTS_SCHEMA = "valdris.proof-execution-inputs.v1";
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/;
 const SHA256 = /^[a-f0-9]{64}$/i;
 const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
-const SECRET_NAME = /(?:^|_)(?:api_?key|auth|authorization|credential|database_?url|dsn|connection_?string|password|private_?key|secret|token)(?:_|$)/i;
+const SECRET_NAME = /(?:^|_)(?:api_?key|auth|authorization|credentials?|database_?url|db_?url|dsn|connection_?(?:string|url)|password|private_?key|secret|(?:postgres(?:ql)?|mysql|mariadb|mongo(?:db)?|redis|cache|mssql)_?(?:url|dsn))(?:_|$)/i;
+const TOKEN_NAME = /(?:^|_)token(?:_|$)/i;
+const PLURAL_TOKEN_NAME = /(?:^|_)tokens(?:_|$)/i;
+const SENSITIVE_TOKEN_NAME = /(?:^|_)(?:access|refresh|auth|authorization|bearer|session|api|oauth|csrf)_tokens?(?:_|$)/i;
+const BENIGN_TOKEN_METRIC = /(^|_)token_(?:counts?|budgets?)(?=_|$)/gi;
+const BENIGN_TOKEN_USAGE_METRIC = /^(?:(?:prompt|completion|input|output|total)_)?tokens$/i;
+const SECRET_ASSIGNMENT_NAME = /(?:^|_)(?:access_token|refresh_token|api_key|auth|authorization|client_secret|private_key|password|dsn|connection_(?:string|url)|database_url|db_url|credentials?|secret|token|(?:postgres(?:ql)?|mysql|mariadb|mongo(?:db)?|redis|cache|mssql)_(?:url|dsn))$/i;
+const SECRET_ARGV_FLAG_SUFFIX = /(?:^|_)(?:access_key(?:_id)?|access_token|api_key|api_secret|api_token|auth|auth_token|authorization|bearer_token|client_secret|connection_string|connection_url|credentials?|database_url|db_url|dsn|encryption_key|oauth_token|password|passphrase|private_key|refresh_token|secret|secret_access_key|secret_key|service_account_key|session_token|signing_key|token|webhook_secret|(?:postgres(?:ql)?|mysql|mariadb|mongo(?:db)?|redis|cache|mssql)_(?:url|dsn))$/i;
+const LONG_ARGV_FLAG = /^--[A-Za-z][A-Za-z0-9_.-]{0,127}$/;
 const SAFE_ENV_NAMES = new Set([
   "APPDATA", "CI", "ComSpec", "GITHUB_ACTIONS", "HOME", "HOMEDRIVE", "HOMEPATH", "LANG", "LC_ALL",
   "LOCALAPPDATA", "PATH", "PATHEXT", "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMW6432",
   "SHELL", "SystemDrive", "SystemRoot", "TEMP", "TERM", "TMP", "TMPDIR", "USERPROFILE", "WINDIR",
 ]);
+const SAFE_ENV_NAMES_UPPER = new Set([...SAFE_ENV_NAMES].map((name) => name.toUpperCase()));
 const LOCAL_PATH_ENV_NAMES = new Set(["HOME", "USERPROFILE"]);
 const WINDOWS_RESERVED_COMPONENT = /^(?:CON|PRN|AUX|NUL|CLOCK\$|CONIN\$|CONOUT\$|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
 const PROOF_RUNNER_FILE = fileURLToPath(import.meta.url);
-const POST_PROOF_ARTIFACT_PATHS = Object.freeze(["proof/portable.json", "review/review.json", "run/packet.json"]);
+const POST_PROOF_ARTIFACT_PATHS = Object.freeze(["proof/portable.json", "rca/rca.json", "review/review.json", "run/packet.json"]);
 const HARNESS_EVIDENCE_PATH_PATTERNS = Object.freeze([
   /^ai\/assurance\.json$/,
   /^approvals\/.+\.json$/,
@@ -42,6 +52,44 @@ const HARNESS_EVIDENCE_PATH_PATTERNS = Object.freeze([
   /^trajectory\/(?:trajectory\.json|trace\.jsonl)$/,
   /^waivers\/waivers\.json$/,
 ]);
+
+function normalizedSecretName(value) {
+  return String(value ?? "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/[^A-Za-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+export function isSecretLikeName(value) {
+  const normalized = normalizedSecretName(value);
+  if (SECRET_NAME.test(normalized)) return true;
+  if (SENSITIVE_TOKEN_NAME.test(normalized)) return true;
+  const withoutBenignMetrics = normalized.replace(BENIGN_TOKEN_METRIC, "$1metric");
+  return TOKEN_NAME.test(withoutBenignMetrics) || PLURAL_TOKEN_NAME.test(withoutBenignMetrics);
+}
+
+function isBenignTokenMetricName(value) {
+  const normalized = normalizedSecretName(value);
+  if (SECRET_NAME.test(normalized) || SENSITIVE_TOKEN_NAME.test(normalized)) return false;
+  BENIGN_TOKEN_METRIC.lastIndex = 0;
+  return BENIGN_TOKEN_METRIC.test(normalized) || BENIGN_TOKEN_USAGE_METRIC.test(normalized);
+}
+
+function isNumericMetricTree(value) {
+  if (typeof value === "number") return Number.isFinite(value) && value >= 0;
+  if (Array.isArray(value)) return value.length > 0 && value.every(isNumericMetricTree);
+  if (value && typeof value === "object") {
+    const entries = Object.values(value);
+    return entries.length > 0 && entries.every(isNumericMetricTree);
+  }
+  return false;
+}
+
+export function isSecretAssignmentName(value) {
+  return SECRET_ASSIGNMENT_NAME.test(normalizedSecretName(value));
+}
 
 export function isHarnessEvidencePath(value) {
   const normalized = String(value || "").replaceAll("\\", "/").replace(/^\.\//, "");
@@ -99,6 +147,21 @@ export function assertPortableArtifactPath(value) {
   return value;
 }
 
+export function assertCanonicalRepoRelativePath(value, label = "causal input path") {
+  if (typeof value !== "string" || value.length === 0) throw new Error(`${label} must be a non-empty string`);
+  if (path.isAbsolute(value) || path.win32.isAbsolute(value) || path.posix.isAbsolute(value)) {
+    throw new Error(`${label} must be repository-relative`);
+  }
+  if (value.includes("\\") || value === "." || value.startsWith("./") || value.endsWith("/") || path.posix.normalize(value) !== value) {
+    throw new Error(`${label} must use canonical repository-relative POSIX form`);
+  }
+  if (value.split("/").some((component) => !component || component === "." || component === "..")) {
+    throw new Error(`${label} must use canonical repository-relative POSIX form`);
+  }
+  assertPortableArtifactPath(value);
+  return value;
+}
+
 export function resolveArtifactPath(repoRoot, relativeOrAbsolute, options = {}) {
   assertPortableArtifactPath(relativeOrAbsolute);
   const root = realpathSync(path.resolve(repoRoot));
@@ -119,6 +182,29 @@ export function resolveArtifactPath(repoRoot, relativeOrAbsolute, options = {}) 
   return target;
 }
 
+function causalInputState(repoRoot, requestedPaths) {
+  const root = realpathSync(path.resolve(repoRoot));
+  const seen = new Set();
+  const entries = [];
+  for (const requestedPath of requestedPaths) {
+    assertCanonicalRepoRelativePath(requestedPath);
+    if (seen.has(requestedPath)) throw new Error(`causal input path was supplied more than once: ${requestedPath}`);
+    seen.add(requestedPath);
+    const target = resolveArtifactPath(root, requestedPath, { mustExist: true });
+    const relative = path.relative(root, target).split(path.sep).join("/");
+    if (relative !== requestedPath) throw new Error(`causal input path must be canonical: ${requestedPath}`);
+    let cursor = root;
+    for (const component of requestedPath.split("/")) {
+      cursor = path.join(cursor, component);
+      const stats = lstatSync(cursor);
+      if (stats.isSymbolicLink()) throw new Error(`causal input path must not traverse a symbolic link: ${requestedPath}`);
+    }
+    if (!lstatSync(target).isFile()) throw new Error(`causal input path must resolve to a regular file: ${requestedPath}`);
+    entries.push({ path: requestedPath, sha256: fileSha256(target) });
+  }
+  return entries.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+}
+
 function git(repoRoot, args, options = {}) {
   const result = spawnSync("git", ["-C", repoRoot, ...args], {
     encoding: options.encoding ?? null,
@@ -137,13 +223,30 @@ function git(repoRoot, args, options = {}) {
 
 function gitText(repoRoot, args) {
   const output = git(repoRoot, args);
-  return Buffer.isBuffer(output) ? output.toString("utf8").trim() : String(output).trim();
+  const text = Buffer.isBuffer(output) ? output.toString("utf8") : String(output);
+  return text.replace(/\r?\n$/, "");
 }
 
-function assertGitWorktreeRoot(repoRoot, message) {
+function assertGitWorktree(repoRoot, message) {
   const insideWorktree = gitText(repoRoot, ["rev-parse", "--is-inside-work-tree"]);
-  const prefix = gitText(repoRoot, ["rev-parse", "--show-prefix"]);
-  if (insideWorktree !== "true" || prefix !== "") throw new Error(message);
+  if (insideWorktree !== "true") throw new Error(message);
+}
+
+function gitTargetPath(repoRoot) {
+  const prefix = gitText(repoRoot, ["rev-parse", "--show-prefix"])
+    .replaceAll("\\", "/")
+    .replace(/^\.\//, "")
+    .replace(/\/+$/, "");
+  if (prefix === ".." || prefix.startsWith("../") || path.posix.isAbsolute(prefix) || /[\u0000-\u001f]/.test(prefix)) {
+    throw new Error("proof target Git prefix is invalid");
+  }
+  return prefix || ".";
+}
+
+function validGitTargetPath(value) {
+  if (value === ".") return true;
+  if (typeof value !== "string" || !value.length || value.includes("\\") || value.startsWith("/") || value.endsWith("/") || /[\u0000-\u001f]/.test(value)) return false;
+  return value.split("/").every((component) => component.length > 0 && component !== "." && component !== "..");
 }
 
 function untrackedBinding(repoRoot, pathspec = []) {
@@ -162,15 +265,17 @@ function untrackedBinding(repoRoot, pathspec = []) {
 
 export function trackedSourceState(repoRoot, expectedCommit) {
   const root = realpathSync(path.resolve(repoRoot));
-  assertGitWorktreeRoot(root, "proof --repo must be the Git worktree root");
+  assertGitWorktree(root, "proof --repo must be inside a Git worktree");
   const head = gitText(root, ["rev-parse", "--verify", "HEAD"]);
   if (expectedCommit !== head) throw new Error(`--commit must exactly match Git HEAD (${head})`);
   const tree = gitText(root, ["rev-parse", "HEAD^{tree}"]);
-  const status = git(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all"]);
-  const diff = git(root, ["diff", "--binary", "--full-index", "HEAD", "--"]);
-  const untracked = untrackedBinding(root);
+  const pathspec = ["--", "."];
+  const status = git(root, ["status", "--porcelain=v1", "-z", "--untracked-files=all", ...pathspec]);
+  const diff = git(root, ["diff", "--binary", "--full-index", "HEAD", ...pathspec]);
+  const untracked = untrackedBinding(root, pathspec);
   const state = {
     gitHead: head,
+    targetPath: gitTargetPath(root),
     gitTreeSha256: sha256(tree),
     dirty: status.length > 0,
     statusSha256: sha256(status),
@@ -185,7 +290,7 @@ export function trackedSourceState(repoRoot, expectedCommit) {
 
 export function applicationSourceState(repoRoot, expectedCommit) {
   const root = realpathSync(path.resolve(repoRoot));
-  assertGitWorktreeRoot(root, "application source state requires the Git worktree root");
+  assertGitWorktree(root, "application source state requires a Git worktree");
   const head = gitText(root, ["rev-parse", "--verify", "HEAD"]);
   if (expectedCommit !== head) throw new Error(`application source commit must exactly match Git HEAD (${head})`);
   const pathspec = ["--", ".", ...POST_PROOF_ARTIFACT_PATHS.map((entry) => `:(exclude,literal)${entry}`)];
@@ -194,6 +299,7 @@ export function applicationSourceState(repoRoot, expectedCommit) {
   const untracked = untrackedBinding(root, pathspec);
   const state = {
     gitHead: head,
+    targetPath: gitTargetPath(root),
     dirty: status.length > 0,
     statusSha256: sha256(status),
     diffSha256: sha256(diff),
@@ -207,7 +313,7 @@ export function applicationSourceState(repoRoot, expectedCommit) {
 function explicitSecretValues(names) {
   const selected = new Set(names);
   for (const name of Object.keys(process.env)) {
-    if (SECRET_NAME.test(name)) selected.add(name);
+    if (isSecretLikeName(name)) selected.add(name);
   }
   const sourceByUpper = new Map(Object.keys(process.env).map((name) => [name.toUpperCase(), name]));
   return [...selected]
@@ -230,15 +336,207 @@ function localPathValues() {
   return [...values].filter((value) => value.length >= 2).sort((left, right) => right.length - left.length);
 }
 
+const SECRET_ASSIGNMENT_PREFIX_PATTERN = /(?<![A-Za-z0-9_.-])(?:(?:\\+)?["'])?([A-Za-z][A-Za-z0-9_.-]{0,127})(?:(?:\\+)?["'])?\s*[:=]\s*/gi;
+const REDACTED_SECRET_VALUE_PATTERN = /^(?:(?:\\+)?["'])?(?:\[REDACTED(?: [A-Z ]+)?\]|<redacted>|\[placeholder\]|<placeholder>)(?:(?:\\+)?["'])?(?=[ \t]*(?:[,;}\]]|\r?\n|$))/i;
+const SAFE_STRUCTURED_SECRET_VALUE_PATTERN = /^(?:\[REDACTED(?: [A-Z ]+)?\]|<redacted>|\[placeholder\]|<placeholder>)$/i;
+
+function secretValueEnd(value, start) {
+  const tail = value.slice(start);
+  const quote = /^(?:\\+)?["']/.exec(tail)?.[0];
+  if (!quote) {
+    const delimiter = tail.search(/[\r\n,;}]/);
+    return delimiter < 0 ? value.length : start + delimiter;
+  }
+
+  const lineBreak = tail.search(/[\r\n]/);
+  const lineEnd = lineBreak < 0 ? tail.length : lineBreak;
+  let cursor = quote.length;
+  let lastClosing = -1;
+  while (cursor < lineEnd) {
+    const candidate = tail.indexOf(quote, cursor);
+    if (candidate < 0 || candidate >= lineEnd) break;
+    lastClosing = candidate + quote.length;
+    const remainder = tail.slice(lastClosing);
+    if (/^[ \t]*(?:[,;}\]]|\r?\n|$)/.test(remainder)) return start + lastClosing;
+    cursor = lastClosing;
+  }
+  return start + (lastClosing >= 0 ? lastClosing : lineEnd);
+}
+
+function redactSecretAssignments(input) {
+  let value = String(input ?? "");
+  let searchFrom = 0;
+  while (searchFrom < value.length) {
+    SECRET_ASSIGNMENT_PREFIX_PATTERN.lastIndex = searchFrom;
+    const match = SECRET_ASSIGNMENT_PREFIX_PATTERN.exec(value);
+    if (!match) break;
+    if (!isSecretAssignmentName(match[1])) {
+      searchFrom = SECRET_ASSIGNMENT_PREFIX_PATTERN.lastIndex;
+      continue;
+    }
+    const valueStart = SECRET_ASSIGNMENT_PREFIX_PATTERN.lastIndex;
+    const tail = value.slice(valueStart);
+    const alreadyRedacted = REDACTED_SECRET_VALUE_PATTERN.exec(tail)?.[0];
+    if (alreadyRedacted) {
+      searchFrom = valueStart + alreadyRedacted.length;
+      continue;
+    }
+    const valueEnd = secretValueEnd(value, valueStart);
+    if (valueEnd <= valueStart) {
+      searchFrom = valueStart + 1;
+      continue;
+    }
+    value = `${value.slice(0, valueStart)}[REDACTED]${value.slice(valueEnd)}`;
+    searchFrom = valueStart + "[REDACTED]".length;
+  }
+  SECRET_ASSIGNMENT_PREFIX_PATTERN.lastIndex = 0;
+  return value;
+}
+
 export function redactText(input, secretValues = []) {
   let value = String(input ?? "");
   for (const secret of secretValues) value = value.split(secret).join("[REDACTED]");
-  return value
+  value = value
     .replace(/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g, "[REDACTED PRIVATE KEY]")
     .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi, "Bearer [REDACTED]")
-    .replace(/\b(?:api[_-]?key|authorization|credential|database[_-]?url|dsn|connection[_-]?string|password|private[_-]?key|secret|token)\s*[:=]\s*["']?[^\s,"']{1,}["']?/gi, (match) => `${match.split(/[:=]/, 1)[0]}=[REDACTED]`)
-    .replace(/\b((?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|mssql):\/\/)[^\s:@/]+:[^\s@/]+@/gi, "$1[REDACTED]@")
+    .replace(/\bgithub_pat_[A-Za-z0-9_]{20,255}\b/g, "[REDACTED TOKEN]")
+    .replace(/\bgh[pousr]_[A-Za-z0-9]{30,255}\b/g, "[REDACTED TOKEN]")
+    .replace(/\bsk-[A-Za-z0-9_-]{20,255}\b/g, "[REDACTED TOKEN]");
+  value = redactSecretAssignments(value);
+  return value
+    .replace(/\b((?:postgres(?:ql)?|mysql|mariadb|mongodb(?:\+srv)?|redis(?:s)?|mssql):\/\/)[^@\s"'`<>]*:[^@\s"'`<>/]+@/gi, "$1[REDACTED]@")
     .replace(/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, "[REDACTED JWT]");
+}
+
+function isSecretArgvFlag(value) {
+  return LONG_ARGV_FLAG.test(value) && SECRET_ARGV_FLAG_SUFFIX.test(normalizedSecretName(value.slice(2)));
+}
+
+function secretArgvBindings(argv) {
+  if (!Array.isArray(argv) || argv.length === 0 || argv.some((entry) => typeof entry !== "string" || entry.length === 0)) {
+    throw new Error("command argv must be a non-empty string array");
+  }
+  const bindings = [];
+  for (let index = 1; index < argv.length; index += 1) {
+    const entry = argv[index];
+    const equalsIndex = entry.indexOf("=");
+    const flag = equalsIndex >= 0 ? entry.slice(0, equalsIndex) : entry;
+    if (!isSecretArgvFlag(flag)) continue;
+    if (equalsIndex >= 0) {
+      const value = entry.slice(equalsIndex + 1);
+      if (!value.length) throw new Error(`secret-bearing command flag ${flag} requires a non-empty value`);
+      bindings.push({ flag, flagIndex: index, form: "equals", value });
+      continue;
+    }
+    const value = argv[index + 1];
+    if (typeof value !== "string" || !value.length) throw new Error(`secret-bearing command flag ${flag} requires a value`);
+    if (value.startsWith("-")) throw new Error(`secret-bearing command flag ${flag} has an ambiguous flag-like split value; use ${flag}=<value>`);
+    bindings.push({ flag, flagIndex: index, form: "split", value, valueIndex: index + 1 });
+    index += 1;
+  }
+  return bindings;
+}
+
+function opaqueArgvMetadata(argv) {
+  return secretArgvBindings(argv).map((binding) => ({
+    flag: binding.flag,
+    flagIndex: binding.flagIndex,
+    form: binding.form,
+    valueIndex: binding.form === "split" ? binding.valueIndex : null,
+  }));
+}
+
+function canonicalPassedEnvironmentNames(names) {
+  const normalized = [];
+  for (const name of names) {
+    if (typeof name !== "string" || !name.length || name.includes("=") || /[\u0000-\u001f]/.test(name)) {
+      throw new Error("--pass-env requires a non-empty environment variable name without control characters or equals signs");
+    }
+    normalized.push(name.toUpperCase());
+  }
+  return [...new Set(normalized)].sort();
+}
+
+function allowlistedEnvironmentSha256(environment) {
+  const canonicalEnvironment = Object.fromEntries(Object.entries(environment)
+    .map(([name, value]) => [name.toUpperCase(), value])
+    .filter(([name]) => SAFE_ENV_NAMES_UPPER.has(name))
+    .sort(([left], [right]) => left.localeCompare(right)));
+  return sha256(canonicalJson(canonicalEnvironment));
+}
+
+function executionInputContract(passEnvNames, resolvedArgv, childEnvironment) {
+  const passedEnvironmentNames = canonicalPassedEnvironmentNames(passEnvNames);
+  const opaqueArgv = opaqueArgvMetadata(resolvedArgv);
+  const dynamic = passedEnvironmentNames.length > 0 || opaqueArgv.length > 0;
+  return {
+    schema: EXECUTION_INPUTS_SCHEMA,
+    stability: dynamic ? "opaque-dynamic" : "static",
+    causalIdentityEligible: !dynamic,
+    passedEnvironmentNames,
+    opaqueArgv,
+    allowlistedEnvironmentSha256: allowlistedEnvironmentSha256(childEnvironment),
+  };
+}
+
+function executionInputProblems(command) {
+  const problems = [];
+  const contract = command?.executionInputs;
+  if (!contract || typeof contract !== "object" || Array.isArray(contract)) return ["portable proof command.executionInputs is required"];
+  if (canonicalJson(Object.keys(contract).sort()) !== canonicalJson(["allowlistedEnvironmentSha256", "causalIdentityEligible", "opaqueArgv", "passedEnvironmentNames", "schema", "stability"])) {
+    problems.push("portable proof command.executionInputs fields are invalid");
+  }
+  if (contract.schema !== EXECUTION_INPUTS_SCHEMA) problems.push(`portable proof command.executionInputs.schema must be ${EXECUTION_INPUTS_SCHEMA}`);
+  if (!SHA256.test(contract.allowlistedEnvironmentSha256 || "")) problems.push("portable proof command.executionInputs.allowlistedEnvironmentSha256 must be a SHA-256 digest");
+  let canonicalPassedNames = [];
+  if (!Array.isArray(contract.passedEnvironmentNames)) problems.push("portable proof command.executionInputs.passedEnvironmentNames must be an array");
+  else {
+    try { canonicalPassedNames = canonicalPassedEnvironmentNames(contract.passedEnvironmentNames); }
+    catch (error) { problems.push(`portable proof command.executionInputs.passedEnvironmentNames is invalid: ${error.message}`); }
+    if (canonicalJson(contract.passedEnvironmentNames) !== canonicalJson(canonicalPassedNames)) problems.push("portable proof command.executionInputs.passedEnvironmentNames must be unique, uppercase, and sorted");
+  }
+  let expectedOpaqueArgv = [];
+  try { expectedOpaqueArgv = opaqueArgvMetadata(command?.argv); }
+  catch (error) { problems.push(`portable proof command.executionInputs.opaqueArgv cannot be derived: ${error.message}`); }
+  if (!Array.isArray(contract.opaqueArgv)) problems.push("portable proof command.executionInputs.opaqueArgv must be an array");
+  else {
+    for (const [index, entry] of contract.opaqueArgv.entries()) {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)
+        || canonicalJson(Object.keys(entry).sort()) !== canonicalJson(["flag", "flagIndex", "form", "valueIndex"])) {
+        problems.push(`portable proof command.executionInputs.opaqueArgv[${index}] fields are invalid`);
+      }
+    }
+    if (canonicalJson(contract.opaqueArgv) !== canonicalJson(expectedOpaqueArgv)) problems.push("portable proof command.executionInputs.opaqueArgv must match the redacted command argv structure");
+  }
+  const dynamic = canonicalPassedNames.length > 0 || expectedOpaqueArgv.length > 0;
+  if (contract.stability !== (dynamic ? "opaque-dynamic" : "static")) problems.push("portable proof command.executionInputs.stability does not match its opaque inputs");
+  if (contract.causalIdentityEligible !== !dynamic) problems.push("portable proof command.executionInputs.causalIdentityEligible does not match its stability");
+  return problems;
+}
+
+export function redactCommandArgv(argv, baseSecretValues = []) {
+  const bindings = secretArgvBindings(argv);
+  const secretValues = [...new Set([...baseSecretValues, ...bindings.map((binding) => binding.value)])]
+    .filter((value) => typeof value === "string" && value.length > 0)
+    .sort((left, right) => right.length - left.length);
+  const persisted = argv.map((entry) => redactText(entry, secretValues));
+  for (const binding of bindings) {
+    persisted[binding.flagIndex] = binding.form === "equals" ? `${binding.flag}=[REDACTED]` : binding.flag;
+    if (binding.form === "split") persisted[binding.valueIndex] = "[REDACTED]";
+  }
+  return { argv: persisted, secretValues };
+}
+
+function secretArgvDisclosureProblems(argv) {
+  let bindings;
+  try {
+    bindings = secretArgvBindings(argv);
+  } catch {
+    return ["proof artifact contains malformed secret-bearing command argv"];
+  }
+  return bindings.some((binding) => !SAFE_STRUCTURED_SECRET_VALUE_PATTERN.test(binding.value.trim()))
+    ? ["proof artifact contains a raw secret-bearing command argv value"]
+    : [];
 }
 
 function safeChildEnvironment(passNames = []) {
@@ -341,8 +639,15 @@ function derivedOutcome(execution, source = {}) {
 }
 
 function proofBindings(document) {
-  const commandSha256 = sha256(canonicalJson(document.command.argv));
+  const executionInputsSha256 = sha256(canonicalJson(document.command.executionInputs));
+  const commandSha256 = sha256(canonicalJson({
+    argv: document.command.argv,
+    requestedArgv: document.command.requestedArgv,
+    resolution: document.command.resolution,
+    executionInputsSha256,
+  }));
   const outputSha256 = sha256(canonicalJson(outputBinding(document.execution.attempts)));
+  const causalInputsSha256 = sha256(canonicalJson(document.causalInputs));
   const runSha256 = sha256(document.run.id);
   const commitSha256 = sha256(document.run.commit);
   const environmentSha256 = sha256(document.run.environment);
@@ -351,7 +656,9 @@ function proofBindings(document) {
   const envelopeSha256 = sha256(canonicalJson({
     schema: document.schema,
     commandSha256,
+    executionInputsSha256,
     outputSha256,
+    causalInputsSha256,
     runSha256,
     commitSha256,
     environmentSha256,
@@ -361,17 +668,36 @@ function proofBindings(document) {
     repeat: document.execution.repeat,
     timeoutMs: document.execution.timeoutMs,
   }));
-  return { commandSha256, outputSha256, runSha256, commitSha256, environmentSha256, environmentSnapshotSha256, sourceSha256, envelopeSha256 };
+  return { commandSha256, executionInputsSha256, outputSha256, causalInputsSha256, runSha256, commitSha256, environmentSha256, environmentSnapshotSha256, sourceSha256, envelopeSha256 };
 }
 
 export function secretDisclosureProblems(document) {
-  const serialized = JSON.stringify(document);
   const problems = [];
-  if (/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/.test(serialized)) problems.push("proof artifact contains a raw private key");
-  if (/\bBearer\s+(?!\[REDACTED\])\S{8,}/i.test(serialized)) problems.push("proof artifact contains a raw bearer credential");
-  if (/\b(?:api[_-]?key|credential|database[_-]?url|dsn|connection[_-]?string|password|private[_-]?key|secret|token)\s*[:=]\s*(?!\[REDACTED\])[^\s,"']{1,}/i.test(serialized)) problems.push("proof artifact contains secret-like raw output");
-  if (/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|mssql):\/\/[^\s:@/]+:[^\s@/]+@/i.test(serialized)) problems.push("proof artifact contains a raw connection credential");
-  return problems;
+  function visit(value, key = "", inheritedSecretContext = false) {
+    const benignNumericMetric = isBenignTokenMetricName(key) && isNumericMetricTree(value);
+    if (isBenignTokenMetricName(key) && !benignNumericMetric) {
+      problems.push("proof artifact contains a non-numeric value under a token-metric key");
+    }
+    const secretContext = inheritedSecretContext || (!benignNumericMetric && isSecretLikeName(key));
+    if (secretContext && (typeof value !== "string" || !SAFE_STRUCTURED_SECRET_VALUE_PATTERN.test(value.trim()))) {
+      problems.push("proof artifact contains a raw value under a secret-like key");
+    }
+    if (typeof value === "string") {
+      const redacted = redactText(value);
+      if (redacted !== value) problems.push("proof artifact contains secret-like raw string output");
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (new Set(["argv", "requested_argv"]).has(normalizedSecretName(key))) problems.push(...secretArgvDisclosureProblems(value));
+      for (const entry of value) visit(entry, "", secretContext);
+      return;
+    }
+    if (value && typeof value === "object") {
+      for (const [entryKey, entry] of Object.entries(value)) visit(entry, entryKey, secretContext);
+    }
+  }
+  visit(document);
+  return [...new Set(problems)];
 }
 
 export function agentSelfGrantProblems(value, location = "artifact") {
@@ -393,6 +719,28 @@ export function validatePortableProof(document) {
   if (!Array.isArray(document.command?.argv) || document.command.argv.length === 0 || document.command.argv.some((entry) => typeof entry !== "string" || !entry.length)) problems.push("portable proof command.argv must be a non-empty string array");
   if (document.command?.requestedArgv !== undefined && (!Array.isArray(document.command.requestedArgv) || document.command.requestedArgv.length === 0 || document.command.requestedArgv.some((entry) => typeof entry !== "string" || !entry.length))) problems.push("portable proof command.requestedArgv must be a non-empty string array when present");
   if (!new Set(["direct", "windows-npm-cli", "windows-pnpm-cli", "windows-yarn-cli"]).has(document.command?.resolution)) problems.push("portable proof command.resolution is invalid");
+  problems.push(...executionInputProblems(document.command));
+  const causalInputs = Array.isArray(document.causalInputs) ? document.causalInputs : [];
+  if (!Array.isArray(document.causalInputs)) problems.push("portable proof causalInputs must be an array");
+  const causalPaths = new Set();
+  for (const [index, input] of causalInputs.entries()) {
+    const label = `portable proof causalInputs[${index}]`;
+    if (!input || typeof input !== "object" || Array.isArray(input)) {
+      problems.push(`${label} must be an object`);
+      continue;
+    }
+    if (canonicalJson(Object.keys(input).sort()) !== canonicalJson(["afterSha256", "beforeSha256", "path"])) problems.push(`${label} must contain exactly path, beforeSha256, and afterSha256`);
+    try { assertCanonicalRepoRelativePath(input.path, `${label}.path`); }
+    catch (error) { problems.push(error.message); }
+    if (typeof input.path === "string") {
+      if (causalPaths.has(input.path)) problems.push(`${label}.path is duplicated`);
+      causalPaths.add(input.path);
+    }
+    if (!SHA256.test(input.beforeSha256 || "")) problems.push(`${label}.beforeSha256 is invalid`);
+    if (!SHA256.test(input.afterSha256 || "")) problems.push(`${label}.afterSha256 is invalid`);
+  }
+  const canonicalCausalInputs = [...causalInputs].sort((left, right) => String(left?.path || "") < String(right?.path || "") ? -1 : String(left?.path || "") > String(right?.path || "") ? 1 : 0);
+  if (canonicalJson(causalInputs) !== canonicalJson(canonicalCausalInputs)) problems.push("portable proof causalInputs must use canonical path order");
   if (document.execution?.shell !== false) problems.push("portable proof execution.shell must be false");
   if (!Number.isInteger(document.execution?.timeoutMs) || document.execution.timeoutMs < 1 || document.execution.timeoutMs > 600_000) problems.push("portable proof timeoutMs must be between 1 and 600000");
   if (!Number.isInteger(document.execution?.repeat) || document.execution.repeat < 1 || document.execution.repeat > 20) problems.push("portable proof repeat must be between 1 and 20");
@@ -420,6 +768,7 @@ export function validatePortableProof(document) {
   if (!source || typeof source !== "object" || Array.isArray(source)) problems.push("portable proof source binding is required");
   else {
     if (source.gitHead !== document.run?.commit) problems.push("portable proof source.gitHead must match run.commit");
+    if (!validGitTargetPath(source.targetPath)) problems.push("portable proof source.targetPath must be a normalized Git worktree-relative target path");
     if (!SHA256.test(source.gitTreeSha256 || "")) problems.push("portable proof source.gitTreeSha256 is invalid");
     for (const field of ["beforeSha256", "afterSha256", "applicationBeforeSha256", "applicationAfterSha256", "validatorSha256"]) if (!SHA256.test(source[field] || "")) problems.push(`portable proof source.${field} is invalid`);
     if (typeof source.dirtyBefore !== "boolean" || typeof source.dirtyAfter !== "boolean") problems.push("portable proof source dirty flags are invalid");
@@ -446,28 +795,39 @@ function parseArgs(argv) {
   const separator = argv.indexOf("--");
   const optionArgs = separator >= 0 ? argv.slice(0, separator) : argv;
   const command = separator >= 0 ? argv.slice(separator + 1) : [];
-  const args = { repo: process.cwd(), timeoutMs: 30_000, repeat: 1, maxOutputBytes: 16_384, mode: "green", redactEnv: [], passEnv: [] };
+  const args = { repo: process.cwd(), timeoutMs: 30_000, repeat: 1, maxOutputBytes: 16_384, mode: "green", redactEnv: [], passEnv: [], causalInputs: [] };
+  const valueFor = (index, option) => {
+    const value = optionArgs[index + 1];
+    if (typeof value !== "string" || value.length === 0 || value.startsWith("-")) {
+      throw new Error(`${option} requires a non-empty, non-flag value`);
+    }
+    return value;
+  };
   for (let index = 0; index < optionArgs.length; index += 1) {
     const arg = optionArgs[index];
-    if (arg === "--repo") args.repo = optionArgs[++index];
-    else if (arg === "--run-id") args.runId = optionArgs[++index];
-    else if (arg === "--commit") args.commit = optionArgs[++index];
-    else if (arg === "--environment") args.environment = optionArgs[++index];
-    else if (arg === "--output") args.output = optionArgs[++index];
-    else if (arg === "--timeout-ms") args.timeoutMs = Number(optionArgs[++index]);
-    else if (arg === "--repeat") args.repeat = Number(optionArgs[++index]);
-    else if (arg === "--max-output-bytes") args.maxOutputBytes = Number(optionArgs[++index]);
+    if (arg === "--repo") args.repo = valueFor(index++, arg);
+    else if (arg === "--run-id") args.runId = valueFor(index++, arg);
+    else if (arg === "--commit") args.commit = valueFor(index++, arg);
+    else if (arg === "--environment") args.environment = valueFor(index++, arg);
+    else if (arg === "--output") args.output = valueFor(index++, arg);
+    else if (arg === "--timeout-ms") args.timeoutMs = Number(valueFor(index++, arg));
+    else if (arg === "--repeat") args.repeat = Number(valueFor(index++, arg));
+    else if (arg === "--max-output-bytes") args.maxOutputBytes = Number(valueFor(index++, arg));
     else if (arg === "--red-baseline") args.mode = "red-baseline";
-    else if (arg === "--redact-env") args.redactEnv.push(optionArgs[++index]);
-    else if (arg === "--pass-env") args.passEnv.push(optionArgs[++index]);
+    else if (arg === "--redact-env") args.redactEnv.push(valueFor(index++, arg));
+    else if (arg === "--pass-env") args.passEnv.push(valueFor(index++, arg));
+    else if (arg === "--causal-input") args.causalInputs.push(valueFor(index++, arg));
     else if (arg === "--help" || arg === "-h") args.help = true;
-    else throw new Error(`unknown argument: ${arg}`);
+    else {
+      const diagnosticOption = /^--[A-Za-z][A-Za-z0-9_.-]{0,127}/.exec(String(arg))?.[0] || "[invalid option]";
+      throw new Error(`unknown argument: ${diagnosticOption}`);
+    }
   }
   return { ...args, command };
 }
 
 function usage() {
-  return "Usage: node scripts/proof-runner.mjs --repo . --run-id ID --commit SHA --environment NAME --output proof/portable.json [--timeout-ms N] [--repeat N] [--max-output-bytes N] [--red-baseline] [--pass-env NAME] [--redact-env NAME] -- <executable> [args...]";
+  return "Usage: node scripts/proof-runner.mjs --repo . --run-id ID --commit SHA --environment NAME --output proof/portable.json [--timeout-ms N] [--repeat N] [--max-output-bytes N] [--red-baseline] [--causal-input repo/path ...] [--pass-env NAME] [--redact-env NAME] -- <executable> [args...]";
 }
 
 function execute(args) {
@@ -485,12 +845,16 @@ function execute(args) {
   if (existsSync(outputPath)) throw new Error("proof artifacts are immutable; choose a new output path");
   const sourceBefore = trackedSourceState(repoRoot, args.commit);
   const applicationBefore = applicationSourceState(repoRoot, args.commit);
+  const causalInputsBefore = causalInputState(repoRoot, args.causalInputs);
   const resolvedCommand = resolvePortableCommand(args.command);
-  const secretValues = [...new Set([...explicitSecretValues([...args.redactEnv, ...args.passEnv]), ...localPathValues()])]
-    .sort((left, right) => right.length - left.length);
   const childEnvironment = safeChildEnvironment(args.passEnv);
-  const persistedRequestedArgv = args.command.map((entry) => redactText(entry, secretValues));
-  const persistedArgv = resolvedCommand.argv.map((entry) => redactText(entry, secretValues));
+  const executionInputs = executionInputContract(args.passEnv, resolvedCommand.argv, childEnvironment);
+  const baseSecretValues = [...new Set([...explicitSecretValues([...args.redactEnv, ...args.passEnv]), ...localPathValues()])]
+    .sort((left, right) => right.length - left.length);
+  const requestedArgvRedaction = redactCommandArgv(args.command, baseSecretValues);
+  const secretValues = requestedArgvRedaction.secretValues;
+  const persistedRequestedArgv = requestedArgvRedaction.argv;
+  const persistedArgv = redactCommandArgv(resolvedCommand.argv, secretValues).argv;
   const attempts = [];
 
   for (let index = 0; index < args.repeat; index += 1) {
@@ -519,8 +883,13 @@ function execute(args) {
 
   const sourceAfter = trackedSourceState(repoRoot, args.commit);
   const applicationAfter = applicationSourceState(repoRoot, args.commit);
+  const causalInputsAfter = causalInputState(repoRoot, args.causalInputs);
+  if (new Set([sourceBefore.targetPath, sourceAfter.targetPath, applicationBefore.targetPath, applicationAfter.targetPath]).size !== 1) {
+    throw new Error("proof target Git prefix changed during execution");
+  }
   const source = {
     gitHead: sourceBefore.gitHead,
+    targetPath: sourceBefore.targetPath,
     gitTreeSha256: sourceBefore.gitTreeSha256,
     beforeSha256: sourceBefore.worktreeSha256,
     afterSha256: sourceAfter.worktreeSha256,
@@ -539,7 +908,12 @@ function execute(args) {
     run: { id: args.runId, commit: args.commit, environment: args.environment },
     host: { platform: process.platform, arch: process.arch, node: process.version, ci: Boolean(process.env.CI) },
     source,
-    command: { argv: persistedArgv, requestedArgv: persistedRequestedArgv, resolution: resolvedCommand.resolution },
+    causalInputs: causalInputsBefore.map((before, index) => ({
+      path: before.path,
+      beforeSha256: before.sha256,
+      afterSha256: causalInputsAfter[index]?.sha256,
+    })),
+    command: { argv: persistedArgv, requestedArgv: persistedRequestedArgv, resolution: resolvedCommand.resolution, executionInputs },
     execution: { shell: false, mode: args.mode, timeoutMs: args.timeoutMs, repeat: args.repeat, maxOutputBytes: args.maxOutputBytes, attempts },
     outcome: undefined,
   };

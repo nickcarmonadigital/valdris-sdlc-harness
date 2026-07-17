@@ -17,7 +17,6 @@ Options:
   --approval-owner text
   --approval-scope text
   --self-heal-pr-url url
-  --human-token token (preferred for human approval grant/deny; sent as header, never persisted)
   --artifact-root path (explicit run artifact root for local proof verification)
   --adapter-path path (project adapter inside artifactRoot or an allowed adapter root)
   --event-id id (predeclared ID used to correlate approval evidence)
@@ -40,7 +39,6 @@ const options = {
   approvalOwner: undefined,
   approvalScope: undefined,
   selfHealPrUrl: undefined,
-  humanToken: undefined,
   artifactRoot: undefined,
   adapterPath: undefined,
   eventId: undefined,
@@ -58,7 +56,6 @@ const optionMap = {
   "--approval-owner": "approvalOwner",
   "--approval-scope": "approvalScope",
   "--self-heal-pr-url": "selfHealPrUrl",
-  "--human-token": "humanToken",
   "--artifact-root": "artifactRoot",
   "--adapter-path": "adapterPath",
   "--event-id": "eventId",
@@ -69,7 +66,17 @@ for (let i = 0; i < rest.length; i += 1) {
   const item = rest[i];
   const key = optionMap[item];
   if (key) {
-    options[key] = rest[++i] || "";
+    const value = rest[i + 1];
+    if (typeof value !== "string" || value.length === 0 || value.startsWith("-")) {
+      console.error(`Option ${item} requires a non-empty, non-flag value`);
+      process.exit(2);
+    }
+    options[key] = value;
+    i += 1;
+  } else if (item.startsWith("--")) {
+    const diagnosticOption = /^--[A-Za-z][A-Za-z0-9_.-]{0,127}/.exec(item)?.[0] || "--[invalid]";
+    console.error(`Unknown option: ${diagnosticOption}`);
+    process.exit(2);
   } else {
     messageParts.push(item);
   }
@@ -80,8 +87,19 @@ options.message = messageParts.join(" ").trim() || `${type} ${nodeId}`;
 const bridgeUrl = process.env.UASH_BRIDGE_URL || "http://127.0.0.1:8787";
 const url = `${bridgeUrl.replace(/\/$/, "")}/runs/${encodeURIComponent(runId)}/events`;
 
-const humanToken = options.humanToken || process.env.UASH_HUMAN_APPROVAL_TOKEN;
+const bridgeToken = process.env.UASH_BRIDGE_ACCESS_TOKEN;
+if (!bridgeToken) {
+  console.error("UASH_BRIDGE_ACCESS_TOKEN is required for bridge event writes");
+  process.exit(2);
+}
+const humanApprovalDecision = type === "approval.granted" || type === "approval.denied";
+const humanToken = humanApprovalDecision ? process.env.UASH_HUMAN_APPROVAL_TOKEN : undefined;
+if (humanApprovalDecision && !humanToken) {
+  console.error("UASH_HUMAN_APPROVAL_TOKEN is required in the separate operator shell for approval grant/deny events");
+  process.exit(2);
+}
 const headers = { "content-type": "application/json" };
+headers["x-uash-bridge-token"] = bridgeToken;
 if (humanToken) headers["x-uash-human-token"] = humanToken;
 
 const response = await fetch(url, {

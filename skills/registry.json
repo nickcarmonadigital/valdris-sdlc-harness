@@ -23,8 +23,8 @@
     "eval": "Required for AI/probabilistic behavior and any commissioned regression or quality threshold; otherwise record non-applicability in the route.",
     "trajectory": "Required for multi-checkpoint or agentic execution.",
     "smoke": "Required for deployed, provider, platform-native, or runtime behavior; otherwise record non-applicability.",
-    "run-packet": "Every completion claim must bind intake, route, goal, proof, review, and any applicable RCA artifacts into one coherent run packet.",
-    "review": "Consequential completion requires an Ed25519-attested independent review artifact whose signer is authorized by the committed project trust store, differs from the delivery actor, and binds the reviewed commit and proof set.",
+    "run-packet": "Every completion claim must produce valdris.run-packet.v2 binding intake, route, goal, proof, the valdris.review.v2 role provenance, and any applicable RCA artifacts into one coherent immutable run packet.",
+    "review": "Every completion requires an Ed25519-attested independent review artifact using valdris.review.v2 with exactly scout, implementer, verifier, and independentReviewer. The actorId, sessionId, and executionId values are each pairwise distinct across all four roles; an authorized independent reviewer from the committed project trust store signs the frozen evidence bundle and complete role roster.",
     "rca": "Bug, regression, incident, and self-heal work requires a typed root-cause artifact that binds reproduction, causal evidence, fix, and regression proof.",
     "domain-packs": "Activate commissioned domain catalogs such as mobile-iOS, multiplayer-realtime, commerce, or youth-safety."
   },

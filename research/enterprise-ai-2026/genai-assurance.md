@@ -573,7 +573,7 @@ The implementation is complete only when a golden-path AI-3 reference applicatio
 
 ### Supplied source pack reviewed
 
-- Operator-provided enterprise assurance source PDF, 51 pages.
+- Operator-provided enterprise assurance source PDF, 51 pages; stable provenance is the `1317.pdf` entry in [`pdf-source-manifest.json`](pdf-source-manifest.json) under schema `valdris.pdf-audit-source-manifest.v1`.
 - Layer 1: Frontend Foundations, Tier 3 Enterprise Kit.
 - Layer 2: APIs and Backend Logic, Tier 3 Enterprise Kit.
 - Layer 3: Database and Storage, Tier 3 Enterprise Kit.

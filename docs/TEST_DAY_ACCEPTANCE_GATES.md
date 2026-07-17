@@ -26,13 +26,26 @@ Run before claiming the repo update is done:
 ```bash
 npm run typecheck
 npm run build
-npm run verify:harness
+npm run knowledge:gate
+npm run skills:gate
+npm run catalog:gate
+npm run provenance:gate
+npm run neutrality:gate
+npm run privacy:gate
+npm run verify:release-privacy
+npm run privacy:release
+npm run schema:compat:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
+npm run verify:enterprise-ai
+npm run verify:work-harness-import
 npm run verify:commissioned-portability
+npm run verify:harness
 ```
 
-Then verify the generated pack contains:
+`verify:work-harness-import` runs the focused import-boundary, assurance-overlay, portable-execution, proof-security, run-packet-trust, and commissioned-portability adversarial verifiers. The explicit commissioned-portability run remains in this release sequence so commissioning regressions are visible as a first-class acceptance gate.
+
+Then verify target-root `AGENTS.md` and `CLAUDE.md` each contain exactly one bounded `valdris-sdlc-harness-loader` block that loads the corresponding nested front door without replacing pre-existing instructions, and that both loaders are Git-tracked with the pack. Verify the generated pack contains:
 
 ```text
 project-adapter.json
@@ -69,16 +82,8 @@ Do not call `main` updated until:
 6. remote `origin/main` SHA equals local `HEAD`;
 7. public/raw GitHub files show the key strings after push.
 
-## Known next phase after v0.6
+## Current v0.8 status and remaining next phase
 
-The v0.6 update installs structural operating intelligence plus trust-boundary hardening. The next phase is executable specialization:
+The v0.8 closure now includes executable context-manifest, typed context A/B result, eval, trajectory, skill-registry, enterprise-AI, domain-pack, portable-proof, four-role review, and coherent run-packet gates. Their focused verifiers are part of the required command set above.
 
-- eval gate script;
-- trajectory scorer;
-- context manifest gate;
-- skill registry gate;
-- tool/hook registry enforcement;
-- sandbox policy gate;
-- model-routing/cost ledger enforcement;
-- enterprise/domain proof-bank semantic validators;
-- hosted backend / MCP daemon / A2A connector runtime.
+Remaining productization work is deeper tool/hook policy enforcement, executable load and observability gates, broader domain-specific adapters, and an optional hosted backend / MCP daemon / A2A connector runtime. These are explicit future capabilities, not missing implementations of the current v0.8 schemas.

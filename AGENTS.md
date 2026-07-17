@@ -88,6 +88,8 @@ npm run catalog:gate
 npm run provenance:gate
 npm run neutrality:gate
 npm run privacy:gate
+npm run verify:release-privacy
+npm run privacy:release
 npm run schema:compat:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate

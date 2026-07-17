@@ -26,10 +26,14 @@ Prefer commands from `docs/Validation Commands.md`, `project-adapter.json`, or `
 npm run knowledge:gate
 npm run typecheck
 npm run build
+npm run verify:release-privacy
+npm run privacy:release
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:harness
 ```
+
+This routing playbook names the lane-focused subset. Root `AGENTS.md` remains the canonical release sequence and must also pass before a repository completion claim.
 
 # Handoff
 

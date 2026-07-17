@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import { evidencePolicyForEffectiveTier, existingFileWithinRepo, PROFILE_EVIDENCE_MAX_AGE_HOURS } from "./control-gate-lib.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
+export const ENTERPRISE_GATE_TIMEOUT_MS = 120_000;
+export const ENTERPRISE_GATE_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
 const TECHNICAL_TRUST_RANK = { "automated-local": 0, "ci-attested": 1, "provider-attested": 2 };
 const GATES = [
   ["intake", "intake-gate.mjs"],
@@ -39,6 +41,18 @@ function parseArgs(argv) {
 export function hasTokenCorrelatedUnknownApproval(condition, unknown, classification, classificationSha256) {
   const scope = `classification-unknown:${unknown.id}`;
   return (condition?.evidence || []).some((evidence) => evidence.type === "approval" && evidence.actorType === "human" && evidence.status === "granted" && evidence.trustTier === "human-approved" && evidence.producer?.kind === "human" && nonEmptyForBinding(evidence.bridgeEventId) && evidence.scope === scope && evidence.runId === classification.runId && evidence.workloadClassificationSha256 === classificationSha256 && evidence.unknownId === unknown.id && evidence.tokenCorrelation?.runId === classification.runId && evidence.tokenCorrelation?.workloadClassificationSha256 === classificationSha256 && evidence.tokenCorrelation?.unknownId === unknown.id);
+}
+
+export function runEnterpriseValidator(scriptPath, repoRoot, options = {}) {
+  return spawnSync(process.execPath, [scriptPath, "--repo", path.resolve(repoRoot)], {
+    encoding: "utf8",
+    shell: false,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: options.timeoutMs ?? ENTERPRISE_GATE_TIMEOUT_MS,
+    killSignal: "SIGTERM",
+    maxBuffer: options.maxBufferBytes ?? ENTERPRISE_GATE_MAX_BUFFER_BYTES,
+  });
 }
 
 function crossArtifactProblems(repoRoot) {
@@ -144,16 +158,30 @@ function crossArtifactProblems(repoRoot) {
     }
   }
   const evals = artifacts.find(([name]) => name === "eval")[1];
+  const context = artifacts.find(([name]) => name === "context")[1];
   const trajectory = artifacts.find(([name]) => name === "trajectory")[1];
   for (const field of ["attempts", "toolCalls", "tokens", "costUsd", "wallClockMinutes"]) if (goal.budgets?.[field] !== trajectory.budget?.limits?.[field]) problems.push(`trajectory budget.limits.${field} must match goal.budgets.${field}`);
+  const contextQualitySuite = (evals.suites || []).find((suite) => suite.id === context.contextQuality?.suiteId);
+  const currentContextDigest = sha256JsonFile(path.join(repoRoot, "context", "manifest.json"));
+  if (!contextQualitySuite?.contextComparison) problems.push("enterprise finish line requires the commissioned context quality comparison");
+  else if (contextQualitySuite.contextComparison.contextManifestSha256 !== currentContextDigest) problems.push("enterprise finish line context comparison must bind the current context/manifest.json");
   if (route.gateApplicability?.eval?.status === "required" && evals.status !== "passed") problems.push("route-required eval cannot be skipped");
-  if (route.gateApplicability?.eval?.status === "not-applicable" && evals.status !== "skipped") problems.push("route must mark eval required when eval suites are supplied");
+  const nonContextSuites = (evals.suites || []).filter((suite) => suite.id !== context.contextQuality?.suiteId);
+  if (route.gateApplicability?.eval?.status === "not-applicable" && nonContextSuites.length > 0) problems.push("route must mark eval required when non-context eval suites are supplied");
   if (productionRequired) {
     const production = artifacts.find(([name]) => name === "production")[1];
     const routedLayers = new Map((route.productionLayers || []).map((layer) => [layer.layer, layer]));
     for (const layer of production.layers || []) if (routedLayers.get(layer.layer)?.initialApplicability === "required" && layer.applicability !== "required") problems.push(`route-required production layer changed to not-applicable: ${layer.layer}`);
   }
-  const gitHead = spawnSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], { encoding: "utf8" });
+  const gitHead = spawnSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], {
+    encoding: "utf8",
+    shell: false,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 30_000,
+    killSignal: "SIGTERM",
+    maxBuffer: 4 * 1024 * 1024,
+  });
   if (gitHead.status === 0 && nonEmptyForBinding(gitHead.stdout) !== goal.commit) problems.push("goal.commit must match current Git HEAD");
   return problems;
 }
@@ -179,8 +207,10 @@ async function main() {
   } catch {}
   const results = [];
   for (const [name, script] of gates) {
-    const result = spawnSync(process.execPath, [path.join(SCRIPT_DIR, script), "--repo", path.resolve(args.repo)], { encoding: "utf8" });
-    results.push({ name, ok: result.status === 0, exitCode: result.status, output: (result.stdout || result.stderr || "").trim().slice(-4000) });
+    const result = runEnterpriseValidator(path.join(SCRIPT_DIR, script), args.repo);
+    const timedOut = result.error?.code === "ETIMEDOUT";
+    const output = `${result.stdout || ""}\n${result.stderr || ""}`.trim().slice(-4000);
+    results.push({ name, ok: result.status === 0, exitCode: result.status, timedOut, output });
   }
   let consistencyProblems = [];
   if (results.every((result) => result.ok)) {

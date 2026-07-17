@@ -194,21 +194,35 @@ A repo is commissioned only when:
 - `.valdris-harness/project-adapter.json` exists and validates.
 - the complete `.valdris-harness` runtime and review trust store are committed in the target Git worktree before proof execution;
 - `workloadTaxonomy` and `foundationAssurance` point to packaged catalogs, artifacts, and executable gates.
-- `.valdris-harness/AGENTS.md` and/or `.valdris-harness/CLAUDE.md` are generated, with the required discovery loader merged into the target root.
+- `.valdris-harness/AGENTS.md` and `.valdris-harness/CLAUDE.md` are generated, and bounded discovery-loader blocks are created or safely merged into target-root `AGENTS.md` and `CLAUDE.md`; unsafe files or malformed/duplicate loader markers block commissioning. Immediately before installation, commissioning revalidates both original loader digests, stages both replacements in the target directory, and rolls back the first replacement if the second cannot be installed. The successful loaders are committed with the pack.
 - Claude slash-command and Codex runtime prompt front doors are generated.
 - Validation commands are explicit.
 - clean-room privacy targets `.valdris-harness`, and generated graph/anchor evidence uses the bounded include scan instead of a full product-tree binary policy.
 - Red Zone owner and approval-required actions are explicit.
 - Source-of-truth order is explicit.
 - At least one run packet can be created.
+- The portable closure uses `valdris.review.v2` and `valdris.run-packet.v2`: scout, implementer, verifier, and independent reviewer identities are explicit, evidence-bound, signed, and pairwise distinct on actor, session, and execution IDs; the packet envelope binds `roleProvenanceSha256`.
 - New route packets generate `uash.route.v2`, bind `run/workload-classification.json`, and enforce Layer 0 foundation assurance before implementation.
 - A simulated agent run blocks completion when proof is missing.
 
 ## Current proof command
 
 ```bash
+npm run typecheck
+npm run build
+npm run knowledge:gate
+npm run skills:gate
+npm run catalog:gate
+npm run provenance:gate
+npm run neutrality:gate
+npm run privacy:gate
+npm run verify:release-privacy
+npm run privacy:release
+npm run schema:compat:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
+npm run verify:enterprise-ai
+npm run verify:work-harness-import
 npm run verify:commissioned-portability
 npm run verify:harness
 ```

@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileSha256, readJson, resolveArtifactPath, safeIdentifier } from "./proof-runner.mjs";
-import { CANONICAL_INPUT_PATHS, packetBindings, reviewEvidenceBundle, reviewEvidenceBundleSha256, routeRequiredGates, RUN_PACKET_SCHEMA, validateRunPacket, validationRuntimeBinding } from "./run-packet-gate.mjs";
+import { reviewRoleProvenanceSha256 } from "./review-gate.mjs";
+import { CANONICAL_INPUT_PATHS, packetBindings, reviewEvidenceBundle, reviewEvidenceBundleSha256, routeRequiredGates, RUN_PACKET_SCHEMA, supportingArtifactsForGate, validateRunPacket, validationRuntimeBinding } from "./run-packet-gate.mjs";
 
 function normalizedRelative(repoRoot, file) {
   return path.relative(repoRoot, file).split(path.sep).join("/");
@@ -68,7 +69,9 @@ function main() {
   const intake = readJson(inputFiles.intake);
   const classification = readJson(inputFiles.classification);
   const route = readJson(inputFiles.route);
-  const requiredGates = routeRequiredGates(route, intake, classification);
+  const requiredGates = routeRequiredGates(route, intake, classification, {
+    rcaPresent: existsSync(path.join(repoRoot, "rca", "rca.json")),
+  });
   const suppliedGates = new Map();
   const addGate = (name, artifactPath) => {
     if (!artifactPath) return;
@@ -90,7 +93,10 @@ function main() {
 
   const gateArtifacts = requiredGates.filter((gate) => suppliedGates.has(gate)).map((gate) => {
     const file = resolveArtifactPath(repoRoot, suppliedGates.get(gate), { mustExist: true });
-    return { gate, path: normalizedRelative(repoRoot, file), sha256: fileSha256(file), required: true, runId: args.runId, commit: args.commit, environment: args.environment };
+    const artifact = { gate, path: normalizedRelative(repoRoot, file), sha256: fileSha256(file), required: true, runId: args.runId, commit: args.commit, environment: args.environment };
+    const supportingArtifacts = supportingArtifactsForGate(gate, repoRoot);
+    if (supportingArtifacts.length > 0) artifact.supportingArtifacts = supportingArtifacts;
+    return artifact;
   });
   const packet = {
     schema: RUN_PACKET_SCHEMA,
@@ -108,6 +114,8 @@ function main() {
     const evidenceBundle = reviewEvidenceBundle(packet);
     return console.log(JSON.stringify({ ok: true, evidenceBundle, evidenceBundleSha256: reviewEvidenceBundleSha256(packet) }, null, 2));
   }
+  const reviewFile = resolveArtifactPath(repoRoot, suppliedGates.get("independent-review"), { mustExist: true });
+  packet.roleProvenanceSha256 = reviewRoleProvenanceSha256(readJson(reviewFile));
   packet.bindings = packetBindings(packet);
   const validation = validateRunPacket(packet, repoRoot);
   if (!validation.valid) throw new Error(`refusing to create invalid run packet: ${validation.problems.join("; ")}`);

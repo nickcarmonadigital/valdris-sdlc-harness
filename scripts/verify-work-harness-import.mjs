@@ -58,6 +58,7 @@ const focusedVerifiers = [
   "scripts/verify-proof-runner-security.mjs",
   "scripts/verify-run-packet-trust.mjs",
   "scripts/verify-commissioned-portability.mjs",
+  "scripts/verify-release-artifact-privacy.mjs",
 ];
 const requiredRuntimeFiles = ["controls/review-trust.v1.json"];
 
@@ -81,6 +82,7 @@ const requiredPackageScripts = [
   "provenance:gate",
   "neutrality:gate",
   "privacy:gate",
+  "privacy:release",
   "schema:compat:gate",
   "run:packet:gate",
   "proof:run",
@@ -89,6 +91,7 @@ const requiredPackageScripts = [
   "verify:proof-security",
   "verify:run-packet-trust",
   "verify:commissioned-portability",
+  "verify:release-privacy",
   "verify:work-harness-import",
 ];
 for (const name of requiredPackageScripts) record(`package script ${name}`, Boolean(packageJson.scripts?.[name]), "missing package script");
@@ -97,7 +100,7 @@ const workflow = read(".github/workflows/ci.yml");
 record("CI remains dual-platform", includesEvery(workflow, ["ubuntu-latest", "windows-latest"]), "missing Linux/Windows matrix");
 record(
   "CI runs clean-room gates",
-  includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import"]),
+  includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "privacy:release", "verify:release-privacy", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import"]),
   "one or more clean-room gates are absent from CI",
 );
 record("CI scans secrets", /gitleaks\/gitleaks-action@/.test(workflow), "gitleaks action is not configured");

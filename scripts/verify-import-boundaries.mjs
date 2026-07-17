@@ -114,6 +114,17 @@ test("provenance rejects unverifiable file records", (root) => {
   assert.ok(result.payload.findings.some((item) => item.code === "INVALID_SHA256"));
 });
 
+test("provenance rejects prototype-inherited inventory names", (root) => {
+  cloneManifest(root);
+  const target = path.join(root, "controls/provenance/thirteen-layers.upstream.v1.json");
+  const manifest = JSON.parse(readFileSync(target, "utf8"));
+  manifest.files.constructor = "0".repeat(64);
+  writeFileSync(target, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  const result = runGate("provenance-gate.mjs", root);
+  assert.equal(result.status, 1, result.text);
+  assert.ok(result.payload.findings.some((item) => item.code === "UNAPPROVED_SOURCE_FILE"));
+});
+
 test("neutral public surfaces pass", (root) => {
   write(root, "README.md", "# Example harness\n\nProviders and branches are commissioned per project.\n");
   write(root, "controls/example.json", '{"issueId":"${issue_id}","provider":"${provider}"}\n');
@@ -180,6 +191,7 @@ test("synthetic privacy fixtures pass", (root) => {
   const windowsPlaceholder = ["C:", "Users", "<user>", "proof.json"].join("\\");
   const unixPlaceholder = ["", "Users", "<user>", "proof.json"].join("/");
   write(root, "docs/import/privacy.md", `Use ${windowsPlaceholder} and ${unixPlaceholder} only as placeholders.\n`);
+  write(root, "examples/connections.env", "DATABASE_URL=postgres://<user>:<redacted>@db/app\nREDIS_URL=redis://:<placeholder>@cache/0\n");
   expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
 });
 
@@ -255,6 +267,57 @@ test("privacy scans root files and rejects secrets without echoing material", (r
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [secret]);
   assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === "SECURITY.txt"));
+});
+
+test("privacy rejects fine-grained GitHub tokens without echoing material", (root) => {
+  const fineGrainedFixture = ["github", "pat", "A".repeat(60)].join("_");
+  write(root, "docs/credential.txt", `Credential: ${fineGrainedFixture}\n`);
+  const result = runGate("privacy-gate.mjs", root);
+  expectRedactedFailure(result, "import-privacy", [fineGrainedFixture]);
+  assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === "docs/credential.txt"));
+});
+
+test("privacy rejects provider-prefixed and normalized secret assignments", (root) => {
+  const aliases = [
+    ["OPENAI", "API", "KEY"].join("_"),
+    ["STRIPE", "CLIENT", "SECRET"].join("_"),
+    ["CUSTOM", "ACCESS", "TOKEN"].join("_"),
+    ["REFRESH", "TOKEN"].join("_"),
+    ["DATABASE", "URL"].join("_"),
+    ["DB", "URL"].join("_"),
+    ["PRIMARY", "CONNECTION", "STRING"].join("_"),
+    "AUTHORIZATION",
+    "PASSWORD",
+    "CREDENTIALS",
+    ["api", "Key"].join(""),
+    ["access", "Token"].join(""),
+  ];
+  const values = aliases.map((_, index) => ["raw", "provider", "material", String(index + 100)].join("-"));
+  const contaminatedValue = ["raw", "after", "marker", "999"].join("-");
+  write(root, "config/provider-secrets.env", `${aliases.map((alias, index) => `${alias}=${values[index]}`).join("\n")}\n${aliases[0]}=[REDACTED] ${contaminatedValue}\n`);
+  const result = runGate("privacy-gate.mjs", root);
+  expectRedactedFailure(result, "import-privacy", [...values, contaminatedValue]);
+  assert.ok(result.payload.findings.filter((item) => item.category === "secret" && item.path === "config/provider-secrets.env").length >= aliases.length + 1);
+});
+
+test("privacy rejects raw database and cache credentials without echoing material", (root) => {
+  const databaseUser = ["fixture", "user"].join("_");
+  const databasePassword = ["fixture", "database", "password"].join("_");
+  const cachePassword = ["fixture", "cache", "password"].join("_");
+  const postgresFixtureValue = ["postgres", "://", databaseUser, ":", databasePassword, "@db/app"].join("");
+  const redisFixtureValue = ["redis", "://:", cachePassword, "@cache/0"].join("");
+  write(root, "config/connections.env", `DATABASE_URL=${postgresFixtureValue}\nREDIS_URL=${redisFixtureValue}\n`);
+  const result = runGate("privacy-gate.mjs", root);
+  expectRedactedFailure(result, "import-privacy", [postgresFixtureValue, redisFixtureValue, databasePassword, cachePassword]);
+  assert.ok(result.payload.findings.filter((item) => item.category === "secret" && item.path === "config/connections.env").length >= 2);
+});
+
+test("privacy rejects container superuser home paths without echoing them", (root) => {
+  const localPath = ["", ["ro", "ot"].join(""), ".ssh", "id_rsa"].join("/");
+  write(root, "docs/local-path.txt", `artifact=${localPath}\n`);
+  const result = runGate("privacy-gate.mjs", root);
+  expectRedactedFailure(result, "import-privacy", [localPath]);
+  assert.ok(result.payload.findings.some((item) => item.category === "local-user-path" && item.path === "docs/local-path.txt"));
 });
 
 test("privacy does not let example prose mask a real-looking secret", (root) => {

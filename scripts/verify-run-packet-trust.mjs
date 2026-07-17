@@ -12,6 +12,7 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { reviewAttestationPayload } from "./review-gate.mjs";
 import { routeRequiredGates, routeRequiresRca } from "./run-packet-gate.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -34,7 +35,15 @@ function canonicalJson(value) {
 
 function gateBindingValue(gateArtifacts) {
   return [...gateArtifacts]
-    .map(({ gate, path: artifactPath, sha256: digest, required, runId, commit, environment }) => ({ gate, path: artifactPath, sha256: digest, required, runId, commit, environment }))
+    .map(({ gate, path: artifactPath, sha256: digest, required, runId, commit, environment, supportingArtifacts }) => {
+      const value = { gate, path: artifactPath, sha256: digest, required, runId, commit, environment };
+      if (Array.isArray(supportingArtifacts)) {
+        value.supportingArtifacts = [...supportingArtifacts]
+          .map(({ kind, path: supportingPath, sha256: supportingSha256 }) => ({ kind, path: supportingPath, sha256: supportingSha256 }))
+          .sort((left, right) => left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
+      }
+      return value;
+    })
     .sort((left, right) => left.gate < right.gate ? -1 : left.gate > right.gate ? 1 : 0);
 }
 
@@ -57,6 +66,7 @@ function evidenceBundleSha256(document) {
 }
 
 function packetBindings(document) {
+  const generatedAtSha256 = sha256(document.generatedAt);
   const intakeSha256 = document.inputs.intake.sha256;
   const classificationSha256 = document.inputs.classification.sha256;
   const routeSha256 = document.inputs.route.sha256;
@@ -67,8 +77,10 @@ function packetBindings(document) {
   const environmentSha256 = sha256(document.environment);
   const validationRuntimeSha256 = document.validationRuntime.setSha256;
   const reviewedEvidenceBundleSha256 = evidenceBundleSha256(document);
+  const roleProvenanceSha256 = document.roleProvenanceSha256;
   const envelopeSha256 = sha256(canonicalJson({
     schema: document.schema,
+    generatedAtSha256,
     runSha256,
     commitSha256,
     environmentSha256,
@@ -79,9 +91,10 @@ function packetBindings(document) {
     gateArtifactsSha256,
     validationRuntimeSha256,
     evidenceBundleSha256: reviewedEvidenceBundleSha256,
+    roleProvenanceSha256,
     requiredGates: [...document.requiredGates].sort(),
   }));
-  return { runSha256, commitSha256, environmentSha256, intakeSha256, classificationSha256, routeSha256, goalSha256, gateArtifactsSha256, validationRuntimeSha256, evidenceBundleSha256: reviewedEvidenceBundleSha256, envelopeSha256 };
+  return { generatedAtSha256, runSha256, commitSha256, environmentSha256, intakeSha256, classificationSha256, routeSha256, goalSha256, gateArtifactsSha256, validationRuntimeSha256, evidenceBundleSha256: reviewedEvidenceBundleSha256, roleProvenanceSha256, envelopeSha256 };
 }
 
 function readJson(file) {
@@ -168,6 +181,124 @@ function approvalEvidence(goal, conditionId, approvedAt, expiresAt) {
   };
 }
 
+function verifyReviewTrustStoreSchema(root) {
+  const repoRoot = path.join(root, "review-trust-schema");
+  mkdirSync(repoRoot, { recursive: true });
+  const runtimeRoot = copyRuntime(repoRoot);
+  const { publicKey } = generateKeyPairSync("ed25519");
+  const readmePath = path.join(repoRoot, "README.md");
+  writeFileSync(readmePath, "# Synthetic review trust schema fixture\n", "utf8");
+  const baseKey = {
+    keyId: "EXAMPLE-REVIEW-KEY-001",
+    algorithm: "ed25519",
+    status: "active",
+    publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
+    allowedActorIds: ["EXAMPLE-ACTOR-REVIEWER"],
+    allowedActorTypes: ["agent"],
+  };
+
+  function expectRejected(keys, label, expectedText) {
+    const trustStore = { schema: "valdris.review-trust.v1", keys };
+    const reviewTrustSha256 = sha256(canonicalJson(trustStore));
+    writeJson(path.join(repoRoot, "controls", "review-trust.v1.json"), trustStore);
+    writeJson(path.join(repoRoot, "review", "review.json"), {
+      schema: "valdris.review.v2",
+      generatedAt: "2026-01-01T00:00:00.000Z",
+      runId: "EXAMPLE-REVIEW-TRUST-SCHEMA-001",
+      commit: "EXAMPLE-COMMIT",
+      environment: "synthetic-test",
+      status: "passed",
+      subject: { artifact: "README.md", sha256: sha256(readFileSync(readmePath)) },
+      reviewTrustSha256,
+      validationRuntimeSha256: "a".repeat(64),
+      evidenceBundleSha256: "b".repeat(64),
+      roleProvenance: {
+        schema: "valdris.review-role-provenance.v1",
+        independentReviewer: {
+          actorId: "EXAMPLE-ACTOR-REVIEWER",
+          actorType: "agent",
+          sessionId: "EXAMPLE-SESSION-REVIEW",
+          executionId: "EXAMPLE-EXECUTION-REVIEW",
+          evidence: { kind: "review-evidence-bundle", sha256: "b".repeat(64) },
+        },
+      },
+      decision: { status: "accepted", summary: "Synthetic trust-store schema review." },
+      findings: [],
+      blockers: [],
+      attestation: {
+        scheme: "ed25519",
+        keyId: "EXAMPLE-REVIEW-KEY-001",
+        signedAt: "2026-01-01T00:00:00.000Z",
+        payloadSha256: "c".repeat(64),
+        signature: "AA==",
+      },
+    });
+    expectFailure(
+      run(runtimeRoot, "review-gate.mjs", ["--repo", repoRoot, "--file", "review/review.json"], repoRoot, { ...process.env, UASH_REVIEW_TRUST_SHA256: reviewTrustSha256 }),
+      label,
+      expectedText,
+    );
+  }
+
+  expectRejected(
+    [{ ...baseKey, allowedActorIds: "EXAMPLE-ACTOR-REVIEWER" }],
+    "review trust store with a scalar allowedActorIds allowlist",
+    "review trust store key 1 allowedActorIds must be a non-empty array when present",
+  );
+  expectRejected(
+    [{ ...baseKey, allowedActorTypes: "agent" }],
+    "review trust store with a scalar allowedActorTypes allowlist",
+    "review trust store key 1 allowedActorTypes must be a non-empty array when present",
+  );
+  const typoActorKey = { ...baseKey, allowedActorId: "EXAMPLE-ACTOR-REVIEWER" };
+  delete typoActorKey.allowedActorIds;
+  expectRejected(
+    [typoActorKey],
+    "review trust store with a misspelled actor allowlist field",
+    "review trust store key 1 contains unsupported field: allowedActorId",
+  );
+  expectRejected(
+    [baseKey, { ...baseKey, keyId: "../ATTACKER-KEY", status: "revoked" }],
+    "review trust store with an unsafe unrelated keyId",
+    "review trust store key 2 keyId is invalid",
+  );
+  expectRejected(
+    [baseKey, { ...baseKey, status: "revoked" }],
+    "review trust store with a duplicate keyId across statuses",
+    "review trust store key 2 keyId duplicates key 1",
+  );
+  expectRejected(
+    [baseKey, { ...baseKey, keyId: "EXAMPLE-OTHER-KEY-001", status: "enabled" }],
+    "review trust store with an unsupported key status",
+    "review trust store key 2 status must be active or revoked",
+  );
+  expectRejected(
+    [baseKey, { ...baseKey, keyId: "EXAMPLE-OTHER-KEY-001", status: "revoked", algorithm: "rsa" }],
+    "review trust store with an unsupported algorithm on an unrelated key",
+    "review trust store key 2 algorithm must be ed25519",
+  );
+  expectRejected(
+    [{ ...baseKey, allowedActorIds: [] }],
+    "review trust store with an empty allowedActorIds allowlist",
+    "review trust store key 1 allowedActorIds must be a non-empty array when present",
+  );
+  expectRejected(
+    [{ ...baseKey, allowedActorTypes: [] }],
+    "review trust store with an empty allowedActorTypes allowlist",
+    "review trust store key 1 allowedActorTypes must be a non-empty array when present",
+  );
+  expectRejected(
+    [{ ...baseKey, allowedActorIds: ["../ATTACKER"] }],
+    "review trust store with an unsafe actor allowlist entry",
+    "review trust store key 1 allowedActorIds entry 1 is invalid",
+  );
+  expectRejected(
+    [{ ...baseKey, allowedActorTypes: ["robot"] }],
+    "review trust store with an unsupported actor type allowlist entry",
+    "review trust store key 1 allowedActorTypes entry 1 is invalid",
+  );
+}
+
 function createValidPacketFixture(root) {
   const repoRoot = path.join(root, "target");
   mkdirSync(repoRoot, { recursive: true });
@@ -188,6 +319,8 @@ function createValidPacketFixture(root) {
       allowedActorTypes: ["agent"],
     }],
   });
+  const reviewTrustSha256 = sha256(canonicalJson(readJson(path.join(repoRoot, "controls", "review-trust.v1.json"))));
+  process.env.UASH_REVIEW_TRUST_SHA256 = reviewTrustSha256;
   for (const [args, label] of [
     [["init"], "fixture git init"],
     [["config", "user.email", "fixture@example.com"], "fixture git email"],
@@ -279,6 +412,7 @@ function createValidPacketFixture(root) {
   ], repoRoot);
   expectOk(runtimeBindingResult, "validation runtime binding creation");
   const runtimeBinding = JSON.parse(runtimeBindingResult.stdout);
+  assert(runtimeBinding.source?.runtimePath === ".", "root validation runtime must use the Git-native worktree-relative path");
   const evidenceBundleResult = run(runtimeRoot, "run-create.mjs", [
     "--repo", repoRoot,
     "--run-id", runId,
@@ -291,59 +425,69 @@ function createValidPacketFixture(root) {
   expectOk(evidenceBundleResult, "review evidence bundle creation");
   const evidenceBundle = JSON.parse(evidenceBundleResult.stdout);
   const review = {
-    schema: "valdris.review.v1",
+    schema: "valdris.review.v2",
     generatedAt: completedAt,
     runId,
     commit: goal.commit,
     environment,
     status: "passed",
     subject: { artifact: "proof/portable.json", sha256: proofDigest },
+    reviewTrustSha256,
     validationRuntimeSha256: runtimeBinding.setSha256,
     evidenceBundleSha256: evidenceBundle.evidenceBundleSha256,
-    implementationProvenance: {
-      actorId: "EXAMPLE-ACTOR-IMPLEMENTER",
-      actorType: "agent",
-      sessionId: "EXAMPLE-SESSION-IMPLEMENT",
-      executionId: "EXAMPLE-EXECUTION-IMPLEMENT",
-      artifactSha256: proofDigest,
-    },
-    reviewProvenance: {
-      actorId: "EXAMPLE-ACTOR-REVIEWER",
-      actorType: "agent",
-      sessionId: "EXAMPLE-SESSION-REVIEW",
-      executionId: "EXAMPLE-EXECUTION-REVIEW",
-      observedArtifactSha256: proofDigest,
+    roleProvenance: {
+      schema: "valdris.review-role-provenance.v1",
+      scout: {
+        actorId: "EXAMPLE-ACTOR-SCOUT",
+        actorType: "agent",
+        sessionId: "EXAMPLE-SESSION-SCOUT",
+        executionId: "EXAMPLE-EXECUTION-SCOUT",
+        evidence: { kind: "artifact", path: "run/route.json", sha256: sha256(readFileSync(path.join(repoRoot, "run", "route.json"))) },
+      },
+      implementer: {
+        actorId: "EXAMPLE-ACTOR-IMPLEMENTER",
+        actorType: "agent",
+        sessionId: "EXAMPLE-SESSION-IMPLEMENT",
+        executionId: "EXAMPLE-EXECUTION-IMPLEMENT",
+        evidence: { kind: "artifact", path: "proof/portable.json", sha256: proofDigest },
+      },
+      verifier: {
+        actorId: "EXAMPLE-ACTOR-VERIFIER",
+        actorType: "agent",
+        sessionId: "EXAMPLE-SESSION-VERIFY",
+        executionId: "EXAMPLE-EXECUTION-VERIFY",
+        evidence: { kind: "artifact", path: "proof/portable.json", sha256: proofDigest },
+      },
+      independentReviewer: {
+        actorId: "EXAMPLE-ACTOR-REVIEWER",
+        actorType: "agent",
+        sessionId: "EXAMPLE-SESSION-REVIEW",
+        executionId: "EXAMPLE-EXECUTION-REVIEW",
+        evidence: { kind: "review-evidence-bundle", sha256: evidenceBundle.evidenceBundleSha256 },
+      },
     },
     decision: { status: "accepted", summary: "Synthetic packet proof satisfies the focused trust contract." },
     findings: [],
     blockers: [],
   };
   review.attestation = { scheme: "ed25519", keyId, signedAt: completedAt };
-  const attestationPayload = {
-    schema: review.schema,
-    generatedAt: review.generatedAt,
-    runId: review.runId,
-    commit: review.commit,
-    environment: review.environment,
-    status: review.status,
-    subject: review.subject,
-    validationRuntimeSha256: review.validationRuntimeSha256,
-    evidenceBundleSha256: review.evidenceBundleSha256,
-    implementationProvenance: review.implementationProvenance,
-    reviewProvenance: review.reviewProvenance,
-    decision: review.decision,
-    findings: review.findings,
-    blockers: review.blockers,
-    attestation: {
-      scheme: review.attestation.scheme,
-      keyId: review.attestation.keyId,
-      signedAt: review.attestation.signedAt,
-    },
-  };
-  const serializedAttestation = canonicalJson(attestationPayload);
+  const serializedAttestation = canonicalJson(reviewAttestationPayload(review));
   review.attestation.payloadSha256 = sha256(serializedAttestation);
   review.attestation.signature = signPayload(null, Buffer.from(serializedAttestation, "utf8"), privateKey).toString("base64");
   writeJson(path.join(repoRoot, "review", "review.json"), review);
+
+  const environmentWithoutReviewTrust = { ...process.env };
+  delete environmentWithoutReviewTrust.UASH_REVIEW_TRUST_SHA256;
+  expectFailure(
+    run(runtimeRoot, "review-gate.mjs", ["--repo", repoRoot, "--file", "review/review.json"], repoRoot, environmentWithoutReviewTrust),
+    "signed review without an operator-held trust-store pin",
+    "UASH_REVIEW_TRUST_SHA256 is required",
+  );
+  expectFailure(
+    run(runtimeRoot, "review-gate.mjs", ["--repo", repoRoot, "--file", "review/review.json"], repoRoot, { ...process.env, UASH_REVIEW_TRUST_SHA256: "not-a-sha256-digest" }),
+    "signed review with a malformed trust-store pin",
+    "UASH_REVIEW_TRUST_SHA256 must be a 64-character SHA-256 digest",
+  );
 
   const trustStorePath = path.join(repoRoot, "controls", "review-trust.v1.json");
   const trustStoreSource = readFileSync(trustStorePath, "utf8");
@@ -369,7 +513,7 @@ function createValidPacketFixture(root) {
   ], repoRoot);
   expectOk(packet, "valid packet fixture creation");
   expectOk(run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot), "valid packet fixture validation");
-  return { runtimeRoot, repoRoot };
+  return { runtimeRoot, repoRoot, reviewTrustSha256 };
 }
 
 function verifyNativeCorrectiveRoute(root) {
@@ -404,6 +548,198 @@ function verifyNativeCorrectiveRoute(root) {
   assert(routeRequiredGates(route, intake, classification).includes("rca"), "native-valid corrective self-heal gate set omitted RCA");
 }
 
+function verifyReviewTrustSelfEnrollmentRejected(runtimeRoot, repoRoot, operatorTrustSha256) {
+  const attackerKeyId = "ATTACKER-SELF-ENROLLED-KEY";
+  const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const trustStorePath = path.join(repoRoot, "controls", "review-trust.v1.json");
+  writeJson(trustStorePath, {
+    schema: "valdris.review-trust.v1",
+    keys: [{
+      keyId: attackerKeyId,
+      algorithm: "ed25519",
+      status: "active",
+      publicKeyPem: publicKey.export({ type: "spki", format: "pem" }),
+      allowedActorIds: ["ATTACKER-INDEPENDENT-REVIEWER"],
+      allowedActorTypes: ["agent"],
+    }],
+  });
+  expectOk(runGit(repoRoot, ["add", "controls/review-trust.v1.json"]), "self-enrollment trust-store stage");
+  expectOk(runGit(repoRoot, ["commit", "-m", "test: attacker self-enrolls review key"]), "self-enrollment trust-store commit");
+  const attackerTrustSha256 = sha256(canonicalJson(readJson(trustStorePath)));
+  const attackerEnvironment = { ...process.env, UASH_REVIEW_TRUST_SHA256: attackerTrustSha256 };
+  const operatorEnvironment = { ...process.env, UASH_REVIEW_TRUST_SHA256: operatorTrustSha256 };
+
+  for (const file of ["intake.json", "workload-classification.json", "route.json", "packet.json"]) {
+    rmSync(path.join(repoRoot, "run", file), { force: true });
+  }
+  for (const directory of ["goal", "proof", "review", "trajectory"]) {
+    rmSync(path.join(repoRoot, directory), { recursive: true, force: true });
+  }
+
+  const runId = "EXAMPLE-SELF-ENROLLMENT-ATTACK-001";
+  const environment = "synthetic-test";
+  expectOk(run(runtimeRoot, "route-request.mjs", [
+    "--repo", repoRoot,
+    "--run-id", runId,
+    "--profile", "prototype",
+    "--environment", environment,
+    "--actor", "Synthetic Packet Owner",
+    "--request", "Copy edit one documentation sentence.",
+  ], repoRoot, attackerEnvironment), "self-enrollment route creation");
+
+  const goalPath = path.join(repoRoot, "goal", "goal.json");
+  const goal = readJson(goalPath);
+  const completedAt = new Date().toISOString();
+  const approvedAt = new Date(Date.parse(completedAt) - 1000).toISOString();
+  const expiresAt = new Date(Date.parse(completedAt) + 60 * 60 * 1000).toISOString();
+  goal.revision += 1;
+  goal.generatedAt = completedAt;
+  goal.updatedAt = completedAt;
+  goal.status = "completed";
+  goal.stoppingConditions = goal.stoppingConditions.map((condition) => ({
+    ...condition,
+    status: "passed",
+    evidence: [approvalEvidence(goal, condition.id, approvedAt, expiresAt)],
+  }));
+  goal.checkpoints = goal.checkpoints.map((checkpoint) => ({
+    ...checkpoint,
+    status: "passed",
+    summary: "Self-enrollment adversary fixture reached review closure.",
+  }));
+  writeJson(goalPath, goal);
+
+  const tracePath = path.join(repoRoot, "trajectory", "trace.jsonl");
+  mkdirSync(path.dirname(tracePath), { recursive: true });
+  writeFileSync(tracePath, `${JSON.stringify({ runId, event: "self-enrollment-attack" })}\n`, "utf8");
+  writeJson(path.join(repoRoot, "trajectory", "trajectory.json"), {
+    schema: "uash.trajectory.v1",
+    goalId: runId,
+    generatedAt: completedAt,
+    profile: goal.profile,
+    commit: goal.commit,
+    environment,
+    finalStatus: "completed",
+    budget: { limits: goal.budgets, used: { attempts: 1, toolCalls: 1, tokens: 1, costUsd: 0, wallClockMinutes: 1 } },
+    attempts: [{
+      id: "ATTACK-ATTEMPT-001",
+      outcome: "succeeded",
+      usage: { toolCalls: 1, tokens: 1, costUsd: 0, wallClockMinutes: 1 },
+      actions: ["self-enroll attacker review key"],
+      startedAt: approvedAt,
+      completedAt,
+    }],
+    forbiddenActions: [],
+    violations: [],
+    tracePath: "trajectory/trace.jsonl",
+    traceDigest: sha256(readFileSync(tracePath)),
+  });
+
+  expectOk(run(runtimeRoot, "proof-runner.mjs", [
+    "--repo", repoRoot,
+    "--run-id", runId,
+    "--commit", goal.commit,
+    "--environment", environment,
+    "--output", "proof/portable.json",
+    "--",
+    process.execPath,
+    "-e",
+    "process.stdout.write('self-enrollment-proof')",
+  ], repoRoot, attackerEnvironment), "self-enrollment portable proof");
+  const proofDigest = sha256(readFileSync(path.join(repoRoot, "proof", "portable.json")));
+  const runtimeBindingResult = run(runtimeRoot, "run-packet-gate.mjs", [
+    "--repo", repoRoot,
+    "--print-runtime-binding",
+    "--commit", goal.commit,
+  ], repoRoot, attackerEnvironment);
+  expectOk(runtimeBindingResult, "self-enrollment validation runtime binding");
+  const runtimeBinding = JSON.parse(runtimeBindingResult.stdout);
+  const evidenceBundleResult = run(runtimeRoot, "run-create.mjs", [
+    "--repo", repoRoot,
+    "--run-id", runId,
+    "--commit", goal.commit,
+    "--environment", environment,
+    "--proof", "proof/portable.json",
+    "--gate", "trajectory=trajectory/trajectory.json",
+    "--print-evidence-bundle",
+  ], repoRoot, attackerEnvironment);
+  expectOk(evidenceBundleResult, "self-enrollment evidence bundle");
+  const evidenceBundleSha256 = JSON.parse(evidenceBundleResult.stdout).evidenceBundleSha256;
+  const review = {
+    schema: "valdris.review.v2",
+    generatedAt: completedAt,
+    runId,
+    commit: goal.commit,
+    environment,
+    status: "passed",
+    subject: { artifact: "proof/portable.json", sha256: proofDigest },
+    reviewTrustSha256: attackerTrustSha256,
+    validationRuntimeSha256: runtimeBinding.setSha256,
+    evidenceBundleSha256,
+    roleProvenance: {
+      schema: "valdris.review-role-provenance.v1",
+      scout: {
+        actorId: "ATTACKER-SCOUT",
+        actorType: "agent",
+        sessionId: "ATTACKER-SCOUT-SESSION",
+        executionId: "ATTACKER-SCOUT-EXECUTION",
+        evidence: { kind: "artifact", path: "run/route.json", sha256: sha256(readFileSync(path.join(repoRoot, "run", "route.json"))) },
+      },
+      implementer: {
+        actorId: "ATTACKER-IMPLEMENTER",
+        actorType: "agent",
+        sessionId: "ATTACKER-IMPLEMENTER-SESSION",
+        executionId: "ATTACKER-IMPLEMENTER-EXECUTION",
+        evidence: { kind: "artifact", path: "proof/portable.json", sha256: proofDigest },
+      },
+      verifier: {
+        actorId: "ATTACKER-VERIFIER",
+        actorType: "agent",
+        sessionId: "ATTACKER-VERIFIER-SESSION",
+        executionId: "ATTACKER-VERIFIER-EXECUTION",
+        evidence: { kind: "artifact", path: "proof/portable.json", sha256: proofDigest },
+      },
+      independentReviewer: {
+        actorId: "ATTACKER-INDEPENDENT-REVIEWER",
+        actorType: "agent",
+        sessionId: "ATTACKER-REVIEW-SESSION",
+        executionId: "ATTACKER-REVIEW-EXECUTION",
+        evidence: { kind: "review-evidence-bundle", sha256: evidenceBundleSha256 },
+      },
+    },
+    decision: { status: "accepted", summary: "Attacker-controlled review is internally consistent but externally unauthorized." },
+    findings: [],
+    blockers: [],
+  };
+  review.attestation = { scheme: "ed25519", keyId: attackerKeyId, signedAt: completedAt };
+  const serialized = canonicalJson(reviewAttestationPayload(review));
+  review.attestation.payloadSha256 = sha256(serialized);
+  review.attestation.signature = signPayload(null, Buffer.from(serialized, "utf8"), privateKey).toString("base64");
+  writeJson(path.join(repoRoot, "review", "review.json"), review);
+
+  expectOk(run(runtimeRoot, "review-gate.mjs", ["--repo", repoRoot], repoRoot, attackerEnvironment), "attacker-local self-enrolled review fixture");
+  expectFailure(
+    run(runtimeRoot, "review-gate.mjs", ["--repo", repoRoot], repoRoot, operatorEnvironment),
+    "self-enrolled attacker review under retained operator pin",
+    "does not match operator-held UASH_REVIEW_TRUST_SHA256",
+  );
+  expectOk(run(runtimeRoot, "run-create.mjs", [
+    "--repo", repoRoot,
+    "--run-id", runId,
+    "--commit", goal.commit,
+    "--environment", environment,
+    "--proof", "proof/portable.json",
+    "--review", "review/review.json",
+    "--gate", "trajectory=trajectory/trajectory.json",
+    "--output", "run/packet.json",
+  ], repoRoot, attackerEnvironment), "attacker-local self-enrolled packet fixture");
+  expectOk(run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot], repoRoot, attackerEnvironment), "attacker-local self-enrolled packet validation");
+  expectFailure(
+    run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot], repoRoot, operatorEnvironment),
+    "self-enrolled attacker packet under retained operator pin",
+    "does not match operator-held UASH_REVIEW_TRUST_SHA256",
+  );
+}
+
 function main() {
   const featureIntake = { requestText: "Build a self-healing capability for the workflow engine." };
   featureIntake.requestSha256 = sha256(featureIntake.requestText);
@@ -419,9 +755,233 @@ function main() {
   );
   const root = mkdtempSync(path.join(os.tmpdir(), "valdris-run-packet-trust-"));
   try {
+    verifyReviewTrustStoreSchema(root);
     verifyNativeCorrectiveRoute(root);
-    const { runtimeRoot, repoRoot } = createValidPacketFixture(root);
+    const { runtimeRoot, repoRoot, reviewTrustSha256 } = createValidPacketFixture(root);
     const packet = readJson(path.join(repoRoot, "run", "packet.json"));
+    assert(packet.bindings?.generatedAtSha256 === sha256(packet.generatedAt), "run packet did not digest-bind generatedAt");
+    assert(/^[a-f0-9]{64}$/.test(packet.roleProvenanceSha256 || ""), "run packet did not expose the signed four-role provenance digest");
+    assert(packet.validationRuntime?.reviewTrustSha256 === reviewTrustSha256, "run packet validation runtime did not bind the operator-held review trust-store pin");
+    const packetPath = path.join(repoRoot, "run", "packet.json");
+    const originalPacket = readFileSync(packetPath, "utf8");
+
+    const forgedRoleDigest = structuredClone(packet);
+    forgedRoleDigest.roleProvenanceSha256 = "f".repeat(64);
+    forgedRoleDigest.bindings = packetBindings(forgedRoleDigest);
+    writeJson(path.join(repoRoot, "run", "forged-role-provenance-packet.json"), forgedRoleDigest);
+    expectFailure(
+      run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/forged-role-provenance-packet.json"], repoRoot),
+      "packet with a rebound forged four-role provenance digest",
+      "run packet role provenance digest does not match the signed independent review",
+    );
+    rmSync(path.join(repoRoot, "run", "forged-role-provenance-packet.json"), { force: true });
+    try {
+      const nonCanonicalTimestamp = structuredClone(packet);
+      nonCanonicalTimestamp.generatedAt = nonCanonicalTimestamp.generatedAt.replace(/\.\d{3}Z$/, "Z");
+      nonCanonicalTimestamp.bindings = packetBindings(nonCanonicalTimestamp);
+      writeJson(packetPath, nonCanonicalTimestamp);
+      expectFailure(
+        run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
+        "packet with a parseable but non-canonical timestamp",
+        "generatedAt must be a canonical ISO timestamp",
+      );
+
+      const reboundTimestamp = structuredClone(packet);
+      reboundTimestamp.generatedAt = new Date(Date.parse(reboundTimestamp.generatedAt) + 1000).toISOString();
+      writeJson(packetPath, reboundTimestamp);
+      expectFailure(
+        run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
+        "packet whose generatedAt changed without rebinding",
+        "binding generatedAtSha256 does not match",
+      );
+    } finally {
+      writeFileSync(packetPath, originalPacket, "utf8");
+    }
+
+    try {
+      const forgedRuntimeIdentity = structuredClone(packet);
+      forgedRuntimeIdentity.validationRuntime.runtimeSha256 = "0".repeat(64);
+      forgedRuntimeIdentity.bindings = packetBindings(forgedRuntimeIdentity);
+      writeJson(packetPath, forgedRuntimeIdentity);
+      expectFailure(
+        run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
+        "packet with a forged stable runtime identity",
+        "runtimeSha256 does not match the trusted runtime and loader content",
+      );
+    } finally {
+      writeFileSync(packetPath, originalPacket, "utf8");
+    }
+
+    const optionalRcaPath = path.join(repoRoot, "rca", "rca.json");
+    writeJson(optionalRcaPath, { schema: "valdris.rca.v1", status: "confirmed", marker: "before-review" });
+    expectFailure(
+      run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
+      "packet that omits a present canonical optional RCA artifact",
+      "requiredGates must exactly match route-derived gates",
+    );
+    expectFailure(
+      run(runtimeRoot, "run-create.mjs", [
+        "--repo", repoRoot,
+        "--run-id", packet.runId,
+        "--commit", packet.commit,
+        "--environment", packet.environment,
+        "--proof", "proof/portable.json",
+        "--gate", "trajectory=trajectory/trajectory.json",
+        "--print-evidence-bundle",
+      ], repoRoot),
+      "review evidence creation that omits a present canonical optional RCA artifact",
+      "required gate artifact was not supplied: rca",
+    );
+    const optionalRcaBundleResult = run(runtimeRoot, "run-create.mjs", [
+      "--repo", repoRoot,
+      "--run-id", packet.runId,
+      "--commit", packet.commit,
+      "--environment", packet.environment,
+      "--proof", "proof/portable.json",
+      "--rca", "rca/rca.json",
+      "--gate", "trajectory=trajectory/trajectory.json",
+      "--print-evidence-bundle",
+    ], repoRoot);
+    expectOk(optionalRcaBundleResult, "review evidence creation with a present optional RCA artifact");
+    const optionalRcaBundle = JSON.parse(optionalRcaBundleResult.stdout);
+    const optionalRcaBinding = optionalRcaBundle.evidenceBundle.gateArtifacts.find(({ gate }) => gate === "rca");
+    assert(optionalRcaBundle.evidenceBundle.requiredGates.includes("rca"), "present optional RCA was omitted from review requiredGates");
+    assert(optionalRcaBinding?.path === "rca/rca.json", "present optional RCA was omitted from the review evidence bundle");
+    assert(optionalRcaBinding.sha256 === sha256(readFileSync(optionalRcaPath)), "review evidence bundle did not digest-bind the present optional RCA");
+    writeJson(optionalRcaPath, { schema: "valdris.rca.v1", status: "confirmed", marker: "after-review-tamper" });
+    const tamperedRcaBundleResult = run(runtimeRoot, "run-create.mjs", [
+      "--repo", repoRoot,
+      "--run-id", packet.runId,
+      "--commit", packet.commit,
+      "--environment", packet.environment,
+      "--proof", "proof/portable.json",
+      "--rca", "rca/rca.json",
+      "--gate", "trajectory=trajectory/trajectory.json",
+      "--print-evidence-bundle",
+    ], repoRoot);
+    expectOk(tamperedRcaBundleResult, "review evidence regeneration after optional RCA tamper");
+    assert(
+      JSON.parse(tamperedRcaBundleResult.stdout).evidenceBundleSha256 !== optionalRcaBundle.evidenceBundleSha256,
+      "optional RCA tamper did not change the signed review evidence digest",
+    );
+    writeJson(path.join(repoRoot, "rca", "unbound.json"), { schema: "synthetic.unbound-evidence.v1" });
+    expectFailure(
+      run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
+      "packet after noncanonical post-proof RCA-like artifact creation",
+      "application source changed after portable proof",
+    );
+    rmSync(path.join(repoRoot, "rca"), { recursive: true, force: true });
+
+    const routePathForCodeIntelligence = path.join(repoRoot, "run", "route.json");
+    const originalRouteForCodeIntelligence = readFileSync(routePathForCodeIntelligence, "utf8");
+    try {
+      expectOk(
+        run(runtimeRoot, "code-intelligence-scan.mjs", ["--repo", repoRoot, "--provider", "local"], repoRoot),
+        "code-intelligence supporting-artifact fixture scan",
+      );
+      const graphPath = path.join(repoRoot, "graph", "graph.json");
+      const freshnessPath = path.join(repoRoot, "graph", "freshness.json");
+      const anchorsPath = path.join(repoRoot, "design", "anchors.json");
+      const providerEvidencePath = path.join(repoRoot, "graph", "gitnexus.json");
+      const graph = readJson(graphPath);
+      graph.codeIntelligence = {
+        provider: "gitnexus",
+        primaryBackend: "GitNexus",
+        evidenceArtifact: "graph/gitnexus.json",
+      };
+      writeJson(graphPath, graph);
+      const freshness = readJson(freshnessPath);
+      freshness.codeIntelligence = {
+        provider: "gitnexus",
+        primaryBackend: "GitNexus",
+        evidenceArtifact: "graph/gitnexus.json",
+      };
+      writeJson(freshnessPath, freshness);
+      writeJson(providerEvidencePath, { schema: "uash.gitnexus.evidence.v0.1", provider: "GitNexus", ok: true });
+      const codeIntelligenceRoute = readJson(routePathForCodeIntelligence);
+      codeIntelligenceRoute.gateApplicability["code-intelligence"] = { status: "required" };
+      writeJson(routePathForCodeIntelligence, codeIntelligenceRoute);
+
+      const codeIntelligenceBundleResult = run(runtimeRoot, "run-create.mjs", [
+        "--repo", repoRoot,
+        "--run-id", packet.runId,
+        "--commit", packet.commit,
+        "--environment", packet.environment,
+        "--proof", "proof/portable.json",
+        "--gate", "trajectory=trajectory/trajectory.json",
+        "--gate", "code-intelligence=graph/graph.json",
+        "--print-evidence-bundle",
+      ], repoRoot);
+      expectOk(codeIntelligenceBundleResult, "review evidence creation with code-intelligence sidecars");
+      const codeIntelligenceBundle = JSON.parse(codeIntelligenceBundleResult.stdout);
+      const codeIntelligenceBinding = codeIntelligenceBundle.evidenceBundle.gateArtifacts.find(({ gate }) => gate === "code-intelligence");
+      assert(Array.isArray(codeIntelligenceBinding?.supportingArtifacts), "code-intelligence gate omitted supportingArtifacts from review evidence");
+      const supportByKind = new Map(codeIntelligenceBinding.supportingArtifacts.map((entry) => [entry.kind, entry]));
+      for (const [kind, expectedPath, absolutePath] of [
+        ["graph-freshness", "graph/freshness.json", freshnessPath],
+        ["design-anchors", "design/anchors.json", anchorsPath],
+        ["provider-evidence", "graph/gitnexus.json", providerEvidencePath],
+      ]) {
+        const supporting = supportByKind.get(kind);
+        assert(supporting?.path === expectedPath, `code-intelligence ${kind} path was not bound canonically`);
+        assert(supporting.sha256 === sha256(readFileSync(absolutePath)), `code-intelligence ${kind} digest was not bound`);
+      }
+
+      const syntheticCodeIntelligencePacket = structuredClone(packet);
+      syntheticCodeIntelligencePacket.inputs.route.sha256 = sha256(readFileSync(routePathForCodeIntelligence));
+      syntheticCodeIntelligencePacket.requiredGates = [...codeIntelligenceBundle.evidenceBundle.requiredGates];
+      syntheticCodeIntelligencePacket.gateArtifacts = [
+        ...packet.gateArtifacts.filter(({ gate }) => gate !== "independent-review"),
+        codeIntelligenceBinding,
+        packet.gateArtifacts.find(({ gate }) => gate === "independent-review"),
+      ];
+      syntheticCodeIntelligencePacket.bindings = packetBindings(syntheticCodeIntelligencePacket);
+      const codeIntelligencePacketPath = path.join(repoRoot, "run", "code-intelligence-sidecar-packet.json");
+
+      const originalFreshness = readFileSync(freshnessPath, "utf8");
+      try {
+        writeJson(freshnessPath, { ...readJson(freshnessPath), tampered: true });
+        writeJson(codeIntelligencePacketPath, syntheticCodeIntelligencePacket);
+        expectFailure(
+          run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/code-intelligence-sidecar-packet.json"], repoRoot),
+          "packet after code-intelligence freshness tamper",
+          "gate code-intelligence supporting artifact graph-freshness digest does not match",
+        );
+      } finally {
+        writeFileSync(freshnessPath, originalFreshness, "utf8");
+      }
+
+      const originalAnchors = readFileSync(anchorsPath, "utf8");
+      try {
+        writeJson(anchorsPath, { ...readJson(anchorsPath), tampered: true });
+        writeJson(codeIntelligencePacketPath, syntheticCodeIntelligencePacket);
+        expectFailure(
+          run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/code-intelligence-sidecar-packet.json"], repoRoot),
+          "packet after code-intelligence design-anchor tamper",
+          "gate code-intelligence supporting artifact design-anchors digest does not match",
+        );
+      } finally {
+        writeFileSync(anchorsPath, originalAnchors, "utf8");
+      }
+
+      const originalProviderEvidence = readFileSync(providerEvidencePath, "utf8");
+      try {
+        writeJson(providerEvidencePath, { ...readJson(providerEvidencePath), tampered: true });
+        writeJson(codeIntelligencePacketPath, syntheticCodeIntelligencePacket);
+        expectFailure(
+          run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/code-intelligence-sidecar-packet.json"], repoRoot),
+          "packet after code-intelligence provider-evidence tamper",
+          "gate code-intelligence supporting artifact provider-evidence digest does not match",
+        );
+      } finally {
+        writeFileSync(providerEvidencePath, originalProviderEvidence, "utf8");
+      }
+      rmSync(codeIntelligencePacketPath, { force: true });
+    } finally {
+      writeFileSync(routePathForCodeIntelligence, originalRouteForCodeIntelligence, "utf8");
+      rmSync(path.join(repoRoot, "graph"), { recursive: true, force: true });
+      rmSync(path.join(repoRoot, "design"), { recursive: true, force: true });
+    }
     const readmePath = path.join(repoRoot, "README.md");
     const originalReadme = readFileSync(readmePath, "utf8");
     try {
@@ -632,31 +1192,34 @@ function main() {
       writeFileSync(goalPath, originals.goal, "utf8");
     }
 
-    writeFileSync(
-      path.join(runtimeRoot, "scripts", "route-gate.mjs"),
-      `${readFileSync(path.join(runtimeRoot, "scripts", "route-gate.mjs"), "utf8")}\n// synthetic validator drift\n`,
-      "utf8",
-    );
-    expectFailure(
-      run(runtimeRoot, "run-create.mjs", [
-        "--repo", repoRoot,
-        "--run-id", packet.runId,
-        "--commit", packet.commit,
-        "--environment", packet.environment,
-        "--proof", "proof/portable.json",
-        "--review", "review/review.json",
-        "--gate", "trajectory=trajectory/trajectory.json",
-        "--output", "run/dirty-runtime-create-packet.json",
-      ], repoRoot),
-      "packet creation under dirty validator runtime",
-      "validation runtime files are dirty or untracked",
-    );
-    expectFailure(
-      run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
-      "packet after validator runtime drift",
-      "validation runtime files are dirty or untracked",
-    );
-    console.log(JSON.stringify({ ok: true, positiveCases: 3, adversarialRejections: 13 }, null, 2));
+    const routeGatePath = path.join(runtimeRoot, "scripts", "route-gate.mjs");
+    const originalRouteGate = readFileSync(routeGatePath, "utf8");
+    try {
+      writeFileSync(routeGatePath, `${originalRouteGate}\n// synthetic validator drift\n`, "utf8");
+      expectFailure(
+        run(runtimeRoot, "run-create.mjs", [
+          "--repo", repoRoot,
+          "--run-id", packet.runId,
+          "--commit", packet.commit,
+          "--environment", packet.environment,
+          "--proof", "proof/portable.json",
+          "--review", "review/review.json",
+          "--gate", "trajectory=trajectory/trajectory.json",
+          "--output", "run/dirty-runtime-create-packet.json",
+        ], repoRoot),
+        "packet creation under dirty validator runtime",
+        "validation runtime files are dirty or untracked",
+      );
+      expectFailure(
+        run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot, "--file", "run/packet.json"], repoRoot),
+        "packet after validator runtime drift",
+        "validation runtime files are dirty or untracked",
+      );
+    } finally {
+      writeFileSync(routeGatePath, originalRouteGate, "utf8");
+    }
+    verifyReviewTrustSelfEnrollmentRejected(runtimeRoot, repoRoot, reviewTrustSha256);
+    console.log(JSON.stringify({ ok: true, positiveCases: 8, adversarialRejections: 38 }, null, 2));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

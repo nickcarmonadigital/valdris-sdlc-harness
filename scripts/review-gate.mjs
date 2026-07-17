@@ -16,25 +16,166 @@ import {
   validatePortableProof,
 } from "./proof-runner.mjs";
 
-export const REVIEW_SCHEMA = "valdris.review.v1";
+export const REVIEW_SCHEMA = "valdris.review.v2";
 const SHA256 = /^[a-f0-9]{64}$/i;
 const ACTOR_TYPES = new Set(["agent", "human", "service"]);
+const ROLE_PROVENANCE_SCHEMA = "valdris.review-role-provenance.v1";
+const REQUIRED_REVIEW_ROLES = Object.freeze(["scout", "implementer", "verifier", "independentReviewer"]);
 const REVIEW_TRUST_SCHEMA = "valdris.review-trust.v1";
 const REVIEW_ATTESTATION_SCHEME = "ed25519";
+const REVIEW_TRUST_KEY_STATUSES = new Set(["active", "revoked"]);
 const RUNTIME_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+export const REVIEW_TRUST_SHA256_ENV = "UASH_REVIEW_TRUST_SHA256";
 
 function nonEmpty(value, minimum = 1) {
   return typeof value === "string" && value.trim().length >= minimum;
 }
 
-function provenanceProblems(provenance, label, digestField) {
-  const problems = [];
-  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return [`${label} is required`];
-  for (const field of ["actorId", "sessionId", "executionId"]) {
-    if (!safeIdentifier(provenance[field])) problems.push(`${label}.${field} is invalid`);
+function normalizedRelative(repoRoot, file) {
+  return path.relative(repoRoot, file).split(path.sep).join("/");
+}
+
+export function reviewTrustStoreSha256(document) {
+  return sha256(canonicalJson(document));
+}
+
+export function requiredReviewTrustSha256(environment = process.env) {
+  const value = environment?.[REVIEW_TRUST_SHA256_ENV];
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${REVIEW_TRUST_SHA256_ENV} is required as the operator-held review trust-store pin`);
   }
-  if (!ACTOR_TYPES.has(provenance.actorType)) problems.push(`${label}.actorType is invalid`);
-  if (!SHA256.test(provenance[digestField] || "")) problems.push(`${label}.${digestField} must be a SHA-256 digest`);
+  if (!SHA256.test(value)) {
+    throw new Error(`${REVIEW_TRUST_SHA256_ENV} must be a 64-character SHA-256 digest`);
+  }
+  return value.toLowerCase();
+}
+
+function reviewTrustStoreSchemaProblems(document) {
+  const problems = [];
+  if (!document || typeof document !== "object" || Array.isArray(document)) return ["review trust store must be a JSON object"];
+  const allowedStoreFields = new Set(["schema", "description", "keys"]);
+  for (const field of Object.keys(document)) {
+    if (!allowedStoreFields.has(field)) problems.push(`review trust store contains unsupported field: ${field}`);
+  }
+  if (document?.schema !== REVIEW_TRUST_SCHEMA) problems.push(`review trust store schema must be ${REVIEW_TRUST_SCHEMA}`);
+  if (document.description !== undefined && !nonEmpty(document.description)) problems.push("review trust store description must be a non-empty string when present");
+  if (!Array.isArray(document?.keys)) {
+    problems.push("review trust store keys must be an array");
+    return problems;
+  }
+  const keyOwners = new Map();
+  for (const [index, key] of document.keys.entries()) {
+    const label = `review trust store key ${index + 1}`;
+    if (!key || typeof key !== "object" || Array.isArray(key)) {
+      problems.push(`${label} must be a JSON object`);
+      continue;
+    }
+    const allowedKeyFields = new Set(["keyId", "algorithm", "status", "publicKeyPem", "allowedActorIds", "allowedActorTypes"]);
+    for (const field of Object.keys(key)) {
+      if (!allowedKeyFields.has(field)) problems.push(`${label} contains unsupported field: ${field}`);
+    }
+    if (!safeIdentifier(key.keyId)) problems.push(`${label} keyId is invalid`);
+    else if (keyOwners.has(key.keyId)) problems.push(`${label} keyId duplicates key ${keyOwners.get(key.keyId)}`);
+    else keyOwners.set(key.keyId, index + 1);
+    if (!REVIEW_TRUST_KEY_STATUSES.has(key.status)) problems.push(`${label} status must be active or revoked`);
+    if (key.algorithm !== REVIEW_ATTESTATION_SCHEME) problems.push(`${label} algorithm must be ${REVIEW_ATTESTATION_SCHEME}`);
+    if (typeof key.publicKeyPem !== "string" || !key.publicKeyPem.includes("BEGIN PUBLIC KEY")) problems.push(`${label} publicKeyPem is invalid`);
+    if (key?.allowedActorIds !== undefined && (!Array.isArray(key.allowedActorIds) || key.allowedActorIds.length === 0)) {
+      problems.push(`${label} allowedActorIds must be a non-empty array when present`);
+    }
+    if (Array.isArray(key.allowedActorIds)) {
+      for (const [actorIndex, actorId] of key.allowedActorIds.entries()) {
+        if (!safeIdentifier(actorId)) problems.push(`${label} allowedActorIds entry ${actorIndex + 1} is invalid`);
+      }
+    }
+    if (key?.allowedActorTypes !== undefined && (!Array.isArray(key.allowedActorTypes) || key.allowedActorTypes.length === 0)) {
+      problems.push(`${label} allowedActorTypes must be a non-empty array when present`);
+    }
+    if (Array.isArray(key.allowedActorTypes)) {
+      for (const [actorIndex, actorType] of key.allowedActorTypes.entries()) {
+        if (!ACTOR_TYPES.has(actorType)) problems.push(`${label} allowedActorTypes entry ${actorIndex + 1} is invalid`);
+      }
+    }
+  }
+  return problems;
+}
+
+function roleProvenanceProblems(document, repoRoot) {
+  const problems = [];
+  const provenance = document.roleProvenance;
+  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) return ["roleProvenance is required"];
+  if (provenance.schema !== ROLE_PROVENANCE_SCHEMA) problems.push(`roleProvenance.schema must be ${ROLE_PROVENANCE_SCHEMA}`);
+  const allowedFields = new Set(["schema", ...REQUIRED_REVIEW_ROLES]);
+  for (const field of Object.keys(provenance)) {
+    if (!allowedFields.has(field)) problems.push(`roleProvenance contains unsupported role: ${field}`);
+  }
+  for (const role of REQUIRED_REVIEW_ROLES) {
+    const entry = provenance[role];
+    const label = `roleProvenance.${role}`;
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      problems.push(`${label} is required`);
+      continue;
+    }
+    for (const field of ["actorId", "sessionId", "executionId"]) {
+      if (!safeIdentifier(entry[field])) problems.push(`${label}.${field} is invalid`);
+    }
+    if (!ACTOR_TYPES.has(entry.actorType)) problems.push(`${label}.actorType is invalid`);
+    if (!entry.evidence || typeof entry.evidence !== "object" || Array.isArray(entry.evidence)) {
+      problems.push(`${label}.evidence is required`);
+      continue;
+    }
+    if (!SHA256.test(entry.evidence.sha256 || "")) problems.push(`${label}.evidence.sha256 must be a SHA-256 digest`);
+  }
+  const actorOwners = new Map();
+  for (const role of REQUIRED_REVIEW_ROLES) {
+    const actorId = provenance[role]?.actorId;
+    if (!safeIdentifier(actorId)) continue;
+    if (actorOwners.has(actorId)) problems.push(`roleProvenance actorId is reused by ${actorOwners.get(actorId)} and ${role}`);
+    else actorOwners.set(actorId, role);
+  }
+  const sessionOwners = new Map();
+  for (const role of REQUIRED_REVIEW_ROLES) {
+    const sessionId = provenance[role]?.sessionId;
+    if (!safeIdentifier(sessionId)) continue;
+    if (sessionOwners.has(sessionId)) problems.push(`roleProvenance sessionId is reused by ${sessionOwners.get(sessionId)} and ${role}`);
+    else sessionOwners.set(sessionId, role);
+  }
+  const executionOwners = new Map();
+  for (const role of REQUIRED_REVIEW_ROLES) {
+    const executionId = provenance[role]?.executionId;
+    if (!safeIdentifier(executionId)) continue;
+    if (executionOwners.has(executionId)) problems.push(`roleProvenance executionId is reused by ${executionOwners.get(executionId)} and ${role}`);
+    else executionOwners.set(executionId, role);
+  }
+
+  const artifactExpectations = new Map([
+    ["scout", { path: "run/route.json", sha256: null }],
+    ["implementer", { path: document.subject?.artifact, sha256: document.subject?.sha256 }],
+    ["verifier", { path: document.subject?.artifact, sha256: document.subject?.sha256 }],
+  ]);
+  for (const [role, expected] of artifactExpectations) {
+    const evidence = provenance[role]?.evidence;
+    if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) continue;
+    const label = `roleProvenance.${role}.evidence`;
+    if (evidence.kind !== "artifact") problems.push(`${label}.kind must be artifact`);
+    if (!nonEmpty(evidence.path) || evidence.path !== expected.path) problems.push(`${label}.path must be ${expected.path || "the reviewed subject artifact"}`);
+    if (SHA256.test(expected.sha256 || "") && evidence.sha256 !== expected.sha256) problems.push(`${label}.sha256 must bind the reviewed subject`);
+    if (nonEmpty(evidence.path)) {
+      try {
+        const artifactPath = resolveArtifactPath(repoRoot, evidence.path, { mustExist: true });
+        if (normalizedRelative(repoRoot, artifactPath) !== evidence.path) problems.push(`${label}.path must be canonical`);
+        if (SHA256.test(evidence.sha256 || "") && fileSha256(artifactPath) !== evidence.sha256) problems.push(`${label}.sha256 does not match ${evidence.path}`);
+      } catch (error) {
+        problems.push(`${label} is invalid: ${error.message}`);
+      }
+    }
+  }
+  const reviewerEvidence = provenance.independentReviewer?.evidence;
+  if (reviewerEvidence && typeof reviewerEvidence === "object" && !Array.isArray(reviewerEvidence)) {
+    if (reviewerEvidence.kind !== "review-evidence-bundle") problems.push("roleProvenance.independentReviewer.evidence.kind must be review-evidence-bundle");
+    if (Object.hasOwn(reviewerEvidence, "path")) problems.push("roleProvenance.independentReviewer.evidence must not declare an artifact path");
+    if (reviewerEvidence.sha256 !== document.evidenceBundleSha256) problems.push("roleProvenance.independentReviewer.evidence.sha256 must bind the reviewed evidence bundle");
+  }
   return problems;
 }
 
@@ -47,10 +188,10 @@ export function reviewAttestationPayload(document) {
     environment: document.environment,
     status: document.status,
     subject: document.subject,
+    reviewTrustSha256: document.reviewTrustSha256,
     validationRuntimeSha256: document.validationRuntimeSha256,
     evidenceBundleSha256: document.evidenceBundleSha256,
-    implementationProvenance: document.implementationProvenance,
-    reviewProvenance: document.reviewProvenance,
+    roleProvenance: document.roleProvenance,
     decision: document.decision,
     findings: document.findings,
     blockers: document.blockers,
@@ -62,8 +203,21 @@ export function reviewAttestationPayload(document) {
   };
 }
 
+export function reviewRoleProvenanceSha256(document) {
+  if (!document?.roleProvenance || typeof document.roleProvenance !== "object" || Array.isArray(document.roleProvenance)) {
+    throw new Error("review roleProvenance is required");
+  }
+  return sha256(canonicalJson(document.roleProvenance));
+}
+
 function attestationProblems(document, repoRoot, options = {}) {
   const problems = [];
+  let requiredTrustSha256;
+  try {
+    requiredTrustSha256 = requiredReviewTrustSha256();
+  } catch (error) {
+    problems.push(error.message);
+  }
   const attestation = document.attestation;
   if (!attestation || typeof attestation !== "object" || Array.isArray(attestation)) return ["review requires a cryptographically verified attestation"];
   if (attestation.scheme !== REVIEW_ATTESTATION_SCHEME) problems.push(`review attestation.scheme must be ${REVIEW_ATTESTATION_SCHEME}`);
@@ -95,15 +249,23 @@ function attestationProblems(document, repoRoot, options = {}) {
     problems.push(`review trust store is invalid: ${error.message}`);
     return problems;
   }
-  if (trustStore?.schema !== REVIEW_TRUST_SCHEMA) problems.push(`review trust store schema must be ${REVIEW_TRUST_SCHEMA}`);
-  if (!Array.isArray(trustStore?.keys)) problems.push("review trust store keys must be an array");
+  problems.push(...reviewTrustStoreSchemaProblems(trustStore));
+  const liveTrustSha256 = reviewTrustStoreSha256(trustStore);
+  if (requiredTrustSha256 && liveTrustSha256 !== requiredTrustSha256) problems.push(`review trust store does not match operator-held ${REVIEW_TRUST_SHA256_ENV}`);
+  if (requiredTrustSha256 && document.reviewTrustSha256 !== requiredTrustSha256) problems.push(`review reviewTrustSha256 must match operator-held ${REVIEW_TRUST_SHA256_ENV}`);
   if (/^[a-f0-9]{40,64}$/i.test(document.commit || "") && trustPath) {
-    const committed = spawnSync("git", ["show", `${document.commit}:${trustPathRelative}`], { cwd: repoRoot, encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM", stdio: ["ignore", "pipe", "pipe"] });
+    const prefixResult = spawnSync("git", ["rev-parse", "--show-prefix"], { cwd: repoRoot, encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM", stdio: ["ignore", "pipe", "pipe"] });
+    const targetPrefix = prefixResult.status === 0 ? prefixResult.stdout.replace(/\r?\n$/, "").replaceAll("\\", "/") : "";
+    const trustGitPath = `${targetPrefix}${trustPathRelative}`;
+    const committed = prefixResult.status === 0
+      ? spawnSync("git", ["show", `${document.commit}:${trustGitPath}`], { cwd: repoRoot, encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM", stdio: ["ignore", "pipe", "pipe"] })
+      : prefixResult;
     if (committed.status !== 0) problems.push("review trust store is not present at the reviewed commit");
     else {
       try {
         const committedTrustStore = JSON.parse(committed.stdout);
         if (canonicalJson(committedTrustStore) !== canonicalJson(trustStore)) problems.push("review trust store differs from the reviewed commit");
+        if (requiredTrustSha256 && reviewTrustStoreSha256(committedTrustStore) !== requiredTrustSha256) problems.push(`review trust store at the reviewed commit does not match operator-held ${REVIEW_TRUST_SHA256_ENV}`);
       } catch (error) {
         problems.push(`review trust store at the reviewed commit is invalid: ${error.message}`);
       }
@@ -111,7 +273,7 @@ function attestationProblems(document, repoRoot, options = {}) {
   } else {
     problems.push("review commit must be a Git commit hash for trust-store verification");
   }
-  const keys = (trustStore?.keys || []).filter((entry) => entry?.status === "active" && entry?.keyId === attestation?.keyId);
+  const keys = (Array.isArray(trustStore?.keys) ? trustStore.keys : []).filter((entry) => entry?.status === "active" && entry?.keyId === attestation?.keyId);
   if (keys.length !== 1) {
     problems.push("review attestation keyId must resolve to exactly one active trusted key");
     return problems;
@@ -119,8 +281,9 @@ function attestationProblems(document, repoRoot, options = {}) {
   const key = keys[0];
   if (key.algorithm !== REVIEW_ATTESTATION_SCHEME) problems.push(`review trusted key algorithm must be ${REVIEW_ATTESTATION_SCHEME}`);
   if (typeof key.publicKeyPem !== "string" || !key.publicKeyPem.includes("BEGIN PUBLIC KEY")) problems.push("review trusted key publicKeyPem is invalid");
-  if (Array.isArray(key.allowedActorIds) && !key.allowedActorIds.includes(document.reviewProvenance?.actorId)) problems.push("review actor is not authorized by the attestation key");
-  if (Array.isArray(key.allowedActorTypes) && !key.allowedActorTypes.includes(document.reviewProvenance?.actorType)) problems.push("review actor type is not authorized by the attestation key");
+  const independentReviewer = document.roleProvenance?.independentReviewer;
+  if (Array.isArray(key.allowedActorIds) && !key.allowedActorIds.includes(independentReviewer?.actorId)) problems.push("review actor is not authorized by the attestation key");
+  if (Array.isArray(key.allowedActorTypes) && !key.allowedActorTypes.includes(independentReviewer?.actorType)) problems.push("review actor type is not authorized by the attestation key");
 
   const payload = reviewAttestationPayload(document);
   const serialized = canonicalJson(payload);
@@ -147,18 +310,11 @@ export function validateReviewArtifact(document, repoRoot, options = {}) {
   if (!safeIdentifier(document.environment)) problems.push("review environment is invalid");
   if (!nonEmpty(document.subject?.artifact)) problems.push("review subject.artifact is required");
   if (!SHA256.test(document.subject?.sha256 || "")) problems.push("review subject.sha256 must be a SHA-256 digest");
+  if (!SHA256.test(document.reviewTrustSha256 || "")) problems.push("review reviewTrustSha256 must bind the operator-held review trust-store pin");
   if (!SHA256.test(document.validationRuntimeSha256 || "")) problems.push("review validationRuntimeSha256 must bind the reviewed validator/catalog closure");
   if (!SHA256.test(document.evidenceBundleSha256 || "")) problems.push("review evidenceBundleSha256 must bind all reviewed inputs and required evidence");
-  problems.push(...provenanceProblems(document.implementationProvenance, "implementationProvenance", "artifactSha256"));
-  problems.push(...provenanceProblems(document.reviewProvenance, "reviewProvenance", "observedArtifactSha256"));
-
-  const implementation = document.implementationProvenance || {};
-  const reviewer = document.reviewProvenance || {};
-  for (const field of ["actorId", "sessionId", "executionId"]) {
-    if (implementation[field] && implementation[field] === reviewer[field]) problems.push(`review is not independent: ${field} matches implementation provenance`);
-  }
-  if (implementation.artifactSha256 !== document.subject?.sha256) problems.push("implementation provenance is not bound to the reviewed subject");
-  if (reviewer.observedArtifactSha256 !== document.subject?.sha256) problems.push("review provenance is not bound to the reviewed subject");
+  if (Object.hasOwn(document, "implementationProvenance") || Object.hasOwn(document, "reviewProvenance")) problems.push("review v2 rejects legacy two-role provenance fields");
+  problems.push(...roleProvenanceProblems(document, repoRoot));
 
   if (document.decision?.status !== "accepted") problems.push("review decision must be accepted");
   if (!nonEmpty(document.decision?.summary, 8)) problems.push("review decision.summary is required");
@@ -178,15 +334,22 @@ export function validateReviewArtifact(document, repoRoot, options = {}) {
     try {
       const subjectPath = resolveArtifactPath(repoRoot, document.subject.artifact, { mustExist: true });
       if (SHA256.test(document.subject.sha256 || "") && fileSha256(subjectPath) !== document.subject.sha256) problems.push("review subject digest does not match the artifact");
+      let subject;
       try {
-        const subject = readJson(subjectPath);
-        if (subject.schema === "valdris.portable-proof.v1") {
+        subject = readJson(subjectPath);
+      } catch (error) {
+        // Reviews may target non-JSON artifacts; their digest still binds the subject.
+        // IO and validation failures are not JSON syntax failures and must fail closed.
+        if (!(error instanceof SyntaxError)) throw error;
+      }
+      if (subject?.schema === "valdris.portable-proof.v1") {
+        try {
           const validation = validatePortableProof(subject);
           if (!validation.valid) problems.push(`reviewed portable proof is invalid: ${validation.problems.join("; ")}`);
           if (subject.run?.id !== document.runId || subject.run?.commit !== document.commit || subject.run?.environment !== document.environment) problems.push("reviewed portable proof subject does not match the review");
+        } catch (error) {
+          problems.push(`reviewed portable proof validation failed: ${error instanceof Error ? error.message : String(error)}`);
         }
-      } catch {
-        // Reviews may target non-JSON artifacts; their digest still binds the subject.
       }
     } catch (error) {
       problems.push(`review subject is invalid: ${error.message}`);

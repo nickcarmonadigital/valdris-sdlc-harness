@@ -21,6 +21,10 @@ function sha256File(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
+function jsonValueSha256(filePath) {
+  return createHash("sha256").update(JSON.stringify(JSON.parse(readFileSync(filePath, "utf8")))).digest("hex");
+}
+
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -44,12 +48,12 @@ export function validateRouteDocument(document, options) {
   if (classification?.runId !== document.runId) problems.push("route runId must match workload classification runId");
 
   if (!registryPath || !existsSync(registryPath)) problems.push("route skill registry path is missing");
-  else if (document.registrySha256 !== sha256File(registryPath)) problems.push("route registrySha256 does not match the selected skill registry");
-  if (document.catalogDigests?.taxonomy !== sha256File(taxonomyPath)) problems.push("route workload taxonomy digest mismatch");
-  if (document.catalogDigests?.foundation !== sha256File(foundationCatalogPath)) problems.push("route foundation catalog digest mismatch");
-  if (document.catalogDigests?.production !== sha256File(productionCatalogPath)) problems.push("route production catalog digest mismatch");
-  if (document.catalogDigests?.ai !== sha256File(aiCatalogPath)) problems.push("route AI catalog digest mismatch");
-  if (document.catalogDigests?.domainIndex !== sha256File(domainIndexPath)) problems.push("route domain index digest mismatch");
+  else if (document.registrySha256 !== jsonValueSha256(registryPath)) problems.push("route registrySha256 does not match the selected skill registry");
+  if (document.catalogDigests?.taxonomy !== jsonValueSha256(taxonomyPath)) problems.push("route workload taxonomy digest mismatch");
+  if (document.catalogDigests?.foundation !== jsonValueSha256(foundationCatalogPath)) problems.push("route foundation catalog digest mismatch");
+  if (document.catalogDigests?.production !== jsonValueSha256(productionCatalogPath)) problems.push("route production catalog digest mismatch");
+  if (document.catalogDigests?.ai !== jsonValueSha256(aiCatalogPath)) problems.push("route AI catalog digest mismatch");
+  if (document.catalogDigests?.domainIndex !== jsonValueSha256(domainIndexPath)) problems.push("route domain index digest mismatch");
   const skillNames = new Set((registry?.skills || []).map((skill) => skill.name));
   const configuredPhases = registry?.selection?.phaseTransitions || [];
   if (JSON.stringify(configuredPhases) !== JSON.stringify(REQUIRED_PHASES)) problems.push("skill registry phaseTransitions must be exactly intake-route, delivery, proof-handoff");
@@ -128,7 +132,7 @@ export function validateRouteDocument(document, options) {
   for (const packId of selectedPacks) {
     const entry = (domainIndex?.packs || []).find((pack) => pack.id === packId);
     const packPath = entry ? path.resolve(catalogRoot, entry.path) : null;
-    if (!packPath || !existsSync(packPath) || document.catalogDigests?.domainPacks?.[packId] !== sha256File(packPath)) problems.push(`route domain catalog digest mismatch: ${packId}`);
+    if (!packPath || !existsSync(packPath) || document.catalogDigests?.domainPacks?.[packId] !== jsonValueSha256(packPath)) problems.push(`route domain catalog digest mismatch: ${packId}`);
   }
   if (selectedPacks.includes("mobile-ios")) {
     if (!document.mobileIos || !["commissioned", "missing"].includes(document.mobileIos.status)) problems.push("mobile-ios route must declare commissioning status");
