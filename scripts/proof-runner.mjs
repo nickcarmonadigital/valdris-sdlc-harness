@@ -140,6 +140,12 @@ function gitText(repoRoot, args) {
   return Buffer.isBuffer(output) ? output.toString("utf8").trim() : String(output).trim();
 }
 
+function assertGitWorktreeRoot(repoRoot, message) {
+  const insideWorktree = gitText(repoRoot, ["rev-parse", "--is-inside-work-tree"]);
+  const prefix = gitText(repoRoot, ["rev-parse", "--show-prefix"]);
+  if (insideWorktree !== "true" || prefix !== "") throw new Error(message);
+}
+
 function untrackedBinding(repoRoot, pathspec = []) {
   const output = git(repoRoot, ["ls-files", "--others", "--exclude-standard", "-z", ...pathspec]);
   const paths = (Buffer.isBuffer(output) ? output.toString("utf8") : String(output)).split("\0").filter(Boolean).sort();
@@ -156,8 +162,7 @@ function untrackedBinding(repoRoot, pathspec = []) {
 
 export function trackedSourceState(repoRoot, expectedCommit) {
   const root = realpathSync(path.resolve(repoRoot));
-  const gitRoot = realpathSync(path.resolve(gitText(root, ["rev-parse", "--show-toplevel"])));
-  if (gitRoot !== root) throw new Error("proof --repo must be the Git worktree root");
+  assertGitWorktreeRoot(root, "proof --repo must be the Git worktree root");
   const head = gitText(root, ["rev-parse", "--verify", "HEAD"]);
   if (expectedCommit !== head) throw new Error(`--commit must exactly match Git HEAD (${head})`);
   const tree = gitText(root, ["rev-parse", "HEAD^{tree}"]);
@@ -180,8 +185,7 @@ export function trackedSourceState(repoRoot, expectedCommit) {
 
 export function applicationSourceState(repoRoot, expectedCommit) {
   const root = realpathSync(path.resolve(repoRoot));
-  const gitRoot = realpathSync(path.resolve(gitText(root, ["rev-parse", "--show-toplevel"])));
-  if (gitRoot !== root) throw new Error("application source state requires the Git worktree root");
+  assertGitWorktreeRoot(root, "application source state requires the Git worktree root");
   const head = gitText(root, ["rev-parse", "--verify", "HEAD"]);
   if (expectedCommit !== head) throw new Error(`application source commit must exactly match Git HEAD (${head})`);
   const pathspec = ["--", ".", ...POST_PROOF_ARTIFACT_PATHS.map((entry) => `:(exclude,literal)${entry}`)];

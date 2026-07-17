@@ -30,6 +30,21 @@ function runProof(root, args) {
   return run(process.execPath, [PROOF_RUNNER, "--repo", root, ...args], { cwd: root });
 }
 
+function windowsShortPath(target) {
+  if (process.platform !== "win32") return null;
+  const parent = path.dirname(target);
+  const name = path.basename(target);
+  const result = run(process.env.ComSpec || "cmd.exe", [
+    "/d",
+    "/c",
+    `for %I in (${name}) do @echo %~sI`,
+  ], { cwd: parent });
+  assert.equal(result.status, 0, `could not resolve Windows 8.3 path:\n${result.stdout}\n${result.stderr}`);
+  const shortPath = result.stdout.trim();
+  if (!shortPath) return null;
+  return path.isAbsolute(shortPath) ? shortPath : path.join(parent, shortPath);
+}
+
 function expectRejected(result, message) {
   assert.notEqual(result.status, 0, "adversarial proof request was unexpectedly accepted");
   assert.match(`${result.stdout}\n${result.stderr}`, message);
@@ -50,6 +65,26 @@ try {
   git(root, "add", ".");
   git(root, "commit", "--quiet", "-m", "fixture");
   const head = git(root, "rev-parse", "HEAD");
+
+  const shortRoot = windowsShortPath(root);
+  if (shortRoot && path.resolve(shortRoot).toLowerCase() !== path.resolve(root).toLowerCase()) {
+    const shortRootProof = runProof(shortRoot, [
+      "--run-id", "EXAMPLE-RUN", "--commit", head, "--environment", "test",
+      "--output", "proof/windows-short-root.json", "--", process.execPath, "-e", "process.exit(0)",
+    ]);
+    assert.equal(
+      shortRootProof.status,
+      0,
+      `Windows 8.3 root ${JSON.stringify(shortRoot)} (exists=${existsSync(shortRoot)}) failed:\n${shortRootProof.stdout || ""}\n${shortRootProof.stderr || ""}\n${shortRootProof.error?.stack || shortRootProof.error || ""}`,
+    );
+  }
+
+  mkdirSync(path.join(root, "nested"), { recursive: true });
+  const nestedRoot = runProof(path.join(root, "nested"), [
+    "--run-id", "EXAMPLE-RUN", "--commit", head, "--environment", "test",
+    "--output", "proof/nested-root.json", "--", process.execPath, "-e", "process.exit(0)",
+  ]);
+  expectRejected(nestedRoot, /Git worktree root/);
 
   const fakeCommit = runProof(root, [
     "--run-id", "EXAMPLE-RUN", "--commit", "0".repeat(40), "--environment", "test",
@@ -119,7 +154,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     suite: "proof-runner-security",
-    cases: ["fake Git revision", "NTFS ADS", "Windows device namespace", "reserved Windows device", "local path redaction", "npm shell-free resolution"],
+    cases: ["Git-native worktree root", "fake Git revision", "NTFS ADS", "Windows device namespace", "reserved Windows device", "local path redaction", "npm shell-free resolution"],
     platform: process.platform,
   }, null, 2));
 } finally {

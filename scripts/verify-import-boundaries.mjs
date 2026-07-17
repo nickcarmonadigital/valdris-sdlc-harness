@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -283,6 +283,26 @@ test("privacy scans tracked files inside ignored deploy directories", (root) => 
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [secret]);
   assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === ".next/server/private.js"));
+});
+
+test("privacy scans a nested commissioned scope through a Windows worktree alias", (root) => {
+  if (process.platform !== "win32") return;
+  const alias = `${root}-junction`;
+  const secret = `sk-${"U".repeat(32)}`;
+  const scopedPath = ".valdris-harness/.next/server/private.js";
+  write(root, scopedPath, `export const credential = "${secret}";\n`);
+  for (const args of [["init"], ["add", scopedPath]]) {
+    const git = spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false, windowsHide: true });
+    assert.equal(git.status, 0, `git ${args.join(" ")} failed: ${git.stderr || git.stdout}`);
+  }
+  symlinkSync(root, alias, "junction");
+  try {
+    const result = runGate("privacy-gate.mjs", path.join(alias, ".valdris-harness"));
+    expectRedactedFailure(result, "import-privacy", [secret]);
+    assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === ".next/server/private.js"), result.text);
+  } finally {
+    rmSync(alias, { recursive: true, force: true });
+  }
 });
 
 test("privacy checks a real password after an exact redacted placeholder", (root) => {

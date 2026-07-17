@@ -119,14 +119,12 @@ function collectFiles(repo, includes = []) {
     }
   }
   function addTrackedFiles() {
-    const rootResult = spawnSync("git", ["-C", repo, "rev-parse", "--show-toplevel"], { encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM" });
-    if (rootResult.status !== 0) return;
-    const gitRoot = realpathSync(rootResult.stdout.trim());
-    const repoFromGitRoot = normalize(path.relative(gitRoot, repo)) || ".";
-    const tracked = spawnSync("git", ["-C", gitRoot, "ls-files", "-z", "--", repoFromGitRoot], { encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM" });
+    const worktree = spawnSync("git", ["-C", repo, "rev-parse", "--is-inside-work-tree"], { encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM" });
+    if (worktree.status !== 0) return;
+    const tracked = spawnSync("git", ["-C", repo, "ls-files", "-z", "--", "."], { encoding: "utf8", shell: false, timeout: 30_000, killSignal: "SIGTERM" });
     if (tracked.status !== 0) throw new Error(`privacy gate could not enumerate tracked files: ${(tracked.stderr || tracked.stdout || "git ls-files failed").trim()}`);
     for (const entry of tracked.stdout.split("\0").filter(Boolean)) {
-      const target = path.resolve(gitRoot, entry);
+      const target = path.resolve(repo, entry);
       const relative = path.relative(repo, target);
       if (!relative || relative.startsWith("..") || path.isAbsolute(relative)) continue;
       const stats = lstatSync(target);
