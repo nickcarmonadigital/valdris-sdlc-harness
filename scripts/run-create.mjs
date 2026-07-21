@@ -138,6 +138,9 @@ function main() {
     if (supportingArtifacts.length > 0) artifact.supportingArtifacts = supportingArtifacts;
     return artifact;
   });
+  const inventoryExclusions = [args.output, args.review]
+    .filter(Boolean)
+    .map((artifactPath) => normalizedRelative(repoRoot, resolveArtifactPath(repoRoot, artifactPath)));
   const packet = {
     schema: RUN_PACKET_SCHEMA,
     generatedAt: new Date().toISOString(),
@@ -149,7 +152,7 @@ function main() {
     validationRuntime: validationRuntimeBinding(repoRoot, args.commit),
     requiredGates,
     gateArtifacts,
-    artifactInventory: artifactInventory(repoRoot, [args.output, args.review].filter(Boolean)),
+    artifactInventory: artifactInventory(repoRoot, inventoryExclusions),
   };
   if (args.printEvidenceBundle) {
     const evidenceBundle = reviewEvidenceBundle(packet);

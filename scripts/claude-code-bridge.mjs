@@ -11,6 +11,7 @@ import { assertPairwiseDistinctBridgeCredentials, finishLineChildEnv } from "./b
 import { validateProductionLayerAssessment } from "./production-layer-gate.mjs";
 import { requiredReviewTrustSha256 } from "./review-gate.mjs";
 import { routeRequiresRca, validationRuntimeBinding } from "./run-packet-gate.mjs";
+import { evidencePolicyForEffectiveTier, PROFILE_EVIDENCE_MAX_AGE_HOURS } from "./control-gate-lib.mjs";
 
 const PORT = Number(process.env.UASH_BRIDGE_PORT || 8787);
 const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
@@ -1781,6 +1782,7 @@ function portablePrivacyReferencedPaths(artifactPath, document) {
       add(entry?.path);
       for (const supporting of Array.isArray(entry?.supportingArtifacts) ? entry.supportingArtifacts : []) add(supporting?.path);
     }
+    for (const entry of Array.isArray(document.artifactInventory) ? document.artifactInventory : []) add(entry?.path);
   }
   if (artifactPath === "trajectory/trajectory.json") add(document.tracePath);
   if (artifactPath === "context/manifest.json") {
@@ -1916,7 +1918,48 @@ function completedRunValidationFingerprint(run, journalState) {
     currentRuntimeIdentity,
     closureProblems: closure.problems,
     artifacts,
+    freshnessState: completedRunFreshnessState(run),
   }));
+}
+
+const COMPLETED_RUN_FRESHNESS_ARTIFACTS = Object.freeze([
+  "goal/goal.json",
+  "run/intake.json",
+  "run/workload-classification.json",
+  "run/route.json",
+  "context/manifest.json",
+  "foundation/assessment.json",
+  "production/layer-assessment.json",
+  "ai/assurance.json",
+  "domain/assurance.json",
+  "evals/results.json",
+  "trajectory/trajectory.json",
+  "smoke/smoke_proof.json",
+  "waivers/waivers.json",
+]);
+
+function completedRunFreshnessState(run) {
+  try {
+    const classificationResolution = resolveArtifactPath(run, "run/workload-classification.json", true);
+    if (classificationResolution.problems.length || !classificationResolution.realTarget) return "classification-unavailable";
+    const classification = JSON.parse(readFileSync(classificationResolution.realTarget, "utf8"));
+    const policy = evidencePolicyForEffectiveTier(classification.effectiveTier);
+    const profile = policy?.profile || "production";
+    const maxAgeMs = (PROFILE_EVIDENCE_MAX_AGE_HOURS[profile] || 168) * 60 * 60 * 1000;
+    const now = Date.now();
+    const state = [];
+    for (const artifactPath of COMPLETED_RUN_FRESHNESS_ARTIFACTS) {
+      const resolution = resolveArtifactPath(run, artifactPath, false);
+      if (resolution.problems.length || !resolution.realTarget || !existsSync(resolution.realTarget)) continue;
+      const document = JSON.parse(readFileSync(resolution.realTarget, "utf8"));
+      const timestamp = document.generatedAt || document.receivedAt;
+      if (typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) continue;
+      state.push([artifactPath, now - Date.parse(timestamp) > maxAgeMs ? "expired" : "current"]);
+    }
+    return state;
+  } catch {
+    return "freshness-state-invalid";
+  }
 }
 
 function enterpriseFinishLineProblems(run) {

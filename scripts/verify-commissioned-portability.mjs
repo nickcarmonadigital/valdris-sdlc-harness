@@ -18,7 +18,11 @@ const VERIFY_VALUES = Object.freeze({
 const BRIDGE_ACCESS_TOKEN = VERIFY_VALUES.access;
 const BRIDGE_INTEGRITY_KEY = VERIFY_VALUES.integrity;
 const HUMAN_APPROVAL_TOKEN = VERIFY_VALUES.human;
-const PORTABILITY_WALL_CLOCK_MS = Number(process.env.VALDRIS_PORTABILITY_TIMEOUT_MS || 600_000);
+const configuredPortabilityTimeout = process.env.VALDRIS_PORTABILITY_TIMEOUT_MS;
+const PORTABILITY_WALL_CLOCK_MS = configuredPortabilityTimeout === undefined ? 600_000 : Number(configuredPortabilityTimeout);
+if (!Number.isFinite(PORTABILITY_WALL_CLOCK_MS) || PORTABILITY_WALL_CLOCK_MS <= 0) {
+  throw new Error("VALDRIS_PORTABILITY_TIMEOUT_MS must be a positive finite number");
+}
 const PORTABILITY_STARTED_AT = Date.now();
 const ACTIVE_CHILDREN = new Set();
 const ACCEPTANCE_ARTIFACT_ROOTS = Object.freeze([
@@ -669,12 +673,13 @@ async function main() {
       "--commit", commit,
       "--environment", environment,
       "--proof", "proof/portable.json",
-      "--review", "review/review.json",
+      "--review", path.join(target, "review", "review.json"),
       "--gate", "trajectory=trajectory/trajectory.json",
-      "--output", "run/packet.json",
+      "--output", path.join(target, "run", "packet.json"),
     ], target), "generated run-packet creation");
     expectOk(runNode(path.join(pack, "scripts", "run-packet-gate.mjs"), ["--repo", ".", "--file", "run/packet.json"], target), "generated run-packet validation");
     const packetDocument = readJson(path.join(target, "run", "packet.json"));
+    assert(!packetDocument.artifactInventory.some(({ path: artifactPath }) => artifactPath === "review/review.json" || artifactPath === "run/packet.json"), "absolute in-repository CLI paths bypassed canonical run-packet inventory exclusions");
     assert(packetDocument.validationRuntime?.reviewTrustSha256 === commissionedReviewTrustSha256, "final packet must bind the operator-held review trust-store pin");
     assert(packetDocument.validationRuntime?.setSha256 === runtimeBinding.setSha256, "final packet must carry the loader-bound validation runtime digest");
     assert(packetDocument.bindings?.validationRuntimeSha256 === runtimeBinding.setSha256, "final packet envelope must bind the loader-bound validation runtime digest");
