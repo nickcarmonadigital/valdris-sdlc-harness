@@ -1548,6 +1548,8 @@ function generatePack(args, detected, answers) {
       provenance: `node ${scriptFromRepo}/provenance-gate.mjs --repo ${packFromRepo}`,
       neutrality: `node ${scriptFromRepo}/neutrality-gate.mjs --repo ${packFromRepo}`,
       privacy: `node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}`,
+      restrictedResidue: `node ${scriptFromRepo}/restricted-residue-gate.mjs --repo ${packFromRepo} --manifest <external-restricted-values-manifest>`,
+      skillRetirementDryRun: `node ${scriptFromRepo}/retire-local-skills.mjs --repo ${packFromRepo} --manifest <external-retirement-manifest> --codex-root <local-.codex/skills> --claude-root <local-.claude/skills>`,
       generatedEvidencePrivacy: `node ${scriptFromRepo}/privacy-gate.mjs --repo . --include graph --include design/anchors.json`,
       schemaCompatibility: `node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}`,
       classification: `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`,
@@ -1619,7 +1621,7 @@ function generatePack(args, detected, answers) {
     fs.writeFileSync(target, fs.readFileSync(target, "utf8").replaceAll("Production Readiness 13 Layers", "Production Assurance: 13 Domains"), "utf8");
   }
   writePackText("runs/_run-template/README.md", renderRunTemplate(answers, adapter.finishLineAssurance.requiredArtifacts) + renderFourRoleProtocol() + renderLayerZeroProtocol());
-  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs", "discovery-loader-contract.mjs", "evidence-namespaces.mjs", "proof-runner.mjs", "rca-gate.mjs", "review-gate.mjs", "run-create.mjs", "run-packet-gate.mjs", "run-acceptance.mjs"]) {
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "restricted-residue-gate.mjs", "retire-local-skills.mjs", "schema-compat-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs", "discovery-loader-contract.mjs", "evidence-namespaces.mjs", "proof-runner.mjs", "rca-gate.mjs", "review-gate.mjs", "run-create.mjs", "run-packet-gate.mjs", "run-acceptance.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));
@@ -1647,6 +1649,8 @@ function generatePack(args, detected, answers) {
       "provenance:gate": "node scripts/provenance-gate.mjs --repo .",
       "neutrality:gate": "node scripts/neutrality-gate.mjs --repo .",
       "privacy:gate": "node scripts/privacy-gate.mjs --repo .",
+      "restricted-residue:gate": "node scripts/restricted-residue-gate.mjs --repo .",
+      "skills:retire-local": "node scripts/retire-local-skills.mjs --repo .",
       "evidence:privacy:gate": `node scripts/privacy-gate.mjs --repo "${repoFromPack}" --include graph --include design/anchors.json`,
       "schema:compat:gate": "node scripts/schema-compat-gate.mjs --repo .",
       "intake:gate": `node scripts/intake-gate.mjs --repo \"${repoFromPack}\"`,

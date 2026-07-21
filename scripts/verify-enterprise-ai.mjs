@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
-import { cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -99,7 +99,7 @@ function buildFixture(root) {
   writeFileSync(path.join(root, "proof", "trajectory.jsonl"), "{\"attempt\":\"attempt-1\",\"outcome\":\"succeeded\"}\n");
   writeFileSync(path.join(root, "proof", "testflight-attestation.txt"), "testflight attestation\n");
   writeFileSync(path.join(root, "proof", "xcode-build-attestation.txt"), "xcode build attestation\n");
-  writeFileSync(path.join(root, "AGENTS.md"), "# Verification context\n");
+  if (!existsSync(path.join(root, "AGENTS.md"))) writeFileSync(path.join(root, "AGENTS.md"), "# Verification context\n");
   mkdirSync(path.join(root, "src"), { recursive: true });
   writeFileSync(path.join(root, "src", "verification-fixture.js"), "export function verifiedFixture() { return 'verified'; }\n");
   writeJson(root, "evals/context-quality-cases.json", { schema: "uash.context-case-set.v1", cases: [{ id: "routing", prompt: "Select the correct Valdris lane." }, { id: "proof", prompt: "Name the required finish-line proof." }] });
@@ -112,7 +112,7 @@ function buildFixture(root) {
   const aiCatalog = JSON.parse(readFileSync(path.join(root, "controls", "genai-assurance.v1.json"), "utf8"));
   const domainIndex = JSON.parse(readFileSync(path.join(root, "controls", "domain-packs", "index.json"), "utf8"));
   const registryPath = path.join(root, "skills", "registry.json");
-  const requestText = "Evaluate an enterprise AI agent harness with RAG, tools, memory, async workflow orchestration, and typed controls.";
+  const requestText = "Build and evaluate a neutral full-stack application with a frontend, API, database, authentication, hosting, cloud compute, CI/CD, security, rate limiting, caching, scaling, observability, recovery, and an AI assistant using RAG, tools, memory, and async workflow orchestration.";
   const catalogDigests = {
     taxonomy: jsonValueSha256(path.join(root, "controls", "workload-taxonomy.v1.json")),
     foundation: jsonValueSha256(path.join(root, "controls", "foundation-layer.v1.json")),

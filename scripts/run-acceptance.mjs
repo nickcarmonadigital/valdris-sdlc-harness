@@ -334,7 +334,7 @@ function packetClosurePaths(bundleRoot, manifest, packet) {
 }
 
 function withValidationWorktree(repoRoot, head, callback) {
-  const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), "valdris-run-acceptance-"));
+  const temporaryRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-run-acceptance-")));
   const worktree = path.join(temporaryRoot, "checkout");
   try {
     git(repoRoot, ["-c", "core.autocrlf=false", "worktree", "add", "--detach", worktree, head]);

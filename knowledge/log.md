@@ -6,6 +6,8 @@
 * **Update**: Added redirect rejection, bounded proxy deadlines, supporting-artifact privacy closure, and cached completed-run validation keyed by current evidence digests.
 * **Update**: Rebound accepted evidence to the unchanged source checkout at commit time and added signal-safe rollback for interrupted hydration.
 * **Update**: Added whole-suite portability deadlines, awaited bridge teardown, bare secret-assignment fixtures, clean least-privilege verifier environments, and observable digest-cache verification.
+* **Update**: Added the clean-room behavior catalog, complete eight-front-door route matrix, safe local-skill retirement, and a generated-pack neutral full-stack goal-loop pilot.
+* **Update**: Added a protected two-runner restricted-residue attestation covering source, deployable output, generated packs, knowledge, and installed skills without exposing operator-held inputs to candidate code.
 
 ## 2026-07-17
 

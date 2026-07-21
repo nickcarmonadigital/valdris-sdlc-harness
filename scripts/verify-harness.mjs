@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { cp, mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readFile, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { finishLineChildEnv } from "./bridge-security.mjs";
@@ -289,7 +289,7 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
 }
 
 const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-const tempRoot = await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-"));
+const tempRoot = await realpath(await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-")));
 const generatedTarget = path.join(tempRoot, "commissioned-target");
 const generatedOut = path.join(generatedTarget, ".valdris-harness");
 const pyTarget = path.join(tempRoot, "pyproject-only");
@@ -690,7 +690,10 @@ try {
   assert((await readFile(path.join(generatedInstallTarget, "valdris-sdlc-harness", "preserved.txt"), "utf8")).includes("preserve"), "generated pack installer pruned the global harness meta skill");
 
   const routingCases = [
+    ["ambiguous", "Make it better", "valdris-intake-route"],
     ["bug", "Why are checkout requests double charging after retries?", "valdris-bug-rca"],
+    ["feature", "Build a full-stack customer portal", "valdris-feature-delivery"],
+    ["architecture", "Refactor the service module boundaries", "valdris-architecture-refactor"],
     ["audit", "Audit this repo end-to-end; I am not sure what is missing.", "valdris-intake-route"],
     ["security", "Review our RLS and tenant isolation.", "valdris-security-audit"],
     ["release", "Ship the current build to TestFlight.", "valdris-platform-release"],
@@ -717,6 +720,7 @@ try {
       await writeFile(routePath, originalRoute, "utf8");
     }
     assert(route.skillPhases[1].primary === expectedPrimary, `${id} request routed to ${route.skillPhases[1].primary} instead of ${expectedPrimary}`);
+    if (id === "ambiguous") assert(classification.materialUnknowns.some(({ id: unknownId }) => unknownId === "scope-definition"), "ambiguous intake omitted its scope-definition stopping condition");
   }
 
   const routingRegressions = [
@@ -735,6 +739,18 @@ try {
     {
       id: "provider-integration", request: "Integrate an external provider and deploy it", profile: "production",
       check: (route) => route.gateApplicability.smoke.status === "required",
+    },
+    {
+      id: "manual-provider-change", request: "Manually change production provider configuration", profile: "production",
+      check: (route, classification) => classification.taskType === "platform-release" && route.skillPhases[1].primary === "valdris-platform-release" && route.gateApplicability.smoke.status === "required",
+    },
+    {
+      id: "manual-data-change", request: "Manually change production customer data", profile: "production",
+      check: (route, classification) => classification.taskType === "platform-release" && route.skillPhases[1].primary === "valdris-platform-release" && route.gateApplicability.smoke.status === "required",
+    },
+    {
+      id: "mixed-bug-release", request: "Fix the retry bug and deploy the repair", profile: "production",
+      check: (route, classification) => classification.taskType === "bug" && route.skillPhases[1].primary === "valdris-bug-rca" && route.skillPhases[1].supporting.includes("valdris-platform-release") && route.gateApplicability.smoke.status === "required",
     },
     {
       id: "api-client-library", request: "Update API client library", profile: "production",

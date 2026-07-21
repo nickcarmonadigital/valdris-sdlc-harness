@@ -10,12 +10,12 @@ import { classifyAiWorkload, deliveryPrimaryForTask, executionBudgetForClassific
 export const ROUTE_SCHEMA = "uash.route.v2";
 export const LEGACY_ROUTE_SCHEMA = "uash.route.v1";
 const PROFILES = new Set(["prototype", "production", "enterprise", "regulated"]);
-const TASK_TYPES = new Set(["bug", "feature", "architecture-refactor", "security", "platform-release", "genai", "audit", "incident", "proof-handoff", "docs-only"]);
+const TASK_TYPES = new Set(["ambiguous", "bug", "feature", "architecture-refactor", "security", "platform-release", "genai", "audit", "incident", "proof-handoff", "docs-only"]);
 const APPLICABILITY = new Set(["required", "potentially-affected", "not-applicable"]);
 const GATE_DECISIONS = new Set(["required", "not-applicable"]);
 const REQUIRED_GATE_KEYS = ["code-intelligence", "foundation", "production", "ai-assurance", "domain-assurance", "eval", "trajectory", "smoke"];
 const REQUIRED_PHASES = ["intake-route", "delivery", "proof-handoff"];
-const REQUIRED_PRIMARY_SKILLS = new Set(["valdris-intake-route", "valdris-proof-handoff", ...["bug", "feature", "architecture-refactor", "security", "platform-release", "genai", "audit", "incident", "proof-handoff", "docs-only"].map(deliveryPrimaryForTask)]);
+const REQUIRED_PRIMARY_SKILLS = new Set(["valdris-intake-route", "valdris-proof-handoff", ...["ambiguous", "bug", "feature", "architecture-refactor", "security", "platform-release", "genai", "audit", "incident", "proof-handoff", "docs-only"].map(deliveryPrimaryForTask)]);
 
 function sha256File(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");

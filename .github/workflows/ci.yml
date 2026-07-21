@@ -74,6 +74,9 @@ jobs:
       - name: Clean-room work-harness import verifier
         run: npm run verify:work-harness-import
 
+      - name: Clean-room convergence adversarial verifier
+        run: npm run verify:clean-room-convergence
+
       - name: Portable proof security verifier
         run: npm run verify:proof-security
 
@@ -114,3 +117,34 @@ jobs:
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  portability-macos:
+    runs-on: macos-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Clean-room convergence and generated-pack verifier
+        run: npm run verify:clean-room-convergence
+
+      - name: Commissioned nested-pack portability verifier
+        run: npm run verify:commissioned-portability
+
+      - name: Full harness and generated skill-pack verifier
+        run: npm run verify:harness

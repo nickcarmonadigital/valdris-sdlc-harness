@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -753,7 +754,7 @@ function main() {
     routeRequiresRca({ taskType: "feature", requestSignals: ["corrective self-heal remediation"] }, correctiveIntake, { taskType: "feature", requestSha256: correctiveIntake.requestSha256 }) === true,
     "intake-bound corrective self-heal work did not require RCA",
   );
-  const root = mkdtempSync(path.join(os.tmpdir(), "valdris-run-packet-trust-"));
+  const root = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-run-packet-trust-")));
   try {
     verifyReviewTrustStoreSchema(root);
     verifyNativeCorrectiveRoute(root);
