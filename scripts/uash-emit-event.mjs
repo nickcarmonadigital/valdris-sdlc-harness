@@ -61,21 +61,36 @@ const optionMap = {
   "--event-id": "eventId",
 };
 
-const messageParts = [];
-for (let i = 0; i < rest.length; i += 1) {
+function safeOptionLabel(value) {
+  return /^--[A-Za-z][A-Za-z0-9_.-]{0,127}/.exec(String(value || ""))?.[0] || "--[invalid]";
+}
+
+const removedHumanCredentialOption = ["--human", "token"].join("-");
+const firstMessageArgument = rest[0];
+if (typeof firstMessageArgument === "string" && firstMessageArgument.startsWith("--")
+  && (optionMap[firstMessageArgument]
+    || firstMessageArgument === removedHumanCredentialOption
+    || firstMessageArgument.startsWith(`${removedHumanCredentialOption}=`)
+    || firstMessageArgument.startsWith(`${removedHumanCredentialOption} `)
+    || !/\s/.test(firstMessageArgument))) {
+  console.error(`Unknown option: ${safeOptionLabel(firstMessageArgument)}`);
+  process.exit(2);
+}
+
+const messageParts = rest.length > 0 ? [rest[0]] : [];
+for (let i = 1; i < rest.length; i += 1) {
   const item = rest[i];
   const key = optionMap[item];
   if (key) {
     const value = rest[i + 1];
-    if (typeof value !== "string" || value.length === 0 || value.startsWith("-")) {
+    if (typeof value !== "string" || value.length === 0 || value.startsWith("--")) {
       console.error(`Option ${item} requires a non-empty, non-flag value`);
       process.exit(2);
     }
     options[key] = value;
     i += 1;
   } else if (item.startsWith("--")) {
-    const diagnosticOption = /^--[A-Za-z][A-Za-z0-9_.-]{0,127}/.exec(item)?.[0] || "--[invalid]";
-    console.error(`Unknown option: ${diagnosticOption}`);
+    console.error(`Unknown option: ${safeOptionLabel(item)}`);
     process.exit(2);
   } else {
     messageParts.push(item);

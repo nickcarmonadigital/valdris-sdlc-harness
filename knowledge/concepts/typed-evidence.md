@@ -22,3 +22,5 @@ Evidence-shaped prose is not proof. A passing control needs a supported typed ev
 # Boundaries
 
 Approval proves authorization, not correctness. A skip proves non-applicability only when the enclosing layer permits it and a precise reason exists. Blocking states never count as passed.
+
+Run acceptance is transactional. New v0.8 packets bind every non-review evidence file through `artifactInventory`; the review signs that inventory, the packet envelope digests it, and CI validates the exact closure in a detached worktree before hydrating the source checkout. Historical v2 packets without the field remain readable as structural evidence but cannot enter the hydrated acceptance path.

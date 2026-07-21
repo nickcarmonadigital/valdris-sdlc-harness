@@ -338,6 +338,8 @@ export function validateReviewArtifact(document, repoRoot, options = {}) {
       try {
         subject = readJson(subjectPath);
       } catch (error) {
+        const extension = path.extname(document.subject.artifact).toLowerCase();
+        if (extension === ".json") throw new Error("review subject declares JSON but contains malformed JSON");
         // Reviews may target non-JSON artifacts; their digest still binds the subject.
         // IO and validation failures are not JSON syntax failures and must fail closed.
         if (!(error instanceof SyntaxError)) throw error;

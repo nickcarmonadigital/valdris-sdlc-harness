@@ -326,10 +326,22 @@ export function ControlPlaneApp() {
   async function syncSelectedToBridge() {
     if (!selectedRun) return;
     try {
+      const creationRequest = {
+        id: selectedRun.id,
+        title: selectedRun.title,
+        task: selectedRun.task,
+        repo: selectedRun.repo,
+        branch: selectedRun.branch,
+        lane: selectedRun.lane,
+        agent: selectedRun.agent,
+        risk: selectedRun.risk,
+        mode: selectedRun.mode === "demo" ? "blueprint" : selectedRun.mode,
+        eventSource: selectedRun.eventSource,
+      };
       const response = await fetch(`${BRIDGE_API_URL}/runs`, {
         method: "POST",
         headers: { ...BRIDGE_UI_HEADERS, "content-type": "application/json" },
-        body: JSON.stringify(selectedRun),
+        body: JSON.stringify(creationRequest),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setBridgeStatus("connected");
@@ -645,6 +657,7 @@ export function ControlPlaneApp() {
             <p>Connect Claude Code through a tiny local bridge on your Mac. The Vercel app can talk to localhost from your browser, so no Supabase is needed for the first real connector loop.</p>
             <div className="bridgeMessage">{bridgeMessage}</div>
             <pre>{`# Terminal 1, on your machine
+# Set UASH_REVIEW_TRUST_SHA256 from operator-reviewed state, plus all bridge credentials.
 npm run bridge:claude
 
 # Terminal 2, inside Claude Code / your repo

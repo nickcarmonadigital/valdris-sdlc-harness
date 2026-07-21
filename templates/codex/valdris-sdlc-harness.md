@@ -48,7 +48,7 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" node.en
   --artifact-root "$PWD"
 ```
 
-Commissioned packs include `scripts/uash-emit-event.mjs`. Run event commands from the generated pack root or pass the correct `--artifact-root` on the first event; do not emit live telemetry from a different repo root.
+Commissioned packs include `.valdris-harness/scripts/uash-emit-event.mjs`. Run event commands from the target repository root, invoke that nested script path, and pass the target root through `--artifact-root`; do not emit live telemetry from the pack directory.
 
 ## Red Zone token-gated approval
 

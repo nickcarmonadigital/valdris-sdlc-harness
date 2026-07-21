@@ -28,6 +28,7 @@ import {
   validateRootDiscoveryLoaderBytes,
   validateRootDiscoveryLoaderFile,
 } from "./discovery-loader-contract.mjs";
+import { EVIDENCE_NAMESPACE_SET } from "./evidence-namespaces.mjs";
 
 export const RUN_PACKET_SCHEMA = "valdris.run-packet.v2";
 export const RUN_PACKET_RUNTIME_SCHEMA = "valdris.run-packet-runtime.v1";
@@ -453,7 +454,7 @@ export function reviewEvidenceBundle(document) {
     return [name, { path: input.path, sha256: input.sha256 }];
   }));
   const gateArtifacts = gateBindingValue((document.gateArtifacts || []).filter(({ gate }) => gate !== "independent-review"));
-  return {
+  const bundle = {
     schema: "valdris.review-evidence-bundle.v1",
     runId: document.runId,
     commit: document.commit,
@@ -463,6 +464,8 @@ export function reviewEvidenceBundle(document) {
     requiredGates: [...(document.requiredGates || [])].sort(compareText),
     gateArtifacts,
   };
+  if (Array.isArray(document.artifactInventory)) bundle.artifactInventory = document.artifactInventory;
+  return bundle;
 }
 
 export function reviewEvidenceBundleSha256(document) {
@@ -482,7 +485,8 @@ export function packetBindings(document) {
   const validationRuntimeSha256 = document.validationRuntime.setSha256;
   const evidenceBundleSha256 = reviewEvidenceBundleSha256(document);
   const roleProvenanceSha256 = document.roleProvenanceSha256;
-  const envelopeSha256 = sha256(canonicalJson({
+  const artifactInventorySha256 = Array.isArray(document.artifactInventory) ? sha256(canonicalJson(document.artifactInventory)) : null;
+  const envelope = {
     schema: document.schema,
     generatedAtSha256,
     runSha256,
@@ -497,8 +501,50 @@ export function packetBindings(document) {
     evidenceBundleSha256,
     roleProvenanceSha256,
     requiredGates: [...document.requiredGates].sort(),
-  }));
-  return { generatedAtSha256, runSha256, commitSha256, environmentSha256, intakeSha256, classificationSha256, routeSha256, goalSha256, gateArtifactsSha256, validationRuntimeSha256, evidenceBundleSha256, roleProvenanceSha256, envelopeSha256 };
+  };
+  if (artifactInventorySha256) envelope.artifactInventorySha256 = artifactInventorySha256;
+  const envelopeSha256 = sha256(canonicalJson(envelope));
+  const bindings = { generatedAtSha256, runSha256, commitSha256, environmentSha256, intakeSha256, classificationSha256, routeSha256, goalSha256, gateArtifactsSha256, validationRuntimeSha256, evidenceBundleSha256, roleProvenanceSha256 };
+  if (artifactInventorySha256) bindings.artifactInventorySha256 = artifactInventorySha256;
+  return { ...bindings, envelopeSha256 };
+}
+
+function artifactInventoryProblems(inventory, repoRoot) {
+  const problems = [];
+  if (!Array.isArray(inventory)) return problems;
+  let previous = "";
+  let totalBytes = 0;
+  const seen = new Set();
+  for (const [index, entry] of inventory.entries()) {
+    const label = `artifactInventory[${index}]`;
+    const keys = entry && typeof entry === "object" && !Array.isArray(entry) ? Object.keys(entry).sort() : [];
+    if (JSON.stringify(keys) !== JSON.stringify(["path", "sha256", "size"])) {
+      problems.push(`${label} must contain exactly path, sha256, and size`);
+      continue;
+    }
+    if (typeof entry.path !== "string" || !entry.path.includes("/") || entry.path <= previous) problems.push(`${label}.path must be a strictly sorted repository-relative evidence path`);
+    previous = entry.path;
+    const root = entry.path.split("/", 1)[0];
+    if (!EVIDENCE_NAMESPACE_SET.has(root)) problems.push(`${label}.path is outside the evidence namespaces`);
+    const collisionKey = entry.path.normalize("NFC").toLowerCase();
+    if (seen.has(collisionKey)) problems.push(`${label}.path collides on a portable filesystem`);
+    seen.add(collisionKey);
+    if (!SHA256.test(entry.sha256 || "")) problems.push(`${label}.sha256 must be a SHA-256 digest`);
+    if (!Number.isSafeInteger(entry.size) || entry.size < 0 || entry.size > 10 * 1024 * 1024) problems.push(`${label}.size is invalid`);
+    totalBytes += Number.isSafeInteger(entry.size) ? entry.size : 0;
+    try {
+      const file = resolveArtifactPath(repoRoot, entry.path, { mustExist: true });
+      const stats = lstatSync(file);
+      if (!stats.isFile() || stats.isSymbolicLink()) problems.push(`${label}.path must be a regular non-symlink file`);
+      if (stats.size !== entry.size) problems.push(`${label}.size does not match`);
+      if (SHA256.test(entry.sha256 || "") && fileSha256(file) !== entry.sha256) problems.push(`${label}.sha256 does not match`);
+    } catch (error) {
+      problems.push(`${label}.path is invalid: ${error.message}`);
+    }
+  }
+  if (inventory.length > 512) problems.push("artifactInventory exceeds 512 files");
+  if (totalBytes > 100 * 1024 * 1024) problems.push("artifactInventory exceeds 104857600 bytes");
+  return problems;
 }
 
 function subjectProblems(document, expected, label) {
@@ -649,6 +695,7 @@ export function validateRunPacket(document, repoRoot) {
   if (!SHA256.test(document.roleProvenanceSha256 || "")) problems.push("run packet roleProvenanceSha256 must bind the signed four-role provenance roster");
   if (!Array.isArray(document.requiredGates) || document.requiredGates.some((gate) => !safeIdentifier(gate))) problems.push("run packet requiredGates must be safe identifiers");
   if (!Array.isArray(document.gateArtifacts)) problems.push("run packet gateArtifacts must be an array");
+  problems.push(...artifactInventoryProblems(document.artifactInventory, repoRoot));
   const runtimeValidation = validationRuntimeProblems(document.validationRuntime, repoRoot, document.commit);
   problems.push(...runtimeValidation.problems);
 

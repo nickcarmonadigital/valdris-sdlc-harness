@@ -69,6 +69,22 @@ try {
   write(path.join(fixture, ".next", "cache", "turbopack", "cache.sst"), Buffer.from([0, 4, 8, 12]));
   write(path.join(fixture, ".next", "dev", "server", "noisy.js"), `const token = "${syntheticToken}";\n`);
   write(sourceMapPath, `${cleanSourceMap}\n`);
+
+  const assignmentSecret = "release-assignment-value-should-be-redacted";
+  write(path.join(fixture, ".next", "server", "app", "page.js"), `const databaseUrl = "${assignmentSecret}";\n`);
+  const assignmentLeak = runGate(fixture);
+  const assignmentLeakOutput = parseOutput(assignmentLeak);
+  assert.equal(assignmentLeak.status, 1, "an assignment-shaped credential in deployable output must fail");
+  assert.ok(assignmentLeakOutput.findings.some((finding) => finding.category === "secret"), "release scan omitted the secret-assignment detector");
+  assert.ok(!`${assignmentLeak.stdout}${assignmentLeak.stderr}`.includes(assignmentSecret), "assignment leak diagnostics disclosed secret material");
+  const bareAssignmentSecret = "syntheticbarecredential12345";
+  write(path.join(fixture, ".next", "server", "app", "page.js"), `API_KEY=${bareAssignmentSecret};\n`);
+  const bareAssignmentLeak = runGate(fixture);
+  const bareAssignmentOutput = parseOutput(bareAssignmentLeak);
+  assert.equal(bareAssignmentLeak.status, 1, "a bare assignment-shaped credential in deployable output must fail");
+  assert.ok(bareAssignmentOutput.findings.some((finding) => finding.category === "secret"), "release scan exempted a bare secret assignment");
+  assert.ok(!`${bareAssignmentLeak.stdout}${bareAssignmentLeak.stderr}`.includes(bareAssignmentSecret), "bare assignment diagnostics disclosed secret material");
+  write(path.join(fixture, ".next", "server", "app", "page.js"), "export default function Page() { return null; }\n");
   write(
     path.join(fixture, ".next", "server", "app", "page.js.nft.json"),
     `${JSON.stringify({ files: [["sk", "async", "storage", "instance"].join("-")] })}\n`,
@@ -162,7 +178,7 @@ try {
   assert.notEqual(missing.status, 0, "a missing release artifact must fail closed");
   assert.ok(!`${missing.stdout}${missing.stderr}`.includes(missingFixture), "gate errors must not disclose local fixture paths");
 
-  console.log("Release artifact privacy verifier passed (clean source map, source-map leaks, compressed source-map rejection, generated noise, binary code, embedded secret, missing artifact).");
+  console.log("Release artifact privacy verifier passed (clean source map, quoted and bare assignment leaks, source-map leaks, compressed source-map rejection, generated noise, binary code, embedded secret, missing artifact).");
 } finally {
   rmSync(fixture, { recursive: true, force: true });
   rmSync(missingFixture, { recursive: true, force: true });

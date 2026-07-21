@@ -28,6 +28,7 @@ UASH_APPROVAL_VALUE="$(openssl rand -base64 32)"
 export UASH_BRIDGE_INTEGRITY_KEY="$UASH_INTEGRITY_VALUE"
 export UASH_BRIDGE_ACCESS_TOKEN="$UASH_ACCESS_VALUE"
 export UASH_HUMAN_APPROVAL_TOKEN="$UASH_APPROVAL_VALUE"
+export UASH_REVIEW_TRUST_SHA256="<operator-reviewed-canonical-json-sha256>"
 npm run bridge:claude
 ```
 
@@ -45,12 +46,15 @@ function NewUashSecret {
 $env:UASH_BRIDGE_INTEGRITY_KEY = NewUashSecret
 $env:UASH_BRIDGE_ACCESS_TOKEN = NewUashSecret
 $env:UASH_HUMAN_APPROVAL_TOKEN = NewUashSecret
+$env:UASH_REVIEW_TRUST_SHA256 = "<operator-reviewed-canonical-json-sha256>"
 npm run bridge:claude
 ```
 
 Generate and retain three different values of at least 32 bytes each; startup rejects missing, weak, or reused credentials. The bridge-only `UASH_BRIDGE_INTEGRITY_KEY` HMAC-authenticates run configuration, snapshots, and the event chain. `UASH_BRIDGE_ACCESS_TOKEN` authorizes ordinary run API reads and writes and is the only bridge credential a normal Codex process receives. `UASH_HUMAN_APPROVAL_TOKEN` is held by the human operator and is additionally required for grant/deny events. The server-side UI proxy receives only `UASH_BRIDGE_ACCESS_TOKEN`, while finish-line child validators receive none of the three; never expose any of these through `NEXT_PUBLIC_*` or browser JavaScript.
 
 Portable v0.8 also requires the nonsecret `UASH_REVIEW_TRUST_SHA256`: the canonical-JSON SHA-256 of the operator-reviewed trust store. Supply it from an operator-owned bridge service or protected CI/repository variable, not from the delivery agent's own shell. It must match both the live and reviewed-commit store. The bridge seals the startup pin into immutable run configuration and passes only that pin to child validators while stripping all three credentials. For key rotation, the operator updates the protected pin out of band before the new store is accepted; repository bytes never auto-enroll themselves.
+
+The UI proxy rejects upstream redirects and uses a 10-second deadline. Operators may set `UASH_BRIDGE_PROXY_TIMEOUT_MS` to an integer from 100 through 120000 milliseconds when local bridge latency needs a different bound.
 
 Launch Codex from a separate shell with the bridge URL and only the ordinary access credential:
 

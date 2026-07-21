@@ -375,6 +375,24 @@ assert.notEqual(emitterDiagnostic.status, 0, "operator emitter accepted the remo
 assert.equal(emitterOutput.includes(legacyHumanToken), false, "operator emitter diagnostic echoed a raw equals-form human token");
 assert.match(emitterOutput, /Unknown option: --human-token/, "operator emitter diagnostic omitted the rejected flag name");
 
+const leadingEmitterDiagnostic = spawnSync(process.execPath, [
+  "scripts/uash-emit-event.mjs",
+  "VERIFY-DIAGNOSTIC",
+  "approval.granted",
+  "redzone",
+  `--human-token=${legacyHumanToken}`,
+], {
+  cwd: path.resolve("."),
+  encoding: "utf8",
+  env: finishLineChildEnv(process.env),
+  shell: false,
+  windowsHide: true,
+});
+const leadingEmitterOutput = `${leadingEmitterDiagnostic.stdout || ""}\n${leadingEmitterDiagnostic.stderr || ""}`;
+assert.notEqual(leadingEmitterDiagnostic.status, 0, "operator emitter treated a leading removed human-token option as message text");
+assert.equal(leadingEmitterOutput.includes(legacyHumanToken), false, "operator emitter echoed a leading raw human token");
+assert.match(leadingEmitterOutput, /Unknown option: --human-token/, "operator emitter did not identify the rejected leading flag safely");
+
 for (const optionTail of [
   ["--approval-owner"],
   ["--approval-owner", `--human-token=${legacyHumanToken}`],

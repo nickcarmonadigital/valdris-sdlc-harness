@@ -15,6 +15,7 @@
     "verify:bridge-security": "node scripts/verify-bridge-security.mjs",
     "verify:bridge-lease": "node scripts/verify-bridge-lease.mjs",
     "verify:bridge-proxy": "node --no-warnings scripts/verify-bridge-proxy.mjs",
+    "verify:runtime-closure": "node scripts/verify-runtime-closure.mjs",
     "code-intelligence:scan": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback local",
     "code-intelligence:scan:strict": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback none --strict",
     "code-intelligence:gate": "node scripts/code-intelligence-gate-all.mjs --repo .",

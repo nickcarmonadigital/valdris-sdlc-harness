@@ -1,5 +1,12 @@
 # Knowledge Vault Update Log
 
+## 2026-07-20
+
+* **Update**: Made hydrated acceptance transactional through a detached validation worktree and a review-signed, packet-bound artifact inventory.
+* **Update**: Added redirect rejection, bounded proxy deadlines, supporting-artifact privacy closure, and cached completed-run validation keyed by current evidence digests.
+* **Update**: Rebound accepted evidence to the unchanged source checkout at commit time and added signal-safe rollback for interrupted hydration.
+* **Update**: Added whole-suite portability deadlines, awaited bridge teardown, bare secret-assignment fixtures, clean least-privilege verifier environments, and observable digest-cache verification.
+
 ## 2026-07-17
 
 * **Update**: Bound commissioned v0.8 runtimes to a committed, target-nested `.valdris-harness` pack in the same Git worktree, including the exact pack-aware review trust path.
