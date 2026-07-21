@@ -303,6 +303,9 @@ export function validateEvalResultsDocument(document, options = {}) {
   if (!nonEmpty(document.commit)) problems.push("eval results commit is required");
   if (!nonEmpty(document.environment)) problems.push("eval results environment is required");
   if (!isIsoTimestamp(document.generatedAt)) problems.push("eval results generatedAt must be an ISO timestamp");
+  if (contextBinding && !exactFields(document, contextBinding.manifest, ["runId", "profile", "commit", "environment"])) {
+    problems.push("eval results runId/profile/commit/environment must match context/manifest.json");
+  }
 
   if (document.status === "skipped") {
     if (!nonEmpty(document.skipReason)) problems.push("eval results skipped without skipReason");

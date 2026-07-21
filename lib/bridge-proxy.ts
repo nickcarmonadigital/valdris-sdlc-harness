@@ -10,6 +10,9 @@ const PAGINATION_RESPONSE_HEADERS = Object.freeze([
 ]);
 export const BRIDGE_PROXY_MAX_BODY_BYTES = 1024 * 1024;
 export const BRIDGE_PROXY_MAX_RESPONSE_BYTES = 1024 * 1024;
+export const BRIDGE_PROXY_DEFAULT_TIMEOUT_MS = 10_000;
+const BRIDGE_PROXY_MIN_TIMEOUT_MS = 100;
+const BRIDGE_PROXY_MAX_TIMEOUT_MS = 120_000;
 
 export type BridgeProxyRequestProblem = {
   status: 400 | 403 | 413 | 415;
@@ -213,14 +216,29 @@ function bridgeAccessToken() {
   return token;
 }
 
+export function bridgeProxyTimeoutMs(environment: NodeJS.ProcessEnv = process.env) {
+  const raw = environment.UASH_BRIDGE_PROXY_TIMEOUT_MS;
+  if (raw === undefined || raw === "") return BRIDGE_PROXY_DEFAULT_TIMEOUT_MS;
+  if (!/^\d+$/.test(raw)) throw new Error("UASH_BRIDGE_PROXY_TIMEOUT_MS must be an integer between 100 and 120000");
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < BRIDGE_PROXY_MIN_TIMEOUT_MS || value > BRIDGE_PROXY_MAX_TIMEOUT_MS) {
+    throw new Error("UASH_BRIDGE_PROXY_TIMEOUT_MS must be an integer between 100 and 120000");
+  }
+  return value;
+}
+
 export async function proxyBridge(pathname: string, init: RequestInit = {}) {
   if (!pathname.startsWith("/")) throw new Error("bridge proxy pathname must be absolute");
   const headers = new Headers(init.headers);
   headers.set("x-uash-bridge-token", bridgeAccessToken());
+  const timeout = AbortSignal.timeout(bridgeProxyTimeoutMs());
+  const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
   const response = await fetch(`${bridgeBaseUrl()}${pathname}`, {
     ...init,
     headers,
     cache: "no-store",
+    redirect: "error",
+    signal,
   });
   const bounded = await readBoundedBridgeProxyResponse(response);
   if (!bounded.ok) {

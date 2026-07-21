@@ -508,6 +508,8 @@ npm run proof:write -- --run-id LOCAL-VERIFY --command "npm run typecheck" --com
 npm run dev
 ```
 
+`verify:commissioned-portability` has a 600000 ms whole-suite ceiling and 120000 ms per-child ceiling. Set `VALDRIS_PORTABILITY_TIMEOUT_MS` to a stricter CI budget when needed; expiry terminates tracked bridge children and fails the verifier.
+
 Run `npm run enterprise-ai:gate` inside a complete run packet. Individual goal, context, production, AI, domain, eval, trajectory, and skill gates are also available.
 
 Open the app:
@@ -552,6 +554,7 @@ UASH_APPROVAL_VALUE="$(openssl rand -base64 32)"
 export UASH_BRIDGE_INTEGRITY_KEY="$UASH_INTEGRITY_VALUE"
 export UASH_BRIDGE_ACCESS_TOKEN="$UASH_ACCESS_VALUE"
 export UASH_HUMAN_APPROVAL_TOKEN="$UASH_APPROVAL_VALUE"
+export UASH_REVIEW_TRUST_SHA256="<operator-reviewed-canonical-json-sha256>"
 npm run bridge:claude
 ```
 

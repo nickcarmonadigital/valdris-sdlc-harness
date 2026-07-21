@@ -23,6 +23,9 @@ const EVENT_JOURNAL_SCHEMA = "uash.bridge-event-journal.v1";
 const RUN_SNAPSHOT_SCHEMA = "uash.bridge-run-snapshot.v1";
 const RUN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const OBSERVED_RUN_HEADS = new Map();
+const COMPLETED_RUN_VALIDATIONS = new Map();
+const MAX_COMPLETED_RUN_VALIDATIONS = 256;
+const COMPLETED_RUN_VALIDATION_METRICS = { executions: 0, cacheHits: 0 };
 const FINISH_LINE_GATE_TIMEOUT_MS = 120_000;
 const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BODY_BYTES = 768 * 1024;
@@ -725,10 +728,23 @@ async function readRun(runId) {
   run = validateRunRuntimeTrust(run);
   run = validatePersistedRunState(run, persistedEvents);
   if (run.status === "complete") {
-    const problems = finishLineProblems(run);
-    if (problems.length) {
-      throw new Error(`completed run failed trust revalidation: ${problems.join("; ")}`);
+    const validationFingerprint = completedRunValidationFingerprint(run, journalState);
+    if (COMPLETED_RUN_VALIDATIONS.get(run.id) !== validationFingerprint) {
+      COMPLETED_RUN_VALIDATION_METRICS.executions += 1;
+      const problems = finishLineProblems(run);
+      if (problems.length) {
+        COMPLETED_RUN_VALIDATIONS.delete(run.id);
+        throw new Error(`completed run failed trust revalidation: ${problems.join("; ")}`);
+      }
+      COMPLETED_RUN_VALIDATIONS.set(run.id, validationFingerprint);
+      while (COMPLETED_RUN_VALIDATIONS.size > MAX_COMPLETED_RUN_VALIDATIONS) {
+        COMPLETED_RUN_VALIDATIONS.delete(COMPLETED_RUN_VALIDATIONS.keys().next().value);
+      }
+    } else {
+      COMPLETED_RUN_VALIDATION_METRICS.cacheHits += 1;
     }
+  } else {
+    COMPLETED_RUN_VALIDATIONS.delete(run.id);
   }
   if (snapshotRepairRequired) await writeRun(run);
   return run;
@@ -1761,7 +1777,10 @@ function portablePrivacyReferencedPaths(artifactPath, document) {
 
   if (artifactPath === "run/packet.json") {
     for (const entry of Object.values(document.inputs || {})) add(entry?.path);
-    for (const entry of Array.isArray(document.gateArtifacts) ? document.gateArtifacts : []) add(entry?.path);
+    for (const entry of Array.isArray(document.gateArtifacts) ? document.gateArtifacts : []) {
+      add(entry?.path);
+      for (const supporting of Array.isArray(entry?.supportingArtifacts) ? entry.supportingArtifacts : []) add(supporting?.path);
+    }
   }
   if (artifactPath === "trajectory/trajectory.json") add(document.tracePath);
   if (artifactPath === "context/manifest.json") {
@@ -1860,6 +1879,44 @@ function portablePrivacyClosure(run) {
     }
   }
   return { paths: [...bounded].sort(), problems: [...new Set(problems)] };
+}
+
+function completedRunValidationFingerprint(run, journalState) {
+  const closure = portablePrivacyClosure(run);
+  const paths = new Set(closure.paths);
+  for (const artifact of run.artifacts || []) {
+    if (artifact.required && !artifact.skipped) paths.add(artifact.evidenceArtifact || artifact.path);
+  }
+  const artifacts = [];
+  for (const artifactPath of [...paths].sort()) {
+    const resolution = resolveArtifactPath(run, artifactPath, true);
+    if (resolution.problems.length || !resolution.realTarget) {
+      artifacts.push([artifactPath, "missing"]);
+      continue;
+    }
+    artifacts.push([artifactPath, sha256(readFileSync(resolution.realTarget))]);
+  }
+  let currentRuntimeIdentity = null;
+  if (runExpectsCommissionedRuntime(run) || canonicalCommissionedRuntime(artifactRootFor(run))) {
+    try {
+      const current = commissionedRuntimeForRun(run);
+      currentRuntimeIdentity = {
+        commit: current.commit,
+        runtimeSha256: current.binding.runtimeSha256,
+        setSha256: current.binding.setSha256,
+      };
+    } catch (error) {
+      currentRuntimeIdentity = { trustError: error instanceof Error ? error.message : String(error) };
+    }
+  }
+  return sha256(JSON.stringify({
+    journalHeadDigest: journalState.lastDigest || null,
+    reviewTrustSha256: run.reviewTrustSha256,
+    commissionedRuntimeSha256: run.commissionedRuntime?.runtimeSha256 || null,
+    currentRuntimeIdentity,
+    closureProblems: closure.problems,
+    artifacts,
+  }));
 }
 
 function enterpriseFinishLineProblems(run) {
@@ -2417,6 +2474,7 @@ async function handle(req, res) {
           bridgeIntegrityKeyConfigured: Boolean(process.env.UASH_BRIDGE_INTEGRITY_KEY),
           humanApprovalTokenConfigured: Boolean(process.env.UASH_HUMAN_APPROVAL_TOKEN),
           reviewTrustSha256Configured: true,
+          completedRunValidation: { ...COMPLETED_RUN_VALIDATION_METRICS, cachedRuns: COMPLETED_RUN_VALIDATIONS.size },
           repoRoot: REPO_ROOT,
         });
       }

@@ -42,6 +42,7 @@ UASH_APPROVAL_VALUE="$(openssl rand -base64 32)"
 export UASH_BRIDGE_INTEGRITY_KEY="$UASH_INTEGRITY_VALUE"
 export UASH_BRIDGE_ACCESS_TOKEN="$UASH_ACCESS_VALUE"
 export UASH_HUMAN_APPROVAL_TOKEN="$UASH_APPROVAL_VALUE"
+export UASH_REVIEW_TRUST_SHA256="<operator-reviewed-canonical-json-sha256>"
 npm run bridge:claude
 ```
 
@@ -58,6 +59,7 @@ function NewUashSecret {
 $env:UASH_BRIDGE_INTEGRITY_KEY = NewUashSecret
 $env:UASH_BRIDGE_ACCESS_TOKEN = NewUashSecret
 $env:UASH_HUMAN_APPROVAL_TOKEN = NewUashSecret
+$env:UASH_REVIEW_TRUST_SHA256 = "<operator-reviewed-canonical-json-sha256>"
 npm run bridge:claude
 ```
 
@@ -73,6 +75,8 @@ Generate and retain three **different** values of at least 32 bytes each. Do not
 The bridge fails closed at startup unless all three contain at least 32 bytes and are **pairwise different**. A normal Claude Code shell receives only `UASH_BRIDGE_ACCESS_TOKEN`. A human approval shell needs both the access token and the human approval token because approval is still a bridge write. The server-side UI proxy receives only `UASH_BRIDGE_ACCESS_TOKEN` (and `UASH_BRIDGE_URL` when the default loopback URL is not used). Finish-line validator subprocesses receive none of the three bridge credentials.
 
 Portable v0.8 additionally fails closed unless `UASH_REVIEW_TRUST_SHA256` is a 64-hex canonical-JSON digest matching both the live trust store and the store at the reviewed commit. The bridge seals its startup pin into authenticated immutable run configuration and propagates that nonsecret pin to child validators while removing all three credentials. Configure it as a protected CI/repository variable or in an operator-owned service environment. For governed key rotation, review the new trust store and update the protected pin out of band before accepting it; never derive or auto-update the authoritative value from the checkout in the same delivery-agent session.
+
+The browser-side proxy rejects upstream redirects and uses a 10-second deadline. Set `UASH_BRIDGE_PROXY_TIMEOUT_MS` to an integer from 100 through 120000 milliseconds only when local bridge latency requires a different bound.
 
 The bridge starts at:
 

@@ -6,6 +6,7 @@ import {
   copyFileSync,
   existsSync,
   lstatSync,
+  mkdtempSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -14,9 +15,11 @@ import {
   rmdirSync,
 } from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
 import { assertCanonicalRepoRelativePath } from "./proof-runner.mjs";
 import { validatePrivacy } from "./privacy-gate.mjs";
+import { EVIDENCE_NAMESPACE_SET } from "./evidence-namespaces.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const MANIFEST_NAME = "valdris-run-artifacts.json";
@@ -29,10 +32,6 @@ const MAX_BUNDLE_ENTRIES = 1024;
 const MAX_BUNDLE_DEPTH = 16;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
-const ALLOWED_ARTIFACT_ROOTS = new Set([
-  "ai", "approvals", "cloud", "context", "design", "domain", "evals", "foundation", "goal", "graph",
-  "handoff", "production", "proof", "qa", "rca", "review", "run", "self_heal", "smoke", "trajectory", "waivers",
-]);
 const SAFE_CHILD_ENV = new Set([
   "APPDATA", "CI", "ComSpec", "GITHUB_ACTIONS", "HOME", "HOMEDRIVE", "HOMEPATH", "LANG", "LC_ALL",
   "LOCALAPPDATA", "PATH", "PATHEXT", "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMW6432",
@@ -102,7 +101,7 @@ function assertAllowedArtifactPath(relativePath) {
     throw new Error(`artifact bundle path is too long for portable hydration: ${relativePath}`);
   }
   const [root] = relativePath.split("/");
-  if (!ALLOWED_ARTIFACT_ROOTS.has(root)) throw new Error(`artifact bundle path is outside the evidence namespaces: ${relativePath}`);
+  if (!EVIDENCE_NAMESPACE_SET.has(root)) throw new Error(`artifact bundle path is outside the evidence namespaces: ${relativePath}`);
 }
 
 function walkBundle(root) {
@@ -226,28 +225,123 @@ function ensureSafeParent(repoRoot, relativePath, createdDirectories) {
   }
 }
 
-function hydrateArtifacts(repoRoot, bundleRoot, files) {
+function hydrationTransaction() {
+  return { createdFiles: [], createdDirectories: [] };
+}
+
+function rollbackHydration(transaction) {
+  for (const file of [...transaction.createdFiles].reverse()) rmSync(file, { force: true });
+  for (const directory of [...transaction.createdDirectories].reverse()) {
+    try { rmdirSync(directory); } catch {}
+  }
+  transaction.createdFiles.length = 0;
+  transaction.createdDirectories.length = 0;
+}
+
+function hydrateArtifacts(repoRoot, bundleRoot, files, transaction = hydrationTransaction()) {
   const destinations = new Map(files.map((file) => [file.path, assertSafeDestination(repoRoot, file.path)]));
-  const createdFiles = [];
-  const createdDirectories = [];
   try {
     for (const file of files) {
-      ensureSafeParent(repoRoot, file.path, createdDirectories);
+      ensureSafeParent(repoRoot, file.path, transaction.createdDirectories);
       const source = path.join(bundleRoot, ...file.path.split("/"));
       const destination = destinations.get(file.path);
       copyFileSync(source, destination, fsConstants.COPYFILE_EXCL);
-      createdFiles.push(destination);
+      transaction.createdFiles.push(destination);
       const stats = lstatSync(destination);
       if (!stats.isFile() || stats.isSymbolicLink() || stats.size !== file.size || sha256(readFileSync(destination)) !== file.sha256) {
         throw new Error(`hydrated artifact failed its post-copy integrity check: ${file.path}`);
       }
     }
   } catch (error) {
-    for (const file of createdFiles.reverse()) rmSync(file, { force: true });
-    for (const directory of createdDirectories.reverse()) {
-      try { rmdirSync(directory); } catch {}
-    }
+    rollbackHydration(transaction);
     throw error;
+  }
+  return () => rollbackHydration(transaction);
+}
+
+function installInterruptionRollback(transaction) {
+  const handlers = new Map();
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    const handler = () => {
+      rollbackHydration(transaction);
+      for (const [registeredSignal, registeredHandler] of handlers) process.removeListener(registeredSignal, registeredHandler);
+      process.exit(signal === "SIGINT" ? 130 : 143);
+    };
+    handlers.set(signal, handler);
+    process.once(signal, handler);
+  }
+  return () => {
+    for (const [signal, handler] of handlers) process.removeListener(signal, handler);
+  };
+}
+
+function nullSeparatedPaths(value) {
+  return String(value || "").split("\0").filter(Boolean).map((entry) => entry.split(path.sep).join("/"));
+}
+
+function assertSourceCheckoutStillBound(repoRoot, expectedHead, acceptedFiles) {
+  const currentHead = git(repoRoot, ["rev-parse", "HEAD"]).trim().toLowerCase();
+  if (currentHead !== expectedHead) throw new Error("source checkout HEAD changed during artifact validation");
+  for (const args of [["diff", "--quiet", "--", "."], ["diff", "--cached", "--quiet", "--", "."]]) {
+    const result = git(repoRoot, args, { allowFailure: true });
+    if (result.status !== 0) throw new Error("source checkout tracked state changed during artifact validation");
+  }
+  const actual = new Set([
+    ...nullSeparatedPaths(git(repoRoot, ["ls-files", "--others", "--exclude-standard", "-z", "--", "."])),
+    ...nullSeparatedPaths(git(repoRoot, ["ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--", "."])),
+  ]);
+  const expected = new Set(acceptedFiles.map((file) => file.path));
+  if (actual.size !== expected.size || [...actual].some((entry) => !expected.has(entry))) {
+    throw new Error("source checkout gained unexpected files during artifact validation");
+  }
+}
+
+function packetClosurePaths(bundleRoot, manifest, packet) {
+  const declared = new Set(manifest.files.map((file) => file.path));
+  const closure = new Set(["run/packet.json"]);
+  const pending = [];
+  const add = (value) => {
+    if (typeof value !== "string" || !declared.has(value) || closure.has(value)) return;
+    closure.add(value);
+    pending.push(value);
+  };
+  for (const input of Object.values(packet.inputs || {})) add(input?.path);
+  for (const artifact of Array.isArray(packet.gateArtifacts) ? packet.gateArtifacts : []) {
+    add(artifact?.path);
+    for (const supporting of Array.isArray(artifact?.supportingArtifacts) ? artifact.supportingArtifacts : []) add(supporting?.path);
+  }
+  if (!Array.isArray(packet.artifactInventory)) throw new Error("bundled run packet must contain a digest-bound artifactInventory");
+  for (const entry of packet.artifactInventory) add(entry?.path);
+  pending.unshift("run/packet.json");
+  const collectBoundPaths = (value) => {
+    if (typeof value === "string") add(value);
+    else if (Array.isArray(value)) for (const entry of value) collectBoundPaths(entry);
+    else if (value && typeof value === "object") for (const entry of Object.values(value)) collectBoundPaths(entry);
+  };
+  while (pending.length > 0) {
+    const relativePath = pending.shift();
+    if (!relativePath.endsWith(".json")) continue;
+    let document;
+    try { document = JSON.parse(readFileSync(path.join(bundleRoot, ...relativePath.split("/")), "utf8")); }
+    catch { continue; }
+    collectBoundPaths(document);
+  }
+  const expected = [...closure].sort();
+  const actual = manifest.files.map((file) => file.path);
+  if (JSON.stringify(expected) !== JSON.stringify(actual)) {
+    throw new Error("artifact bundle inventory must equal the transitive digest-bound run-packet closure");
+  }
+}
+
+function withValidationWorktree(repoRoot, head, callback) {
+  const temporaryRoot = mkdtempSync(path.join(os.tmpdir(), "valdris-run-acceptance-"));
+  const worktree = path.join(temporaryRoot, "checkout");
+  try {
+    git(repoRoot, ["-c", "core.autocrlf=false", "worktree", "add", "--detach", worktree, head]);
+    return callback(worktree);
+  } finally {
+    git(repoRoot, ["worktree", "remove", "--force", worktree], { allowFailure: true });
+    rmSync(temporaryRoot, { recursive: true, force: true });
   }
 }
 
@@ -307,30 +401,53 @@ async function main() {
   try { packet = JSON.parse(readFileSync(path.join(bundleRoot, ...packetEntry.path.split("/")), "utf8")); }
   catch { throw new Error("bundled run/packet.json must be valid JSON"); }
   if (packet.commit !== head) throw new Error("bundled run packet commit does not match the exact source checkout HEAD");
-
-  hydrateArtifacts(repoRoot, bundleRoot, manifest.files);
-  const privacy = validatePrivacy(repoRoot, { includes: manifest.files.map((file) => file.path) });
-  if (!privacy.ok) throw new Error(`hydrated artifact privacy validation failed: ${privacy.findings.map((finding) => `${finding.category}:${finding.fingerprint}`).join(", ")}`);
-
+  for (const file of manifest.files) assertSafeDestination(repoRoot, file.path);
+  packetClosurePaths(bundleRoot, manifest, packet);
+  const bundlePrivacy = validatePrivacy(bundleRoot, { includes: manifest.files.map((file) => file.path) });
+  if (!bundlePrivacy.ok) throw new Error(`artifact bundle privacy validation failed: ${bundlePrivacy.findings.map((finding) => `${finding.category}:${finding.fingerprint}`).join(", ")}`);
   const env = childEnvironment(trustPin);
-  const packRoot = path.join(repoRoot, ".valdris-harness");
-  const script = (name) => path.join(SCRIPT_DIR, name);
-  const gates = [
-    ["knowledge vault", "okf-vault-gate.mjs", ["--repo", packRoot]],
-    ["skill registry", "skill-registry-gate.mjs", ["--repo", packRoot]],
-    ["catalog integrity", "catalog-integrity-gate.mjs", ["--repo", packRoot]],
-    ["public provenance", "provenance-gate.mjs", ["--repo", packRoot]],
-    ["project neutrality", "neutrality-gate.mjs", ["--repo", packRoot]],
-    ["pack privacy", "privacy-gate.mjs", ["--repo", packRoot]],
-    ["schema compatibility", "schema-compat-gate.mjs", ["--repo", packRoot]],
-    ["enterprise and AI assurance", "enterprise-ai-gate-all.mjs", ["--repo", repoRoot]],
-  ];
-  if (manifest.files.some((file) => file.path === "rca/rca.json")) gates.push(["RCA", "rca-gate.mjs", ["--repo", repoRoot]]);
-  gates.push(
-    ["independent review", "review-gate.mjs", ["--repo", repoRoot]],
-    ["final run packet", "run-packet-gate.mjs", ["--repo", repoRoot]],
-  );
-  for (const [label, fileName, gateArgs] of gates) runGate(script(fileName), gateArgs, repoRoot, env, label);
+  let gates = [];
+  const sourceWorktreeRoot = realpathSync(git(repoRoot, ["rev-parse", "--show-toplevel"]).trim());
+  const targetWithinWorktree = path.relative(sourceWorktreeRoot, repoRoot);
+  if (targetWithinWorktree.startsWith("..") || path.isAbsolute(targetWithinWorktree)) throw new Error("commissioned target must stay inside its Git worktree");
+  withValidationWorktree(repoRoot, head, (validationWorktreeRoot) => {
+    const validationRoot = path.join(validationWorktreeRoot, targetWithinWorktree);
+    hydrateArtifacts(validationRoot, bundleRoot, manifest.files);
+    const privacy = validatePrivacy(validationRoot, { includes: manifest.files.map((file) => file.path) });
+    if (!privacy.ok) throw new Error(`staged artifact privacy validation failed: ${privacy.findings.map((finding) => `${finding.category}:${finding.fingerprint}`).join(", ")}`);
+    const packRoot = path.join(validationRoot, ".valdris-harness");
+    const script = (name) => path.join(packRoot, "scripts", name);
+    gates = [
+      ["knowledge vault", "okf-vault-gate.mjs", ["--repo", packRoot]],
+      ["skill registry", "skill-registry-gate.mjs", ["--repo", packRoot]],
+      ["catalog integrity", "catalog-integrity-gate.mjs", ["--repo", packRoot]],
+      ["public provenance", "provenance-gate.mjs", ["--repo", packRoot]],
+      ["project neutrality", "neutrality-gate.mjs", ["--repo", packRoot]],
+      ["pack privacy", "privacy-gate.mjs", ["--repo", packRoot]],
+      ["schema compatibility", "schema-compat-gate.mjs", ["--repo", packRoot]],
+      ["enterprise and AI assurance", "enterprise-ai-gate-all.mjs", ["--repo", validationRoot]],
+    ];
+    if (manifest.files.some((file) => file.path === "rca/rca.json")) gates.push(["RCA", "rca-gate.mjs", ["--repo", validationRoot]]);
+    gates.push(
+      ["independent review", "review-gate.mjs", ["--repo", validationRoot]],
+      ["final run packet", "run-packet-gate.mjs", ["--repo", validationRoot]],
+    );
+    for (const [label, fileName, gateArgs] of gates) runGate(script(fileName), gateArgs, validationRoot, env, label);
+  });
+  const finalTransaction = hydrationTransaction();
+  const removeInterruptionHandlers = installInterruptionRollback(finalTransaction);
+  try {
+    const reboundHead = git(repoRoot, ["rev-parse", "HEAD"]).trim().toLowerCase();
+    if (reboundHead !== head) throw new Error("source checkout HEAD changed before artifact commit");
+    assertCleanSourceCheckout(repoRoot);
+    hydrateArtifacts(repoRoot, bundleRoot, manifest.files, finalTransaction);
+    assertSourceCheckoutStillBound(repoRoot, head, manifest.files);
+  } catch (error) {
+    rollbackHydration(finalTransaction);
+    throw error;
+  } finally {
+    removeInterruptionHandlers();
+  }
 
   console.log(JSON.stringify({
     ok: true,

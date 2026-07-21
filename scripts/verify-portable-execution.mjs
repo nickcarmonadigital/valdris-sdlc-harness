@@ -812,6 +812,23 @@ function main() {
       "reviewed portable proof validation failed",
     );
 
+    const malformedJsonPath = path.join(root, "proof", "malformed-subject.json");
+    writeFileSync(malformedJsonPath, "{\"schema\":", "utf8");
+    const malformedJsonSha256 = digest(readFileSync(malformedJsonPath));
+    const malformedJsonReview = structuredClone(reviewDocument);
+    malformedJsonReview.subject = { artifact: "proof/malformed-subject.json", sha256: malformedJsonSha256 };
+    malformedJsonReview.roleProvenance.implementer.evidence = { kind: "artifact", path: "proof/malformed-subject.json", sha256: malformedJsonSha256 };
+    malformedJsonReview.roleProvenance.verifier.evidence = { kind: "artifact", path: "proof/malformed-subject.json", sha256: malformedJsonSha256 };
+    const malformedJsonPayload = canonicalJson(reviewAttestationPayload(malformedJsonReview));
+    malformedJsonReview.attestation.payloadSha256 = digest(malformedJsonPayload);
+    malformedJsonReview.attestation.signature = signPayload(null, Buffer.from(malformedJsonPayload, "utf8"), privateKey).toString("base64");
+    writeJson(path.join(root, "review", "malformed-json-subject.json"), malformedJsonReview);
+    expectFailure(
+      run("review-gate.mjs", ["--repo", root, "--file", "review/malformed-json-subject.json"], { cwd: root, scriptDir: reviewRuntimeScripts }),
+      "signed review over malformed JSON",
+      "declares JSON but contains malformed JSON",
+    );
+
     const missingScout = structuredClone(reviewDocument);
     delete missingScout.roleProvenance.scout;
     writeJson(path.join(root, "review", "missing-scout.json"), missingScout);

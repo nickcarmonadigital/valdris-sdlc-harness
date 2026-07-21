@@ -16,6 +16,19 @@ const VERIFY_BRIDGE_INTEGRITY_KEY = "verify-bridge-integrity-key-32-bytes-minimu
 const VERIFY_HUMAN_APPROVAL_TOKEN = "verify-human-approval-token-32-bytes-minimum";
 const VERIFY_REVIEW_TRUST_SHA256 = reviewTrustStoreSha256(JSON.parse(readFileSync(path.join(root, "controls", "review-trust.v1.json"), "utf8")));
 process.env.UASH_REVIEW_TRUST_SHA256 = VERIFY_REVIEW_TRUST_SHA256;
+const SAFE_VERIFIER_ENV_NAMES = new Set([
+  "APPDATA", "ComSpec", "HOME", "HOMEDRIVE", "HOMEPATH", "LANG", "LC_ALL", "LOCALAPPDATA", "PATH", "PATHEXT",
+  "PROGRAMDATA", "PROGRAMFILES", "PROGRAMFILES(X86)", "PROGRAMW6432", "SHELL", "SystemDrive", "SystemRoot", "TEMP", "TERM",
+  "TMP", "TMPDIR", "USERPROFILE", "WINDIR",
+].map((name) => name.toLowerCase()));
+
+function cleanVerifierEnv(overrides = {}) {
+  const env = {};
+  for (const [name, value] of Object.entries(process.env)) {
+    if (SAFE_VERIFIER_ENV_NAMES.has(name.toLowerCase()) && typeof value === "string") env[name] = value;
+  }
+  return { ...env, ...overrides };
+}
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
@@ -49,7 +62,7 @@ async function waitForHealth(port, timeoutMs = 8000) {
 }
 
 async function stopProcess(child) {
-  if (!child || child.killed) return;
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
   await new Promise((resolve) => {
     const timeout = setTimeout(resolve, 1500);
     child.once("exit", () => {
@@ -61,6 +74,9 @@ async function stopProcess(child) {
 }
 
 async function waitForExit(child, timeoutMs = 4000) {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return { exited: true, code: child.exitCode };
+  }
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve({ exited: false, code: null }), timeoutMs);
     child.once("close", (code) => {
@@ -466,6 +482,10 @@ try {
       && content.includes("Possession of the access token alone cannot self-approve"),
     `generated ${label} runtime prompt missing the three-credential least-privilege boundary`);
   }
+  assert(generatedClaudeCommand.includes("run event commands from the target repository root")
+    && generatedClaudeCommand.includes(".valdris-harness/scripts/uash-emit-event.mjs")
+    && !generatedClaudeCommand.includes("run event commands from the generated pack root"),
+  "generated Claude runtime prompt instructs operators to run from the wrong root");
   await readFile(path.join(generatedOut, "docs", "Code Intelligence Graph.md"), "utf8");
   await readFile(path.join(generatedOut, "docs", "GitNexus Code Intelligence.md"), "utf8");
   const generatedFoundationDoc = await readFile(path.join(generatedOut, "docs", "Good Looks Like Foundation.md"), "utf8");
@@ -947,10 +967,11 @@ try {
     && legacyBridgeLog.includes(eventOnlyLegacyDirectory),
   "pre-v0.8 raw, hash-shaped, or event-only state did not trigger the explicit migration boundary");
 
-  const keylessEnv = { ...process.env, UASH_BRIDGE_PORT: String(port + 3), UASH_DATA_DIR: path.join(tempRoot, "keyless-runs") };
-  delete keylessEnv.UASH_BRIDGE_ACCESS_TOKEN;
-  delete keylessEnv.UASH_BRIDGE_INTEGRITY_KEY;
-  delete keylessEnv.UASH_HUMAN_APPROVAL_TOKEN;
+  const keylessEnv = cleanVerifierEnv({
+    UASH_BRIDGE_PORT: String(port + 3),
+    UASH_DATA_DIR: path.join(tempRoot, "keyless-runs"),
+    UASH_REVIEW_TRUST_SHA256: VERIFY_REVIEW_TRUST_SHA256,
+  });
   const keylessBridge = spawn(node, ["scripts/claude-code-bridge.mjs"], { cwd: root, env: keylessEnv, stdio: ["ignore", "pipe", "pipe"] });
   let keylessBridgeLog = "";
   keylessBridge.stdout.on("data", (chunk) => (keylessBridgeLog += chunk));
@@ -963,14 +984,13 @@ try {
     ["missing", undefined, "UASH_REVIEW_TRUST_SHA256 is required", 10],
     ["malformed", "not-a-sha256-digest", "UASH_REVIEW_TRUST_SHA256 must be a 64-character SHA-256 digest", 11],
   ]) {
-    const reviewTrustEnv = {
-      ...process.env,
+    const reviewTrustEnv = cleanVerifierEnv({
       UASH_BRIDGE_PORT: String(port + offset),
       UASH_DATA_DIR: path.join(tempRoot, `${label}-review-trust-pin`),
       UASH_BRIDGE_ACCESS_TOKEN: VERIFY_BRIDGE_ACCESS_TOKEN,
       UASH_BRIDGE_INTEGRITY_KEY: VERIFY_BRIDGE_INTEGRITY_KEY,
       UASH_HUMAN_APPROVAL_TOKEN: VERIFY_HUMAN_APPROVAL_TOKEN,
-    };
+    });
     if (reviewTrustValue === undefined) delete reviewTrustEnv.UASH_REVIEW_TRUST_SHA256;
     else reviewTrustEnv.UASH_REVIEW_TRUST_SHA256 = reviewTrustValue;
     const reviewTrustBridge = spawn(node, ["scripts/claude-code-bridge.mjs"], { cwd: root, env: reviewTrustEnv, stdio: ["ignore", "pipe", "pipe"] });
@@ -985,15 +1005,15 @@ try {
   for (const [index, weakName] of ["UASH_BRIDGE_INTEGRITY_KEY", "UASH_BRIDGE_ACCESS_TOKEN", "UASH_HUMAN_APPROVAL_TOKEN"].entries()) {
     const weakBridge = spawn(node, ["scripts/claude-code-bridge.mjs"], {
       cwd: root,
-      env: {
-        ...process.env,
+      env: cleanVerifierEnv({
         UASH_BRIDGE_PORT: String(port + 7 + index),
         UASH_DATA_DIR: path.join(tempRoot, `weak-credential-${index}`),
         UASH_BRIDGE_ACCESS_TOKEN: VERIFY_BRIDGE_ACCESS_TOKEN,
         UASH_BRIDGE_INTEGRITY_KEY: VERIFY_BRIDGE_INTEGRITY_KEY,
         UASH_HUMAN_APPROVAL_TOKEN: VERIFY_HUMAN_APPROVAL_TOKEN,
+        UASH_REVIEW_TRUST_SHA256: VERIFY_REVIEW_TRUST_SHA256,
         [weakName]: `weak-${index}`,
-      },
+      }),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let weakBridgeLog = "";
@@ -1023,12 +1043,12 @@ try {
     };
     const equalBridge = spawn(node, ["scripts/claude-code-bridge.mjs"], {
       cwd: root,
-      env: {
-        ...process.env,
+      env: cleanVerifierEnv({
         ...credentials,
+        UASH_REVIEW_TRUST_SHA256: VERIFY_REVIEW_TRUST_SHA256,
         UASH_BRIDGE_PORT: String(port + 4 + credentialCases.findIndex((entry) => entry[0] === leftName && entry[1] === rightName)),
         UASH_DATA_DIR: path.join(tempRoot, `equal-credentials-${leftName}-${rightName}`),
-      },
+      }),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let equalBridgeLog = "";
@@ -1272,7 +1292,7 @@ try {
     "VERIFY-GENERATED-EMITTER",
     "node.entered",
     "intake",
-    "generated emitter smoke",
+    "--hyphen-leading generated emitter smoke",
     "--artifact",
     "run/intake.json",
     "--status",

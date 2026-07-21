@@ -1064,6 +1064,10 @@ function hardenGeneratedConnectorPrompt(content, agentName) {
     .replace(
       "Only a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator grant requires the operator-held bridge token:",
       "Only a real operator/human approval event may grant/deny approval. Agents must not self-approve; the operator runs the grant from a separate shell holding both the bridge access token and the distinct human approval token:",
+    )
+    .replace(
+      "Commissioned packs include `scripts/uash-emit-event.mjs`; run event commands from the generated pack root or from a repo where that script has been installed.",
+      "Commissioned packs include `.valdris-harness/scripts/uash-emit-event.mjs`; run event commands from the target repository root, invoke that nested script path, and pass the target root as `--artifact-root`.",
     );
 }
 
@@ -1615,7 +1619,7 @@ function generatePack(args, detected, answers) {
     fs.writeFileSync(target, fs.readFileSync(target, "utf8").replaceAll("Production Readiness 13 Layers", "Production Assurance: 13 Domains"), "utf8");
   }
   writePackText("runs/_run-template/README.md", renderRunTemplate(answers, adapter.finishLineAssurance.requiredArtifacts) + renderFourRoleProtocol() + renderLayerZeroProtocol());
-  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs", "discovery-loader-contract.mjs", "proof-runner.mjs", "rca-gate.mjs", "review-gate.mjs", "run-create.mjs", "run-packet-gate.mjs", "run-acceptance.mjs"]) {
+  for (const scriptName of ["uash-emit-event.mjs", "uash-write-proof.mjs", "code-intelligence-scan.mjs", "code-intelligence-local-scan.mjs", "code-intelligence-gate.mjs", "anchor-gate.mjs", "code-intelligence-gate-all.mjs", "control-gate-lib.mjs", "catalog-integrity-gate.mjs", "provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs", "intake-gate.mjs", "workload-classifier-lib.mjs", "workload-classification-gate.mjs", "foundation-gate.mjs", "route-request.mjs", "route-gate.mjs", "production-layer-gate.mjs", "ai-assurance-gate.mjs", "domain-assurance-gate.mjs", "goal-gate.mjs", "goal-transition.mjs", "eval-gate.mjs", "trajectory-gate.mjs", "smoke-gate.mjs", "waiver-gate.mjs", "context-manifest-gate.mjs", "skill-registry-gate.mjs", "install-codex-skills.mjs", "enterprise-ai-gate-all.mjs", "okf-vault-gate.mjs", "discovery-loader-contract.mjs", "evidence-namespaces.mjs", "proof-runner.mjs", "rca-gate.mjs", "review-gate.mjs", "run-create.mjs", "run-packet-gate.mjs", "run-acceptance.mjs"]) {
     const scriptSource = path.join(SCRIPT_DIR, scriptName);
     const scriptTarget = path.join(out, "scripts", scriptName);
     mkdirp(path.dirname(scriptTarget));

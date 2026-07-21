@@ -81,6 +81,7 @@ const RELEASE_ARTIFACT_DETECTOR_IDS = new Set([
   "github-fine-grained-token",
   "provider-key",
   "bearer-token",
+  "secret-assignment",
   "connection-credential",
   "windows-user-path",
   "unix-user-path",
@@ -345,7 +346,24 @@ function isAllowedMatch(detector, match, relativePath) {
 }
 
 function isAllowedReleaseArtifactMatch(detector, match, relativePath) {
+  if (detector.id === "secret-assignment") {
+    const assignedValue = String(match[1] || "");
+    const prefix = String(match[0] || "").slice(0, String(match[0] || "").lastIndexOf(assignedValue));
+    const quotedLiteral = /(?:\\+)?["']$/.test(prefix);
+    if (!quotedLiteral) {
+      if (assignedValue.startsWith("==")) return true;
+      if (assignedValue === "same-origin" || isExactSecretPlaceholder(assignedValue)) return true;
+      if (/^(?:undefined|null|true|false|configured|required|missing)$/i.test(assignedValue)) return true;
+      if (isNonMaterialSecretReference(assignedValue) && /[.\[(]/.test(assignedValue)) return true;
+      if (/^[A-Za-z_$]\.[A-Za-z_$][A-Za-z0-9_$?.()[\]|&!=:+*/-]*$/.test(assignedValue)) return true;
+      return false;
+    }
+  }
   if (isAllowedMatch(detector, match, relativePath)) return true;
+  if (detector.id === "secret-assignment") {
+    const assignedValue = String(match[1] || "");
+    if (assignedValue === "same-origin") return true;
+  }
   if (detector.id === "provider-key" && match[0].toLowerCase() === ["sk", "async", "storage", "instance"].join("-")) return true;
   if (detector.category === "local-user-path" && /(?:^|\/)required-server-files\.(?:json|js)$/i.test(relativePath)) return true;
   if (detector.category === "local-user-path" && /^(?:[A-Za-z]:[\\/]ROOT[\\/]|\/ROOT\/)/.test(match[0])) return true;

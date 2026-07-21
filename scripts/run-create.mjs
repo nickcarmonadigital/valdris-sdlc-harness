@@ -1,10 +1,17 @@
 #!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileSha256, readJson, resolveArtifactPath, safeIdentifier } from "./proof-runner.mjs";
 import { reviewRoleProvenanceSha256 } from "./review-gate.mjs";
 import { CANONICAL_INPUT_PATHS, packetBindings, reviewEvidenceBundle, reviewEvidenceBundleSha256, routeRequiredGates, RUN_PACKET_SCHEMA, supportingArtifactsForGate, validateRunPacket, validationRuntimeBinding } from "./run-packet-gate.mjs";
+import { EVIDENCE_NAMESPACES } from "./evidence-namespaces.mjs";
+
+const MAX_INVENTORY_FILES = 512;
+const MAX_INVENTORY_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_INVENTORY_BYTES = 100 * 1024 * 1024;
 
 function normalizedRelative(repoRoot, file) {
   return path.relative(repoRoot, file).split(path.sep).join("/");
@@ -43,6 +50,39 @@ function parseArgs(argv) {
 
 function usage() {
   return "Usage: node scripts/run-create.mjs --repo . --run-id ID --commit SHA --environment NAME --proof proof/portable.json [--review review/review.json | --print-evidence-bundle] [--rca rca/rca.json] [--gate name=path] [--intake run/intake.json] [--route run/route.json] [--classification run/workload-classification.json] [--goal goal/goal.json] [--output run/packet.json]";
+}
+
+function isTracked(repoRoot, relativePath) {
+  return spawnSync("git", ["-C", repoRoot, "ls-files", "--error-unmatch", "--", relativePath], {
+    encoding: "utf8", shell: false, windowsHide: true, stdio: ["ignore", "ignore", "ignore"], timeout: 30_000,
+  }).status === 0;
+}
+
+function artifactInventory(repoRoot, excludedPaths = []) {
+  const excluded = new Set(excludedPaths);
+  const inventory = [];
+  let totalBytes = 0;
+  const visit = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+      const relativePath = normalizedRelative(repoRoot, target);
+      const stats = lstatSync(target);
+      if (stats.isSymbolicLink()) throw new Error(`artifact inventory must not contain symbolic links: ${relativePath}`);
+      if (stats.isDirectory()) visit(target);
+      else if (stats.isFile() && !excluded.has(relativePath) && !isTracked(repoRoot, relativePath)) {
+        if (stats.size > MAX_INVENTORY_FILE_BYTES) throw new Error(`artifact inventory file exceeds ${MAX_INVENTORY_FILE_BYTES} bytes: ${relativePath}`);
+        totalBytes += stats.size;
+        if (totalBytes > MAX_INVENTORY_BYTES) throw new Error(`artifact inventory exceeds ${MAX_INVENTORY_BYTES} bytes`);
+        inventory.push({ path: relativePath, sha256: fileSha256(target), size: stats.size });
+        if (inventory.length > MAX_INVENTORY_FILES) throw new Error(`artifact inventory exceeds ${MAX_INVENTORY_FILES} files`);
+      }
+    }
+  };
+  for (const root of EVIDENCE_NAMESPACES) {
+    const directory = path.join(repoRoot, root);
+    if (existsSync(directory)) visit(directory);
+  }
+  return inventory.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
 }
 
 function main() {
@@ -109,6 +149,7 @@ function main() {
     validationRuntime: validationRuntimeBinding(repoRoot, args.commit),
     requiredGates,
     gateArtifacts,
+    artifactInventory: artifactInventory(repoRoot, [args.output, args.review].filter(Boolean)),
   };
   if (args.printEvidenceBundle) {
     const evidenceBundle = reviewEvidenceBundle(packet);

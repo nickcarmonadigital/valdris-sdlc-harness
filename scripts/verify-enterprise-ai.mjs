@@ -424,6 +424,12 @@ async function main() {
     writeJson(root, "ai/assurance.json", { schema: "uash.ai-assurance.v1", generatedAt: NOW, runId: "VERIFY-001", status: "skipped", profile: PROFILE, ...downgradedBinding, environment: ENVIRONMENT, commit: COMMIT, workloadDetected: false, aiProfile: "AI-0", features: downgradedRoute.ai.features, controls: [], skipReason: "Rewritten intake claims no AI workload." });
     writeJson(root, "domain/assurance.json", { schema: "uash.domain-assurance.v1", generatedAt: NOW, runId: "VERIFY-001", status: "skipped", profile: PROFILE, ...downgradedBinding, environment: ENVIRONMENT, commit: COMMIT, packs: [], skipReason: "Rewritten intake has no product domain pack." });
     writeJson(root, "evals/results.json", baselineEval);
+
+    const detachedEvalIdentity = structuredClone(baselineEval);
+    detachedEvalIdentity.environment = "different-environment";
+    writeJson(root, "evals/results.json", detachedEvalIdentity);
+    negative.push(expectFailure(root, "eval-gate.mjs", "eval identity detached from context manifest", "runId/profile/commit/environment must match context/manifest.json"));
+    writeJson(root, "evals/results.json", baselineEval);
     negative.push(expectFailure(root, "enterprise-ai-gate-all.mjs", "intake and route rewrite downgrade", "goal objective/requestSha256 must remain bound"));
     writeJson(root, "run/intake.json", intake);
     writeJson(root, "run/workload-classification.json", baseline.classification);

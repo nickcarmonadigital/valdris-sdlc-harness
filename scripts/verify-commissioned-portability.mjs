@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign as signPayload } from "node:crypto";
-import { copyFileSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,9 @@ const VERIFY_VALUES = Object.freeze({
 const BRIDGE_ACCESS_TOKEN = VERIFY_VALUES.access;
 const BRIDGE_INTEGRITY_KEY = VERIFY_VALUES.integrity;
 const HUMAN_APPROVAL_TOKEN = VERIFY_VALUES.human;
+const PORTABILITY_WALL_CLOCK_MS = Number(process.env.VALDRIS_PORTABILITY_TIMEOUT_MS || 600_000);
+const PORTABILITY_STARTED_AT = Date.now();
+const ACTIVE_CHILDREN = new Set();
 const ACCEPTANCE_ARTIFACT_ROOTS = Object.freeze([
   "ai", "approvals", "cloud", "context", "design", "domain", "evals", "foundation", "goal", "graph",
   "handoff", "production", "proof", "qa", "rca", "review", "run", "self_heal", "smoke", "trajectory", "waivers",
@@ -45,12 +48,17 @@ function readJson(file) {
 }
 
 function run(command, args, cwd, options = {}) {
+  const remaining = PORTABILITY_WALL_CLOCK_MS - (Date.now() - PORTABILITY_STARTED_AT);
+  if (remaining <= 0) throw new Error(`commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit`);
   return spawnSync(command, args, {
     cwd,
     ...(options.env ? { env: options.env } : {}),
     encoding: "utf8",
     shell: false,
+    windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: Math.min(options.timeout || 120_000, remaining),
+    maxBuffer: 8 * 1024 * 1024,
   });
 }
 
@@ -59,7 +67,7 @@ function runNode(script, args, cwd, options = {}) {
 }
 
 function expectOk(result, label) {
-  assert(result.status === 0, `${label} failed:\n${result.stdout || ""}\n${result.stderr || ""}`);
+  assert(result.status === 0, `${label} failed${result.error ? `: ${result.error.message}` : ""}:\n${result.stdout || ""}\n${result.stderr || ""}`);
   return result;
 }
 
@@ -68,6 +76,33 @@ function expectFailure(result, label, expectedText) {
   assert(result.status !== 0, `${label} was unexpectedly accepted`);
   if (expectedText) assert(output.includes(expectedText), `${label} failed for the wrong reason; expected ${JSON.stringify(expectedText)} in:\n${output}`);
   return result;
+}
+
+function trackedChild(child) {
+  ACTIVE_CHILDREN.add(child);
+  child.once("exit", () => ACTIVE_CHILDREN.delete(child));
+  return child;
+}
+
+async function stopProcess(child, label = "bridge") {
+  if (!child || child.exitCode !== null || child.signalCode !== null) return;
+  const waitForExit = (timeoutMs) => new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(false), timeoutMs);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve(true);
+    });
+  });
+  child.kill("SIGTERM");
+  if (await waitForExit(3_000)) return;
+  child.kill("SIGKILL");
+  if (!await waitForExit(3_000)) throw new Error(`${label} did not exit after forced shutdown`);
+}
+
+function requestSignal(timeoutMs = 10_000) {
+  const remaining = PORTABILITY_WALL_CLOCK_MS - (Date.now() - PORTABILITY_STARTED_AT);
+  if (remaining <= 0) throw new Error(`commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit`);
+  return AbortSignal.timeout(Math.min(timeoutMs, remaining));
 }
 
 function git(repo, args) {
@@ -146,6 +181,7 @@ async function postJson(port, pathname, body, expectedStatus = 200, headers = {}
     method: "POST",
     headers: { "content-type": "application/json", "x-uash-bridge-token": BRIDGE_ACCESS_TOKEN, ...headers },
     body: JSON.stringify(body),
+    signal: requestSignal(),
   });
   const parsed = JSON.parse(await response.text());
   assert(response.status === expectedStatus, `bridge ${pathname} expected ${expectedStatus}, got ${response.status}: ${JSON.stringify(parsed)}`);
@@ -155,6 +191,7 @@ async function postJson(port, pathname, body, expectedStatus = 200, headers = {}
 async function getJson(port, pathname, expectedStatus = 200) {
   const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
     headers: { "x-uash-bridge-token": BRIDGE_ACCESS_TOKEN },
+    signal: requestSignal(),
   });
   const parsed = JSON.parse(await response.text());
   assert(response.status === expectedStatus, `bridge ${pathname} expected ${expectedStatus}, got ${response.status}: ${JSON.stringify(parsed)}`);
@@ -164,7 +201,7 @@ async function getJson(port, pathname, expectedStatus = 200) {
 async function waitForBridge(port) {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/health`);
+      const response = await fetch(`http://127.0.0.1:${port}/health`, { signal: requestSignal(2_000) });
       if (response.ok) return;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -722,6 +759,25 @@ async function main() {
     ], acceptanceTarget), "run acceptance source overwrite", "refuses to overwrite an existing source or validator path");
     assert(!existsSync(path.join(acceptanceTarget, "run", "packet.json")), "failed preflight partially hydrated the run packet");
 
+    const rejectedGateBundle = path.join(tempRoot, "rejected-gate-bundle");
+    cpSync(acceptanceBundle, rejectedGateBundle, { recursive: true });
+    const rejectedReviewPath = path.join(rejectedGateBundle, "review", "review.json");
+    const rejectedReview = readJson(rejectedReviewPath);
+    rejectedReview.attestation.signature = Buffer.from("invalid-staged-review", "utf8").toString("base64");
+    writeJson(rejectedReviewPath, rejectedReview);
+    const rejectedManifestPath = path.join(rejectedGateBundle, "valdris-run-artifacts.json");
+    const rejectedManifest = readJson(rejectedManifestPath);
+    const rejectedReviewEntry = rejectedManifest.files.find(({ path: artifactPath }) => artifactPath === "review/review.json");
+    const rejectedReviewBytes = readFileSync(rejectedReviewPath);
+    rejectedReviewEntry.sha256 = sha256(rejectedReviewBytes);
+    rejectedReviewEntry.size = rejectedReviewBytes.length;
+    writeJson(rejectedManifestPath, rejectedManifest);
+    expectFailure(runNode(acceptanceScript, [
+      "--repo", ".", "--bundle", rejectedGateBundle, "--source-commit", commit,
+    ], acceptanceTarget), "run acceptance staged gate rejection", "review attestation signature is invalid");
+    assert(!existsSync(path.join(acceptanceTarget, "run", "packet.json")), "failed staged validation hydrated the run packet into the source checkout");
+    assert(!existsSync(path.join(acceptanceTarget, "review", "review.json")), "failed staged validation hydrated the rejected review into the source checkout");
+
     const workflowAcceptanceEnv = { ...process.env };
     const inheritedPathKey = Object.keys(workflowAcceptanceEnv).find((name) => name.toLowerCase() === "path");
     assert(inheritedPathKey, "commissioned acceptance verifier requires a process path variable");
@@ -745,14 +801,14 @@ async function main() {
         hydratedFiles: bundledFiles.length,
         mixedCasePathKey,
         positiveCases: 1,
-        adversarialCases: 8,
+        adversarialCases: 9,
       }, null, 2));
       return;
     }
 
     const bridgePort = 22000 + Math.floor(Math.random() * 20000);
     const bridgeApprovalCredential = HUMAN_APPROVAL_TOKEN;
-    const bridge = spawn(process.execPath, [path.join(HARNESS_ROOT, "scripts", "claude-code-bridge.mjs")], {
+    const bridge = trackedChild(spawn(process.execPath, [path.join(HARNESS_ROOT, "scripts", "claude-code-bridge.mjs")], {
       cwd: HARNESS_ROOT,
       env: {
         ...process.env,
@@ -763,7 +819,7 @@ async function main() {
         [["UASH", "HUMAN", "APPROVAL", "TOKEN"].join("_")]: bridgeApprovalCredential,
       },
       stdio: "ignore",
-    });
+    }));
     try {
       await waitForBridge(bridgePort);
       const created = await postJson(bridgePort, "/runs", { id: runId, artifactRoot: target });
@@ -892,6 +948,15 @@ async function main() {
       const completed = await postJson(bridgePort, `/runs/${runId}/events`, event("run.completed", "handoff", "genuine commissioned v0.8 completion", { artifact: "handoff/final.md" }));
       assert(completed.run?.status === "complete", "genuine commissioned v0.8 bridge completion did not pass");
       assert(completed.event?.type === "run.completed" && completed.run.events?.some(({ type }) => type === "run.completed"), "successful commissioned completion was not persisted as a run.completed event");
+      const cacheBefore = await getJson(bridgePort, "/health");
+      await getJson(bridgePort, `/runs/${runId}`);
+      await getJson(bridgePort, `/runs/${runId}`);
+      const cacheAfter = await getJson(bridgePort, "/health");
+      assert(
+        cacheAfter.completedRunValidation?.executions === cacheBefore.completedRunValidation?.executions + 1
+          && cacheAfter.completedRunValidation?.cacheHits >= cacheBefore.completedRunValidation?.cacheHits + 1,
+        "unchanged completed-run polling reran finish-line gates instead of using the digest-bound validation cache",
+      );
 
       writeFileSync(tracePath, traceWithPrivateContact, "utf8");
       writeJson(trajectoryPath, trajectoryWithUpdatedDigest);
@@ -923,8 +988,20 @@ async function main() {
       rmSync(assuranceEvidencePath, { force: true });
       const restoredReferencedAssurance = await getJson(bridgePort, `/runs/${runId}`);
       assert(restoredReferencedAssurance.status === "complete", "completed run did not recover after referenced assurance evidence was restored");
+
+      const runtimeProbePath = path.join(pack, "scripts", "goal-gate.mjs");
+      const runtimeProbeSource = readFileSync(runtimeProbePath, "utf8");
+      try {
+        writeFileSync(runtimeProbePath, `${runtimeProbeSource}\n`, "utf8");
+        const driftedRuntime = await getJson(bridgePort, `/runs/${runId}`, 500);
+        assert(typeof driftedRuntime.error === "string" && driftedRuntime.error.length > 0, "completed-run cache ignored commissioned runtime drift");
+      } finally {
+        writeFileSync(runtimeProbePath, runtimeProbeSource, "utf8");
+      }
+      const restoredRuntime = await getJson(bridgePort, `/runs/${runId}`);
+      assert(restoredRuntime.status === "complete", "completed run did not recover after commissioned runtime bytes were restored");
     } finally {
-      bridge.kill("SIGTERM");
+      await stopProcess(bridge, "commissioned portability bridge");
     }
 
     const portableSource = readFileSync(proofPath, "utf8");
@@ -1010,7 +1087,7 @@ async function main() {
     git(target, ["add", ".valdris-harness/controls/review-trust.v1.json"]);
     git(target, ["commit", "-m", "test: attacker self-enrolls commissioned review key"]);
     const selfEnrollmentPort = bridgePort + 1;
-    const selfEnrollmentBridge = spawn(process.execPath, [path.join(HARNESS_ROOT, "scripts", "claude-code-bridge.mjs")], {
+    const selfEnrollmentBridge = trackedChild(spawn(process.execPath, [path.join(HARNESS_ROOT, "scripts", "claude-code-bridge.mjs")], {
       cwd: HARNESS_ROOT,
       env: {
         ...process.env,
@@ -1022,7 +1099,7 @@ async function main() {
         [["UASH", "HUMAN", "APPROVAL", "TOKEN"].join("_")]: HUMAN_APPROVAL_TOKEN,
       },
       stdio: "ignore",
-    });
+    }));
     try {
       await waitForBridge(selfEnrollmentPort);
       const rejectedSelfEnrollment = await postJson(selfEnrollmentPort, "/runs", {
@@ -1034,7 +1111,7 @@ async function main() {
         "bridge accepted a commissioned runtime whose attacker key was committed after the operator retained the old trust pin",
       );
     } finally {
-      selfEnrollmentBridge.kill("SIGTERM");
+      await stopProcess(selfEnrollmentBridge, "self-enrollment bridge");
     }
 
     console.log(JSON.stringify({
@@ -1060,19 +1137,29 @@ async function main() {
       completedPacketPrivacyDriftQuarantined: true,
       completedReferencedEvidencePrivacyDriftQuarantined: true,
       completedReferencedAssuranceEvidencePrivacyDriftQuarantined: true,
+      completedRunValidationCachePassed: true,
+      commissionedRuntimeDriftInvalidatedCache: true,
       genuineBridgeCompletionPassed: true,
       commissionedSelfEnrollmentRejected: true,
-      positiveCases: 3,
-      adversarialCases: 29,
+      positiveCases: 4,
+      adversarialCases: 30,
     }, null, 2));
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
   }
 }
 
+const wallClockTimer = setTimeout(() => {
+  for (const child of ACTIVE_CHILDREN) if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+  console.error(`commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit`);
+  process.exit(124);
+}, PORTABILITY_WALL_CLOCK_MS);
 try {
   await main();
 } catch (error) {
   console.error(error.stack || error.message);
-  process.exit(1);
+  process.exitCode = 1;
+} finally {
+  clearTimeout(wallClockTimer);
+  for (const child of ACTIVE_CHILDREN) await stopProcess(child, "commissioned portability cleanup").catch(() => {});
 }

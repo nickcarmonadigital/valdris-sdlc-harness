@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   BRIDGE_PROXY_MAX_BODY_BYTES,
   BRIDGE_PROXY_MAX_RESPONSE_BYTES,
+  bridgeProxyTimeoutMs,
   bridgeProxyError,
   bridgeProxyRequestProblem,
   proxyBridge,
@@ -124,14 +125,18 @@ try {
   if (originalBridgeUrl === undefined) delete process.env.UASH_BRIDGE_URL;
   else process.env.UASH_BRIDGE_URL = originalBridgeUrl;
 
-  globalThis.fetch = async () => new Response(JSON.stringify({ ok: true }), {
+  globalThis.fetch = async (_url, init) => {
+    assert.equal(init?.redirect, "error", "proxy must reject rather than follow upstream redirects with credentials");
+    assert.ok(init?.signal instanceof AbortSignal, "proxy must attach a request deadline signal");
+    return new Response(JSON.stringify({ ok: true }), {
     headers: {
       "content-type": "application/json",
       "x-uash-page-offset": "25",
       "x-uash-next-cursor": "50",
       "x-uash-page-total": "not-a-decimal",
     },
-  });
+    });
+  };
   const paginatedProxyResponse = await proxyBridge("/runs?limit=25&cursor=25");
   assert.equal(paginatedProxyResponse.status, 200, "proxy rejected a bounded paginated bridge response");
   assert.equal(paginatedProxyResponse.headers.get("x-uash-page-offset"), "25", "proxy dropped safe pagination metadata");
@@ -148,12 +153,25 @@ try {
   const oversizedProxyResponse = await proxyBridge("/runs");
   assert.equal(oversizedProxyResponse.status, 502, "proxy did not fail closed on an oversized streamed upstream response");
   assert.equal((await oversizedProxyResponse.json()).error, "bridge_proxy_upstream_too_large", "proxy returned the wrong oversized upstream response error");
+
+  assert.equal(bridgeProxyTimeoutMs({}), 10_000, "proxy default timeout changed unexpectedly");
+  assert.throws(() => bridgeProxyTimeoutMs({ UASH_BRIDGE_PROXY_TIMEOUT_MS: "unbounded" }), /must be an integer/, "proxy accepted an invalid timeout");
+  process.env.UASH_BRIDGE_PROXY_TIMEOUT_MS = "100";
+  globalThis.fetch = async (_url, init) => new Promise((_resolve, reject) => {
+    const keepAlive = setInterval(() => {}, 25);
+    init?.signal?.addEventListener("abort", () => {
+      clearInterval(keepAlive);
+      reject(init.signal.reason);
+    }, { once: true });
+  });
+  await assert.rejects(proxyBridge("/runs"), (error) => error?.name === "TimeoutError", "proxy request did not abort at its configured deadline");
 } finally {
   globalThis.fetch = originalFetch;
   if (originalAccessToken === undefined) delete process.env.UASH_BRIDGE_ACCESS_TOKEN;
   else process.env.UASH_BRIDGE_ACCESS_TOKEN = originalAccessToken;
   if (originalBridgeUrl === undefined) delete process.env.UASH_BRIDGE_URL;
   else process.env.UASH_BRIDGE_URL = originalBridgeUrl;
+  delete process.env.UASH_BRIDGE_PROXY_TIMEOUT_MS;
 }
 
-console.log("bridge proxy verification passed: 5 positive, 11 adversarial cases");
+console.log("bridge proxy verification passed: 7 positive, 13 adversarial cases");

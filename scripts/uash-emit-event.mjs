@@ -61,13 +61,13 @@ const optionMap = {
   "--event-id": "eventId",
 };
 
-const messageParts = [];
-for (let i = 0; i < rest.length; i += 1) {
+const messageParts = rest.length > 0 ? [rest[0]] : [];
+for (let i = 1; i < rest.length; i += 1) {
   const item = rest[i];
   const key = optionMap[item];
   if (key) {
     const value = rest[i + 1];
-    if (typeof value !== "string" || value.length === 0 || value.startsWith("-")) {
+    if (typeof value !== "string" || value.length === 0 || value.startsWith("--")) {
       console.error(`Option ${item} requires a non-empty, non-flag value`);
       process.exit(2);
     }
