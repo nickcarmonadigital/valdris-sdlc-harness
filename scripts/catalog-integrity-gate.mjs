@@ -22,6 +22,7 @@ export const CANONICAL_CATALOG_SHA256 = Object.freeze({
   "controls/crosswalks/thirteen-layers-to-uash.v1.json": "41269ae1176199c79a7693438497b61bcaa4440d142ccdf4a32ea911ad2ed00e",
   "controls/assurance-execution-policy.v1.json": "8c44818fbdedf8c7bb3333e76fa53e5cd7256b035390fe49abf4abb899b62655",
   "controls/capability-packs/async-workflows.v1.json": "dbe9b82d84aa66be8285b057467b049bcba55a71a81b13cb54276d205dd87392",
+  "controls/clean-room-behaviors.v1.json": "d27dd758d131d7bef1b40f09db0692e1b1cb8a4716e2aa8ae76b623ea28090fb",
 });
 
 function semanticSha256(filePath) {

@@ -38,6 +38,8 @@ const requiredScripts = [
   "provenance-gate.mjs",
   "neutrality-gate.mjs",
   "privacy-gate.mjs",
+  "restricted-residue-gate.mjs",
+  "retire-local-skills.mjs",
   "schema-compat-gate.mjs",
   "proof-runner.mjs",
   "rca-gate.mjs",
@@ -50,6 +52,7 @@ const requiredControls = [
   "controls/crosswalks/thirteen-layers-to-uash.v1.json",
   "controls/assurance-execution-policy.v1.json",
   "controls/capability-packs/async-workflows.v1.json",
+  "controls/clean-room-behaviors.v1.json",
 ];
 const focusedVerifiers = [
   "scripts/verify-import-boundaries.mjs",
@@ -59,6 +62,7 @@ const focusedVerifiers = [
   "scripts/verify-run-packet-trust.mjs",
   "scripts/verify-commissioned-portability.mjs",
   "scripts/verify-release-artifact-privacy.mjs",
+  "scripts/verify-clean-room-convergence.mjs",
 ];
 const requiredRuntimeFiles = ["controls/review-trust.v1.json"];
 
@@ -83,6 +87,8 @@ const requiredPackageScripts = [
   "neutrality:gate",
   "privacy:gate",
   "privacy:release",
+  "restricted-residue:gate",
+  "skills:retire-local",
   "schema:compat:gate",
   "run:packet:gate",
   "proof:run",
@@ -93,14 +99,15 @@ const requiredPackageScripts = [
   "verify:commissioned-portability",
   "verify:release-privacy",
   "verify:work-harness-import",
+  "verify:clean-room-convergence",
 ];
 for (const name of requiredPackageScripts) record(`package script ${name}`, Boolean(packageJson.scripts?.[name]), "missing package script");
 
 const workflow = read(".github/workflows/ci.yml");
-record("CI remains dual-platform", includesEvery(workflow, ["ubuntu-latest", "windows-latest"]), "missing Linux/Windows matrix");
+record("CI covers Linux, Windows, and macOS portability", includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]), "missing Linux/Windows/macOS coverage");
 record(
   "CI runs clean-room gates",
-  includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "privacy:release", "verify:release-privacy", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import"]),
+  includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "privacy:release", "verify:release-privacy", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import", "verify:clean-room-convergence"]),
   "one or more clean-room gates are absent from CI",
 );
 record("CI scans secrets", /gitleaks\/gitleaks-action@/.test(workflow), "gitleaks action is not configured");
@@ -150,7 +157,7 @@ try {
       record(`commissioned control ${relativePath}`, existsSync(path.join(generated, relativePath)), "control not copied into commissioned pack");
     }
     const generatedPackage = JSON.parse(readFileSync(path.join(generated, "package.json"), "utf8"));
-    for (const name of ["provenance:gate", "neutrality:gate", "privacy:gate", "schema:compat:gate", "run:packet:gate"]) {
+    for (const name of ["provenance:gate", "neutrality:gate", "privacy:gate", "restricted-residue:gate", "skills:retire-local", "schema:compat:gate", "run:packet:gate"]) {
       record(`commissioned package script ${name}`, Boolean(generatedPackage.scripts?.[name]), "generated pack omits gate script");
     }
     const generatedWorkflow = readFileSync(path.join(generated, ".github", "workflows", "valdris-assurance.yml"), "utf8");

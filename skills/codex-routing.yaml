@@ -272,6 +272,7 @@ skills:
       - "smoke for deployed, provider-integration, platform-native, or runtime claims"
       - "commissioned domain packs"
       - "rca for bug, regression, incident, or self-heal routes"
+      - "restricted-residue for clean-room convergence or migration when an external restricted-values manifest is commissioned"
     red_zone_triggers:
       - "approval-override"
       - "accept-residual-risk"

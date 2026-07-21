@@ -4,11 +4,12 @@ export const WORKLOAD_CLASSIFICATION_SCHEMA = "uash.workload-classification.v1";
 export const WORKLOAD_TAXONOMY_SCHEMA = "uash.workload-taxonomy-catalog.v1";
 export const CANONICAL_WORKLOAD_TAXONOMY_SHA256 = "1d43a946a5aabe9919d46cdc52591950e85aa238e3d3886c3e6a2d65f157da14";
 
-const TASK_TYPES = new Set(["bug", "feature", "architecture-refactor", "security", "platform-release", "genai", "audit", "incident", "proof-handoff", "docs-only"]);
+const TASK_TYPES = new Set(["ambiguous", "bug", "feature", "architecture-refactor", "security", "platform-release", "genai", "audit", "incident", "proof-handoff", "docs-only"]);
 const AI_FEATURES = ["rag", "tools", "memory", "consequential", "userFacing", "sensitiveData", "autonomous"];
 const MATURITY_PROFILE_FLOORS = { prototype: "T0", production: "T1", enterprise: "T2", regulated: "T3" };
 
 export const DELIVERY_PRIMARY_BY_TASK = Object.freeze({
+  ambiguous: "valdris-intake-route",
   bug: "valdris-bug-rca",
   feature: "valdris-feature-delivery",
   "architecture-refactor": "valdris-architecture-refactor",
@@ -63,7 +64,7 @@ export function supportingSkillsForClassification(classification, primary = deli
 export function executionBudgetForClassification(classification) {
   if (classification?.taskType === "docs-only" && !classification?.controlledDocumentation) return { attempts: 6, toolCalls: 120, tokens: 180000, costUsd: 25, wallClockMinutes: 240 };
   if (classification?.taskType === "docs-only") return { attempts: 10, toolCalls: 250, tokens: 500000, costUsd: 100, wallClockMinutes: 1440 };
-  if (["audit", "proof-handoff"].includes(classification?.taskType)) return { attempts: 10, toolCalls: 400, tokens: 600000, costUsd: 150, wallClockMinutes: 1440 };
+  if (["ambiguous", "audit", "proof-handoff"].includes(classification?.taskType)) return { attempts: 10, toolCalls: 400, tokens: 600000, costUsd: 150, wallClockMinutes: 1440 };
   if (["bug", "security", "incident"].includes(classification?.taskType)) return { attempts: 14, toolCalls: 700, tokens: 1200000, costUsd: 400, wallClockMinutes: 2880 };
   if (classification?.effectiveTier === "T3") return { attempts: 24, toolCalls: 1200, tokens: 2500000, costUsd: 1000, wallClockMinutes: 10080 };
   if (classification?.effectiveTier === "T2") return { attempts: 20, toolCalls: 1000, tokens: 2000000, costUsd: 750, wallClockMinutes: 10080 };
@@ -99,14 +100,17 @@ export function triggerMatches(text, trigger) {
 }
 
 export function classifyTaskIntent(request) {
+  const compact = request.trim().replace(/\s+/g, " ");
   const reviewIntent = /\b(audit|review|assess(?:ment)?)\b/i.test(request);
   const changeIntent = /\b(fix|repair|remediat(?:e|ed|ion)|implement|build|add|change|update|refactor|migrat(?:e|ed|ing|ion)|redesign|apply)\b/i.test(request);
   const docsArtifact = /\b(document(?:ation)?|docs?|readme|release notes?|changelog|copy edit)\b/i.test(request);
+  if (/^(?:please\s+)?(?:make|improve|change|update|fix|review|audit)\s+(?:it|this|that|things?|something)(?:\s+better)?[.!?]*$/i.test(compact) || /^(?:please\s+)?help(?:\s+me)?[.!?]*$/i.test(compact)) return "ambiguous";
   if (docsArtifact && !/\b(implement|build|fix|repair|deploy|runtime behavior|code change|source change)\b/i.test(request)) return "docs-only";
   if (/\b(ready to merge|merge readiness|handoff|close (?:the )?issue|release ready|final (?:proof|verification)|verify (?:this|it) is ready)\b/i.test(request)) return "proof-handoff";
   if (/\b(incident|outage|sev[- ]?[0-9]+)\b/i.test(request)) return "incident";
   if (/\b(security|vulnerab(?:le|ility|ilities)?|auth|permissions?|rls|tenant|secrets?|compliance|privacy|prompt[- ]injection)\b/i.test(request) && /\b(audit|review|assess(?:ment)?|test|verify|remediat(?:e|ed|ion)|fix|repair|defenses?)\b/i.test(request)) return "security";
   if (/\b(bug|broken|regression|failing|fails?|fix|repair|resolve|debug|troubleshoot|issue with|problem with|does not|doesn't|timeout|crash(?:es|ed|ing)?|errors?|exceptions?|memory leak|not working|incorrect|double[- ]charg(?:e[sd]?|ing)?|duplicate[- ]charg(?:e[sd]?|ing)?|root cause)\b/i.test(request)) return "bug";
+  if (/\b(?:manual(?:ly)?|direct(?:ly)?)\b.*\b(?:production\s+data|customer\s+data|database\s+(?:data|record)|provider\s+config(?:uration)?)\b/i.test(request)) return "platform-release";
   if (/\b(architect(?:ure|ural)?|refactor(?:ing)?|migrat(?:e|ed|ing|ion)|redesign|module boundar(?:y|ies))\b/i.test(request) && (!reviewIntent || changeIntent)) return "architecture-refactor";
   if (/\b(testflight|app store|ship|publish|promote)\b/i.test(request) && !/\b(build|create|develop)\s+(a|an|the|new)\b/i.test(request)) return "platform-release";
   if (/\b(deploy|release|rollback|cloud|infrastructure|slo|failover|backup)\b/i.test(request) && !/\b(build|feature|add|implement|game|app)\b/i.test(request)) return "platform-release";
@@ -201,7 +205,7 @@ export function isFullStackRequest(request) {
 
 export function requiresLiveSmoke(request) {
   return /\b(ship|deploy|release|testflight|app store|production)\b/i.test(request)
-    || /\b(provider integration|integrat(?:e|es|ed|ing|ion) (?:an? )?(?:external |model |payment |identity |cloud )?provider|live provider|commissioned provider behavior)\b/i.test(request);
+    || /\b(provider integration|integrat(?:e|es|ed|ing|ion) (?:an? )?(?:external |model |payment |identity |cloud )?provider|live provider|commissioned provider behavior|provider config(?:uration)?|manual(?:ly)? (?:change|edit|update|mutate) (?:customer |production )?(?:data|database records?))\b/i.test(request);
 }
 
 const DIRECT_LAYER_SIGNALS = Object.freeze({
@@ -316,6 +320,11 @@ export function classifyWorkload(input) {
   ]);
   const unknowns = [];
   const materialUnknowns = [];
+  if (taskType === "ambiguous") {
+    const summary = "The requested outcome, affected artifact, and authorized change scope require accountable human clarification before delivery begins.";
+    unknowns.push(summary);
+    materialUnknowns.push({ id: "scope-definition", resolution: "human-acknowledgement", summary });
+  }
   if (!workloadProfiles.length && !isDocsOnly) unknowns.push("No specialized workload profile matched; keep potentially affected production domains open until route review.");
   if (profileDefinitions.some((profile) => profile.id === "regulated") || (!isDocsOnly && requestedProfile === "regulated")) {
     const summary = "Regulatory applicability requires human/legal confirmation; classification only raises assurance and never certifies compliance.";

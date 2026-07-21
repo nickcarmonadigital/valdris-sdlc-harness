@@ -1,0 +1,4 @@
+/.github/CODEOWNERS @nickcarmonadigital
+/.github/workflows/restricted-residue-attestation.yml @nickcarmonadigital
+/scripts/restricted-residue-gate.mjs @nickcarmonadigital
+/scripts/retire-local-skills.mjs @nickcarmonadigital

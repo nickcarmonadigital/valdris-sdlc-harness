@@ -14,6 +14,8 @@
     "provenance": "The universal pack may copy only allowlisted public upstream material with an integrity-locked manifest. Restricted work-harness inputs contribute behavioral requirements only.",
     "neutrality": "Canonical assets and generated packs must remain project-neutral. Company, product, people, provider, branch, account, customer, incident, and private topology facts belong only in commissioned project adapters.",
     "privacy": "Before handoff, scan canonical and generated artifacts for private paths, identifiers, credentials, customer data, live incident material, and restricted-source residue.",
+    "restricted-residue": "When a restricted-source convergence or migration manifest is commissioned, scan the repository, release archives, generated packs, knowledge vault, and installed-skill manifest using only the external runtime manifest. Never commit or print its values.",
+    "skill-retirement": "Retire old local skills only from an external manifest, dry-run first, and limit apply mode to exact non-symlink direct children of configured Codex or Claude skill roots.",
     "schema-compat": "Imported assurance concepts must map explicitly into Valdris-native schemas. Layer 0 plus the 13 production-assurance domains remain authoritative; new technologies use capability or domain packs unless the canonical taxonomy itself is deliberately versioned.",
     "classification": "Intake creates run/workload-classification.json from the commissioned taxonomy and binds it to the authorized request and route. Delivery must not rely on an absent, stale, rewritten, or unbound classification.",
     "foundation": "Layer 0 precedes implementation for every non-docs route. All delivery primaries must validate foundation/assessment.json against the required capabilities, effective assurance tier, selected profiles, and proof contract before implementation; audit-only work may report a failing foundation instead of pretending it passed.",
@@ -96,7 +98,7 @@
       "primaryFor": ["review", "finish", "handoff", "release-readiness"],
       "triggers": ["done", "verify", "review", "handoff", "release ready", "close issue"],
       "requiredGates": ["goal", "context", "skill-registry", "provenance", "neutrality", "privacy", "schema-compat", "run-packet", "review", "proof"],
-      "conditionalGates": ["classification when required by the route", "code-intelligence for every non-docs route", "foundation when required by workload classification or route", "production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider-integration, platform-native, or runtime claims", "commissioned domain packs", "rca for bug, regression, incident, or self-heal routes"],
+      "conditionalGates": ["classification when required by the route", "code-intelligence for every non-docs route", "foundation when required by workload classification or route", "production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider-integration, platform-native, or runtime claims", "commissioned domain packs", "rca for bug, regression, incident, or self-heal routes", "restricted-residue for clean-room convergence or migration when an external restricted-values manifest is commissioned"],
       "redZoneTriggers": ["approval-override", "accept-residual-risk"]
     }
   ]

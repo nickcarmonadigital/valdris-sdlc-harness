@@ -1,0 +1,334 @@
+name: Restricted Residue Attestation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  authorize:
+    runs-on: ubuntu-24.04
+    environment: valdris-clean-room-acceptance
+    outputs:
+      encryption_public_key_b64: ${{ steps.config.outputs.encryption_public_key_b64 }}
+      encryption_public_key_sha256: ${{ steps.config.outputs.encryption_public_key_sha256 }}
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_B64: ${{ vars.VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_B64 }}
+      VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256: ${{ vars.VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256 }}
+    steps:
+      - name: Authorize the protected encryption identity
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          [[ "$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256" =~ ^[a-f0-9]{64}$ ]]
+          printf '%s' "$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_B64" | base64 --decode > "$RUNNER_TEMP/artifact-public-key.pem"
+          /usr/bin/openssl pkey -pubin -in "$RUNNER_TEMP/artifact-public-key.pem" -noout
+          actual_sha256="$(sha256sum "$RUNNER_TEMP/artifact-public-key.pem" | cut -d ' ' -f 1)"
+          test "$actual_sha256" = "$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256"
+          echo "encryption_public_key_b64=$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_B64" >> "$GITHUB_OUTPUT"
+          echo "encryption_public_key_sha256=$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256" >> "$GITHUB_OUTPUT"
+          rm -f "$RUNNER_TEMP/artifact-public-key.pem"
+
+  build-surfaces:
+    needs: authorize
+    runs-on: ubuntu-24.04
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Restrict candidate to the default branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+
+      - name: Checkout candidate source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: candidate
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+          cache: npm
+          cache-dependency-path: candidate/package-lock.json
+
+      - name: Install dependencies without candidate lifecycle scripts
+        working-directory: candidate
+        run: npm ci --ignore-scripts
+
+      - name: Build candidate surfaces in a disposable isolated container
+        working-directory: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          image='node:24-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d'
+          cidfile="$RUNNER_TEMP/candidate-container.cid"
+          cleanup_container() {
+            if test -s "$cidfile"; then
+              cid="$(cat "$cidfile")"
+              [[ "$cid" =~ ^[a-f0-9]{12,64}$ ]] && /usr/bin/docker rm -f "$cid" >/dev/null 2>&1 || true
+            fi
+          }
+          trap cleanup_container EXIT
+          mkdir -p "$RUNNER_TEMP/plain" "$RUNNER_TEMP/encrypted"
+          mkdir -p "$GITHUB_WORKSPACE/candidate/.next"
+          cat > "$RUNNER_TEMP/container-build.sh" <<'SCRIPT'
+          #!/bin/sh
+          set -eu
+          test "$(node --version)" = "v24.18.0"
+          test -x /usr/bin/setpriv
+          mkdir -p /tmp/home /outputs/neutral-target /outputs/codex /outputs/plain
+          chown -R node:node /tmp/home /outputs /workspace/.next
+          /usr/bin/setpriv --reuid=1000 --regid=1000 --clear-groups --bounding-set=-all --no-new-privs \
+            /bin/sh -lc 'node scripts/commission-harness.mjs --repo /outputs/neutral-target --project-name "Neutral Attestation Target" --yes && CODEX_HOME=/outputs/codex node scripts/install-codex-skills.mjs > /outputs/plain/installed-skills.json && npm run build'
+          validate_tree() {
+            root="$1"
+            max_files="$2"
+            max_apparent="$3"
+            max_allocated="$4"
+            files="$(find "$root" -xdev -type f -printf '.' | wc -c)"
+            apparent="$(du -sx --apparent-size --block-size=1 "$root" | cut -f 1)"
+            allocated="$(du -sx --block-size=1 "$root" | cut -f 1)"
+            test "$files" -le "$max_files"
+            test "$apparent" -le "$max_apparent"
+            test "$allocated" -le "$max_allocated"
+          }
+          validate_tree /workspace/.next 50000 402653184 402653184
+          validate_tree /outputs/neutral-target/.valdris-harness 50000 268435456 268435456
+          test -f /outputs/plain/installed-skills.json
+          test ! -L /outputs/plain/installed-skills.json
+          test "$(stat -c '%s' /outputs/plain/installed-skills.json)" -le 1048576
+          source_files="$(find /workspace -xdev -path '/workspace/.git' -prune -o -path '/workspace/node_modules' -prune -o -path '/workspace/.next' -prune -o -type f -printf '.' | wc -c)"
+          source_apparent="$(find /workspace -xdev -path '/workspace/.git' -prune -o -path '/workspace/node_modules' -prune -o -path '/workspace/.next' -prune -o -type f -printf '%s\n' | awk '{ total += $1 } END { print total + 0 }')"
+          source_allocated_blocks="$(find /workspace -xdev -path '/workspace/.git' -prune -o -path '/workspace/node_modules' -prune -o -path '/workspace/.next' -prune -o -type f -printf '%b\n' | awk '{ total += $1 } END { print total + 0 }')"
+          test "$source_files" -le 50000
+          test "$source_apparent" -le 536870912
+          test "$((source_allocated_blocks * 512))" -le 536870912
+          /usr/bin/timeout --signal=KILL 2m /bin/tar -czf /sealed/deployable-release.tgz -C /workspace .next
+          /usr/bin/timeout --signal=KILL 2m /bin/tar -czf /sealed/generated-pack.tgz -C /outputs/neutral-target .valdris-harness
+          /usr/bin/timeout --signal=KILL 2m npm pack --ignore-scripts --silent --pack-destination /sealed >/dev/null 2>/dev/null
+          set -- /sealed/valdris-sdlc-harness-*.tgz
+          test "$#" -eq 1
+          mv "$1" /sealed/source-release.tgz
+          cat /outputs/plain/installed-skills.json > /sealed/installed-skills.json
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz; do
+            test -f "/sealed/$name"
+            test ! -L "/sealed/$name"
+            test "$(stat -c '%s' "/sealed/$name")" -le 134217728
+          done
+          test "$(stat -c '%s' /sealed/installed-skills.json)" -le 1048576
+          SCRIPT
+          chmod 700 "$RUNNER_TEMP/container-build.sh"
+          /usr/bin/timeout --signal=KILL 5m /usr/bin/docker pull "$image" > "$RUNNER_TEMP/docker-pull.stdout" 2> "$RUNNER_TEMP/docker-pull.stderr"
+          /usr/bin/timeout --signal=KILL 2m /usr/bin/docker run --detach \
+            --cidfile "$cidfile" \
+            --network none \
+            --read-only \
+            --cap-drop ALL \
+            --cap-add CHOWN \
+            --cap-add SETUID \
+            --cap-add SETGID \
+            --cap-add SETPCAP \
+            --security-opt no-new-privileges \
+            --pids-limit 512 \
+            --memory 4g \
+            --cpus 2 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=1g \
+            --tmpfs /workspace/.next:rw,nosuid,size=384m,mode=1777 \
+            --tmpfs /outputs:rw,noexec,nosuid,size=256m,mode=1777 \
+            --tmpfs /sealed:rw,noexec,nosuid,size=256m,mode=0700 \
+            --log-driver local \
+            --log-opt max-size=10m \
+            --log-opt max-file=1 \
+            --env HOME=/tmp/home \
+            --env NEXT_TELEMETRY_DISABLED=1 \
+            --volume "$GITHUB_WORKSPACE/candidate:/workspace:ro" \
+            --volume "$GITHUB_WORKSPACE/candidate/node_modules:/workspace/node_modules:ro" \
+            --volume "$RUNNER_TEMP/container-build.sh:/trusted/container-build.sh:ro" \
+            --workdir /workspace \
+            "$image" \
+            /bin/sh /trusted/container-build.sh \
+            > "$RUNNER_TEMP/docker-run.stdout" 2> "$RUNNER_TEMP/docker-run.stderr"
+          cid="$(cat "$cidfile")"
+          /usr/bin/timeout --signal=KILL 15m /usr/bin/docker wait "$cid" > "$RUNNER_TEMP/container-exit-code"
+          test "$(tr -d '\r\n' < "$RUNNER_TEMP/container-exit-code")" = "0"
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz installed-skills.json; do
+            /usr/bin/timeout --signal=KILL 1m /usr/bin/docker cp "$cid:/sealed/$name" "$RUNNER_TEMP/plain/$name"
+          done
+          cleanup_container
+          trap - EXIT
+
+      - name: Encrypt every candidate surface before persistence
+        env:
+          VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_B64: ${{ needs.authorize.outputs.encryption_public_key_b64 }}
+          VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256: ${{ needs.authorize.outputs.encryption_public_key_sha256 }}
+        working-directory: candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz; do
+            test -f "$RUNNER_TEMP/plain/$name"
+            test ! -L "$RUNNER_TEMP/plain/$name"
+            test "$(stat -c '%s' "$RUNNER_TEMP/plain/$name")" -le 134217728
+          done
+          test -f "$RUNNER_TEMP/plain/installed-skills.json"
+          test ! -L "$RUNNER_TEMP/plain/installed-skills.json"
+          test "$(stat -c '%s' "$RUNNER_TEMP/plain/installed-skills.json")" -le 1048576
+          printf '%s' "$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_B64" | base64 --decode > "$RUNNER_TEMP/artifact-public-key.pem"
+          test "$(sha256sum "$RUNNER_TEMP/artifact-public-key.pem" | cut -d ' ' -f 1)" = "$VALDRIS_ARTIFACT_ENCRYPTION_PUBLIC_KEY_SHA256"
+          /usr/bin/openssl pkey -pubin -in "$RUNNER_TEMP/artifact-public-key.pem" -noout
+          /usr/bin/openssl rand -base64 48 > "$RUNNER_TEMP/surface-passphrase"
+          /usr/bin/openssl rand -hex 32 > "$RUNNER_TEMP/surface-hmac-key"
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz installed-skills.json; do
+            /usr/bin/openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+              -in "$RUNNER_TEMP/plain/$name" \
+              -out "$RUNNER_TEMP/encrypted/$name.enc" \
+              -pass file:"$RUNNER_TEMP/surface-passphrase"
+            /usr/bin/openssl dgst -sha256 -mac HMAC -macopt "hexkey:$(tr -d '\r\n' < "$RUNNER_TEMP/surface-hmac-key")" -binary \
+              -out "$RUNNER_TEMP/encrypted/$name.hmac" \
+              "$RUNNER_TEMP/encrypted/$name.enc"
+          done
+          cat "$RUNNER_TEMP/surface-passphrase" "$RUNNER_TEMP/surface-hmac-key" > "$RUNNER_TEMP/surface-key-envelope"
+          /usr/bin/openssl pkeyutl -encrypt \
+            -pubin \
+            -inkey "$RUNNER_TEMP/artifact-public-key.pem" \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in "$RUNNER_TEMP/surface-key-envelope" \
+            -out "$RUNNER_TEMP/encrypted/surface-key-envelope.enc"
+
+      - name: Upload encrypted candidate surfaces
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: restricted-residue-surfaces-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/encrypted/*
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove suppressed candidate logs
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/plain" "$RUNNER_TEMP/encrypted" "$RUNNER_TEMP/artifact-public-key.pem" "$RUNNER_TEMP/surface-passphrase" "$RUNNER_TEMP/surface-hmac-key" "$RUNNER_TEMP/surface-key-envelope" "$RUNNER_TEMP/container-build.sh" "$RUNNER_TEMP/candidate-container.cid" "$RUNNER_TEMP/container-exit-code" "$RUNNER_TEMP/docker-pull.stdout" "$RUNNER_TEMP/docker-pull.stderr" "$RUNNER_TEMP/docker-run.stdout" "$RUNNER_TEMP/docker-run.stderr"
+
+  attest:
+    needs: build-surfaces
+    runs-on: ubuntu-24.04
+    environment: valdris-clean-room-acceptance
+    env:
+      VALDRIS_TRUSTED_VALIDATOR_COMMIT: ${{ vars.VALDRIS_TRUSTED_VALIDATOR_COMMIT }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Checkout candidate source without executing it
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: candidate
+          persist-credentials: false
+
+      - name: Checkout protected trusted validator
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: validator
+          ref: ${{ vars.VALDRIS_TRUSTED_VALIDATOR_COMMIT }}
+          persist-credentials: false
+
+      - name: Download encrypted candidate surfaces
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: restricted-residue-surfaces-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/encrypted
+
+      - name: Setup commissioned Node runtime
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24.18.0"
+
+      - name: Verify commissioned Node runtime
+        shell: bash
+        run: test "$(node --version)" = "v24.18.0"
+
+      - name: Verify protected trust and candidate bindings
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VALDRIS_TRUSTED_VALIDATOR_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          test "$(git -C "$GITHUB_WORKSPACE/candidate" rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C "$GITHUB_WORKSPACE/validator" rev-parse HEAD)" = "$VALDRIS_TRUSTED_VALIDATOR_COMMIT"
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz installed-skills.json; do
+            test -f "$RUNNER_TEMP/encrypted/$name.enc"
+            test -f "$RUNNER_TEMP/encrypted/$name.hmac"
+          done
+          test -f "$RUNNER_TEMP/encrypted/surface-key-envelope.enc"
+
+      - name: Decrypt candidate surfaces on the protected runner
+        env:
+          VALDRIS_ARTIFACT_DECRYPTION_KEY_B64: ${{ secrets.VALDRIS_ARTIFACT_DECRYPTION_KEY_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VALDRIS_ARTIFACT_DECRYPTION_KEY_B64"
+          mkdir -p "$RUNNER_TEMP/plain"
+          printf '%s' "$VALDRIS_ARTIFACT_DECRYPTION_KEY_B64" | base64 --decode > "$RUNNER_TEMP/artifact-private-key.pem"
+          chmod 600 "$RUNNER_TEMP/artifact-private-key.pem"
+          /usr/bin/openssl pkeyutl -decrypt \
+            -inkey "$RUNNER_TEMP/artifact-private-key.pem" \
+            -pkeyopt rsa_padding_mode:oaep \
+            -pkeyopt rsa_oaep_md:sha256 \
+            -in "$RUNNER_TEMP/encrypted/surface-key-envelope.enc" \
+            -out "$RUNNER_TEMP/surface-key-envelope"
+          mapfile -t surface_keys < "$RUNNER_TEMP/surface-key-envelope"
+          test "${#surface_keys[@]}" -eq 2
+          [[ "${surface_keys[0]}" =~ ^[A-Za-z0-9+/]{64}$ ]]
+          [[ "${surface_keys[1]}" =~ ^[a-f0-9]{64}$ ]]
+          printf '%s\n' "${surface_keys[0]}" > "$RUNNER_TEMP/surface-passphrase"
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz installed-skills.json; do
+            /usr/bin/openssl dgst -sha256 -mac HMAC -macopt "hexkey:${surface_keys[1]}" -binary \
+              -out "$RUNNER_TEMP/$name.hmac.actual" \
+              "$RUNNER_TEMP/encrypted/$name.enc"
+            cmp -s "$RUNNER_TEMP/$name.hmac.actual" "$RUNNER_TEMP/encrypted/$name.hmac"
+            rm -f "$RUNNER_TEMP/$name.hmac.actual"
+          done
+          for name in source-release.tgz deployable-release.tgz generated-pack.tgz installed-skills.json; do
+            /usr/bin/openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+              -in "$RUNNER_TEMP/encrypted/$name.enc" \
+              -out "$RUNNER_TEMP/plain/$name" \
+              -pass file:"$RUNNER_TEMP/surface-passphrase"
+          done
+          rm -f "$RUNNER_TEMP/artifact-private-key.pem" "$RUNNER_TEMP/surface-passphrase" "$RUNNER_TEMP/surface-key-envelope"
+
+      - name: Materialize operator-held manifest
+        env:
+          VALDRIS_RESTRICTED_VALUES_B64: ${{ secrets.VALDRIS_RESTRICTED_VALUES_B64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$VALDRIS_RESTRICTED_VALUES_B64"
+          printf '%s' "$VALDRIS_RESTRICTED_VALUES_B64" | base64 --decode > "$RUNNER_TEMP/restricted-values.json"
+          chmod 600 "$RUNNER_TEMP/restricted-values.json"
+
+      - name: Scan inert surfaces with the protected validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$GITHUB_WORKSPACE/validator/scripts/restricted-residue-gate.mjs" \
+            --repo "$GITHUB_WORKSPACE/candidate" \
+            --manifest "$RUNNER_TEMP/restricted-values.json" \
+            --release-archive "$RUNNER_TEMP/plain/source-release.tgz" \
+            --release-archive "$RUNNER_TEMP/plain/deployable-release.tgz" \
+            --generated-pack-archive "$RUNNER_TEMP/plain/generated-pack.tgz" \
+            --knowledge-vault "$GITHUB_WORKSPACE/candidate/knowledge" \
+            --installed-skill-manifest "$RUNNER_TEMP/plain/installed-skills.json" \
+            > "$RUNNER_TEMP/restricted-residue-result.json"
+          node -e 'const fs=require("fs");const r=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Restricted residue attestation\n\n- Result: ${r.ok?"passed":"failed"}\n- Surfaces: ${r.surfaces}\n- Files: ${r.scannedFiles}\n- Bytes: ${r.scannedBytes}\n- Findings: ${r.findings.length}\n`)' "$RUNNER_TEMP/restricted-residue-result.json"
+
+      - name: Remove operator-held inputs
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/restricted-values.json" "$RUNNER_TEMP/restricted-residue-result.json" "$RUNNER_TEMP/plain" "$RUNNER_TEMP/encrypted" "$RUNNER_TEMP/artifact-private-key.pem" "$RUNNER_TEMP/surface-passphrase" "$RUNNER_TEMP/surface-key-envelope" "$RUNNER_TEMP"/*.hmac.actual
