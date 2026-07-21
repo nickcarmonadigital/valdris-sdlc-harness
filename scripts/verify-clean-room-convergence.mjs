@@ -352,7 +352,7 @@ try {
           "restricted-residue-attestation.yml",
         ),
         "utf8",
-      );
+      ).replace(/\r\n/g, "\n");
       const codeowners = readFileSync(
         path.join(ROOT, ".github", "CODEOWNERS"),
         "utf8",
