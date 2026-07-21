@@ -407,11 +407,12 @@ async function main() {
   if (!bundlePrivacy.ok) throw new Error(`artifact bundle privacy validation failed: ${bundlePrivacy.findings.map((finding) => `${finding.category}:${finding.fingerprint}`).join(", ")}`);
   const env = childEnvironment(trustPin);
   let gates = [];
-  const sourceWorktreeRoot = realpathSync(git(repoRoot, ["rev-parse", "--show-toplevel"]).trim());
-  const targetWithinWorktree = path.relative(sourceWorktreeRoot, repoRoot);
-  if (targetWithinWorktree.startsWith("..") || path.isAbsolute(targetWithinWorktree)) throw new Error("commissioned target must stay inside its Git worktree");
+  const targetGitPrefix = git(repoRoot, ["rev-parse", "--show-prefix"]).trim().replaceAll("\\", "/").replace(/^\.\//, "").replace(/\/+$/, "");
+  if (targetGitPrefix === ".." || targetGitPrefix.startsWith("../") || path.posix.isAbsolute(targetGitPrefix)) {
+    throw new Error("commissioned target must stay inside its Git worktree");
+  }
   withValidationWorktree(repoRoot, head, (validationWorktreeRoot) => {
-    const validationRoot = path.join(validationWorktreeRoot, targetWithinWorktree);
+    const validationRoot = path.join(validationWorktreeRoot, ...targetGitPrefix.split("/").filter(Boolean));
     hydrateArtifacts(validationRoot, bundleRoot, manifest.files);
     const privacy = validatePrivacy(validationRoot, { includes: manifest.files.map((file) => file.path) });
     if (!privacy.ok) throw new Error(`staged artifact privacy validation failed: ${privacy.findings.map((finding) => `${finding.category}:${finding.fingerprint}`).join(", ")}`);
