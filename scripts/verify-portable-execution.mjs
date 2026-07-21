@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign as signPayload } from "node:crypto";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -49,7 +49,7 @@ function runGit(root, args) {
 }
 
 function main() {
-  const root = mkdtempSync(path.join(tmpdir(), "valdris-portable-proof-"));
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), "valdris-portable-proof-")));
   try {
     const { publicKey, privateKey } = generateKeyPairSync("ed25519", {
       publicKeyEncoding: { type: "spki", format: "pem" },

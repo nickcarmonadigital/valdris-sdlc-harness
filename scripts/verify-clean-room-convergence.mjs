@@ -10,6 +10,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   renameSync,
   rmSync,
@@ -296,7 +297,7 @@ function parseWorkflowActionSteps(workflow) {
   return steps;
 }
 
-const tempRoot = mkdtempSync(path.join(os.tmpdir(), "valdris-convergence-"));
+const tempRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-convergence-")));
 try {
   const catalog = JSON.parse(
     readFileSync(

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -135,7 +135,7 @@ record(
   "knowledge index has no clean-room assurance playbook",
 );
 
-const tempRoot = mkdtempSync(path.join(os.tmpdir(), "valdris-clean-room-import-"));
+const tempRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-clean-room-import-")));
 const generated = path.join(tempRoot, ".valdris-harness");
 try {
   const commission = runNode("scripts/commission-harness.mjs", [

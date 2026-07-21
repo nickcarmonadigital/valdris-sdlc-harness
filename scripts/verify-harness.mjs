@@ -2,7 +2,7 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { cp, mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readFile, realpath, rename, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { finishLineChildEnv } from "./bridge-security.mjs";
@@ -289,7 +289,7 @@ async function satisfyCoreArtifacts(port, runId, artifactRoot, options = {}) {
 }
 
 const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
-const tempRoot = await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-"));
+const tempRoot = await realpath(await mkdtemp(path.join(os.tmpdir(), "valdris-harness-verify-")));
 const generatedTarget = path.join(tempRoot, "commissioned-target");
 const generatedOut = path.join(generatedTarget, ".valdris-harness");
 const pyTarget = path.join(tempRoot, "pyproject-only");

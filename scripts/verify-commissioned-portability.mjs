@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from "node:child_process";
 import { createHash, generateKeyPairSync, sign as signPayload } from "node:crypto";
-import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -292,7 +292,7 @@ async function main() {
   const verifierArgs = process.argv.slice(2);
   if (verifierArgs.some((arg) => arg !== "--acceptance-only")) throw new Error("Usage: node scripts/verify-commissioned-portability.mjs [--acceptance-only]");
   const acceptanceOnly = verifierArgs.includes("--acceptance-only");
-  const tempRoot = mkdtempSync(path.join(tmpdir(), "valdris-commissioned-portability-"));
+  const tempRoot = realpathSync(mkdtempSync(path.join(tmpdir(), "valdris-commissioned-portability-")));
   const productWorktree = path.join(tempRoot, "product-worktree");
   const target = path.join(productWorktree, "apps", "ios-game");
   const pack = path.join(target, ".valdris-harness");
