@@ -259,6 +259,36 @@ function hydrateArtifacts(repoRoot, bundleRoot, files, transaction = hydrationTr
   return () => rollbackHydration(transaction);
 }
 
+export function assertAcceptedInventory(repoRoot, files) {
+  for (const file of files) {
+    assertAllowedArtifactPath(file.path);
+    const components = file.path.split("/");
+    let cursor = repoRoot;
+    for (const component of components.slice(0, -1)) {
+      cursor = path.join(cursor, component);
+      if (!existsSync(cursor))
+        throw new Error(`accepted artifact parent is missing: ${file.path}`);
+      const parentStats = lstatSync(cursor);
+      if (!parentStats.isDirectory() || parentStats.isSymbolicLink())
+        throw new Error(`accepted artifact parent is unsafe: ${file.path}`);
+    }
+    const target = path.join(repoRoot, ...components);
+    if (!existsSync(target))
+      throw new Error(`accepted artifact is missing: ${file.path}`);
+    const stats = lstatSync(target);
+    if (
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      stats.size !== file.size ||
+      sha256(readFileSync(target)) !== file.sha256
+    ) {
+      throw new Error(
+        `accepted artifact no longer matches its digest-bound inventory: ${file.path}`,
+      );
+    }
+  }
+}
+
 function installInterruptionRollback(transaction) {
   const handlers = new Map();
   for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -433,7 +463,8 @@ async function main() {
       ["independent review", "review-gate.mjs", ["--repo", validationRoot]],
       ["final run packet", "run-packet-gate.mjs", ["--repo", validationRoot]],
     );
-    for (const [label, fileName, gateArgs] of gates) runGate(script(fileName), gateArgs, validationRoot, env, label);
+    for (const [label, fileName, gateArgs] of gates)
+      runGate(script(fileName), gateArgs, validationRoot, env, label);
   });
   const finalTransaction = hydrationTransaction();
   const removeInterruptionHandlers = installInterruptionRollback(finalTransaction);
@@ -443,6 +474,7 @@ async function main() {
     assertCleanSourceCheckout(repoRoot);
     hydrateArtifacts(repoRoot, bundleRoot, manifest.files, finalTransaction);
     assertSourceCheckoutStillBound(repoRoot, head, manifest.files);
+    assertAcceptedInventory(repoRoot, manifest.files);
   } catch (error) {
     rollbackHydration(finalTransaction);
     throw error;

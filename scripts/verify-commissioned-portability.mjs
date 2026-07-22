@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { canonicalJson } from "./proof-runner.mjs";
+import { terminateChildProcess } from "./process-lifecycle.mjs";
 import { reviewAttestationPayload } from "./review-gate.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -25,6 +26,7 @@ if (!Number.isFinite(PORTABILITY_WALL_CLOCK_MS) || PORTABILITY_WALL_CLOCK_MS <= 
 }
 const PORTABILITY_STARTED_AT = Date.now();
 const ACTIVE_CHILDREN = new Set();
+const ACTIVE_TEMP_ROOTS = new Set();
 const ACCEPTANCE_ARTIFACT_ROOTS = Object.freeze([
   "ai", "approvals", "cloud", "context", "design", "domain", "evals", "foundation", "goal", "graph",
   "handoff", "production", "proof", "qa", "rca", "review", "run", "self_heal", "smoke", "trajectory", "waivers",
@@ -89,18 +91,11 @@ function trackedChild(child) {
 }
 
 async function stopProcess(child, label = "bridge") {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  const waitForExit = (timeoutMs) => new Promise((resolve) => {
-    const timer = setTimeout(() => resolve(false), timeoutMs);
-    child.once("exit", () => {
-      clearTimeout(timer);
-      resolve(true);
-    });
+  await terminateChildProcess(child, {
+    label,
+    gracefulMs: 3_000,
+    forceMs: 3_000,
   });
-  child.kill("SIGTERM");
-  if (await waitForExit(3_000)) return;
-  child.kill("SIGKILL");
-  if (!await waitForExit(3_000)) throw new Error(`${label} did not exit after forced shutdown`);
 }
 
 function requestSignal(timeoutMs = 10_000) {
@@ -293,6 +288,7 @@ async function main() {
   if (verifierArgs.some((arg) => arg !== "--acceptance-only")) throw new Error("Usage: node scripts/verify-commissioned-portability.mjs [--acceptance-only]");
   const acceptanceOnly = verifierArgs.includes("--acceptance-only");
   const tempRoot = realpathSync(mkdtempSync(path.join(tmpdir(), "valdris-commissioned-portability-")));
+  ACTIVE_TEMP_ROOTS.add(tempRoot);
   const productWorktree = path.join(tempRoot, "product-worktree");
   const target = path.join(productWorktree, "apps", "ios-game");
   const pack = path.join(target, ".valdris-harness");
@@ -1151,13 +1147,39 @@ async function main() {
     }, null, 2));
   } finally {
     rmSync(tempRoot, { recursive: true, force: true });
+    ACTIVE_TEMP_ROOTS.delete(tempRoot);
   }
 }
 
+let wallClockExpired = false;
 const wallClockTimer = setTimeout(() => {
-  for (const child of ACTIVE_CHILDREN) if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
-  console.error(`commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit`);
-  process.exit(124);
+  wallClockExpired = true;
+  void (async () => {
+    const failures = [];
+    for (const child of [...ACTIVE_CHILDREN]) {
+      try {
+        await terminateChildProcess(child, {
+          label: "commissioned portability hard-timeout child",
+          gracefulMs: 0,
+          forceMs: 3_000,
+        });
+      } catch (error) {
+        failures.push(error.message);
+      }
+    }
+    for (const tempRoot of [...ACTIVE_TEMP_ROOTS]) {
+      try {
+        rmSync(tempRoot, { recursive: true, force: true });
+        ACTIVE_TEMP_ROOTS.delete(tempRoot);
+      } catch (error) {
+        failures.push(`temporary-root cleanup failed: ${error.message}`);
+      }
+    }
+    console.error(
+      `commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit${failures.length ? `; teardown failures: ${failures.join("; ")}` : ""}`,
+    );
+    process.exit(124);
+  })();
 }, PORTABILITY_WALL_CLOCK_MS);
 try {
   await main();
@@ -1165,6 +1187,9 @@ try {
   console.error(error.stack || error.message);
   process.exitCode = 1;
 } finally {
-  clearTimeout(wallClockTimer);
-  for (const child of ACTIVE_CHILDREN) await stopProcess(child, "commissioned portability cleanup").catch(() => {});
+  if (!wallClockExpired) {
+    clearTimeout(wallClockTimer);
+    for (const child of [...ACTIVE_CHILDREN])
+      await stopProcess(child, "commissioned portability cleanup");
+  }
 }

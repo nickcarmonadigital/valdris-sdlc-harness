@@ -27,6 +27,11 @@ function runNode(relativePath, args = [], cwd = ROOT) {
     cwd,
     encoding: "utf8",
     env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+    shell: false,
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+    timeout: 720_000,
+    maxBuffer: 16 * 1024 * 1024,
   });
 }
 

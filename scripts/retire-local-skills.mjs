@@ -152,6 +152,12 @@ export function planSkillRetirement(options) {
   return { roots, plan };
 }
 
+export function restoreRetirementQuarantine(target, quarantine) {
+  if (!existsSync(quarantine) || existsSync(target)) return false;
+  renameSync(quarantine, target);
+  return true;
+}
+
 export function applySkillRetirementPlan(prepared) {
   for (const item of prepared.plan.filter((entry) => entry.target)) {
     const root = prepared.roots[item.kind];
@@ -166,7 +172,7 @@ export function applySkillRetirementPlan(prepared) {
       rmSync(quarantine, { recursive: true, force: false });
       item.status = "removed";
     } catch (error) {
-      if (existsSync(quarantine) && !existsSync(item.target) && identity(quarantine) === item.identity) renameSync(quarantine, item.target);
+      restoreRetirementQuarantine(item.target, quarantine);
       throw error;
     }
   }

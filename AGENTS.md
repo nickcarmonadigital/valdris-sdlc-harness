@@ -81,6 +81,7 @@ Run before claiming done:
 
 ```bash
 npm run typecheck
+npm run format:check
 npm run build
 npm run knowledge:gate
 npm run skills:gate
@@ -95,8 +96,13 @@ npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:enterprise-ai
 npm run verify:work-harness-import
+npm run verify:clean-room-convergence
 npm run verify:commissioned-portability
 npm run verify:harness
+npm run verify:runtime-closure
+npm run skills:install:codex
+npm run skills:check:codex
+npm run worktree:check
 ```
 
 The commissioned-portability verifier creates a temporary Git target, generates and commits `.valdris-harness`, retains an iOS-like binary product asset outside the clean-room scope, and executes the generated route, proof, signed-review, and run-packet path.

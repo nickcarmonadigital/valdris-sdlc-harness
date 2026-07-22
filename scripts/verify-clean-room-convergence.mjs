@@ -11,7 +11,6 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
-  readdirSync,
   renameSync,
   rmSync,
   symlinkSync,
@@ -20,13 +19,20 @@ import {
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { gzipSync } from "node:zlib";
 import { canonicalJson } from "./proof-runner.mjs";
 import {
   applySkillRetirementPlan,
   planSkillRetirement,
+  restoreRetirementQuarantine,
 } from "./retire-local-skills.mjs";
 import { reviewAttestationPayload } from "./review-gate.mjs";
+import { ROUTING_CONVERGENCE_CASE_IDS } from "./verify-routing-convergence.mjs";
+import { RESTRICTED_RESIDUE_CONVERGENCE_BINDINGS } from "./verify-restricted-residue-convergence.mjs";
+import {
+  parseWorkflowActionSteps,
+  rewriteJsonArtifacts,
+  writeJsonFixture as writeJson,
+} from "./verification/clean-room-fixtures.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const checks = [];
@@ -48,11 +54,6 @@ function record(name, fn, bindings = []) {
       detail: error instanceof Error ? error.message : String(error),
     });
   }
-}
-
-function writeJson(file, value) {
-  mkdirSync(path.dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 function run(script, args, options = {}) {
@@ -108,193 +109,6 @@ function runGit(repo, args) {
     `git ${args.join(" ")} failed: ${output(result).slice(-2000)}`,
   );
   return result.stdout.trim();
-}
-
-function replaceExactStrings(value, replacements) {
-  if (typeof value === "string") return replacements.get(value) ?? value;
-  if (Array.isArray(value))
-    return value.map((entry) => replaceExactStrings(entry, replacements));
-  if (value && typeof value === "object")
-    return Object.fromEntries(
-      Object.entries(value).map(([key, entry]) => [
-        key,
-        replaceExactStrings(entry, replacements),
-      ]),
-    );
-  return value;
-}
-
-function rewriteJsonArtifacts(target, replacements) {
-  const roots = [
-    "ai",
-    "context",
-    "design",
-    "domain",
-    "evals",
-    "foundation",
-    "goal",
-    "graph",
-    "production",
-    "proof",
-    "run",
-    "smoke",
-    "trajectory",
-    "waivers",
-  ];
-  const visit = (directory) => {
-    if (!existsSync(directory)) return;
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const file = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(file);
-      else if (entry.isFile() && entry.name.endsWith(".json")) {
-        const document = JSON.parse(readFileSync(file, "utf8"));
-        writeJson(file, replaceExactStrings(document, replacements));
-      }
-    }
-  };
-  for (const root of roots) visit(path.join(target, root));
-}
-
-function tarOctal(value, width) {
-  return `${value.toString(8).padStart(width - 1, "0")}\0`;
-}
-
-function tarArchive(name, content, options = {}) {
-  const body = Buffer.isBuffer(content)
-    ? content
-    : Buffer.from(content, "utf8");
-  const header = Buffer.alloc(512);
-  header.write(name, 0, 100, "utf8");
-  header.write(tarOctal(0o644, 8), 100, 8, "ascii");
-  header.write(tarOctal(0, 8), 108, 8, "ascii");
-  header.write(tarOctal(0, 8), 116, 8, "ascii");
-  header.write(tarOctal(body.length, 12), 124, 12, "ascii");
-  header.write(tarOctal(Math.floor(Date.now() / 1000), 12), 136, 12, "ascii");
-  header.fill(0x20, 148, 156);
-  header[156] = (options.type ?? "0").charCodeAt(0);
-  header.write("ustar\0", 257, 6, "ascii");
-  header.write("00", 263, 2, "ascii");
-  if (options.uname) header.write(options.uname, 265, 32, "utf8");
-  if (options.prefix) header.write(options.prefix, 345, 155, "utf8");
-  const checksum = [...header].reduce((sum, byte) => sum + byte, 0);
-  header.write(`${checksum.toString(8).padStart(6, "0")}\0 `, 148, 8, "ascii");
-  const padding = Buffer.alloc((512 - (body.length % 512)) % 512);
-  return Buffer.concat([header, body, padding, Buffer.alloc(1024)]);
-}
-
-function gzipWithFilename(content, filename) {
-  const plain = gzipSync(content);
-  return Buffer.concat([
-    plain.subarray(0, 3),
-    Buffer.from([plain[3] | 0x08]),
-    plain.subarray(4, 10),
-    Buffer.from(`${filename}\0`, "utf8"),
-    plain.subarray(10),
-  ]);
-}
-
-function routeCase(
-  tempRoot,
-  id,
-  request,
-  expectedType,
-  expectedPrimary,
-  inspect = () => true,
-) {
-  const repo = path.join(tempRoot, `route-${id}`);
-  mkdirSync(repo, { recursive: true });
-  const result = run("route-request.mjs", [
-    "--repo",
-    repo,
-    "--run-id",
-    `CONVERGENCE-${id}`,
-    "--profile",
-    "production",
-    "--request",
-    request,
-  ]);
-  assert(
-    result.status === 0,
-    `${id} route creation failed: ${output(result).slice(-1000)}`,
-  );
-  const classification = JSON.parse(
-    readFileSync(
-      path.join(repo, "run", "workload-classification.json"),
-      "utf8",
-    ),
-  );
-  const route = JSON.parse(
-    readFileSync(path.join(repo, "run", "route.json"), "utf8"),
-  );
-  assert(
-    classification.taskType === expectedType,
-    `${id} classified as ${classification.taskType}`,
-  );
-  assert(
-    route.skillPhases[1].primary === expectedPrimary,
-    `${id} routed to ${route.skillPhases[1].primary}`,
-  );
-  assert(
-    inspect(route, classification),
-    `${id} route-specific assurance failed`,
-  );
-  for (const gate of [
-    "intake-gate.mjs",
-    "workload-classification-gate.mjs",
-    "route-gate.mjs",
-  ]) {
-    const gateResult = run(gate, ["--repo", repo]);
-    assert(
-      gateResult.status === 0,
-      `${id} failed ${gate}: ${output(gateResult).slice(-1000)}`,
-    );
-  }
-}
-
-function parseWorkflowActionSteps(workflow) {
-  const jobsIndex = workflow.indexOf("jobs:\n");
-  assert(jobsIndex >= 0, "protected residue workflow has no jobs mapping");
-  const steps = [];
-  let job = "";
-  let step = null;
-  let inWith = false;
-  for (const line of workflow.slice(jobsIndex + "jobs:\n".length).split("\n")) {
-    const jobMatch = line.match(/^  ([a-zA-Z0-9_-]+):\s*$/);
-    if (jobMatch) {
-      job = jobMatch[1];
-      step = null;
-      inWith = false;
-      continue;
-    }
-    const stepMatch = line.match(/^      - name:\s*(.+?)\s*$/);
-    if (stepMatch) {
-      step = { job, name: stepMatch[1], uses: "", with: {} };
-      steps.push(step);
-      inWith = false;
-      continue;
-    }
-    if (!step) continue;
-    const usesMatch = line.match(/^        uses:\s*([^\s#]+)/);
-    if (usesMatch) {
-      step.uses = usesMatch[1];
-      inWith = false;
-      continue;
-    }
-    if (/^        with:\s*$/.test(line)) {
-      inWith = true;
-      continue;
-    }
-    const withMatch = inWith
-      ? line.match(/^          ([a-zA-Z0-9_-]+):\s*(.*?)\s*$/)
-      : null;
-    if (withMatch) {
-      step.with[withMatch[1]] = withMatch[2];
-      continue;
-    }
-    if (/^        [a-zA-Z0-9_-]+:/.test(line) || /^      - /.test(line))
-      inWith = false;
-  }
-  return steps;
 }
 
 const tempRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-convergence-")));
@@ -479,533 +293,20 @@ try {
     },
   );
 
+  record(
+    "restricted residue convergence executes in its focused verifier",
+    () => {
+      const result = run("verify-restricted-residue-convergence.mjs", []);
+      assert(
+        result.status === 0,
+        `restricted residue convergence verifier failed: ${output(result).slice(-3000)}`,
+      );
+    },
+    RESTRICTED_RESIDUE_CONVERGENCE_BINDINGS,
+  );
+
   const publicRepo = path.join(tempRoot, "public-repo");
-  const generatedPack = path.join(tempRoot, "generated-pack");
-  const knowledgeVault = path.join(publicRepo, "knowledge");
-  const installedManifest = path.join(tempRoot, "installed-skills.json");
-  const archive = path.join(tempRoot, "release.tgz");
-  mkdirSync(knowledgeVault, { recursive: true });
-  mkdirSync(generatedPack, { recursive: true });
-  const restrictedName = ["Synthetic", "Restricted", "Identity"].join("-");
-  const restrictedUnicode = "Caf\u00e9RestrictedBoundary";
-  const restrictedPath = ["C:", "Users", "restricted", "private-repo"].join(
-    "\\",
-  );
-  const issuePrefix = ["PR", "V"].join("");
-  const residueManifest = path.join(tempRoot, "restricted-values.json");
-  writeJson(residueManifest, {
-    schema: "valdris.restricted-residue-input.v1",
-    values: [restrictedName, restrictedPath, restrictedUnicode],
-    issuePrefixes: [issuePrefix],
-  });
-  writeFileSync(
-    path.join(publicRepo, "README.md"),
-    "neutral public content\n",
-    "utf8",
-  );
-  writeFileSync(
-    path.join(generatedPack, "prompt.md"),
-    `Do not publish ${restrictedName}.\n`,
-    "utf8",
-  );
-  writeFileSync(
-    path.join(knowledgeVault, "note.md"),
-    `Historical ticket ${issuePrefix}-447 must stay private.\n`,
-    "utf8",
-  );
-  writeJson(installedManifest, { installed: [{ source: restrictedPath }] });
-  writeFileSync(
-    archive,
-    gzipSync(
-      tarArchive("package/private.txt", `restricted=${restrictedName}\n`),
-    ),
-  );
-
-  record(
-    "restricted residue is found across every public surface without disclosure",
-    () => {
-      const result = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-        "--generated-pack",
-        generatedPack,
-        "--knowledge-vault",
-        knowledgeVault,
-        "--installed-skill-manifest",
-        installedManifest,
-      ]);
-      const text = output(result);
-      assert(result.status !== 0, "restricted residue was accepted");
-      assert(
-        !text.includes(restrictedName) &&
-          !text.includes(restrictedPath) &&
-          !text.includes(`${issuePrefix}-447`),
-        "restricted residue leaked into diagnostics",
-      );
-      const payload = JSON.parse(result.stdout);
-      for (const prefix of [
-        "repository-",
-        "release-archive-",
-        "generated-pack-",
-        "knowledge-vault-",
-        "installed-skill-manifest-",
-      ])
-        assert(
-          payload.findings.some(({ surface }) => surface.startsWith(prefix)),
-          `surface ${prefix} was not covered`,
-        );
-    },
-    ["convergence:restricted-residue-surfaces"],
-  );
-
-  record(
-    "encoded, normalized, binary, shipping-directory, and nested-archive residue is rejected",
-    () => {
-      writeFileSync(
-        path.join(generatedPack, "prompt.md"),
-        "neutral generated content\n",
-        "utf8",
-      );
-      writeFileSync(
-        path.join(knowledgeVault, "note.md"),
-        "neutral knowledge content\n",
-        "utf8",
-      );
-      mkdirSync(path.join(generatedPack, "dist"), { recursive: true });
-      mkdirSync(path.join(generatedPack, ".next"), { recursive: true });
-      writeFileSync(
-        path.join(generatedPack, "dist", "utf16.txt"),
-        Buffer.concat([
-          Buffer.from([0xff, 0xfe]),
-          Buffer.from(restrictedName, "utf16le"),
-        ]),
-      );
-      writeFileSync(
-        path.join(generatedPack, ".next", "normalized.txt"),
-        restrictedUnicode.normalize("NFD"),
-        "utf8",
-      );
-      writeFileSync(
-        path.join(generatedPack, "binary.dat"),
-        Buffer.concat([
-          Buffer.from([0x00, 0x89, 0x01]),
-          Buffer.from(restrictedName, "utf16le"),
-          Buffer.from([0xff, 0x00]),
-        ]),
-      );
-      for (const relative of [
-        "dist/utf16.txt",
-        ".next/normalized.txt",
-        "binary.dat",
-      ]) {
-        const isolated = path.join(
-          tempRoot,
-          `isolated-${relative.replace(/[/.]/g, "-")}`,
-        );
-        mkdirSync(isolated, { recursive: true });
-        const source = path.join(generatedPack, ...relative.split("/"));
-        writeFileSync(path.join(isolated, "fixture.bin"), readFileSync(source));
-        const result = run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          residueManifest,
-          "--generated-pack",
-          isolated,
-        ]);
-        assert(
-          result.status !== 0 &&
-            JSON.parse(result.stdout).findings.some(
-              ({ surface }) => surface === "generated-pack-1",
-            ),
-          `isolated encoded residue passed: ${relative}`,
-        );
-        assert(
-          !output(result).includes(restrictedName) &&
-            JSON.parse(result.stdout).findings.every(
-              (finding) => !Object.hasOwn(finding, "fingerprint"),
-            ),
-          `encoded residue diagnostics leaked for ${relative}`,
-        );
-      }
-      const utf32 = Buffer.alloc(3 + restrictedName.length * 4);
-      for (let index = 0; index < restrictedName.length; index += 1)
-        utf32.writeUInt32LE(restrictedName.codePointAt(index), 3 + index * 4);
-      const utf32Pack = path.join(tempRoot, "isolated-utf32");
-      mkdirSync(utf32Pack, { recursive: true });
-      writeFileSync(path.join(utf32Pack, "fixture.bin"), utf32);
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          residueManifest,
-          "--generated-pack",
-          utf32Pack,
-        ]).status !== 0,
-        "odd-offset UTF-32 residue was accepted",
-      );
-
-      writeFileSync(
-        archive,
-        gzipSync(tarArchive(".valdris-harness/prompt.md", restrictedName)),
-      );
-      const archivedPack = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--generated-pack-archive",
-        archive,
-      ]);
-      assert(
-        archivedPack.status !== 0 &&
-          JSON.parse(archivedPack.stdout).findings.some(
-            ({ surface }) => surface === "generated-pack-1",
-          ),
-        "encrypted-handoff generated-pack archive residue was accepted",
-      );
-
-      const nestedArchive = gzipSync(
-        tarArchive("nested/private.txt", restrictedName),
-      );
-      writeFileSync(
-        archive,
-        gzipSync(tarArchive("package/nested.tgz", nestedArchive)),
-      );
-      const nested = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-      ]);
-      assert(
-        nested.status !== 0 &&
-          JSON.parse(nested.stdout).findings.some(
-            ({ surface }) => surface === "release-archive-1",
-          ),
-        "nested compressed release residue was not scanned",
-      );
-
-      const nestedGzipMetadata = gzipWithFilename(
-        Buffer.from("neutral nested content", "utf8"),
-        restrictedName,
-      );
-      writeFileSync(
-        archive,
-        gzipSync(tarArchive("package/nested.gz", nestedGzipMetadata)),
-      );
-      const nestedGzipName = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-      ]);
-      assert(
-        nestedGzipName.status !== 0 &&
-          JSON.parse(nestedGzipName.stdout).findings.some(
-            ({ surface }) => surface === "release-archive-1",
-          ),
-        "nested gzip filename metadata residue was accepted",
-      );
-
-      writeFileSync(
-        archive,
-        gzipSync(
-          tarArchive("private.txt", "neutral", { prefix: restrictedName }),
-        ),
-      );
-      const prefixed = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-      ]);
-      assert(
-        prefixed.status !== 0 &&
-          JSON.parse(prefixed.stdout).findings.some(
-            ({ surface }) => surface === "release-archive-1",
-          ),
-        "USTAR prefix residue was accepted",
-      );
-
-      writeFileSync(
-        archive,
-        gzipSync(
-          tarArchive("public.txt", "neutral", { uname: restrictedName }),
-        ),
-      );
-      const tarOwner = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-      ]);
-      assert(
-        tarOwner.status !== 0 &&
-          JSON.parse(tarOwner.stdout).findings.some(
-            ({ surface }) => surface === "release-archive-1",
-          ),
-        "USTAR owner metadata residue was accepted",
-      );
-
-      const gzipWithRestrictedName = gzipWithFilename(
-        tarArchive("public.txt", "neutral"),
-        restrictedName,
-      );
-      writeFileSync(archive, gzipWithRestrictedName);
-      const gzipName = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-      ]);
-      assert(
-        gzipName.status !== 0 &&
-          JSON.parse(gzipName.stdout).findings.some(
-            ({ surface }) => surface === "release-archive-1",
-          ),
-        "gzip filename metadata residue was accepted",
-      );
-
-      writeFileSync(
-        archive,
-        gzipSync(tarArchive("directory/", restrictedName, { type: "5" })),
-      );
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          residueManifest,
-          "--release-archive",
-          archive,
-        ]).status !== 0,
-        "tar directory payload residue was accepted",
-      );
-
-      writeFileSync(archive, gzipSync(tarArchive("pipe", "", { type: "6" })));
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          residueManifest,
-          "--release-archive",
-          archive,
-        ]).status !== 0,
-        "tar FIFO special entry was accepted",
-      );
-
-      writeFileSync(
-        archive,
-        gzipSync(
-          Buffer.concat([
-            tarArchive("public.txt", "neutral"),
-            Buffer.from(restrictedName),
-          ]),
-        ),
-      );
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          residueManifest,
-          "--release-archive",
-          archive,
-        ]).status !== 0,
-        "nonzero trailing archive content was accepted",
-      );
-
-      const expansionBomb = gzipSync(Buffer.alloc(16 * 1024 * 1024 + 1, 0x20));
-      writeFileSync(
-        archive,
-        gzipSync(tarArchive("package/high-ratio.gz", expansionBomb)),
-      );
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          residueManifest,
-          "--release-archive",
-          archive,
-        ]).status !== 0,
-        "oversized nested gzip expansion was accepted",
-      );
-
-      mkdirSync(path.join(publicRepo, "dist"), { recursive: true });
-      writeFileSync(
-        path.join(publicRepo, "dist", "private.txt"),
-        restrictedName,
-        "utf8",
-      );
-      writeFileSync(
-        archive,
-        gzipSync(tarArchive("package/public.txt", "neutral release content\n")),
-      );
-      const coveredBuildDirectory = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        archive,
-      ]);
-      assert(
-        coveredBuildDirectory.status !== 0 &&
-          JSON.parse(coveredBuildDirectory.stdout).findings.some(
-            ({ surface }) => surface === "repository-1",
-          ),
-        "an unrelated release archive disabled repository dist coverage",
-      );
-      rmSync(path.join(publicRepo, "dist"), { recursive: true, force: true });
-      rmSync(path.join(generatedPack, "dist"), {
-        recursive: true,
-        force: true,
-      });
-      rmSync(path.join(generatedPack, ".next"), {
-        recursive: true,
-        force: true,
-      });
-      rmSync(path.join(generatedPack, "binary.dat"), { force: true });
-    },
-  );
-
-  record("clean residue surfaces pass", () => {
-    writeFileSync(
-      path.join(generatedPack, "prompt.md"),
-      "neutral generated content\n",
-      "utf8",
-    );
-    writeFileSync(
-      path.join(knowledgeVault, "note.md"),
-      "neutral knowledge content\n",
-      "utf8",
-    );
-    writeJson(installedManifest, { installed: [{ source: "public-catalog" }] });
-    writeFileSync(
-      archive,
-      gzipSync(tarArchive("package/public.txt", "neutral release content\n")),
-    );
-    const result = run("restricted-residue-gate.mjs", [
-      "--repo",
-      publicRepo,
-      "--manifest",
-      residueManifest,
-      "--release-archive",
-      archive,
-      "--generated-pack",
-      generatedPack,
-      "--knowledge-vault",
-      knowledgeVault,
-      "--installed-skill-manifest",
-      installedManifest,
-    ]);
-    assert(
-      result.status === 0,
-      `clean residue surfaces failed: ${output(result).slice(-1000)}`,
-    );
-  });
-
-  record(
-    "malformed restricted inputs fail without path or value disclosure",
-    () => {
-      const malformedManifest = path.join(
-        tempRoot,
-        `${restrictedName}-malformed.json`,
-      );
-      writeFileSync(malformedManifest, `{"value":"${restrictedPath}"`, "utf8");
-      const badManifest = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        malformedManifest,
-      ]);
-      assert(
-        badManifest.status !== 0 &&
-          !output(badManifest).includes(restrictedName) &&
-          !output(badManifest).includes(restrictedPath),
-        "malformed manifest diagnostics disclosed restricted input",
-      );
-      const missingArchive = path.join(
-        tempRoot,
-        `${restrictedName}-missing.tgz`,
-      );
-      const badSurface = run("restricted-residue-gate.mjs", [
-        "--repo",
-        publicRepo,
-        "--manifest",
-        residueManifest,
-        "--release-archive",
-        missingArchive,
-      ]);
-      assert(
-        badSurface.status !== 0 &&
-          !output(badSurface).includes(restrictedName) &&
-          !output(badSurface).includes(missingArchive),
-        "missing surface diagnostics disclosed a restricted path",
-      );
-    },
-  );
-
-  record(
-    "restricted manifests are bounded regular files with no symlinked parent",
-    () => {
-      const oversizedManifest = path.join(
-        tempRoot,
-        "oversized-restricted-values.json",
-      );
-      writeFileSync(oversizedManifest, Buffer.alloc(1024 * 1024 + 1, 0x20));
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          oversizedManifest,
-        ]).status !== 0,
-        "oversized restricted manifest was accepted",
-      );
-      const actualParent = path.join(tempRoot, "manifest-parent");
-      const linkedParent = path.join(tempRoot, "manifest-parent-link");
-      mkdirSync(actualParent, { recursive: true });
-      writeJson(path.join(actualParent, "manifest.json"), {
-        schema: "valdris.restricted-residue-input.v1",
-        values: [restrictedName],
-        issuePrefixes: [],
-      });
-      symlinkSync(
-        actualParent,
-        linkedParent,
-        process.platform === "win32" ? "junction" : "dir",
-      );
-      assert(
-        run("restricted-residue-gate.mjs", [
-          "--repo",
-          publicRepo,
-          "--manifest",
-          path.join(linkedParent, "manifest.json"),
-        ]).status !== 0,
-        "symlink-parent restricted manifest was accepted",
-      );
-    },
-  );
-
+  mkdirSync(publicRepo, { recursive: true });
   const codexRoot = path.join(tempRoot, ".codex", "skills");
   const claudeRoot = path.join(tempRoot, ".claude", "skills");
   const retiredName = ["retired", "fixture", "skill"].join("-");
@@ -1216,6 +517,27 @@ try {
   );
 
   record(
+    "retirement rollback restores a post-rename changed quarantine object",
+    () => {
+      const rollbackRoot = path.join(tempRoot, "retirement-rollback");
+      const target = path.join(rollbackRoot, "skill");
+      const quarantine = path.join(rollbackRoot, ".valdris-retirement-fixture");
+      mkdirSync(quarantine, { recursive: true });
+      writeFileSync(
+        path.join(quarantine, "SKILL.md"),
+        "changed after rename\n",
+        "utf8",
+      );
+      assert(
+        restoreRetirementQuarantine(target, quarantine) &&
+          existsSync(path.join(target, "SKILL.md")) &&
+          !existsSync(quarantine),
+        "post-rename retirement rollback left the changed object displaced",
+      );
+    },
+  );
+
+  record(
     "enterprise AI focused suite executes structural control behaviors",
     () => {
       const result = run("verify-enterprise-ai.mjs", []);
@@ -1294,133 +616,20 @@ try {
     ["convergence:skill-drift"],
   );
 
-  const routeCases = [
-    [
-      "ambiguous-intake",
-      "Make it better",
-      "ambiguous",
-      "valdris-intake-route",
-      (_route, classification) =>
-        classification.materialUnknowns.some(
-          ({ id }) => id === "scope-definition",
-        ),
-    ],
-    [
-      "audit",
-      "Audit this repository end to end",
-      "audit",
-      "valdris-intake-route",
-    ],
-    [
-      "feature",
-      "Build a full-stack customer portal",
-      "feature",
-      "valdris-feature-delivery",
-    ],
-    ["bug-rca", "Fix the duplicate retry bug", "bug", "valdris-bug-rca"],
-    [
-      "architecture",
-      "Refactor the service module boundaries",
-      "architecture-refactor",
-      "valdris-architecture-refactor",
-    ],
-    [
-      "security",
-      "Audit authorization and tenant isolation",
-      "security",
-      "valdris-security-audit",
-    ],
-    [
-      "platform-release",
-      "Ship the current build to TestFlight",
-      "platform-release",
-      "valdris-platform-release",
-    ],
-    [
-      "genai",
-      "Audit our RAG model quality",
-      "genai",
-      "valdris-genai-assurance",
-    ],
-    [
-      "proof-handoff",
-      "Verify this is ready to merge",
-      "proof-handoff",
-      "valdris-proof-handoff",
-    ],
-    [
-      "manual-provider-change",
-      "Manually change production provider configuration",
-      "platform-release",
-      "valdris-platform-release",
-      (route) => route.gateApplicability.smoke.status === "required",
-    ],
-    [
-      "manual-data-change",
-      "Manually change production customer data",
-      "platform-release",
-      "valdris-platform-release",
-      (route) => route.gateApplicability.smoke.status === "required",
-    ],
-    [
-      "documentation-only",
-      "Write a README",
-      "docs-only",
-      "valdris-intake-route",
-      (route) => route.gateApplicability.foundation.status === "not-applicable",
-    ],
-    [
-      "mixed-intent",
-      "Fix the retry bug and deploy the repair",
-      "bug",
-      "valdris-bug-rca",
-      (route) =>
-        route.skillPhases[1].supporting.includes("valdris-platform-release") &&
-        route.gateApplicability.smoke.status === "required",
-    ],
-  ];
-  routeCases.push([
-    "manual-bug-precedence",
-    "Fix the duplicate retry bug by manually changing customer data in production",
-    "bug",
-    "valdris-bug-rca",
-    (route) =>
-      route.skillPhases[1].supporting.includes("valdris-platform-release") &&
-      route.gateApplicability.smoke.status === "required",
-  ]);
-  for (const [
-    id,
-    request,
-    expectedType,
-    expectedPrimary,
-    inspect,
-  ] of routeCases)
-    record(
-      `route ${id}`,
-      () =>
-        routeCase(
-          tempRoot,
-          id,
-          request,
-          expectedType,
-          expectedPrimary,
-          inspect,
-        ),
-      [`route:${id}`],
-    );
   record(
-    "complete routing matrix executed",
+    "complete routing matrix executes in its focused verifier",
     () => {
+      const result = run("verify-routing-convergence.mjs", []);
       assert(
-        routeCases.every(([id]) =>
-          checks.some((check) => check.name === `route ${id}` && check.ok),
-        ),
-        "one or more route cases did not execute successfully",
+        result.status === 0,
+        `routing convergence verifier failed: ${output(result).slice(-3000)}`,
       );
     },
-    ["convergence:route-matrix"],
+    [
+      "convergence:route-matrix",
+      ...ROUTING_CONVERGENCE_CASE_IDS.map((id) => `route:${id}`),
+    ],
   );
-
   record(
     "neutral full-stack target completes a commissioned structural run",
     () => {

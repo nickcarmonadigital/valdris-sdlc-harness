@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { readJson } from "./proof-runner.mjs";
+import { terminateChildProcess } from "./process-lifecycle.mjs";
 import { reviewTrustStoreSha256 } from "./review-gate.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -43,7 +44,10 @@ async function waitForHealth(port, timeoutMs = 4000) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/health`);
+      const remaining = Math.max(1, timeoutMs - (Date.now() - started));
+      const response = await fetch(`http://127.0.0.1:${port}/health`, {
+        signal: AbortSignal.timeout(Math.min(1_000, remaining)),
+      });
       if (response.ok) return response.json();
     } catch {
       // The process is still starting or correctly failed closed.
@@ -65,22 +69,18 @@ async function waitForExit(child, timeoutMs = 4000) {
 }
 
 async function stop(child) {
-  if (!child || child.exitCode !== null) return;
-  await new Promise((resolve) => {
-    const timer = setTimeout(resolve, 1500);
-    child.once("exit", () => {
-      clearTimeout(timer);
-      resolve();
-    });
-    child.kill("SIGTERM");
-  });
+  await terminateChildProcess(child, { label: "bridge lease fixture" });
 }
 
 async function post(port, pathname, body) {
   const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-uash-bridge-token": accessToken },
+    headers: {
+      "content-type": "application/json",
+      "x-uash-bridge-token": accessToken,
+    },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
   });
   return { status: response.status, text: await response.text() };
 }

@@ -94,7 +94,11 @@ function main() {
   const supporting = supportingSkillsForClassification(classification, deliveryPrimary);
   const executionBudget = executionBudgetForClassification(classification);
   const mobileIos = domainPacks.includes("mobile-ios") ? mobileIosCommissioning(repoRoot) : undefined;
-  const sourceChangeRequested = /\b(fix|repair|remediat(?:e|ed|ion)|implement|build|add|change|update|refactor|migrat(?:e|ed|ing|ion)|redesign|develop|create|write|document|edit|rename|revise)\b/i.test(request);
+  const sourceChangeRequested =
+    taskType !== "ambiguous" &&
+    /\b(fix|repair|remediat(?:e|ed|ion)|implement|build|add|change|update|refactor|migrat(?:e|ed|ing|ion)|redesign|develop|create|write|document|edit|rename|revise)\b/i.test(
+      request,
+    );
   const allowedActions = sourceChangeRequested
     ? ["read repository", "create scoped branch changes", "run local and commissioned validation"]
     : ["read repository", "run local and commissioned validation"];

@@ -7,6 +7,7 @@ import { request as httpRequest } from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { BRIDGE_CREDENTIAL_ENV_NAMES, finishLineChildEnv } from "./bridge-security.mjs";
+import { terminateChildProcess } from "./process-lifecycle.mjs";
 
 const reviewTrustSha256 = "a".repeat(64);
 const contaminatedEnvironment = {
@@ -75,7 +76,10 @@ async function waitForBridge() {
   while (Date.now() - started < 5000) {
     if (bridge.exitCode !== null) throw new Error(`bridge exited during startup: ${bridgeLog}`);
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/health`);
+      const remaining = Math.max(1, 5_000 - (Date.now() - started));
+      const response = await fetch(`http://127.0.0.1:${port}/health`, {
+        signal: AbortSignal.timeout(Math.min(1_000, remaining)),
+      });
       if (response.ok) return;
     } catch {
       // Bridge is still starting.
@@ -88,8 +92,13 @@ async function waitForBridge() {
 async function post(pathname, body, headers = {}) {
   const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-uash-bridge-token": bridgeAccessToken, ...headers },
+    headers: {
+      "content-type": "application/json",
+      "x-uash-bridge-token": bridgeAccessToken,
+      ...headers,
+    },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
   });
   return { status: response.status, text: await response.text() };
 }
@@ -97,6 +106,7 @@ async function post(pathname, body, headers = {}) {
 async function get(pathname) {
   const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
     headers: { "x-uash-bridge-token": bridgeAccessToken },
+    signal: AbortSignal.timeout(10_000),
   });
   return { status: response.status, text: await response.text(), headers: response.headers };
 }
@@ -127,21 +137,16 @@ async function rawPost(pathname, bodyChunks, headers = {}) {
     candidate.on("error", (error) => {
       if (!settled) reject(error);
     });
+    candidate.setTimeout(10_000, () =>
+      candidate.destroy(new Error("raw bridge request timed out")),
+    );
     for (const chunk of bodyChunks) candidate.write(chunk);
     candidate.end();
   });
 }
 
 async function stopBridge() {
-  if (bridge.exitCode !== null) return;
-  await new Promise((resolve) => {
-    const timeout = setTimeout(resolve, 1500);
-    bridge.once("exit", () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-    bridge.kill("SIGTERM");
-  });
+  await terminateChildProcess(bridge, { label: "bridge security fixture" });
 }
 
 try {
