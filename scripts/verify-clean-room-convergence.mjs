@@ -517,25 +517,65 @@ try {
   );
 
   record(
-    "retirement rollback restores a post-rename changed quarantine object",
+    "retirement rollback restores only its verified quarantine object",
     () => {
-      const rollbackRoot = path.join(tempRoot, "retirement-rollback");
-      const target = path.join(rollbackRoot, "skill");
-      const quarantine = path.join(rollbackRoot, ".valdris-retirement-fixture");
-      mkdirSync(quarantine, { recursive: true });
-      writeFileSync(
-        path.join(quarantine, "SKILL.md"),
-        "changed after rename\n",
-        "utf8",
-      );
+      const rollbackName = "rollback-fixture-skill";
+      const target = path.join(codexRoot, rollbackName);
+      const quarantine = path.join(codexRoot, ".valdris-retirement-fixture");
+      mkdirSync(target, { recursive: true });
+      writeFileSync(path.join(target, "SKILL.md"), "original\n", "utf8");
+      writeJson(retirementManifest, {
+        schema: "valdris.skill-retirement-manifest.v1",
+        entries: [{ name: rollbackName, roots: ["codex"] }],
+      });
+      const prepared = planSkillRetirement({
+        repo: publicRepo,
+        manifest: retirementManifest,
+        roots: { codex: codexRoot },
+        apply: true,
+      });
+      renameSync(target, quarantine);
       assert(
-        restoreRetirementQuarantine(target, quarantine) &&
+        restoreRetirementQuarantine(target, quarantine, prepared.plan[0]) &&
           existsSync(path.join(target, "SKILL.md")) &&
           !existsSync(quarantine),
-        "post-rename retirement rollback left the changed object displaced",
+        "verified retirement quarantine was not restored",
       );
     },
   );
+
+  record("retirement rollback leaves a changed quarantine inactive", () => {
+    const rollbackName = "changed-rollback-fixture-skill";
+    const target = path.join(codexRoot, rollbackName);
+    const quarantine = path.join(
+      codexRoot,
+      ".valdris-retirement-changed-fixture",
+    );
+    mkdirSync(target, { recursive: true });
+    writeFileSync(path.join(target, "SKILL.md"), "original\n", "utf8");
+    writeJson(retirementManifest, {
+      schema: "valdris.skill-retirement-manifest.v1",
+      entries: [{ name: rollbackName, roots: ["codex"] }],
+    });
+    const prepared = planSkillRetirement({
+      repo: publicRepo,
+      manifest: retirementManifest,
+      roots: { codex: codexRoot },
+      apply: true,
+    });
+    renameSync(target, quarantine);
+    writeFileSync(
+      path.join(quarantine, "SKILL.md"),
+      "changed after rename\n",
+      "utf8",
+    );
+    assert(
+      !restoreRetirementQuarantine(target, quarantine, prepared.plan[0]) &&
+        !existsSync(target) &&
+        existsSync(path.join(quarantine, "SKILL.md")),
+      "changed retirement quarantine was reactivated",
+    );
+  });
 
   record(
     "enterprise AI focused suite executes structural control behaviors",

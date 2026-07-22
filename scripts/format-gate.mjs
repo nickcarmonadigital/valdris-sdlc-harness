@@ -34,38 +34,42 @@ const FORMATTED_EXTENSIONS = new Set([
   ".yaml",
   ".yml",
 ]);
+const WHOLE_FILE_FORMAT_EXTENSIONS = new Set([".json"]);
 
 function changedRanges(repoRoot, baseRef) {
-  const commands = [
-    [
-      "-c",
-      "core.quotePath=false",
-      "diff",
-      "--unified=0",
-      "--no-color",
-      "--diff-filter=ACMR",
-    ],
-    [
-      "-c",
-      "core.quotePath=false",
-      "diff",
-      "--cached",
-      "--unified=0",
-      "--no-color",
-      "--diff-filter=ACMR",
-    ],
-  ];
-  if (baseRef && !/^0+$/.test(baseRef))
-    commands.push([
-      "-c",
-      "core.quotePath=false",
-      "diff",
-      "--unified=0",
-      "--no-color",
-      "--diff-filter=ACMR",
-      baseRef,
-      "--",
-    ]);
+  const commands =
+    baseRef && !/^0+$/.test(baseRef)
+      ? [
+          [
+            "-c",
+            "core.quotePath=false",
+            "diff",
+            "--unified=0",
+            "--no-color",
+            "--diff-filter=ACMR",
+            baseRef,
+            "--",
+          ],
+        ]
+      : [
+          [
+            "-c",
+            "core.quotePath=false",
+            "diff",
+            "--unified=0",
+            "--no-color",
+            "--diff-filter=ACMR",
+          ],
+          [
+            "-c",
+            "core.quotePath=false",
+            "diff",
+            "--cached",
+            "--unified=0",
+            "--no-color",
+            "--diff-filter=ACMR",
+          ],
+        ];
   const ranges = new Map();
   for (const args of commands) {
     const result = runBoundedGit(repoRoot, args);
@@ -117,6 +121,30 @@ function enforceDeterministicFormatting(
   if (!existsSync(prettier))
     throw new Error("pinned Prettier runtime is unavailable; run npm ci");
   for (const [relative, fileRanges] of ranges) {
+    if (
+      WHOLE_FILE_FORMAT_EXTENSIONS.has(path.extname(relative).toLowerCase())
+    ) {
+      const result = spawnSync(
+        process.execPath,
+        [prettier, write ? "--write" : "--check", relative],
+        {
+          cwd: repoRoot,
+          encoding: "utf8",
+          shell: false,
+          windowsHide: true,
+          stdio: ["ignore", "pipe", "pipe"],
+          timeout: 120_000,
+          maxBuffer: 8 * 1024 * 1024,
+        },
+      );
+      if (result.status !== 0) {
+        const output = `${result.stdout || ""}\n${result.stderr || ""}`.trim();
+        throw new Error(
+          `deterministic formatting check failed for ${relative}${result.error ? `: ${result.error.message}` : ""}${output ? `:\n${output}` : ""}`,
+        );
+      }
+      continue;
+    }
     const orderedRanges = [...fileRanges.values()].sort((left, right) =>
       write
         ? right.startLine - left.startLine

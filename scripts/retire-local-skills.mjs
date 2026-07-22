@@ -152,10 +152,36 @@ export function planSkillRetirement(options) {
   return { roots, plan };
 }
 
-export function restoreRetirementQuarantine(target, quarantine) {
-  if (!existsSync(quarantine) || existsSync(target)) return false;
+function matchesRetirementCandidate(target, expected) {
+  try {
+    if (
+      !expected?.identity ||
+      !expected?.digest ||
+      !existsSync(target) ||
+      lstatSync(target).isSymbolicLink() ||
+      !lstatSync(target).isDirectory()
+    )
+      return false;
+    return (
+      identity(target) === expected.identity &&
+      candidateDigest(target) === expected.digest
+    );
+  } catch {
+    return false;
+  }
+}
+
+export function restoreRetirementQuarantine(target, quarantine, expected) {
+  if (existsSync(target) || !matchesRetirementCandidate(quarantine, expected))
+    return false;
   renameSync(quarantine, target);
-  return true;
+  if (matchesRetirementCandidate(target, expected)) return true;
+  if (existsSync(target) && !existsSync(quarantine)) {
+    try {
+      renameSync(target, quarantine);
+    } catch {}
+  }
+  return false;
 }
 
 export function applySkillRetirementPlan(prepared) {
@@ -172,7 +198,11 @@ export function applySkillRetirementPlan(prepared) {
       rmSync(quarantine, { recursive: true, force: false });
       item.status = "removed";
     } catch (error) {
-      restoreRetirementQuarantine(item.target, quarantine);
+      if (!restoreRetirementQuarantine(item.target, quarantine, item))
+        throw new Error(
+          "retirement rollback refused to reactivate an unverified quarantine",
+          { cause: error },
+        );
       throw error;
     }
   }

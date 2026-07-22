@@ -41,7 +41,12 @@ try {
     'export const first = { enabled: true };\n\n// stable separator 1\n// stable separator 2\n// stable separator 3\n\nexport const legacy={keep:true};\n\nexport const second = ["value"];\n',
     "utf8",
   );
-  git(fixture, ["add", "proof.txt", "fixture.mjs"]);
+  writeFileSync(
+    path.join(fixture, "fixture.json"),
+    '{\n  "enabled": true\n}\n',
+    "utf8",
+  );
+  git(fixture, ["add", "proof.txt", "fixture.mjs", "fixture.json"]);
   git(fixture, ["commit", "--quiet", "-m", "fixture"]);
   const baseRef = runBoundedGit(fixture, ["rev-parse", "HEAD"]).stdout.trim();
   assertCleanWorktree(fixture);
@@ -79,6 +84,20 @@ try {
   );
   assertRepositoryFormatting(fixture, { baseRef });
 
+  writeFileSync(
+    path.join(fixture, "fixture.json"),
+    '{\n  "enabled": true\n}',
+    "utf8",
+  );
+  rejects(
+    () => assertRepositoryFormatting(fixture),
+    "JSON without a final newline was accepted",
+  );
+  assertRepositoryFormatting(fixture, { write: true });
+  if (!readFileSync(path.join(fixture, "fixture.json"), "utf8").endsWith("\n"))
+    throw new Error("JSON formatter did not restore the final newline");
+  assertRepositoryFormatting(fixture);
+
   const started = Date.now();
   const stalled = runBoundedGit(fixture, [], {
     executable: process.execPath,
@@ -94,5 +113,5 @@ try {
 }
 
 console.log(
-  JSON.stringify({ ok: true, gate: "repository-hygiene", cases: 8 }, null, 2),
+  JSON.stringify({ ok: true, gate: "repository-hygiene", cases: 9 }, null, 2),
 );
