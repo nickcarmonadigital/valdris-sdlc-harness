@@ -12,6 +12,12 @@ import { reviewTrustStoreSha256 } from "./review-gate.mjs";
 
 const root = process.cwd();
 const node = process.execPath;
+const CHECKOUT_ACTION =
+  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const SETUP_NODE_ACTION =
+  "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+const DOWNLOAD_ARTIFACT_ACTION =
+  "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c";
 const VERIFY_BRIDGE_ACCESS_TOKEN = "verify-bridge-access-token-32-bytes-minimum";
 const VERIFY_BRIDGE_INTEGRITY_KEY = "verify-bridge-integrity-key-32-bytes-minimum";
 const VERIFY_HUMAN_APPROVAL_TOKEN = "verify-human-approval-token-32-bytes-minimum";
@@ -578,13 +584,17 @@ try {
   await readFile(path.join(generatedOut, "scripts", "run-acceptance.mjs"), "utf8");
   const generatedWorkflow = await readFile(path.join(generatedOut, ".github", "workflows", "valdris-assurance.yml"), "utf8");
   const generatedAcceptanceWorkflow = await readFile(path.join(generatedOut, ".github", "workflows", "valdris-run-acceptance.yml"), "utf8");
-  assert(generatedWorkflow.includes("name: Valdris Structural Assurance")
-    && generatedWorkflow.includes("pull_request:")
-    && generatedWorkflow.includes("push:")
-    && generatedWorkflow.includes("fetch-depth: 0")
-    && generatedWorkflow.includes("persist-credentials: false")
-    && generatedWorkflow.includes("os: [ubuntu-latest, windows-latest]"),
-  "always-on structural CI must run on push/PR across Linux and Windows with a full credential-free checkout");
+  assert(
+    generatedWorkflow.includes("name: Valdris Structural Assurance") &&
+      generatedWorkflow.includes("pull_request:") &&
+      generatedWorkflow.includes("push:") &&
+      generatedWorkflow.includes("fetch-depth: 0") &&
+      generatedWorkflow.includes("persist-credentials: false") &&
+      generatedWorkflow.includes(CHECKOUT_ACTION) &&
+      generatedWorkflow.includes(SETUP_NODE_ACTION) &&
+      generatedWorkflow.includes("os: [ubuntu-latest, windows-latest]"),
+    "always-on structural CI must run on push/PR across Linux and Windows with supported commit-pinned actions and a full credential-free checkout",
+  );
   for (const structuralGate of ["okf-vault-gate.mjs", "skill-registry-gate.mjs", "catalog-integrity-gate.mjs", "provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs --repo .valdris-harness", "schema-compat-gate.mjs"]) {
     assert(generatedWorkflow.includes(structuralGate), `always-on structural CI is missing ${structuralGate}`);
   }
@@ -599,23 +609,44 @@ try {
     && generatedAcceptanceWorkflow.includes("Require operator-held review trust pin"),
   "run acceptance must be explicit and protected by the operator-held environment trust pin");
   const sourceInputCheckIndex = generatedAcceptanceWorkflow.indexOf("Validate exact source commit input");
-  const sourceCheckoutIndex = generatedAcceptanceWorkflow.indexOf("uses: actions/checkout@v4");
-  assert(sourceInputCheckIndex >= 0 && sourceInputCheckIndex < sourceCheckoutIndex
-    && generatedAcceptanceWorkflow.includes("VALDRIS_SOURCE_COMMIT: ${{ inputs.source_commit }}")
-    && generatedAcceptanceWorkflow.includes("source_commit must be a lowercase full Git object ID"),
-  "run acceptance must validate the exact lowercase full source SHA through an environment variable before checkout");
+  const sourceCheckoutIndex = generatedAcceptanceWorkflow.indexOf(
+    `uses: ${CHECKOUT_ACTION}`,
+  );
+  assert(
+    sourceInputCheckIndex >= 0 &&
+      sourceInputCheckIndex < sourceCheckoutIndex &&
+      generatedAcceptanceWorkflow.includes(
+        "VALDRIS_SOURCE_COMMIT: ${{ inputs.source_commit }}",
+      ) &&
+      generatedAcceptanceWorkflow.includes(SETUP_NODE_ACTION) &&
+      generatedAcceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+      generatedAcceptanceWorkflow.includes(
+        "source_commit must be a lowercase full Git object ID",
+      ),
+    "run acceptance must validate the exact lowercase full source SHA before checkout and use supported commit-pinned actions",
+  );
   assert(generatedAcceptanceWorkflow.includes("ref: ${{ inputs.source_commit }}")
     && generatedAcceptanceWorkflow.includes("fetch-depth: 0")
     && generatedAcceptanceWorkflow.includes("persist-credentials: false")
     && generatedAcceptanceWorkflow.includes("git config core.autocrlf false")
     && generatedAcceptanceWorkflow.includes("git checkout-index --force --all"),
   "run acceptance must materialize the exact full-history source commit with portable Git bytes and no persisted credentials");
-  assert(generatedAcceptanceWorkflow.includes("actions/download-artifact@v4")
-    && generatedAcceptanceWorkflow.includes("run-id: ${{ inputs.artifact_run_id }}")
-    && generatedAcceptanceWorkflow.includes("path: ${{ runner.temp }}/valdris-run-artifacts")
-    && generatedAcceptanceWorkflow.includes("VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts")
-    && generatedAcceptanceWorkflow.includes("run: node .valdris-harness/scripts/run-acceptance.mjs --repo ."),
-  "run acceptance must hydrate the selected artifact outside the checkout and execute the commissioned acceptance CLI");
+  assert(
+    generatedAcceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+      generatedAcceptanceWorkflow.includes(
+        "run-id: ${{ inputs.artifact_run_id }}",
+      ) &&
+      generatedAcceptanceWorkflow.includes(
+        "path: ${{ runner.temp }}/valdris-run-artifacts",
+      ) &&
+      generatedAcceptanceWorkflow.includes(
+        "VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts",
+      ) &&
+      generatedAcceptanceWorkflow.includes(
+        "run: node .valdris-harness/scripts/run-acceptance.mjs --repo .",
+      ),
+    "run acceptance must hydrate the selected artifact outside the checkout and execute the commissioned acceptance CLI",
+  );
   assert(!generatedAcceptanceWorkflow.split(/\r?\n/).some((line) => line.trimStart().startsWith("run:") && (line.includes("${{ inputs.") || line.includes("${{ runner.temp }}"))), "workflow-dispatch values and runner paths must never be interpolated into acceptance shell commands");
   const generatedPackage = JSON.parse(await readFile(path.join(generatedOut, "package.json"), "utf8"));
   assert(generatedPackage.scripts?.["catalog:gate"] && generatedPackage.scripts?.["provenance:gate"] && generatedPackage.scripts?.["neutrality:gate"] && generatedPackage.scripts?.["privacy:gate"] && generatedPackage.scripts?.["evidence:privacy:gate"] && generatedPackage.scripts?.["schema:compat:gate"] && generatedPackage.scripts?.["intake:gate"] && generatedPackage.scripts?.["classification:gate"] && generatedPackage.scripts?.["foundation:gate"] && generatedPackage.scripts?.["route:request"] && generatedPackage.scripts?.["goal:transition"] && generatedPackage.scripts?.["enterprise-ai:gate"] && generatedPackage.scripts?.["review:gate"] && generatedPackage.scripts?.["run:packet:gate"] && generatedPackage.scripts?.["run:accept"] && generatedPackage.scripts?.["skills:install:codex"] && generatedPackage.scripts?.["skills:check:codex"], "generated package scripts missing clean-room, scoped-evidence, active-start, Layer 0, hydrated acceptance, or v0.8 proof commands");
@@ -922,8 +953,37 @@ try {
   assert(iosGeneratedPackage.scripts["intake:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["classification:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["foundation:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["route:gate"].includes('repo ".."') && iosGeneratedPackage.scripts["goal:gate:active"] && iosGeneratedPackage.scripts["run:accept"].includes('repo ".."'), "nested package scripts do not target the application repo or support active-start and hydrated acceptance");
   const iosWorkflow = await readFile(path.join(iosPack, ".github", "workflows", "valdris-assurance.yml"), "utf8");
   const iosAcceptanceWorkflow = await readFile(path.join(iosPack, ".github", "workflows", "valdris-run-acceptance.yml"), "utf8");
-  assert(iosWorkflow.includes(".valdris-harness/scripts") && iosWorkflow.includes("catalog-integrity-gate.mjs") && iosWorkflow.includes("persist-credentials: false") && !iosWorkflow.includes("run-packet-gate.mjs") && !iosWorkflow.includes("UASH_REVIEW_TRUST_SHA256"), "nested always-on CI must be structural, credential-free, and independent of run artifacts");
-  assert(iosAcceptanceWorkflow.includes("environment: valdris-run-acceptance") && iosAcceptanceWorkflow.includes("run-acceptance.mjs") && iosAcceptanceWorkflow.includes("Validate exact source commit input") && iosAcceptanceWorkflow.indexOf("Validate exact source commit input") < iosAcceptanceWorkflow.indexOf("uses: actions/checkout@v4") && iosAcceptanceWorkflow.includes("ref: ${{ inputs.source_commit }}") && iosAcceptanceWorkflow.includes("VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts") && iosAcceptanceWorkflow.includes("fetch-depth: 0") && iosAcceptanceWorkflow.includes("persist-credentials: false") && !iosAcceptanceWorkflow.split(/\r?\n/).some((line) => line.trimStart().startsWith("run:") && line.includes("${{")), "nested explicit run acceptance workflow is missing injection-safe exact-source validation, protected-environment hydration, or checkout hardening");
+  assert(
+    iosWorkflow.includes(".valdris-harness/scripts") &&
+      iosWorkflow.includes("catalog-integrity-gate.mjs") &&
+      iosWorkflow.includes("persist-credentials: false") &&
+      iosWorkflow.includes(CHECKOUT_ACTION) &&
+      iosWorkflow.includes(SETUP_NODE_ACTION) &&
+      !iosWorkflow.includes("run-packet-gate.mjs") &&
+      !iosWorkflow.includes("UASH_REVIEW_TRUST_SHA256"),
+    "nested always-on CI must use supported commit-pinned actions, remain credential-free, and stay independent of run artifacts",
+  );
+  assert(
+    iosAcceptanceWorkflow.includes("environment: valdris-run-acceptance") &&
+      iosAcceptanceWorkflow.includes("run-acceptance.mjs") &&
+      iosAcceptanceWorkflow.includes("Validate exact source commit input") &&
+      iosAcceptanceWorkflow.indexOf("Validate exact source commit input") <
+        iosAcceptanceWorkflow.indexOf(`uses: ${CHECKOUT_ACTION}`) &&
+      iosAcceptanceWorkflow.includes(SETUP_NODE_ACTION) &&
+      iosAcceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+      iosAcceptanceWorkflow.includes("ref: ${{ inputs.source_commit }}") &&
+      iosAcceptanceWorkflow.includes(
+        "VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts",
+      ) &&
+      iosAcceptanceWorkflow.includes("fetch-depth: 0") &&
+      iosAcceptanceWorkflow.includes("persist-credentials: false") &&
+      !iosAcceptanceWorkflow
+        .split(/\r?\n/)
+        .some(
+          (line) => line.trimStart().startsWith("run:") && line.includes("${{"),
+        ),
+    "nested explicit run acceptance workflow is missing supported commit-pinned actions, injection-safe exact-source validation, protected-environment hydration, or checkout hardening",
+  );
   const iosValidationDoc = await readFile(path.join(iosPack, "docs", "Validation Commands.md"), "utf8");
   assert(iosValidationDoc.includes(".valdris-harness/scripts") && iosValidationDoc.includes("catalog-integrity-gate.mjs") && iosValidationDoc.includes("intake-gate.mjs") && iosValidationDoc.includes("workload-classification-gate.mjs") && iosValidationDoc.includes("route-gate.mjs") && iosValidationDoc.includes("foundation-gate.mjs") && iosValidationDoc.includes("goal-gate.mjs") && iosValidationDoc.includes("--repo .valdris-harness") && iosValidationDoc.includes("run-acceptance.mjs") && iosValidationDoc.includes("valdris.run-artifact-bundle.v1"), "generated validation document uses pack-root commands or omits catalog integrity, active-start, or hydrated acceptance gates in a nested install");
   await run(node, [path.join(iosPack, "scripts", "okf-vault-gate.mjs"), "--repo", iosPack], { cwd: iosTarget });

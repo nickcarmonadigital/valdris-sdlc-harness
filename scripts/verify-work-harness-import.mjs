@@ -6,6 +6,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const CHECKOUT_ACTION =
+  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const SETUP_NODE_ACTION =
+  "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+const UPLOAD_ARTIFACT_ACTION =
+  "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
+const DOWNLOAD_ARTIFACT_ACTION =
+  "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c";
 const failures = [];
 const checks = [];
 
@@ -221,7 +229,25 @@ record(
 );
 
 const workflow = read(".github/workflows/ci.yml");
+const restrictedAttestationWorkflow = read(
+  ".github/workflows/restricted-residue-attestation.yml",
+);
 record("CI covers Linux, Windows, and macOS portability", includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]), "missing Linux/Windows/macOS coverage");
+record(
+  "CI uses supported commit-pinned core actions",
+  includesEvery(workflow, [CHECKOUT_ACTION, SETUP_NODE_ACTION]),
+  "CI checkout or setup-node action is stale or not pinned to the commissioned commit",
+);
+record(
+  "restricted attestation uses supported commit-pinned core actions",
+  includesEvery(restrictedAttestationWorkflow, [
+    CHECKOUT_ACTION,
+    SETUP_NODE_ACTION,
+    UPLOAD_ARTIFACT_ACTION,
+    DOWNLOAD_ARTIFACT_ACTION,
+  ]),
+  "restricted attestation action is stale or not pinned to the commissioned commit",
+);
 record(
   "CI runs clean-room gates",
   includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "privacy:release", "verify:release-privacy", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import", "verify:clean-room-convergence"]),

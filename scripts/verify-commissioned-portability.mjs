@@ -11,6 +11,12 @@ import { reviewAttestationPayload } from "./review-gate.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_ROOT = path.resolve(SCRIPT_DIR, "..");
+const CHECKOUT_ACTION =
+  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const SETUP_NODE_ACTION =
+  "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+const DOWNLOAD_ARTIFACT_ACTION =
+  "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c";
 const VERIFY_VALUES = Object.freeze({
   access: "fixture-commissioned-portability-access",
   integrity: "fixture-commissioned-portability-integrity",
@@ -350,8 +356,35 @@ async function main() {
     assert(readFileSync(path.join(target, "CLAUDE.md"), "utf8").includes("@.valdris-harness/CLAUDE.md"), "target-root CLAUDE.md discovery loader missing");
     const structuralWorkflow = readFileSync(path.join(pack, ".github", "workflows", "valdris-assurance.yml"), "utf8");
     const acceptanceWorkflow = readFileSync(path.join(pack, ".github", "workflows", "valdris-run-acceptance.yml"), "utf8");
-    assert(structuralWorkflow.includes("pull_request:") && structuralWorkflow.includes("push:") && structuralWorkflow.includes("fetch-depth: 0") && structuralWorkflow.includes("persist-credentials: false") && !structuralWorkflow.includes("run-packet-gate.mjs") && !structuralWorkflow.includes("UASH_REVIEW_TRUST_SHA256"), "always-on generated workflow must be structural-only and use a full credential-free checkout");
-    assert(acceptanceWorkflow.includes("workflow_dispatch:") && acceptanceWorkflow.includes("environment: valdris-run-acceptance") && acceptanceWorkflow.indexOf("Validate exact source commit input") < acceptanceWorkflow.indexOf("uses: actions/checkout@v4") && acceptanceWorkflow.includes("VALDRIS_SOURCE_COMMIT: ${{ inputs.source_commit }}") && acceptanceWorkflow.includes("VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts") && acceptanceWorkflow.includes("run: node .valdris-harness/scripts/run-acceptance.mjs --repo ."), "explicit generated acceptance workflow must validate exact source before checkout and pass untrusted values only through environment variables");
+    assert(
+      structuralWorkflow.includes("pull_request:") &&
+        structuralWorkflow.includes("push:") &&
+        structuralWorkflow.includes("fetch-depth: 0") &&
+        structuralWorkflow.includes("persist-credentials: false") &&
+        structuralWorkflow.includes(CHECKOUT_ACTION) &&
+        structuralWorkflow.includes(SETUP_NODE_ACTION) &&
+        !structuralWorkflow.includes("run-packet-gate.mjs") &&
+        !structuralWorkflow.includes("UASH_REVIEW_TRUST_SHA256"),
+      "always-on generated workflow must be structural-only and use supported commit-pinned actions with a full credential-free checkout",
+    );
+    assert(
+      acceptanceWorkflow.includes("workflow_dispatch:") &&
+        acceptanceWorkflow.includes("environment: valdris-run-acceptance") &&
+        acceptanceWorkflow.indexOf("Validate exact source commit input") <
+          acceptanceWorkflow.indexOf(`uses: ${CHECKOUT_ACTION}`) &&
+        acceptanceWorkflow.includes(SETUP_NODE_ACTION) &&
+        acceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+        acceptanceWorkflow.includes(
+          "VALDRIS_SOURCE_COMMIT: ${{ inputs.source_commit }}",
+        ) &&
+        acceptanceWorkflow.includes(
+          "VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts",
+        ) &&
+        acceptanceWorkflow.includes(
+          "run: node .valdris-harness/scripts/run-acceptance.mjs --repo .",
+        ),
+      "explicit generated acceptance workflow must validate exact source before checkout, use supported commit-pinned actions, and pass untrusted values only through environment variables",
+    );
     assert(!acceptanceWorkflow.split(/\r?\n/).some((line) => line.trimStart().startsWith("run:") && line.includes("${{")), "generated acceptance workflow interpolates an untrusted expression into a shell command");
     for (const relativePath of ["AGENTS.md", "CLAUDE.md", "docs/Codex Runtime Prompt.md", "docs/Validation Commands.md"]) {
       const text = readFileSync(path.join(pack, relativePath), "utf8");

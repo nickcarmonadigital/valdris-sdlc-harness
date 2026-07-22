@@ -1668,7 +1668,9 @@ function generatePack(args, detected, answers) {
       "enterprise-ai:gate": `node scripts/enterprise-ai-gate-all.mjs --repo \"${repoFromPack}\"`
     }
   }, null, 2));
-  write(path.join(out, ".github/workflows/valdris-assurance.yml"), `name: Valdris Structural Assurance
+  write(
+    path.join(out, ".github/workflows/valdris-assurance.yml"),
+    `name: Valdris Structural Assurance
 
 on:
   pull_request:
@@ -1685,11 +1687,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: \${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
       - name: Validate knowledge vault
@@ -1706,8 +1708,11 @@ jobs:
         run: node ${scriptFromRepo}/privacy-gate.mjs --repo ${packFromRepo}
       - name: Validate assurance schema compatibility
         run: node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}
-`);
-  write(path.join(out, ".github/workflows/valdris-run-acceptance.yml"), `name: Valdris Run Acceptance
+`,
+  );
+  write(
+    path.join(out, ".github/workflows/valdris-run-acceptance.yml"),
+    `name: Valdris Run Acceptance
 
 on:
   workflow_dispatch:
@@ -1745,7 +1750,7 @@ jobs:
         env:
           VALDRIS_SOURCE_COMMIT: \${{ inputs.source_commit }}
         run: node -e "if(!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(process.env.VALDRIS_SOURCE_COMMIT||'')) throw new Error('source_commit must be a lowercase full Git object ID')"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: \${{ inputs.source_commit }}
           fetch-depth: 0
@@ -1754,13 +1759,13 @@ jobs:
         run: |
           git config core.autocrlf false
           git checkout-index --force --all
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
       - name: Require operator-held review trust pin
         run: node -e "if(!/^[a-f0-9]{64}$/.test(process.env.UASH_REVIEW_TRUST_SHA256||'')) throw new Error('Configure UASH_REVIEW_TRUST_SHA256 on the protected valdris-run-acceptance environment')"
       - name: Download completed Valdris artifact bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: \${{ inputs.artifact_name }}
           path: \${{ runner.temp }}/valdris-run-artifacts
@@ -1771,7 +1776,8 @@ jobs:
           VALDRIS_SOURCE_COMMIT: \${{ inputs.source_commit }}
           VALDRIS_ARTIFACT_BUNDLE: \${{ runner.temp }}/valdris-run-artifacts
         run: node ${scriptFromRepo}/run-acceptance.mjs --repo .
-`);
+`,
+  );
   writePackText("commissioning-review.md", renderReview(adapter).replace("## v0.6 commissioning + trust-boundary hardening", "## v0.8 clean-room assurance commissioning") + renderReviewTrustPinProtocol(adapter) + renderLayerZeroProtocol());
   installRootDiscoveryLoaders(rootLoaderPlans);
   return { out, adapter, rootLoaderPlans };
