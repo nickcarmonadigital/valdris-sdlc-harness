@@ -197,9 +197,17 @@ function scanDirectory(directory, patterns, surface, findings, counters, ignored
       if (entry.isDirectory() && ignoredDirectories.has(entry.name)) continue;
       const target = path.join(current, entry.name);
       const relative = path.relative(root, target).split(path.sep).join("/");
-      if (entry.isSymbolicLink()) findings.push({ surface, category: "unsafe-symlink", redacted: "[REDACTED:UNSAFE_SYMLINK]" });
-      else if (entry.isDirectory()) visit(target);
-      else if (entry.isFile()) scanFile(target, patterns, surface, relative, findings, counters);
+      if (entry.isSymbolicLink())
+        findings.push({
+          surface,
+          category: "unsafe-symlink",
+          redacted: "[REDACTED:UNSAFE_SYMLINK]",
+        });
+      else if (entry.isDirectory()) {
+        addMatches(findings, patterns, relative, surface);
+        visit(target);
+      } else if (entry.isFile())
+        scanFile(target, patterns, surface, relative, findings, counters);
     }
   };
   visit(root);

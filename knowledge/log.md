@@ -1,5 +1,12 @@
 # Knowledge Vault Update Log
 
+## 2026-07-21
+
+* **Update**: Closed the final accepted-inventory race by revalidating every digest, size, parent directory, and symlink boundary immediately before acceptance succeeds.
+* **Update**: Made ambiguous intake read-only, extended restricted-residue traversal to empty directory names, and made retirement rollback restore quarantined candidates after post-rename drift.
+* **Update**: Added confirmed child-process teardown, deadline-bound verifier requests, isolated explicit child environments, and cleanup-aware portability expiry.
+* **Update**: Added formatting, repository-hygiene, runtime-closure, and generated Codex skill install/check enforcement to pinned cross-platform CI.
+
 ## 2026-07-20
 
 * **Update**: Made hydrated acceptance transactional through a detached validation worktree and a review-signed, packet-bound artifact inventory.

@@ -7,6 +7,7 @@ import os from "node:os";
 import path from "node:path";
 import { finishLineChildEnv } from "./bridge-security.mjs";
 import { installRootDiscoveryLoaders, planRootDiscoveryLoader } from "./commission-harness.mjs";
+import { terminateChildProcess } from "./process-lifecycle.mjs";
 import { reviewTrustStoreSha256 } from "./review-gate.mjs";
 
 const root = process.cwd();
@@ -32,7 +33,11 @@ function cleanVerifierEnv(overrides = {}) {
 
 function run(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd: options.cwd || root, env: { ...process.env, ...(options.env || {}) }, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, args, {
+      cwd: options.cwd || root,
+      env: options.env ?? process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => (stdout += chunk));
@@ -50,7 +55,10 @@ async function waitForHealth(port, timeoutMs = 8000) {
   let lastError;
   while (Date.now() - started < timeoutMs) {
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/health`);
+      const remaining = Math.max(1, timeoutMs - (Date.now() - started));
+      const response = await fetch(`http://127.0.0.1:${port}/health`, {
+        signal: AbortSignal.timeout(Math.min(1_000, remaining)),
+      });
       if (response.ok) return response.json();
       lastError = new Error(`health returned ${response.status}`);
     } catch (error) {
@@ -62,15 +70,7 @@ async function waitForHealth(port, timeoutMs = 8000) {
 }
 
 async function stopProcess(child) {
-  if (!child || child.exitCode !== null || child.signalCode !== null) return;
-  await new Promise((resolve) => {
-    const timeout = setTimeout(resolve, 1500);
-    child.once("exit", () => {
-      clearTimeout(timeout);
-      resolve();
-    });
-    child.kill("SIGTERM");
-  });
+  await terminateChildProcess(child, { label: "harness bridge" });
 }
 
 async function waitForExit(child, timeoutMs = 4000) {
@@ -89,8 +89,13 @@ async function waitForExit(child, timeoutMs = 4000) {
 async function postJson(url, body, expectedStatus = 200, headers = {}) {
   const response = await fetch(url, {
     method: "POST",
-    headers: { "content-type": "application/json", "x-uash-bridge-token": VERIFY_BRIDGE_ACCESS_TOKEN, ...headers },
+    headers: {
+      "content-type": "application/json",
+      "x-uash-bridge-token": VERIFY_BRIDGE_ACCESS_TOKEN,
+      ...headers,
+    },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
   });
   const text = await response.text();
   let parsed;
@@ -108,7 +113,11 @@ async function postJson(url, body, expectedStatus = 200, headers = {}) {
 function bridgeFetch(port, pathname, options = {}) {
   return fetch(`http://127.0.0.1:${port}${pathname}`, {
     ...options,
-    headers: { "x-uash-bridge-token": VERIFY_BRIDGE_ACCESS_TOKEN, ...(options.headers || {}) },
+    signal: options.signal || AbortSignal.timeout(10_000),
+    headers: {
+      "x-uash-bridge-token": VERIFY_BRIDGE_ACCESS_TOKEN,
+      ...(options.headers || {}),
+    },
   });
 }
 
@@ -306,6 +315,26 @@ const port = 18000 + Math.floor(Math.random() * 20000);
 let bridge;
 
 try {
+  process.env.VALDRIS_AMBIENT_SENTINEL = "must-not-inherit";
+  try {
+    const isolatedEnvironment = await run(
+      node,
+      [
+        "-e",
+        "process.stdout.write(String(process.env.VALDRIS_AMBIENT_SENTINEL || 'absent'))",
+      ],
+      {
+        env: { VALDRIS_EXPLICIT_SENTINEL: "present" },
+      },
+    );
+    assert(
+      isolatedEnvironment.stdout === "absent",
+      "explicit verifier environment inherited ambient process state",
+    );
+  } finally {
+    delete process.env.VALDRIS_AMBIENT_SENTINEL;
+  }
+
   const shippedApprovalBoundarySources = [
     ["root event emitter", await readFile(path.join(root, "scripts", "uash-emit-event.mjs"), "utf8")],
     ["bridge", await readFile(path.join(root, "scripts", "claude-code-bridge.mjs"), "utf8")],
@@ -931,19 +960,41 @@ try {
     && !unauthenticatedHealthText.includes(path.resolve(dataDir))
     && !unauthenticatedHealthText.includes(path.resolve(root)),
   "unauthenticated health disclosed absolute local topology");
-  const detailedHealthResponse = await fetch(`http://127.0.0.1:${port}/health`, { headers: { "x-uash-bridge-token": VERIFY_BRIDGE_ACCESS_TOKEN } });
+  const detailedHealthResponse = await fetch(
+    `http://127.0.0.1:${port}/health`,
+    {
+      headers: { "x-uash-bridge-token": VERIFY_BRIDGE_ACCESS_TOKEN },
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
   const detailedHealth = await detailedHealthResponse.json();
   assert(detailedHealthResponse.status === 200 && detailedHealth.proofSchema === "uash.proof.v1" && detailedHealth.adapterAware && detailedHealth.bridgeAccessTokenConfigured && detailedHealth.bridgeIntegrityKeyConfigured && detailedHealth.humanApprovalTokenConfigured && detailedHealth.reviewTrustSha256Configured, "authenticated bridge hardening metadata missing");
   assert(detailedHealth.nodeIds.includes("code-intelligence") && detailedHealth.nodeIds.includes("design-anchors"), "Code Intelligence/design anchor nodes missing from authenticated bridge health");
-  const unauthenticatedRuns = await fetch(`http://127.0.0.1:${port}/runs`);
+  const unauthenticatedRuns = await fetch(`http://127.0.0.1:${port}/runs`, {
+    signal: AbortSignal.timeout(10_000),
+  });
   assert(unauthenticatedRuns.status === 401, "run reads were exposed without x-uash-bridge-token");
-  const unauthenticatedMutation = await fetch(`http://127.0.0.1:${port}/runs`, { method: "POST", headers: { "content-type": "application/json" }, body: '{"id":"VERIFY-UNAUTHENTICATED"}' });
+  const unauthenticatedMutation = await fetch(`http://127.0.0.1:${port}/runs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: '{"id":"VERIFY-UNAUTHENTICATED"}',
+    signal: AbortSignal.timeout(10_000),
+  });
   assert(unauthenticatedMutation.status === 401, "run writes were accepted without x-uash-bridge-token");
-  const wrongAccessToken = await fetch(`http://127.0.0.1:${port}/runs`, { headers: { "x-uash-bridge-token": "verify-wrong-access-token" } });
+  const wrongAccessToken = await fetch(`http://127.0.0.1:${port}/runs`, {
+    headers: { "x-uash-bridge-token": "verify-wrong-access-token" },
+    signal: AbortSignal.timeout(10_000),
+  });
   assert(wrongAccessToken.status === 401, "run reads were accepted with an invalid bridge access token");
-  const disallowedOrigin = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "https://untrusted.example" } });
+  const disallowedOrigin = await fetch(`http://127.0.0.1:${port}/health`, {
+    headers: { origin: "https://untrusted.example" },
+    signal: AbortSignal.timeout(10_000),
+  });
   assert(disallowedOrigin.status === 403 && !disallowedOrigin.headers.get("access-control-allow-origin"), "untrusted browser origin received bridge CORS access");
-  const loopbackOrigin = await fetch(`http://127.0.0.1:${port}/health`, { headers: { origin: "http://localhost:3000" } });
+  const loopbackOrigin = await fetch(`http://127.0.0.1:${port}/health`, {
+    headers: { origin: "http://localhost:3000" },
+    signal: AbortSignal.timeout(10_000),
+  });
   assert(loopbackOrigin.status === 200 && loopbackOrigin.headers.get("access-control-allow-origin") === "http://localhost:3000", "loopback UI origin was not granted exact-origin CORS access");
 
   const competingBridge = spawn(node, ["scripts/claude-code-bridge.mjs"], {

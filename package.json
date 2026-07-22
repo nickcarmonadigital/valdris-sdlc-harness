@@ -8,6 +8,9 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "typecheck": "tsc --noEmit",
+    "format:check": "node scripts/format-gate.mjs",
+    "format:write": "node scripts/format-gate.mjs --write",
+    "worktree:check": "node scripts/clean-worktree-gate.mjs",
     "commission": "node scripts/commission-harness.mjs",
     "commission:questions": "node scripts/commission-harness.mjs --print-questions",
     "simulate:agent": "node scripts/simulate-agent-run.mjs",
@@ -16,6 +19,8 @@
     "verify:bridge-lease": "node scripts/verify-bridge-lease.mjs",
     "verify:bridge-proxy": "node --no-warnings scripts/verify-bridge-proxy.mjs",
     "verify:runtime-closure": "node scripts/verify-runtime-closure.mjs",
+    "verify:process-lifecycle": "node scripts/verify-process-lifecycle.mjs",
+    "verify:repository-hygiene": "node scripts/verify-repository-hygiene.mjs",
     "code-intelligence:scan": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback local",
     "code-intelligence:scan:strict": "node scripts/code-intelligence-scan.mjs --provider gitnexus --fallback none --strict",
     "code-intelligence:gate": "node scripts/code-intelligence-gate-all.mjs --repo .",
@@ -61,6 +66,8 @@
     "verify:commissioned-portability": "node scripts/verify-commissioned-portability.mjs",
     "verify:generated-ci-acceptance": "node scripts/verify-commissioned-portability.mjs --acceptance-only",
     "verify:work-harness-import": "node scripts/verify-work-harness-import.mjs",
+    "verify:routing-convergence": "node scripts/verify-routing-convergence.mjs",
+    "verify:restricted-residue-convergence": "node scripts/verify-restricted-residue-convergence.mjs",
     "verify:clean-room-convergence": "node scripts/verify-clean-room-convergence.mjs",
     "render:readme-visuals": "node scripts/render-readme-visuals.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
@@ -75,6 +82,9 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "typescript": "6.0.3"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6"
   },
   "overrides": {
     "postcss": "8.5.10"
