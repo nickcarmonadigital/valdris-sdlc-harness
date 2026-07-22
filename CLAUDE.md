@@ -28,6 +28,7 @@ When modifying code, prove the result with:
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

@@ -39,6 +39,22 @@ function includesEvery(text, values) {
   return values.every((value) => text.includes(value));
 }
 
+function yamlScalar(value) {
+  const scalar = value.replace(/\s+#.*$/u, "").trim();
+  if (
+    scalar.length >= 2 &&
+    ((scalar.startsWith('"') && scalar.endsWith('"')) ||
+      (scalar.startsWith("'") && scalar.endsWith("'")))
+  )
+    return scalar.slice(1, -1);
+  return scalar;
+}
+
+function staticallyDisabled(value) {
+  const normalized = yamlScalar(value).toLowerCase().replace(/\s+/gu, "");
+  return normalized === "false" || normalized === "${{false}}";
+}
+
 function workflowJobRunSteps(source, jobName) {
   const lines = source.split(/\r?\n/u);
   const jobsIndex = lines.findIndex((line) => /^jobs:\s*(?:#.*)?$/u.test(line));
@@ -51,21 +67,57 @@ function workflowJobRunSteps(source, jobName) {
     (line, index) => index > jobsIndex && jobPattern.test(line),
   );
   if (jobIndex < 0) return [];
-  const runs = [];
+  const steps = [];
+  let jobCondition = "";
   let inSteps = false;
+  let currentStep = null;
+  const finishStep = () => {
+    if (currentStep) steps.push(currentStep);
+    currentStep = null;
+  };
   for (let index = jobIndex + 1; index < lines.length; index += 1) {
     const line = lines[index];
     if (/^ {2}\S/u.test(line)) break;
+    if (!inSteps) {
+      const jobIf = line.match(/^ {4}if:\s*(.*?)\s*$/u);
+      if (jobIf) jobCondition = jobIf[1];
+    }
     if (/^ {4}steps:\s*(?:#.*)?$/u.test(line)) {
       inSteps = true;
       continue;
     }
     if (!inSteps) continue;
-    if (/^ {4}\S/u.test(line)) break;
-    const run = line.match(/^ {8}run:\s*([^#]*?)\s*$/u);
-    if (run) runs.push(run[1]);
+    if (/^ {4}\S/u.test(line)) {
+      finishStep();
+      break;
+    }
+    const stepStart = line.match(/^ {6}-\s*(.*?)\s*$/u);
+    if (stepStart) {
+      finishStep();
+      currentStep = {};
+      const inline = stepStart[1].match(/^(run|if):\s*(.*?)\s*$/u);
+      if (inline) currentStep[inline[1]] = inline[2];
+      continue;
+    }
+    if (!currentStep) continue;
+    const property = line.match(/^ {8}(run|if):\s*(.*?)\s*$/u);
+    if (property) currentStep[property[1]] = property[2];
   }
-  return runs;
+  finishStep();
+  if (staticallyDisabled(jobCondition)) return [];
+  return steps
+    .filter((step) => step.run && !staticallyDisabled(step.if || ""))
+    .map((step) => yamlScalar(step.run));
+}
+
+function markdownBashCommands(source) {
+  return [...source.matchAll(/```bash\s*\r?\n([\s\S]*?)```/gu)].flatMap(
+    (match) =>
+      match[1]
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean),
+  );
 }
 
 const requiredScripts = [
@@ -137,6 +189,11 @@ const requiredPackageScripts = [
   "verify:clean-room-convergence",
 ];
 for (const name of requiredPackageScripts) record(`package script ${name}`, Boolean(packageJson.scripts?.[name]), "missing package script");
+record(
+  "dependency audit package script is pinned",
+  packageJson.scripts?.["dependency:audit"] === "npm audit --audit-level=high",
+  "dependency audit package script does not run the commissioned audit command",
+);
 
 const workflow = read(".github/workflows/ci.yml");
 record("CI covers Linux, Windows, and macOS portability", includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]), "missing Linux/Windows/macOS coverage");
@@ -160,6 +217,27 @@ record(
     "dependency-audit",
   ).includes("npm run dependency:audit"),
   "dependency audit assertion accepted an unrelated workflow step",
+);
+record(
+  "dependency audit CI assertion rejects a disabled job",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    if: false\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted a disabled workflow job",
+);
+record(
+  "dependency audit CI assertion rejects a disabled step",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    steps:\n      - if: ${{ false }}\n        run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted a disabled workflow step",
+);
+record(
+  "Claude proof stack includes dependency audit",
+  markdownBashCommands(read("CLAUDE.md")).includes("npm run dependency:audit"),
+  "Claude proof instructions omit the dependency audit command",
 );
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
