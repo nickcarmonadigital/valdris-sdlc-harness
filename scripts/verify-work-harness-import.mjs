@@ -50,9 +50,16 @@ function yamlScalar(value) {
   return scalar;
 }
 
-function staticallyDisabled(value) {
+function unconditionallyEnabled(value) {
   const normalized = yamlScalar(value).toLowerCase().replace(/\s+/gu, "");
-  return normalized === "false" || normalized === "${{false}}";
+  return (
+    normalized === "" || normalized === "true" || normalized === "${{true}}"
+  );
+}
+
+function permitsFailure(value) {
+  const normalized = yamlScalar(value).toLowerCase().replace(/\s+/gu, "");
+  return normalized === "true" || normalized === "${{true}}";
 }
 
 function workflowJobRunSteps(source, jobName) {
@@ -69,6 +76,7 @@ function workflowJobRunSteps(source, jobName) {
   if (jobIndex < 0) return [];
   const steps = [];
   let jobCondition = "";
+  let jobContinueOnError = "";
   let inSteps = false;
   let currentStep = null;
   const finishStep = () => {
@@ -81,6 +89,10 @@ function workflowJobRunSteps(source, jobName) {
     if (!inSteps) {
       const jobIf = line.match(/^ {4}if:\s*(.*?)\s*$/u);
       if (jobIf) jobCondition = jobIf[1];
+      const jobFailurePolicy = line.match(
+        /^ {4}continue-on-error:\s*(.*?)\s*$/u,
+      );
+      if (jobFailurePolicy) jobContinueOnError = jobFailurePolicy[1];
     }
     if (/^ {4}steps:\s*(?:#.*)?$/u.test(line)) {
       inSteps = true;
@@ -95,18 +107,31 @@ function workflowJobRunSteps(source, jobName) {
     if (stepStart) {
       finishStep();
       currentStep = {};
-      const inline = stepStart[1].match(/^(run|if):\s*(.*?)\s*$/u);
+      const inline = stepStart[1].match(
+        /^(run|if|continue-on-error):\s*(.*?)\s*$/u,
+      );
       if (inline) currentStep[inline[1]] = inline[2];
       continue;
     }
     if (!currentStep) continue;
-    const property = line.match(/^ {8}(run|if):\s*(.*?)\s*$/u);
+    const property = line.match(
+      /^ {8}(run|if|continue-on-error):\s*(.*?)\s*$/u,
+    );
     if (property) currentStep[property[1]] = property[2];
   }
   finishStep();
-  if (staticallyDisabled(jobCondition)) return [];
+  if (
+    !unconditionallyEnabled(jobCondition) ||
+    permitsFailure(jobContinueOnError)
+  )
+    return [];
   return steps
-    .filter((step) => step.run && !staticallyDisabled(step.if || ""))
+    .filter(
+      (step) =>
+        step.run &&
+        unconditionallyEnabled(step.if || "") &&
+        !permitsFailure(step["continue-on-error"] || ""),
+    )
     .map((step) => yamlScalar(step.run));
 }
 
@@ -233,6 +258,30 @@ record(
     "dependency-audit",
   ).includes("npm run dependency:audit"),
   "dependency audit assertion accepted a disabled workflow step",
+);
+record(
+  "dependency audit CI assertion rejects a conditional job",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    if: github.ref == 'refs/heads/never'\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted a conditional workflow job",
+);
+record(
+  "dependency audit CI assertion rejects an allowed-failure step",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    steps:\n      - run: npm run dependency:audit\n        continue-on-error: true\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted an allowed-failure workflow step",
+);
+record(
+  "dependency audit CI assertion rejects an allowed-failure job",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    continue-on-error: true\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted an allowed-failure workflow job",
 );
 record(
   "Claude proof stack includes dependency audit",
