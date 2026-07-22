@@ -39,6 +39,35 @@ function includesEvery(text, values) {
   return values.every((value) => text.includes(value));
 }
 
+function workflowJobRunSteps(source, jobName) {
+  const lines = source.split(/\r?\n/u);
+  const jobsIndex = lines.findIndex((line) => /^jobs:\s*(?:#.*)?$/u.test(line));
+  if (jobsIndex < 0) return [];
+  const jobPattern = new RegExp(
+    `^ {2}${jobName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}:\\s*(?:#.*)?$`,
+    "u",
+  );
+  const jobIndex = lines.findIndex(
+    (line, index) => index > jobsIndex && jobPattern.test(line),
+  );
+  if (jobIndex < 0) return [];
+  const runs = [];
+  let inSteps = false;
+  for (let index = jobIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^ {2}\S/u.test(line)) break;
+    if (/^ {4}steps:\s*(?:#.*)?$/u.test(line)) {
+      inSteps = true;
+      continue;
+    }
+    if (!inSteps) continue;
+    if (/^ {4}\S/u.test(line)) break;
+    const run = line.match(/^ {8}run:\s*([^#]*?)\s*$/u);
+    if (run) runs.push(run[1]);
+  }
+  return runs;
+}
+
 const requiredScripts = [
   "provenance-gate.mjs",
   "neutrality-gate.mjs",
@@ -119,8 +148,18 @@ record(
 record("CI scans secrets", /gitleaks\/gitleaks-action@/.test(workflow), "gitleaks action is not configured");
 record(
   "CI rejects high-severity dependency advisories",
-  workflow.includes("npm run dependency:audit"),
+  workflowJobRunSteps(workflow, "dependency-audit").includes(
+    "npm run dependency:audit",
+  ),
   "dependency audit gate is not configured",
+);
+record(
+  "dependency audit CI assertion is job-scoped",
+  !workflowJobRunSteps(
+    "jobs:\n  unrelated:\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted an unrelated workflow step",
 );
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
