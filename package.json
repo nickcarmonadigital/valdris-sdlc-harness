@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "typecheck": "tsc --noEmit",
+    "dependency:audit": "npm audit --audit-level=high",
     "format:check": "node scripts/format-gate.mjs",
     "format:write": "node scripts/format-gate.mjs --write",
     "worktree:check": "node scripts/clean-worktree-gate.mjs",
@@ -78,7 +79,7 @@
     "@types/node": "25.9.3",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "next": "16.2.9",
+    "next": "16.2.11",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "typescript": "6.0.3"
@@ -87,6 +88,7 @@
     "prettier": "3.9.6"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "postcss": "8.5.10",
+    "sharp": "0.35.3"
   }
 }

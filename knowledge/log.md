@@ -3,9 +3,10 @@
 ## 2026-07-21
 
 * **Update**: Closed the final accepted-inventory race by revalidating every digest, size, parent directory, and symlink boundary immediately before acceptance succeeds.
-* **Update**: Made ambiguous intake read-only, extended restricted-residue traversal to empty directory names, and made retirement rollback restore quarantined candidates after post-rename drift.
+* **Update**: Made ambiguous intake read-only, extended restricted-residue traversal to empty directory names, and limited retirement rollback to identity- and digest-matching quarantined candidates while drift remains inactive.
 * **Update**: Added confirmed child-process teardown, deadline-bound verifier requests, isolated explicit child environments, and cleanup-aware portability expiry.
 * **Update**: Added formatting, repository-hygiene, runtime-closure, and generated Codex skill install/check enforcement to pinned cross-platform CI.
+* **Update**: Updated Next.js to 16.2.11, pinned the fixed Sharp 0.35.3 line, and added a required high-severity dependency-advisory CI gate.
 
 ## 2026-07-20
 

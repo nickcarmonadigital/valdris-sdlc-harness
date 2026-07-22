@@ -81,6 +81,7 @@ Run before claiming done:
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run format:check
 npm run build
 npm run knowledge:gate

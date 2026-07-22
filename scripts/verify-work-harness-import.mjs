@@ -88,6 +88,7 @@ for (const verifier of focusedVerifiers) {
 const packageJson = readJson("package.json");
 record("release version is 0.8.0", packageJson.version === "0.8.0", `got ${packageJson.version}`);
 const requiredPackageScripts = [
+  "dependency:audit",
   "provenance:gate",
   "neutrality:gate",
   "privacy:gate",
@@ -116,6 +117,11 @@ record(
   "one or more clean-room gates are absent from CI",
 );
 record("CI scans secrets", /gitleaks\/gitleaks-action@/.test(workflow), "gitleaks action is not configured");
+record(
+  "CI rejects high-severity dependency advisories",
+  workflow.includes("npm run dependency:audit"),
+  "dependency audit gate is not configured",
+);
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
 for (const relativePath of requiredControls) {
