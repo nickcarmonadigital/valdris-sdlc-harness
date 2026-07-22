@@ -63,7 +63,8 @@ function changedRanges(repoRoot, baseRef) {
       "--unified=0",
       "--no-color",
       "--diff-filter=ACMR",
-      `${baseRef}...HEAD`,
+      baseRef,
+      "--",
     ]);
   const ranges = new Map();
   for (const args of commands) {
@@ -116,16 +117,16 @@ function enforceDeterministicFormatting(
   if (!existsSync(prettier))
     throw new Error("pinned Prettier runtime is unavailable; run npm ci");
   for (const [relative, fileRanges] of ranges) {
-    const content = readFileSync(path.join(repoRoot, relative), "utf8");
-    const lineOffsets = [0];
-    for (let index = 0; index < content.length; index += 1)
-      if (content[index] === "\n") lineOffsets.push(index + 1);
     const orderedRanges = [...fileRanges.values()].sort((left, right) =>
       write
         ? right.startLine - left.startLine
         : left.startLine - right.startLine,
     );
     for (const { startLine, lineCount } of orderedRanges) {
+      const content = readFileSync(path.join(repoRoot, relative), "utf8");
+      const lineOffsets = [0];
+      for (let index = 0; index < content.length; index += 1)
+        if (content[index] === "\n") lineOffsets.push(index + 1);
       const rangeStart =
         lineOffsets[Math.max(0, startLine - 1)] ?? content.length;
       const endLineIndex = startLine - 1 + lineCount;

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { assertCleanWorktree } from "./clean-worktree-gate.mjs";
@@ -36,8 +36,14 @@ try {
   git(fixture, ["config", "user.email", "verifier@example.invalid"]);
   git(fixture, ["config", "user.name", "Valdris Verifier"]);
   writeFileSync(path.join(fixture, "proof.txt"), "clean\n", "utf8");
-  git(fixture, ["add", "proof.txt"]);
+  writeFileSync(
+    path.join(fixture, "fixture.mjs"),
+    'export const first = { enabled: true };\n\n// stable separator 1\n// stable separator 2\n// stable separator 3\n\nexport const legacy={keep:true};\n\nexport const second = ["value"];\n',
+    "utf8",
+  );
+  git(fixture, ["add", "proof.txt", "fixture.mjs"]);
   git(fixture, ["commit", "--quiet", "-m", "fixture"]);
+  const baseRef = runBoundedGit(fixture, ["rev-parse", "HEAD"]).stdout.trim();
   assertCleanWorktree(fixture);
   assertRepositoryFormatting(fixture);
 
@@ -55,14 +61,23 @@ try {
   writeFileSync(path.join(fixture, "proof.txt"), "clean\n", "utf8");
   writeFileSync(
     path.join(fixture, "fixture.mjs"),
-    "export const fixture={enabled:true};\n",
+    'export const first={enabled:false};\n\n// stable separator 1\n// stable separator 2\n// stable separator 3\n\nexport const legacy={keep:true};\n\nexport const second=["changed"];\n',
     "utf8",
   );
-  git(fixture, ["add", "fixture.mjs"]);
   rejects(
     () => assertRepositoryFormatting(fixture),
     "non-deterministically formatted source was accepted",
   );
+  assertRepositoryFormatting(fixture, { write: true });
+  assertRepositoryFormatting(fixture);
+  git(fixture, ["add", "fixture.mjs"]);
+  git(fixture, ["commit", "--quiet", "-m", "formatted changes"]);
+  writeFileSync(
+    path.join(fixture, "fixture.mjs"),
+    `// live working-tree shift\n// preserves coherent base coordinates\n${readFileSync(path.join(fixture, "fixture.mjs"), "utf8")}`,
+    "utf8",
+  );
+  assertRepositoryFormatting(fixture, { baseRef });
 
   const started = Date.now();
   const stalled = runBoundedGit(fixture, [], {
@@ -79,5 +94,5 @@ try {
 }
 
 console.log(
-  JSON.stringify({ ok: true, gate: "repository-hygiene", cases: 6 }, null, 2),
+  JSON.stringify({ ok: true, gate: "repository-hygiene", cases: 8 }, null, 2),
 );

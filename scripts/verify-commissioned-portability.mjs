@@ -19,6 +19,7 @@ const VERIFY_VALUES = Object.freeze({
 const BRIDGE_ACCESS_TOKEN = VERIFY_VALUES.access;
 const BRIDGE_INTEGRITY_KEY = VERIFY_VALUES.integrity;
 const HUMAN_APPROVAL_TOKEN = VERIFY_VALUES.human;
+const PORTABILITY_BRIDGE_REQUEST_TIMEOUT_MS = 60_000;
 const configuredPortabilityTimeout = process.env.VALDRIS_PORTABILITY_TIMEOUT_MS;
 const PORTABILITY_WALL_CLOCK_MS = configuredPortabilityTimeout === undefined ? 600_000 : Number(configuredPortabilityTimeout);
 if (!Number.isFinite(PORTABILITY_WALL_CLOCK_MS) || PORTABILITY_WALL_CLOCK_MS <= 0) {
@@ -98,9 +99,13 @@ async function stopProcess(child, label = "bridge") {
   });
 }
 
-function requestSignal(timeoutMs = 10_000) {
-  const remaining = PORTABILITY_WALL_CLOCK_MS - (Date.now() - PORTABILITY_STARTED_AT);
-  if (remaining <= 0) throw new Error(`commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit`);
+function requestSignal(timeoutMs = PORTABILITY_BRIDGE_REQUEST_TIMEOUT_MS) {
+  const remaining =
+    PORTABILITY_WALL_CLOCK_MS - (Date.now() - PORTABILITY_STARTED_AT);
+  if (remaining <= 0)
+    throw new Error(
+      `commissioned portability exceeded its ${PORTABILITY_WALL_CLOCK_MS}ms wall-clock limit`,
+    );
   return AbortSignal.timeout(Math.min(timeoutMs, remaining));
 }
 
@@ -176,22 +181,40 @@ function assertOutputOmits(result, forbidden, label) {
 }
 
 async function postJson(port, pathname, body, expectedStatus = 200, headers = {}) {
-  const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-uash-bridge-token": BRIDGE_ACCESS_TOKEN, ...headers },
-    body: JSON.stringify(body),
-    signal: requestSignal(),
-  });
+  let response;
+  try {
+    response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-uash-bridge-token": BRIDGE_ACCESS_TOKEN,
+        ...headers,
+      },
+      body: JSON.stringify(body),
+      signal: requestSignal(),
+    });
+  } catch (error) {
+    throw new Error(
+      `bridge POST ${pathname} failed within its bounded request deadline: ${error.message}`,
+    );
+  }
   const parsed = JSON.parse(await response.text());
   assert(response.status === expectedStatus, `bridge ${pathname} expected ${expectedStatus}, got ${response.status}: ${JSON.stringify(parsed)}`);
   return parsed;
 }
 
 async function getJson(port, pathname, expectedStatus = 200) {
-  const response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
-    headers: { "x-uash-bridge-token": BRIDGE_ACCESS_TOKEN },
-    signal: requestSignal(),
-  });
+  let response;
+  try {
+    response = await fetch(`http://127.0.0.1:${port}${pathname}`, {
+      headers: { "x-uash-bridge-token": BRIDGE_ACCESS_TOKEN },
+      signal: requestSignal(),
+    });
+  } catch (error) {
+    throw new Error(
+      `bridge GET ${pathname} failed within its bounded request deadline: ${error.message}`,
+    );
+  }
   const parsed = JSON.parse(await response.text());
   assert(response.status === expectedStatus, `bridge ${pathname} expected ${expectedStatus}, got ${response.status}: ${JSON.stringify(parsed)}`);
   return parsed;
