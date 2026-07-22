@@ -4,6 +4,10 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "nod
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  workflowEveryActionStepHasInputs,
+  workflowUsesCommissionedActions,
+} from "./workflow-security.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CHECKOUT_ACTION =
@@ -184,9 +188,20 @@ const focusedVerifiers = [
   "scripts/verify-clean-room-convergence.mjs",
 ];
 const requiredRuntimeFiles = ["controls/review-trust.v1.json"];
+const requiredVerifierSupportFiles = ["scripts/workflow-security.mjs"];
 
-for (const relativePath of [...requiredScripts.map((name) => `scripts/${name}`), ...requiredControls, ...requiredRuntimeFiles, ...focusedVerifiers]) {
-  record(`required file ${relativePath}`, existsSync(path.join(ROOT, relativePath)), "missing clean-room import artifact");
+for (const relativePath of [
+  ...requiredScripts.map((name) => `scripts/${name}`),
+  ...requiredControls,
+  ...requiredRuntimeFiles,
+  ...requiredVerifierSupportFiles,
+  ...focusedVerifiers,
+]) {
+  record(
+    `required file ${relativePath}`,
+    existsSync(path.join(ROOT, relativePath)),
+    "missing clean-room import artifact",
+  );
 }
 
 for (const verifier of focusedVerifiers) {
@@ -235,18 +250,71 @@ const restrictedAttestationWorkflow = read(
 record("CI covers Linux, Windows, and macOS portability", includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]), "missing Linux/Windows/macOS coverage");
 record(
   "CI uses supported commit-pinned core actions",
-  includesEvery(workflow, [CHECKOUT_ACTION, SETUP_NODE_ACTION]),
+  workflowUsesCommissionedActions(workflow, [
+    CHECKOUT_ACTION,
+    SETUP_NODE_ACTION,
+  ]) &&
+    workflowEveryActionStepHasInputs(workflow, CHECKOUT_ACTION, {
+      "fetch-depth": "0",
+      "persist-credentials": "false",
+    }),
   "CI checkout or setup-node action is stale or not pinned to the commissioned commit",
 );
 record(
   "restricted attestation uses supported commit-pinned core actions",
-  includesEvery(restrictedAttestationWorkflow, [
+  workflowUsesCommissionedActions(restrictedAttestationWorkflow, [
     CHECKOUT_ACTION,
     SETUP_NODE_ACTION,
     UPLOAD_ARTIFACT_ACTION,
     DOWNLOAD_ARTIFACT_ACTION,
-  ]),
+  ]) &&
+    workflowEveryActionStepHasInputs(
+      restrictedAttestationWorkflow,
+      CHECKOUT_ACTION,
+      { "persist-credentials": "false" },
+    ),
   "restricted attestation action is stale or not pinned to the commissioned commit",
+);
+record(
+  "action pin verifier rejects inert comments",
+  !workflowUsesCommissionedActions(
+    "jobs:\n  verify:\n    steps:\n      - run: echo ok # actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted an inert comment as a uses step",
+);
+record(
+  "action pin verifier rejects inert YAML block text",
+  !workflowUsesCommissionedActions(
+    "env:\n  FORGED_WORKFLOW: |\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\njobs:\n  verify:\n    steps:\n      - run: echo ok\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted block-scalar text as a uses step",
+);
+record(
+  "action pin verifier rejects non-job extension steps",
+  !workflowUsesCommissionedActions(
+    "x-inert-extension:\n  steps:\n    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\njobs:\n  verify:\n    steps:\n      - run: echo ok\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted a non-job extension uses entry",
+);
+record(
+  "action pin verifier rejects mixed stale action uses",
+  !workflowUsesCommissionedActions(
+    "jobs:\n  verify:\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n      - uses: actions/checkout@v7\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted a stale repeated core action",
+);
+record(
+  "checkout hardening verifier binds inputs to the action step",
+  !workflowEveryActionStepHasInputs(
+    "jobs:\n  verify:\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n      - run: echo fetch-depth: 0 persist-credentials: false\n",
+    CHECKOUT_ACTION,
+    { "fetch-depth": "0", "persist-credentials": "false" },
+  ),
+  "checkout hardening verifier accepted inputs outside the checkout step",
 );
 record(
   "CI runs clean-room gates",
@@ -314,6 +382,27 @@ record(
   markdownBashCommands(read("CLAUDE.md")).includes("npm run dependency:audit"),
   "Claude proof instructions omit the dependency audit command",
 );
+record(
+  "agent proof stack includes dependency audit",
+  markdownBashCommands(read("AGENTS.md")).includes("npm run dependency:audit"),
+  "agent proof instructions omit the dependency audit command",
+);
+for (const proofDocument of [
+  "README.md",
+  "docs/TEST_DAY_ACCEPTANCE_GATES.md",
+  "docs/UNIVERSAL_COMMISSIONING_FLOW.md",
+  "docs/PRODUCTION_ASSURANCE_GAP_REGISTER.md",
+  "knowledge/playbooks/engineering-task-routing.md",
+  "meta-skills/valdris-sdlc-harness/references/verification-and-branches.md",
+]) {
+  record(
+    `${proofDocument} includes dependency audit`,
+    markdownBashCommands(read(proofDocument)).includes(
+      "npm run dependency:audit",
+    ),
+    `${proofDocument} proof instructions omit the dependency audit command`,
+  );
+}
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
 for (const relativePath of requiredControls) {

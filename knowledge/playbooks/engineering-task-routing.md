@@ -25,6 +25,7 @@ Prefer commands from `docs/Validation Commands.md`, `project-adapter.json`, or `
 ```bash
 npm run knowledge:gate
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run verify:release-privacy
 npm run privacy:release

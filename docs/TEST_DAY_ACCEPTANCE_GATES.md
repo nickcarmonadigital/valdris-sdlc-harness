@@ -25,6 +25,7 @@ Run before claiming the repo update is done:
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

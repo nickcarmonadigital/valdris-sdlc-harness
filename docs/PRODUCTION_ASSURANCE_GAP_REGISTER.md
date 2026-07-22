@@ -65,6 +65,7 @@ Until these are resolved, final handoff must distinguish **structural gate confo
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

@@ -495,6 +495,7 @@ This starts and smoke-checks a development checkout. It is not the release proof
 ```bash
 npm ci
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

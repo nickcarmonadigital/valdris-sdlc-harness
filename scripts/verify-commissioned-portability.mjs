@@ -8,6 +8,10 @@ import { fileURLToPath } from "node:url";
 import { canonicalJson } from "./proof-runner.mjs";
 import { terminateChildProcess } from "./process-lifecycle.mjs";
 import { reviewAttestationPayload } from "./review-gate.mjs";
+import {
+  workflowEveryActionStepHasInputs,
+  workflowUsesCommissionedActions,
+} from "./workflow-security.mjs";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_ROOT = path.resolve(SCRIPT_DIR, "..");
@@ -361,8 +365,19 @@ async function main() {
         structuralWorkflow.includes("push:") &&
         structuralWorkflow.includes("fetch-depth: 0") &&
         structuralWorkflow.includes("persist-credentials: false") &&
-        structuralWorkflow.includes(CHECKOUT_ACTION) &&
-        structuralWorkflow.includes(SETUP_NODE_ACTION) &&
+        workflowUsesCommissionedActions(structuralWorkflow, [
+          CHECKOUT_ACTION,
+          SETUP_NODE_ACTION,
+        ]) &&
+        workflowEveryActionStepHasInputs(structuralWorkflow, CHECKOUT_ACTION, {
+          "fetch-depth": "0",
+          "persist-credentials": "false",
+        }) &&
+        workflowEveryActionStepHasInputs(
+          structuralWorkflow,
+          SETUP_NODE_ACTION,
+          { "node-version": "24" },
+        ) &&
         !structuralWorkflow.includes("run-packet-gate.mjs") &&
         !structuralWorkflow.includes("UASH_REVIEW_TRUST_SHA256"),
       "always-on generated workflow must be structural-only and use supported commit-pinned actions with a full credential-free checkout",
@@ -372,8 +387,31 @@ async function main() {
         acceptanceWorkflow.includes("environment: valdris-run-acceptance") &&
         acceptanceWorkflow.indexOf("Validate exact source commit input") <
           acceptanceWorkflow.indexOf(`uses: ${CHECKOUT_ACTION}`) &&
-        acceptanceWorkflow.includes(SETUP_NODE_ACTION) &&
-        acceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+        workflowUsesCommissionedActions(acceptanceWorkflow, [
+          CHECKOUT_ACTION,
+          SETUP_NODE_ACTION,
+          DOWNLOAD_ARTIFACT_ACTION,
+        ]) &&
+        workflowEveryActionStepHasInputs(acceptanceWorkflow, CHECKOUT_ACTION, {
+          ref: "${{ inputs.source_commit }}",
+          "fetch-depth": "0",
+          "persist-credentials": "false",
+        }) &&
+        workflowEveryActionStepHasInputs(
+          acceptanceWorkflow,
+          SETUP_NODE_ACTION,
+          { "node-version": "24" },
+        ) &&
+        workflowEveryActionStepHasInputs(
+          acceptanceWorkflow,
+          DOWNLOAD_ARTIFACT_ACTION,
+          {
+            name: "${{ inputs.artifact_name }}",
+            path: "${{ runner.temp }}/valdris-run-artifacts",
+            "run-id": "${{ inputs.artifact_run_id }}",
+            "github-token": "${{ secrets.GITHUB_TOKEN }}",
+          },
+        ) &&
         acceptanceWorkflow.includes(
           "VALDRIS_SOURCE_COMMIT: ${{ inputs.source_commit }}",
         ) &&

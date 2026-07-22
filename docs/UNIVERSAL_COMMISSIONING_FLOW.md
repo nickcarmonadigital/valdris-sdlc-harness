@@ -209,6 +209,7 @@ A repo is commissioned only when:
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

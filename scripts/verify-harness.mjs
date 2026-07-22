@@ -9,6 +9,10 @@ import { finishLineChildEnv } from "./bridge-security.mjs";
 import { installRootDiscoveryLoaders, planRootDiscoveryLoader } from "./commission-harness.mjs";
 import { terminateChildProcess } from "./process-lifecycle.mjs";
 import { reviewTrustStoreSha256 } from "./review-gate.mjs";
+import {
+  workflowEveryActionStepHasInputs,
+  workflowUsesCommissionedActions,
+} from "./workflow-security.mjs";
 
 const root = process.cwd();
 const node = process.execPath;
@@ -590,8 +594,17 @@ try {
       generatedWorkflow.includes("push:") &&
       generatedWorkflow.includes("fetch-depth: 0") &&
       generatedWorkflow.includes("persist-credentials: false") &&
-      generatedWorkflow.includes(CHECKOUT_ACTION) &&
-      generatedWorkflow.includes(SETUP_NODE_ACTION) &&
+      workflowUsesCommissionedActions(generatedWorkflow, [
+        CHECKOUT_ACTION,
+        SETUP_NODE_ACTION,
+      ]) &&
+      workflowEveryActionStepHasInputs(generatedWorkflow, CHECKOUT_ACTION, {
+        "fetch-depth": "0",
+        "persist-credentials": "false",
+      }) &&
+      workflowEveryActionStepHasInputs(generatedWorkflow, SETUP_NODE_ACTION, {
+        "node-version": "24",
+      }) &&
       generatedWorkflow.includes("os: [ubuntu-latest, windows-latest]"),
     "always-on structural CI must run on push/PR across Linux and Windows with supported commit-pinned actions and a full credential-free checkout",
   );
@@ -618,8 +631,25 @@ try {
       generatedAcceptanceWorkflow.includes(
         "VALDRIS_SOURCE_COMMIT: ${{ inputs.source_commit }}",
       ) &&
-      generatedAcceptanceWorkflow.includes(SETUP_NODE_ACTION) &&
-      generatedAcceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+      workflowUsesCommissionedActions(generatedAcceptanceWorkflow, [
+        CHECKOUT_ACTION,
+        SETUP_NODE_ACTION,
+        DOWNLOAD_ARTIFACT_ACTION,
+      ]) &&
+      workflowEveryActionStepHasInputs(
+        generatedAcceptanceWorkflow,
+        CHECKOUT_ACTION,
+        {
+          ref: "${{ inputs.source_commit }}",
+          "fetch-depth": "0",
+          "persist-credentials": "false",
+        },
+      ) &&
+      workflowEveryActionStepHasInputs(
+        generatedAcceptanceWorkflow,
+        SETUP_NODE_ACTION,
+        { "node-version": "24" },
+      ) &&
       generatedAcceptanceWorkflow.includes(
         "source_commit must be a lowercase full Git object ID",
       ),
@@ -632,7 +662,16 @@ try {
     && generatedAcceptanceWorkflow.includes("git checkout-index --force --all"),
   "run acceptance must materialize the exact full-history source commit with portable Git bytes and no persisted credentials");
   assert(
-    generatedAcceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+    workflowEveryActionStepHasInputs(
+      generatedAcceptanceWorkflow,
+      DOWNLOAD_ARTIFACT_ACTION,
+      {
+        name: "${{ inputs.artifact_name }}",
+        path: "${{ runner.temp }}/valdris-run-artifacts",
+        "run-id": "${{ inputs.artifact_run_id }}",
+        "github-token": "${{ secrets.GITHUB_TOKEN }}",
+      },
+    ) &&
       generatedAcceptanceWorkflow.includes(
         "run-id: ${{ inputs.artifact_run_id }}",
       ) &&
@@ -957,8 +996,17 @@ try {
     iosWorkflow.includes(".valdris-harness/scripts") &&
       iosWorkflow.includes("catalog-integrity-gate.mjs") &&
       iosWorkflow.includes("persist-credentials: false") &&
-      iosWorkflow.includes(CHECKOUT_ACTION) &&
-      iosWorkflow.includes(SETUP_NODE_ACTION) &&
+      workflowUsesCommissionedActions(iosWorkflow, [
+        CHECKOUT_ACTION,
+        SETUP_NODE_ACTION,
+      ]) &&
+      workflowEveryActionStepHasInputs(iosWorkflow, CHECKOUT_ACTION, {
+        "fetch-depth": "0",
+        "persist-credentials": "false",
+      }) &&
+      workflowEveryActionStepHasInputs(iosWorkflow, SETUP_NODE_ACTION, {
+        "node-version": "24",
+      }) &&
       !iosWorkflow.includes("run-packet-gate.mjs") &&
       !iosWorkflow.includes("UASH_REVIEW_TRUST_SHA256"),
     "nested always-on CI must use supported commit-pinned actions, remain credential-free, and stay independent of run artifacts",
@@ -969,8 +1017,31 @@ try {
       iosAcceptanceWorkflow.includes("Validate exact source commit input") &&
       iosAcceptanceWorkflow.indexOf("Validate exact source commit input") <
         iosAcceptanceWorkflow.indexOf(`uses: ${CHECKOUT_ACTION}`) &&
-      iosAcceptanceWorkflow.includes(SETUP_NODE_ACTION) &&
-      iosAcceptanceWorkflow.includes(DOWNLOAD_ARTIFACT_ACTION) &&
+      workflowUsesCommissionedActions(iosAcceptanceWorkflow, [
+        CHECKOUT_ACTION,
+        SETUP_NODE_ACTION,
+        DOWNLOAD_ARTIFACT_ACTION,
+      ]) &&
+      workflowEveryActionStepHasInputs(iosAcceptanceWorkflow, CHECKOUT_ACTION, {
+        ref: "${{ inputs.source_commit }}",
+        "fetch-depth": "0",
+        "persist-credentials": "false",
+      }) &&
+      workflowEveryActionStepHasInputs(
+        iosAcceptanceWorkflow,
+        SETUP_NODE_ACTION,
+        { "node-version": "24" },
+      ) &&
+      workflowEveryActionStepHasInputs(
+        iosAcceptanceWorkflow,
+        DOWNLOAD_ARTIFACT_ACTION,
+        {
+          name: "${{ inputs.artifact_name }}",
+          path: "${{ runner.temp }}/valdris-run-artifacts",
+          "run-id": "${{ inputs.artifact_run_id }}",
+          "github-token": "${{ secrets.GITHUB_TOKEN }}",
+        },
+      ) &&
       iosAcceptanceWorkflow.includes("ref: ${{ inputs.source_commit }}") &&
       iosAcceptanceWorkflow.includes(
         "VALDRIS_ARTIFACT_BUNDLE: ${{ runner.temp }}/valdris-run-artifacts",
