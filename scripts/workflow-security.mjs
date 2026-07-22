@@ -17,7 +17,8 @@ function property(text) {
 
 function indentation(line) {
   const leading = line.match(/^\s*/u)?.[0] || "";
-  if (leading.includes("\t")) throw new Error("workflow YAML indentation must not contain tabs");
+  if (leading.includes("\t"))
+    throw new Error("workflow YAML indentation must not contain tabs");
   return leading.length;
 }
 
@@ -119,7 +120,11 @@ function actionName(uses) {
   return separator > 0 ? uses.slice(0, separator) : uses;
 }
 
-export function workflowHasActionStep(source, expectedUses, expectedInputs = {}) {
+export function workflowHasActionStep(
+  source,
+  expectedUses,
+  expectedInputs = {},
+) {
   return workflowActionSteps(source).some(
     (step) =>
       step.uses === expectedUses &&
