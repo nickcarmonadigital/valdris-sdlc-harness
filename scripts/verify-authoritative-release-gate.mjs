@@ -12,6 +12,7 @@ import {
   resolveCandidateGitIdentity,
   runReleaseGit,
   sameCandidateRootIdentity,
+  sameNonzeroFilesystemIdentity,
   validateCandidateSourceBinding,
   validateStableHeadProviderReceipt,
 } from "./authoritative-release-gate.mjs";
@@ -99,6 +100,20 @@ const stableVersionMismatchRoot = mkdtempSync(
   path.join(tmpdir(), "valdris-stable-release-version-mismatch-"),
 );
 try {
+  if (
+    !sameNonzeroFilesystemIdentity(
+      { dev: 7n, ino: 11n },
+      { dev: 7n, ino: 11n },
+    ) ||
+    sameNonzeroFilesystemIdentity(
+      { dev: 0n, ino: 11n },
+      { dev: 0n, ino: 11n },
+    ) ||
+    sameNonzeroFilesystemIdentity({ dev: 7n, ino: 0n }, { dev: 7n, ino: 0n })
+  )
+    throw new Error(
+      "candidate filesystem identity did not require matching nonzero device and inode values",
+    );
   const mismatch = createCandidateRepository(
     stableVersionMismatchRoot,
     "0.9.1",
@@ -526,6 +541,7 @@ console.log(
         windowsCanonicalDriveCaseAccepted: process.platform === "win32",
         windowsDirectoryCasePreserved: process.platform === "win32",
         windowsFilesystemIdentityFallbackExercised,
+        sentinelFilesystemIdentityRejected: true,
         nestedCandidateRootRejected: true,
         repositoryRootCliFailsClosed: true,
         completeProductionCliArgumentsForwarded: true,

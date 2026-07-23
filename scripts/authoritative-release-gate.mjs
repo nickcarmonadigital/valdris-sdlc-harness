@@ -109,6 +109,17 @@ export function canonicalCandidateRootKey(candidateRoot) {
   );
 }
 
+export function sameNonzeroFilesystemIdentity(leftStats, rightStats) {
+  return (
+    leftStats.dev !== 0n &&
+    rightStats.dev !== 0n &&
+    leftStats.ino !== 0n &&
+    rightStats.ino !== 0n &&
+    leftStats.dev === rightStats.dev &&
+    leftStats.ino === rightStats.ino
+  );
+}
+
 export function sameCandidateRootIdentity(leftRoot, rightRoot) {
   if (
     canonicalCandidateRootKey(leftRoot) === canonicalCandidateRootKey(rightRoot)
@@ -117,11 +128,7 @@ export function sameCandidateRootIdentity(leftRoot, rightRoot) {
   if (process.platform !== "win32") return false;
   const leftStats = lstatSync(leftRoot, { bigint: true });
   const rightStats = lstatSync(rightRoot, { bigint: true });
-  return (
-    leftStats.ino !== 0n &&
-    leftStats.dev === rightStats.dev &&
-    leftStats.ino === rightStats.ino
-  );
+  return sameNonzeroFilesystemIdentity(leftStats, rightStats);
 }
 
 export function resolveCandidateGitHeadIdentity(repositoryRoot) {
