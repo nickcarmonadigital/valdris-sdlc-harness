@@ -107,20 +107,46 @@ try {
     "v0.9.0",
     mismatch.secondCommit,
   ]);
-  const stableVersionMismatch = run([
-    "--tag",
-    "v0.9.0",
-    "--repository-root",
-    stableVersionMismatchRoot,
-  ]);
+  const stableVersionMismatch = evaluateAuthoritativeRelease({
+    tag: "v0.9.0",
+    repositoryRoot: stableVersionMismatchRoot,
+  });
   if (
-    stableVersionMismatch.status === 0 ||
-    !/does not match candidate package version/u.test(
-      stableVersionMismatch.stdout + stableVersionMismatch.stderr,
+    stableVersionMismatch.ok ||
+    !stableVersionMismatch.problems?.some((problem) =>
+      problem.includes("does not match candidate package version"),
     )
   )
     throw new Error(
       "stable authoritative release accepted a tag that does not match the candidate package version",
+    );
+
+  const missingCandidateRoot = path.join(
+    stableVersionMismatchRoot,
+    "missing-candidate",
+  );
+  const repositoryRootCli = run([
+    "--tag",
+    "v0.9.0",
+    "--repository-root",
+    missingCandidateRoot,
+  ]);
+  let repositoryRootCliResult;
+  try {
+    repositoryRootCliResult = JSON.parse(repositoryRootCli.stdout);
+  } catch {
+    repositoryRootCliResult = undefined;
+  }
+  if (
+    repositoryRootCli.error ||
+    repositoryRootCli.status === 0 ||
+    repositoryRootCliResult?.ok !== false ||
+    !repositoryRootCliResult?.problems?.some((problem) =>
+      problem.includes("candidate source identity is invalid"),
+    )
+  )
+    throw new Error(
+      `stable authoritative release CLI did not fail closed for an invalid --repository-root: status=${repositoryRootCli.status}; stdout=${repositoryRootCli.stdout.trim()}; stderr=${repositoryRootCli.stderr.trim()}`,
     );
 } finally {
   rmSync(stableVersionMismatchRoot, { recursive: true, force: true });
@@ -136,6 +162,32 @@ try {
     "missing-packet",
   );
   git(stableCandidateRoot, ["tag", "-f", "v0.9.0", candidate.secondCommit]);
+  const missingRunRoot = path.join(stableCandidateRoot, "missing-run");
+  const completeCli = run([
+    "--tag",
+    "v0.9.0",
+    "--repository-root",
+    stableCandidateRoot,
+    "--run-root",
+    missingRunRoot,
+  ]);
+  let completeCliResult;
+  try {
+    completeCliResult = JSON.parse(completeCli.stdout);
+  } catch {
+    completeCliResult = undefined;
+  }
+  if (
+    completeCli.error ||
+    completeCli.status === 0 ||
+    completeCliResult?.ok !== false ||
+    !completeCliResult?.problems?.some((problem) =>
+      problem.includes("authoritative release packet is unavailable"),
+    )
+  )
+    throw new Error(
+      `stable authoritative release CLI did not forward the complete production argument set: status=${completeCli.status}; stdout=${completeCli.stdout.trim()}; stderr=${completeCli.stderr.trim()}`,
+    );
   writeFileSync(path.join(stableCandidateRoot, "package.json"), "{malformed\n");
   const missingPacket = evaluateAuthoritativeRelease({
     tag: "v0.9.0",
@@ -367,6 +419,8 @@ console.log(
         promotionAndBridgeBindingsMustMatch: true,
         sameVersionDifferentCandidateHeadRejected: true,
         stableTagVersionSubstitutionRejected: true,
+        repositoryRootCliFailsClosed: true,
+        completeProductionCliArgumentsForwarded: true,
         missingOrMismatchedProviderBindingsRejected: true,
       },
     },
