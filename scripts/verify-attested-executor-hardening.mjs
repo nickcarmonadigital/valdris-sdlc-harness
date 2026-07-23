@@ -30,6 +30,7 @@ import {
   runCommissionedRuntimeCommand,
   runtimeProbeFailureMayBeSkipped,
   stageCommissionedRuntimeExecutable,
+  windowsRuntimeCapsuleAuxiliaryWriterRemovalArgs,
 } from "./attested-proof-executor.mjs";
 import {
   assertOperatorRootSecurity,
@@ -49,6 +50,16 @@ const EXECUTOR_PROBE_PARENT_TIMEOUT_MS =
   process.platform === "win32" ? 330_000 : 105_000;
 const RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS =
   process.platform === "win32" ? 240_000 : 10_000;
+
+const localSystemRemovalArgs = windowsRuntimeCapsuleAuxiliaryWriterRemovalArgs(
+  "capsule-root",
+  "S-1-5-18",
+);
+assert(
+  localSystemRemovalArgs.includes("*S-1-5-32-544") &&
+    !localSystemRemovalArgs.includes("*S-1-5-18"),
+  "LocalSystem capsule protection removed its commissioned principal",
+);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

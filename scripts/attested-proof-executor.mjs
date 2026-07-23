@@ -40,6 +40,37 @@ const CONTAINER_GID = REFERENCE_EXECUTOR_CONTAINER_GID;
 const MAX_SPAWN_TIMEOUT_MS = 2_147_483_647;
 const RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS =
   process.platform === "win32" ? 30_000 : 10_000;
+const WINDOWS_RUNTIME_CAPSULE_READ_EXECUTE_RIGHTS = 0x000200a9n;
+const WINDOWS_RUNTIME_CAPSULE_WRITE_RIGHTS =
+  0x00000002n | // WriteData / CreateFiles
+  0x00000004n | // AppendData / CreateDirectories
+  0x00000010n | // WriteExtendedAttributes
+  0x00000040n | // DeleteSubdirectoriesAndFiles
+  0x00000100n | // WriteAttributes
+  0x00010000n | // Delete
+  0x00040000n | // ChangePermissions
+  0x00080000n; // TakeOwnership
+const WINDOWS_RUNTIME_CAPSULE_AUXILIARY_WRITER_SIDS = [
+  "S-1-5-18", // Local System.
+  "S-1-5-32-544", // Built-in Administrators.
+];
+
+export function windowsRuntimeCapsuleAuxiliaryWriterRemovalArgs(
+  target,
+  currentSid,
+) {
+  if (typeof target !== "string" || target.length === 0)
+    throw new Error("Windows runtime capsule ACL target is required");
+  const normalizedCurrentSid = String(currentSid || "").toUpperCase();
+  if (!/^S-1-[0-9-]+$/u.test(normalizedCurrentSid))
+    throw new Error("current Windows SID is required for capsule protection");
+  const removable = WINDOWS_RUNTIME_CAPSULE_AUXILIARY_WRITER_SIDS.filter(
+    (sid) => sid !== normalizedCurrentSid,
+  );
+  if (removable.length === 0)
+    throw new Error("Windows runtime capsule auxiliary writer set is invalid");
+  return [target, "/remove:g", ...removable.map((sid) => `*${sid}`), "/T"];
+}
 
 export function commissionRuntimeExecutionBoundary(
   owner,
@@ -536,12 +567,25 @@ $root = $env:VALDRIS_RUNTIME_CAPSULE_ROOT
 $current = [Security.Principal.WindowsIdentity]::GetCurrent().User
 $rootAcl = Get-Acl -LiteralPath $root
 $fileAcl = Get-Acl -LiteralPath $capsule
+$sections = [Security.AccessControl.AccessControlSections]::Access -bor [Security.AccessControl.AccessControlSections]::Owner
+function Get-RuleView($acl) {
+  @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | ForEach-Object {
+    [PSCustomObject]@{
+      sid = $_.IdentityReference.Value
+      type = $_.AccessControlType.ToString()
+      rights = ([Int64]$_.FileSystemRights).ToString()
+      inherited = [bool]$_.IsInherited
+    }
+  })
+}
 [PSCustomObject]@{
   currentSid = $current.Value
   rootOwnerSid = $rootAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
-  rootSddl = $rootAcl.Sddl
+  rootSddl = $rootAcl.GetSecurityDescriptorSddlForm($sections)
+  rootRules = @(Get-RuleView $rootAcl)
   fileOwnerSid = $fileAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
-  fileSddl = $fileAcl.Sddl
+  fileSddl = $fileAcl.GetSecurityDescriptorSddlForm($sections)
+  fileRules = @(Get-RuleView $fileAcl)
 } | ConvertTo-Json -Compress
 `;
   const invoke = ({ reserveCleanup = true } = {}) => {
@@ -605,35 +649,85 @@ $fileAcl = Get-Acl -LiteralPath $capsule
         "Windows runtime capsule ACL inspection returned malformed JSON",
       );
     }
-    const currentSid = String(inspected?.currentSid || "").toUpperCase();
+    const inspectedCurrentSid = String(
+      inspected?.currentSid || "",
+    ).toUpperCase();
     if (
-      !currentSid ||
-      String(inspected?.rootOwnerSid || "").toUpperCase() !== currentSid ||
-      String(inspected?.fileOwnerSid || "").toUpperCase() !== currentSid ||
+      !inspectedCurrentSid ||
       typeof inspected?.rootSddl !== "string" ||
-      typeof inspected?.fileSddl !== "string"
+      typeof inspected?.fileSddl !== "string" ||
+      !Array.isArray(inspected?.rootRules) ||
+      !Array.isArray(inspected?.fileRules)
     )
       throw new Error("Windows runtime capsule ACL inspection is incomplete");
+    if (inspectedCurrentSid !== currentSid.toUpperCase())
+      throw new Error(
+        "Windows runtime capsule ACL inspection changed execution principal",
+      );
+    if (
+      String(inspected?.rootOwnerSid || "").toUpperCase() !==
+        inspectedCurrentSid ||
+      String(inspected?.fileOwnerSid || "").toUpperCase() !==
+        inspectedCurrentSid
+    )
+      throw new Error(
+        "Windows runtime capsule ACL owner does not match the execution principal",
+      );
+    for (const [label, rules] of [
+      ["root", inspected.rootRules],
+      ["file", inspected.fileRules],
+    ]) {
+      if (rules.length !== 1)
+        throw new Error(
+          `Windows runtime capsule ${label} DACL is not principal-exclusive`,
+        );
+      const [rule] = rules;
+      let rights;
+      try {
+        rights = BigInt(rule?.rights);
+      } catch {
+        throw new Error(
+          `Windows runtime capsule ${label} DACL rights are malformed`,
+        );
+      }
+      if (
+        String(rule?.sid || "").toUpperCase() !== inspectedCurrentSid ||
+        rule?.type !== "Allow" ||
+        rule?.inherited !== false ||
+        (rights & WINDOWS_RUNTIME_CAPSULE_READ_EXECUTE_RIGHTS) !==
+          WINDOWS_RUNTIME_CAPSULE_READ_EXECUTE_RIGHTS ||
+        (rights & WINDOWS_RUNTIME_CAPSULE_WRITE_RIGHTS) !== 0n
+      )
+        throw new Error(
+          `Windows runtime capsule ${label} DACL grants unauthorized authority`,
+        );
+    }
     return {
-      currentSid,
-      rootOwnerSid: currentSid,
+      currentSid: inspectedCurrentSid,
+      rootOwnerSid: inspectedCurrentSid,
       rootSddl: inspected.rootSddl,
-      fileOwnerSid: currentSid,
+      rootRules: inspected.rootRules,
+      fileOwnerSid: inspectedCurrentSid,
       fileSddl: inspected.fileSddl,
+      fileRules: inspected.fileRules,
     };
   };
   const runIcacls = (
     target,
     grant,
-    { deadlineAware = true, reserveCleanup = true } = {},
+    {
+      deadlineAware = true,
+      reserveCleanup = true,
+      setOwnerRecursive = false,
+      removeAuxiliaryWritersRecursive = false,
+    } = {},
   ) => {
     const phase = "Windows runtime capsule ACL update";
-    const argv = [
-      target,
-      "/inheritance:r",
-      "/grant:r",
-      `*${currentSid}:${grant}`,
-    ];
+    const argv = setOwnerRecursive
+      ? [target, "/setowner", `*${currentSid}`, "/T"]
+      : removeAuxiliaryWritersRecursive
+        ? windowsRuntimeCapsuleAuxiliaryWriterRemovalArgs(target, currentSid)
+        : [target, "/inheritance:r", "/grant:r", `*${currentSid}:${grant}`];
     const options = {
       encoding: "utf8",
       env: { SystemRoot: environment.SystemRoot, WINDIR: environment.WINDIR },
@@ -683,8 +777,15 @@ $fileAcl = Get-Acl -LiteralPath $capsule
   };
   let protectedAcl;
   try {
+    // Normalize elevated-token default ownership, remove inherited access, and
+    // purge the explicit SYSTEM/Administrators writers installed while staging.
+    // The semantic inspection below rejects any other residual principal.
+    runIcacls(capsuleRoot, undefined, { setOwnerRecursive: true });
     runIcacls(capsulePath, "(RX)");
     runIcacls(capsuleRoot, "(OI)(CI)(RX)");
+    runIcacls(capsuleRoot, undefined, {
+      removeAuxiliaryWritersRecursive: true,
+    });
     protectedAcl = invoke();
   } catch (error) {
     try {
