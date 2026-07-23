@@ -120,9 +120,52 @@ function windowsPowerShell(command) {
     "-NoProfile",
     "-NonInteractive",
     "-Command",
-    command,
+    `$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; ${command}`,
   ]);
 }
+
+const WINDOWS_BOOT_IDENTITY_SCRIPT = String.raw`
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace Valdris.RuntimeIdentity {
+  [StructLayout(LayoutKind.Sequential)]
+  public struct SystemTimeOfDayInformation {
+    public long BootTime;
+    public long CurrentTime;
+    public long TimeZoneBias;
+    public uint CurrentTimeZoneId;
+    public uint Reserved;
+    public ulong BootTimeBias;
+    public ulong SleepTimeBias;
+  }
+
+  public static class NativeMethods {
+    [DllImport("ntdll.dll")]
+    public static extern int NtQuerySystemInformation(
+      int systemInformationClass,
+      out SystemTimeOfDayInformation systemInformation,
+      int systemInformationLength,
+      IntPtr returnLength
+    );
+  }
+}
+'@
+$identity = New-Object Valdris.RuntimeIdentity.SystemTimeOfDayInformation
+$size = [Runtime.InteropServices.Marshal]::SizeOf([type][Valdris.RuntimeIdentity.SystemTimeOfDayInformation])
+$status = [Valdris.RuntimeIdentity.NativeMethods]::NtQuerySystemInformation(
+  3,
+  [ref]$identity,
+  $size,
+  [IntPtr]::Zero
+)
+if ($status -ne 0) { throw "NtQuerySystemInformation failed with NTSTATUS $status" }
+[DateTime]::FromFileTimeUtc($identity.BootTime).ToString(
+  'o',
+  [Globalization.CultureInfo]::InvariantCulture
+)
+`;
 
 function readIdentityFile(target) {
   try {
@@ -164,9 +207,10 @@ function localBootIdentity() {
     return bootId ? `linux-boot-id:${bootId}` : null;
   }
   if (platform() === "win32") {
-    const bootTime = windowsPowerShell(
-      "(Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop).LastBootUpTime.ToUniversalTime().ToString('o')",
-    );
+    // Win32_OperatingSystem via CIM can leave a WMI provider child alive after
+    // PowerShell is timed out, which defeats spawnSync's wall-clock bound on
+    // hosted Windows runners. Query the kernel's exact boot FILETIME directly.
+    const bootTime = windowsPowerShell(WINDOWS_BOOT_IDENTITY_SCRIPT);
     return bootTime ? `windows-boot-time:${bootTime}` : null;
   }
   if (platform() === "darwin") {
@@ -199,7 +243,7 @@ function localProcessCreationIdentity(pid) {
   }
   if (platform() === "win32") {
     const creationTime = windowsPowerShell(
-      `$p = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId = ${pid}" -ErrorAction Stop; if ($null -eq $p) { exit 3 }; $p.CreationDate.ToUniversalTime().ToString('o')`,
+      `$p = [Diagnostics.Process]::GetProcessById(${pid}); $p.StartTime.ToUniversalTime().ToString('o', [Globalization.CultureInfo]::InvariantCulture)`,
     );
     return creationTime ? `windows-process-created:${creationTime}` : null;
   }
