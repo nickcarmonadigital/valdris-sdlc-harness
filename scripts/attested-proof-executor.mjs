@@ -451,6 +451,123 @@ function assertCommissionedExecutableUnchanged(label, commissioned) {
     throw new Error(`${label} binary changed during attested execution`);
 }
 
+const AMBIENT_RUNTIME_ENDPOINT_VARIABLES = [
+  "DOCKER_HOST",
+  "DOCKER_CONTEXT",
+  "CONTAINER_HOST",
+  "CONTAINER_CONNECTION",
+];
+
+export function runCommissionedRuntimeCommand({
+  runtimeCli,
+  runtimeCliSha256,
+  environment,
+  argv,
+  options = {},
+  spawnSyncImpl = spawnSync,
+}) {
+  if (!environment || typeof environment !== "object")
+    throw new Error("isolated runtime environment is required");
+  for (const name of AMBIENT_RUNTIME_ENDPOINT_VARIABLES)
+    if (Object.hasOwn(environment, name))
+      throw new Error(`isolated runtime environment retained ${name}`);
+  if (!Array.isArray(argv) || argv.some((entry) => typeof entry !== "string"))
+    throw new Error("runtime argv must be a string array");
+  const commissioned = commissionedExecutable(
+    "runtime CLI",
+    runtimeCli,
+    runtimeCliSha256,
+  );
+  const result = spawnSyncImpl(commissioned.path, argv, {
+    encoding: "utf8",
+    windowsHide: true,
+    ...options,
+    env: environment,
+    shell: false,
+  });
+  assertCommissionedExecutableUnchanged("runtime CLI", commissioned);
+  return result;
+}
+
+const RUNTIME_DAEMON_UNAVAILABLE_PATTERNS = {
+  docker: [
+    /^Cannot connect to the Docker daemon at [^\r\n]+\. Is the docker daemon running\?$/iu,
+    /^failed to connect to the docker API at [^\r\n]+; check if the path is correct and if the daemon is running: [^\r\n]*(?:connection refused|no such file or directory|the system cannot find the file specified)[^\r\n]*$/iu,
+  ],
+  podman: [
+    /^Error: (?:unable|failed) to connect to Podman socket: [^\r\n]*(?:connection refused|no such file or directory|the system cannot find the file specified)[^\r\n]*$/iu,
+  ],
+};
+
+export function classifyRuntimeDaemonInfoFailure(runtimeKind, result) {
+  if (
+    !["docker", "podman"].includes(runtimeKind) ||
+    result?.error ||
+    result?.status === 0
+  )
+    return null;
+  const stderr = String(result?.stderr || "").trim();
+  return RUNTIME_DAEMON_UNAVAILABLE_PATTERNS[runtimeKind].some((pattern) =>
+    pattern.test(stderr),
+  )
+    ? "daemon-unavailable"
+    : null;
+}
+
+class RuntimeDaemonProbeUnavailableError extends Error {
+  constructor(reason, message) {
+    super(message);
+    this.name = "RuntimeDaemonProbeUnavailableError";
+    this.reason = reason;
+  }
+}
+
+function runtimeInfoWithinDeadline(
+  runtimeKind,
+  runtimeCli,
+  argv,
+  environment,
+  deadline,
+  label,
+) {
+  let result;
+  try {
+    result = spawnWithinDeadline(
+      runtimeCli,
+      argv,
+      {
+        encoding: "utf8",
+        env: environment,
+        shell: false,
+        windowsHide: true,
+        maxBuffer: 4_194_304,
+      },
+      deadline,
+      label,
+    );
+  } catch (error) {
+    if (
+      error.message ===
+      `executor total wall-clock deadline exceeded during ${label}`
+    )
+      throw new RuntimeDaemonProbeUnavailableError(
+        "daemon-probe-timeout",
+        error.message,
+      );
+    throw error;
+  }
+  const unavailableReason = classifyRuntimeDaemonInfoFailure(
+    runtimeKind,
+    result,
+  );
+  if (unavailableReason)
+    throw new RuntimeDaemonProbeUnavailableError(
+      unavailableReason,
+      `${label} unavailable: ${result.stderr}`,
+    );
+  return result;
+}
+
 function parseRuntimeJson(result, label) {
   if (result.error || result.status !== 0)
     throw new Error(
@@ -474,16 +591,11 @@ export function probeRuntimeDaemonIdentity(
   let document;
   if (runtimeKind === "docker") {
     document = parseRuntimeJson(
-      spawnWithinDeadline(
+      runtimeInfoWithinDeadline(
+        runtimeKind,
         runtimeCli,
         ["info", "--format", "{{json .}}"],
-        {
-          encoding: "utf8",
-          env: environment,
-          shell: false,
-          windowsHide: true,
-          maxBuffer: 4_194_304,
-        },
+        environment,
         deadline,
         "Docker local-default daemon identity",
       ),
@@ -507,16 +619,11 @@ export function probeRuntimeDaemonIdentity(
     };
   } else {
     document = parseRuntimeJson(
-      spawnWithinDeadline(
+      runtimeInfoWithinDeadline(
+        runtimeKind,
         runtimeCli,
         ["info", "--format", "json"],
-        {
-          encoding: "utf8",
-          env: environment,
-          shell: false,
-          windowsHide: true,
-          maxBuffer: 4_194_304,
-        },
+        environment,
         deadline,
         "Podman local-default daemon identity",
       ),
@@ -554,6 +661,39 @@ export function probeRuntimeDaemonIdentity(
     identity,
     identitySha256: sha256(canonicalJson(identity)),
   };
+}
+
+export function referenceExecutorRuntimeCompatibility(identity) {
+  const operatingSystem =
+    typeof identity?.operatingSystem === "string"
+      ? identity.operatingSystem.trim().toLowerCase()
+      : "";
+  const architecture =
+    typeof identity?.architecture === "string"
+      ? identity.architecture.trim().toLowerCase()
+      : "";
+  if (!operatingSystem)
+    return {
+      supported: false,
+      reason: "operating-system-unavailable",
+      requiredOperatingSystem: "linux",
+    };
+  if (operatingSystem !== "linux")
+    return {
+      supported: false,
+      reason: "operating-system-incompatible",
+      operatingSystem,
+      requiredOperatingSystem: "linux",
+    };
+  return {
+    supported: true,
+    operatingSystem,
+    architecture: architecture || "unknown",
+  };
+}
+
+export function runtimeProbeFailureMayBeSkipped(error) {
+  return error instanceof RuntimeDaemonProbeUnavailableError;
 }
 
 function tarString(header, value, offset, length, label) {
@@ -1176,9 +1316,9 @@ function signReceipt(document) {
   return document;
 }
 
-function main() {
+function main(argv) {
   const operationStartedMs = Date.now();
-  const args = parseArgs(process.argv.slice(2));
+  const args = parseArgs(argv);
   if (args.help)
     return console.log(
       'Usage: node scripts/attested-proof-executor.mjs --repo . --run-id ID --image IMAGE@sha256:DIGEST --command-json \'["command","arg"]\' --semantic-proof-set-sha256 SHA256 --proof-input-set-sha256 SHA256 --accepted-gate-artifacts-sha256 SHA256 --git-cli ABSOLUTE_PATH --git-cli-sha256 SHA256 --runtime docker|podman --runtime-cli ABSOLUTE_PATH --runtime-cli-sha256 SHA256 --daemon-identity-sha256 SHA256 --output-dir PATH --receipt PATH [--network none] [--dry-run]',
@@ -1343,6 +1483,13 @@ function main() {
           ),
           verified: true,
         };
+    const runtimeCompatibility = args.dryRun
+      ? null
+      : referenceExecutorRuntimeCompatibility(daemon.identity);
+    if (!args.dryRun && !runtimeCompatibility.supported)
+      throw new Error(
+        `reference executor requires a Linux OCI daemon: ${runtimeCompatibility.reason}`,
+      );
     if (
       !args.dryRun &&
       daemon.identitySha256 !== args.daemonIdentitySha256.toLowerCase()
@@ -1847,7 +1994,7 @@ if (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   try {
-    main();
+    main(process.argv.slice(2));
   } catch (error) {
     console.error(error.message);
     process.exit(1);

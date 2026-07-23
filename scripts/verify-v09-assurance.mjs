@@ -25,6 +25,9 @@ import {
   isolatedRuntimeEnvironment,
   materializeVerifiedOutputEnvelope,
   probeRuntimeDaemonIdentity,
+  referenceExecutorRuntimeCompatibility,
+  runCommissionedRuntimeCommand,
+  runtimeProbeFailureMayBeSkipped,
 } from "./attested-proof-executor.mjs";
 import {
   assertOperatorRootSecurity,
@@ -219,6 +222,15 @@ Set-Acl -LiteralPath $target -AclObject $acl
     );
 }
 
+function assertRuntimeCliUnchanged(runtimeCli, expectedSha256) {
+  if (
+    !existsSync(runtimeCli) ||
+    realpathSync.native(runtimeCli) !== runtimeCli ||
+    sha256(readFileSync(runtimeCli)) !== expectedSha256
+  )
+    throw new Error("container runtime binary changed during verification");
+}
+
 function containerRuntimeProbe() {
   const probes = [];
   for (const runtime of ["docker", "podman"]) {
@@ -229,65 +241,102 @@ function containerRuntimeProbe() {
       probes.push({ runtime, outcome: "cli-unavailable" });
       continue;
     }
+    const runtimeCliSha256 = sha256(readFileSync(runtimeCli));
     const isolationRoot = canonicalTempDirectory("valdris-runtime-probe-");
+    let isolationRetained = false;
     try {
       for (const directory of ["xdg-config", "xdg-cache", "docker"])
         mkdirSync(path.join(isolationRoot, directory));
       for (const file of ["containers.conf", "registries.conf", "storage.conf"])
         writeFileSync(path.join(isolationRoot, file), "");
-      const identity = probeRuntimeDaemonIdentity(
-        runtime,
-        runtimeCli,
-        isolatedRuntimeEnvironment(isolationRoot),
-        createExecutionDeadline(15_000),
+      const runtimeEnvironment = isolatedRuntimeEnvironment(isolationRoot);
+      let identity;
+      try {
+        identity = probeRuntimeDaemonIdentity(
+          runtime,
+          runtimeCli,
+          runtimeEnvironment,
+          createExecutionDeadline(15_000),
+        );
+      } catch (error) {
+        assertRuntimeCliUnchanged(runtimeCli, runtimeCliSha256);
+        if (!runtimeProbeFailureMayBeSkipped(error)) throw error;
+        probes.push({
+          runtime,
+          outcome: /deadline/iu.test(error.message)
+            ? "daemon-probe-timeout"
+            : "daemon-unavailable",
+        });
+        continue;
+      }
+      assertRuntimeCliUnchanged(runtimeCli, runtimeCliSha256);
+      const compatibility = referenceExecutorRuntimeCompatibility(
+        identity.identity,
       );
+      if (!compatibility.supported) {
+        probes.push({
+          runtime,
+          outcome: "daemon-incompatible",
+          reason: compatibility.reason,
+          requiredOperatingSystem: compatibility.requiredOperatingSystem,
+        });
+        continue;
+      }
+      isolationRetained = true;
       return {
         status: "available",
         runtime,
         runtimeCli,
-        runtimeCliSha256: sha256(readFileSync(runtimeCli)),
+        runtimeCliSha256,
         daemonIdentitySha256: identity.identitySha256,
+        compatibility,
+        runtimeEnvironment,
+        isolationRoot,
         probes,
       };
-    } catch (error) {
-      probes.push({
-        runtime,
-        outcome: /deadline/u.test(error.message)
-          ? "daemon-probe-timeout"
-          : "daemon-unavailable",
-      });
     } finally {
-      rmSync(isolationRoot, { recursive: true, force: true });
+      if (!isolationRetained)
+        rmSync(isolationRoot, { recursive: true, force: true });
     }
   }
   return {
     status: "skipped",
-    reason: "Docker and Podman runtimes are unavailable",
+    reason: probes.some((probe) => probe.outcome === "daemon-incompatible")
+      ? "No Docker or Podman runtime exposes a compatible Linux OCI daemon"
+      : "Docker and Podman runtimes are unavailable",
     probes,
   };
 }
 
-function immutableBusyboxReference(runtime) {
+function immutableBusyboxReference(
+  runtimeCli,
+  runtimeCliSha256,
+  runtimeEnvironment,
+) {
   const tag = "busybox:1.36.1";
   let pulledByVerifier = false;
-  let inspected = spawnSync(
-    runtime,
-    ["image", "inspect", "--format={{json .RepoDigests}}", tag],
-    {
+  let inspected = runCommissionedRuntimeCommand({
+    runtimeCli,
+    runtimeCliSha256,
+    environment: runtimeEnvironment,
+    argv: ["image", "inspect", "--format={{json .RepoDigests}}", tag],
+    options: {
       encoding: "utf8",
-      shell: false,
       timeout: 30_000,
-      windowsHide: true,
       maxBuffer: 1_048_576,
     },
-  );
+  });
   if (inspected.error || inspected.status !== 0) {
-    const pulled = spawnSync(runtime, ["pull", tag], {
-      encoding: "utf8",
-      shell: false,
-      timeout: 180_000,
-      windowsHide: true,
-      maxBuffer: 4_194_304,
+    const pulled = runCommissionedRuntimeCommand({
+      runtimeCli,
+      runtimeCliSha256,
+      environment: runtimeEnvironment,
+      argv: ["pull", tag],
+      options: {
+        encoding: "utf8",
+        timeout: 180_000,
+        maxBuffer: 4_194_304,
+      },
     });
     if (pulled.error || pulled.status !== 0)
       throw new Error(
@@ -296,17 +345,17 @@ function immutableBusyboxReference(runtime) {
         }`,
       );
     pulledByVerifier = true;
-    inspected = spawnSync(
-      runtime,
-      ["image", "inspect", "--format={{json .RepoDigests}}", tag],
-      {
+    inspected = runCommissionedRuntimeCommand({
+      runtimeCli,
+      runtimeCliSha256,
+      environment: runtimeEnvironment,
+      argv: ["image", "inspect", "--format={{json .RepoDigests}}", tag],
+      options: {
         encoding: "utf8",
-        shell: false,
         timeout: 30_000,
-        windowsHide: true,
         maxBuffer: 1_048_576,
       },
-    );
+    });
   }
   if (inspected.error || inspected.status !== 0)
     throw new Error(
@@ -7284,8 +7333,13 @@ async function main() {
         );
       } else {
         const runtime = runtimeProbe.runtime;
-        const baseImage = immutableBusyboxReference(runtime);
+        let baseImage;
         try {
+          baseImage = immutableBusyboxReference(
+            runtimeProbe.runtimeCli,
+            runtimeProbe.runtimeCliSha256,
+            runtimeProbe.runtimeEnvironment,
+          );
           const sourceCommit = git(executorRepo, ["rev-parse", "HEAD"]);
           const runtimeSemanticManifest = { kind: "semantic-runtime-proof" };
           const runtimeProofInputManifest = { kind: "runtime-proof-input" };
@@ -7443,24 +7497,31 @@ async function main() {
             hostMounts: false,
           };
         } finally {
-          if (baseImage.pulledByVerifier) {
-            const removed = spawnSync(
-              runtime,
-              ["image", "rm", "-f", baseImage.tag],
-              {
-                encoding: "utf8",
-                shell: false,
-                timeout: 30_000,
-                windowsHide: true,
-                maxBuffer: 1_048_576,
-              },
-            );
-            if (removed.error || removed.status !== 0)
-              throw new Error(
-                `real-runtime verifier could not remove the image it pulled: ${
-                  removed.error?.message || removed.stderr || removed.stdout
-                }`,
-              );
+          try {
+            if (baseImage?.pulledByVerifier) {
+              const removed = runCommissionedRuntimeCommand({
+                runtimeCli: runtimeProbe.runtimeCli,
+                runtimeCliSha256: runtimeProbe.runtimeCliSha256,
+                environment: runtimeProbe.runtimeEnvironment,
+                argv: ["image", "rm", "-f", baseImage.tag],
+                options: {
+                  encoding: "utf8",
+                  timeout: 30_000,
+                  maxBuffer: 1_048_576,
+                },
+              });
+              if (removed.error || removed.status !== 0)
+                throw new Error(
+                  `real-runtime verifier could not remove the image it pulled: ${
+                    removed.error?.message || removed.stderr || removed.stdout
+                  }`,
+                );
+            }
+          } finally {
+            rmSync(runtimeProbe.isolationRoot, {
+              recursive: true,
+              force: true,
+            });
           }
         }
       }

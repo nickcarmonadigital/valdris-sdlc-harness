@@ -2,6 +2,8 @@
 import { spawnSync } from "node:child_process";
 import {
   chmodSync,
+  cpSync,
+  existsSync,
   mkdtempSync,
   mkdirSync,
   readFileSync,
@@ -14,11 +16,16 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   aggregateExecutionCleanupFailure,
+  classifyRuntimeDaemonInfoFailure,
   cleanupRuntimeResources,
   commissionedExecutable,
   createExecutionDeadline,
   isolatedRuntimeEnvironment,
   materializeRawGitTreeSnapshot,
+  probeRuntimeDaemonIdentity,
+  referenceExecutorRuntimeCompatibility,
+  runCommissionedRuntimeCommand,
+  runtimeProbeFailureMayBeSkipped,
 } from "./attested-proof-executor.mjs";
 import {
   assertOperatorRootSecurity,
@@ -152,7 +159,46 @@ function runtimeResult(status, output = "") {
   };
 }
 
-function executorDryRun({ gitCliPath, gitCliSha256, repo, output }) {
+function executorArguments({ gitCliPath, gitCliSha256, repo, output }) {
+  return [
+    "--repo",
+    repo,
+    "--run-id",
+    "EXECUTOR-WORKTREE-ROOT-CASE",
+    "--image",
+    `example.invalid/valdris@sha256:${"1".repeat(64)}`,
+    "--command-json",
+    '["true"]',
+    "--command-identity-sha256",
+    sha256(canonicalJson(["true"])),
+    "--validator-sha256",
+    "2".repeat(64),
+    "--semantic-proof-set-sha256",
+    "3".repeat(64),
+    "--proof-input-set-sha256",
+    "4".repeat(64),
+    "--accepted-gate-artifacts-sha256",
+    "5".repeat(64),
+    "--git-cli",
+    gitCliPath,
+    "--git-cli-sha256",
+    gitCliSha256,
+    "--runtime",
+    "docker",
+    "--runtime-cli",
+    process.execPath,
+    "--runtime-cli-sha256",
+    sha256(readFileSync(process.execPath)),
+    "--daemon-identity-sha256",
+    "6".repeat(64),
+    "--output-dir",
+    output,
+    "--wall-clock-ms",
+    String(EXECUTOR_PROBE_WALL_CLOCK_MS),
+  ];
+}
+
+function executorDryRun(options) {
   assert(
     EXECUTOR_PROBE_PARENT_TIMEOUT_MS > EXECUTOR_PROBE_WALL_CLOCK_MS,
     "executor probe parent timeout must preserve time for child cleanup",
@@ -162,44 +208,7 @@ function executorDryRun({ gitCliPath, gitCliSha256, repo, output }) {
   );
   const result = spawnSync(
     process.execPath,
-    [
-      executor,
-      "--repo",
-      repo,
-      "--run-id",
-      "EXECUTOR-WORKTREE-ROOT-CASE",
-      "--image",
-      `example.invalid/valdris@sha256:${"1".repeat(64)}`,
-      "--command-json",
-      '["true"]',
-      "--command-identity-sha256",
-      sha256(canonicalJson(["true"])),
-      "--validator-sha256",
-      "2".repeat(64),
-      "--semantic-proof-set-sha256",
-      "3".repeat(64),
-      "--proof-input-set-sha256",
-      "4".repeat(64),
-      "--accepted-gate-artifacts-sha256",
-      "5".repeat(64),
-      "--git-cli",
-      gitCliPath,
-      "--git-cli-sha256",
-      gitCliSha256,
-      "--runtime",
-      "docker",
-      "--runtime-cli",
-      process.execPath,
-      "--runtime-cli-sha256",
-      sha256(readFileSync(process.execPath)),
-      "--daemon-identity-sha256",
-      "6".repeat(64),
-      "--output-dir",
-      output,
-      "--wall-clock-ms",
-      String(EXECUTOR_PROBE_WALL_CLOCK_MS),
-      "--dry-run",
-    ],
+    [executor, ...executorArguments(options), "--dry-run"],
     {
       encoding: "utf8",
       shell: false,
@@ -218,6 +227,94 @@ const root = realpathSync.native(
   mkdtempSync(path.join(tmpdir(), "valdris-executor-hardening-")),
 );
 try {
+  const linuxRuntimeCompatibility = referenceExecutorRuntimeCompatibility({
+    operatingSystem: "linux",
+    architecture: "amd64",
+  });
+  assert(
+    linuxRuntimeCompatibility.supported === true,
+    "the reference executor rejected a Linux OCI daemon",
+  );
+  const windowsRuntimeCompatibility = referenceExecutorRuntimeCompatibility({
+    operatingSystem: "windows",
+    architecture: "amd64",
+  });
+  assert(
+    windowsRuntimeCompatibility.supported === false &&
+      windowsRuntimeCompatibility.reason === "operating-system-incompatible",
+    "the reference executor accepted a Windows-container daemon",
+  );
+  const missingRuntimeCompatibility = referenceExecutorRuntimeCompatibility({});
+  assert(
+    missingRuntimeCompatibility.supported === false &&
+      missingRuntimeCompatibility.reason === "operating-system-unavailable",
+    "the reference executor accepted an unclassified OCI daemon",
+  );
+  assert(
+    classifyRuntimeDaemonInfoFailure("docker", {
+      status: 1,
+      stderr:
+        "failed to connect to the docker API at npipe:////./pipe/docker_engine; check if the path is correct and if the daemon is running: open //./pipe/docker_engine: The system cannot find the file specified.",
+    }) === "daemon-unavailable" &&
+      classifyRuntimeDaemonInfoFailure("podman", {
+        status: 1,
+        stderr: "Error: unable to connect to Podman socket: connection refused",
+      }) === "daemon-unavailable",
+    "known local-default daemon failures were not classified as unavailable",
+  );
+  let typedTimeoutFailure;
+  try {
+    probeRuntimeDaemonIdentity(
+      "docker",
+      process.execPath,
+      {},
+      {
+        remaining(phase) {
+          throw new Error(
+            `executor total wall-clock deadline exceeded during ${phase}`,
+          );
+        },
+        assert() {},
+      },
+    );
+  } catch (error) {
+    typedTimeoutFailure = error;
+  }
+  assert(
+    runtimeProbeFailureMayBeSkipped(typedTimeoutFailure),
+    "typed daemon-probe timeout was not skippable",
+  );
+  for (const [runtimeKind, message] of [
+    ["docker", "Docker local-default daemon identity returned malformed JSON"],
+    ["docker", "Docker daemon did not expose a stable ID and version"],
+    ["docker", "permission denied reading the daemon endpoint"],
+    ["docker", "container runtime binary changed during verification"],
+    ["docker", "permission denied after a deadline warning"],
+    ["docker", "unexpected failure: The system cannot find the file specified"],
+    ["docker", "error during connect: permission denied"],
+    [
+      "docker",
+      "error during connect: permission denied reading the daemon endpoint",
+    ],
+    [
+      "docker",
+      "error during connect: remote TLS certificate validation failed",
+    ],
+    ["podman", "Error: unable to connect to Podman socket: permission denied"],
+    [
+      "podman",
+      "Error: unable to connect to Podman socket: remote TLS certificate validation failed",
+    ],
+  ])
+    assert(
+      !runtimeProbeFailureMayBeSkipped(new Error(message)) &&
+        classifyRuntimeDaemonInfoFailure(runtimeKind, {
+          status: 1,
+          stderr: message,
+        }) === null,
+      `unexpected ${runtimeKind} verifier failure was incorrectly skippable: ${message}`,
+    );
+
   const gitCliPath = executableOnPath("git");
   const gitCliSha256 = sha256(readFileSync(gitCliPath));
   const commissionedGit = commissionedExecutable(
@@ -287,6 +384,30 @@ try {
   assert(
     isolated.HOME === isolatedHome && isolated.USERPROFILE === isolatedHome,
     "runtime HOME was not isolated",
+  );
+  let isolatedRuntimeCommand;
+  const isolatedRuntimeResult = runCommissionedRuntimeCommand({
+    runtimeCli: process.execPath,
+    runtimeCliSha256: sha256(readFileSync(process.execPath)),
+    environment: isolated,
+    argv: ["image", "inspect", "fixture"],
+    spawnSyncImpl(command, argv, options) {
+      isolatedRuntimeCommand = { command, argv, options };
+      return runtimeResult(0, "[]");
+    },
+  });
+  assert(
+    isolatedRuntimeResult.status === 0 &&
+      isolatedRuntimeCommand.command ===
+        realpathSync.native(process.execPath) &&
+      isolatedRuntimeCommand.options.env === isolated &&
+      [
+        "DOCKER_HOST",
+        "CONTAINER_HOST",
+        "DOCKER_CONTEXT",
+        "CONTAINER_CONNECTION",
+      ].every((name) => !(name in isolatedRuntimeCommand.options.env)),
+    "commissioned runtime command inherited an ambient endpoint selector",
   );
   for (const [name, value] of Object.entries(previousEnvironment))
     if (value === undefined) delete process.env[name];
@@ -370,6 +491,87 @@ try {
       ),
     "executor accepted an output directory inside the source through an aliased path spelling",
   );
+  const instrumentedExecutorRoot = path.join(root, "instrumented-executor");
+  cpSync(
+    fileURLToPath(new URL(".", import.meta.url)),
+    instrumentedExecutorRoot,
+    {
+      recursive: true,
+    },
+  );
+  const executorSource = readFileSync(
+    fileURLToPath(new URL("./attested-proof-executor.mjs", import.meta.url)),
+    "utf8",
+  );
+  const probeCallAnchor = "          ...probeRuntimeDaemonIdentity(\n";
+  const mainAnchor = "function main(argv) {";
+  assert(
+    executorSource.split(probeCallAnchor).length === 2 &&
+      executorSource.split(mainAnchor).length === 2,
+    "executor preflight fixture anchors drifted",
+  );
+  const fixtureProbe = `function fixtureProbeRuntimeDaemonIdentity() {
+  const identity = JSON.parse(Buffer.from(process.env.VALDRIS_FIXTURE_DAEMON_IDENTITY_B64, "base64").toString("utf8"));
+  return { identity, identitySha256: sha256(canonicalJson(identity)) };
+}
+
+`;
+  const instrumentedExecutor = path.join(
+    instrumentedExecutorRoot,
+    "attested-proof-executor.mjs",
+  );
+  writeFileSync(
+    instrumentedExecutor,
+    executorSource
+      .replace(
+        probeCallAnchor,
+        "          ...fixtureProbeRuntimeDaemonIdentity(\n",
+      )
+      .replace(mainAnchor, `${fixtureProbe}${mainAnchor}`),
+  );
+  for (const [label, identity, expected] of [
+    [
+      "Windows-container daemon",
+      { operatingSystem: "windows", architecture: "amd64" },
+      /operating-system-incompatible/u,
+    ],
+    ["unclassified daemon", {}, /operating-system-unavailable/u],
+  ]) {
+    const output = path.join(
+      root,
+      `${label.toLowerCase().replaceAll(/[^a-z]+/gu, "-")}-output`,
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        instrumentedExecutor,
+        ...executorArguments({ gitCliPath, gitCliSha256, repo, output }),
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          VALDRIS_FIXTURE_DAEMON_IDENTITY_B64: Buffer.from(
+            JSON.stringify(identity),
+          ).toString("base64"),
+        },
+        shell: false,
+        timeout: EXECUTOR_PROBE_PARENT_TIMEOUT_MS,
+        windowsHide: true,
+      },
+    );
+    assert(
+      result.status !== 0 &&
+        expected.test(result.stderr || result.stdout || result.error?.message),
+      `${label} executor preflight failed for the wrong reason: ${
+        result.stderr || result.stdout || result.error?.message
+      }`,
+    );
+    assert(
+      !existsSync(output),
+      `${label} executor preflight materialized output before rejection`,
+    );
+  }
   git(gitCliPath, repo, [
     "update-index",
     "--add",
@@ -534,7 +736,14 @@ try {
         tests: {
           commissionedAbsoluteBinaries: true,
           equivalentCommissionedBinaryPathSpelling: true,
+          linuxRuntimeCompatibility: true,
+          windowsRuntimeCompatibilityRejected: true,
+          unclassifiedRuntimeCompatibilityRejected: true,
+          incompatibleRuntimeRejectedByExecutorPreflight: true,
+          unavailableDaemonSkipClassification: true,
+          malformedDaemonIdentityFailsClosed: true,
           poisonedPathAndContexts: true,
+          poisonedRuntimeEndpointSelectors: true,
           rawGitObjectTree: true,
           equivalentWorktreePathSpelling: true,
           aliasedOutputInsideSourceRejected: true,

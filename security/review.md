@@ -38,3 +38,24 @@ This review covers the local attested proof executor's repository, output-root, 
 ## Residual risk
 
 The executor still relies on platform filesystem and Git semantics. Authoritative claims therefore continue to require commissioned binary digests, immutable source materialization, operator-root identity, runtime/daemon identity, and provider-backed receipts; path canonicalization alone is not authority.
+
+## OCI daemon capability review
+
+### Finding
+
+A responsive local Docker or Podman daemon was previously considered sufficient to enter the Linux reference-executor seam. On a Windows-container daemon this caused a late incompatible-image pull, and image lifecycle commands used a bare runtime name after the probe had already identified and hashed an absolute binary.
+
+### Remediation
+
+- Derive compatibility from the attested daemon identity and require `operatingSystem=linux` for the Linux reference executor.
+- Treat missing or non-Linux operating-system identity as incompatible, never as authoritative execution.
+- Enforce the same Linux requirement inside the real executor before source materialization.
+- Use the exact probed and hashed runtime binary for image inspect, pull, executor invocation, and cleanup.
+- Keep one isolated local-default environment across daemon probing and every image lifecycle command; discard ambient endpoint and context selectors.
+- Hash the runtime binary before probing and revalidate it after every probe attempt, before skip classification, and around image lifecycle commands.
+- Permit optional-seam skips only for typed probe deadlines, phase-specific anchored unavailable responses from `docker info`/`podman info`, and explicit platform incompatibility; misleading output, malformed identities, permission errors, binary drift, and unexpected verifier failures fail closed.
+- Retain fail-closed behavior for Linux daemon pull, digest resolution, execution, receipt, or cleanup failures.
+
+### Proof
+
+The focused executor verifier accepts a Linux daemon identity, rejects Windows-container and unclassified identities, distinguishes expected unavailability from integrity failures, and drives the real non-dry executor preflight far enough to prove incompatible identities are rejected before output materialization. The full v0.9 verifier must still pass on Ubuntu, macOS, and hosted Windows; Windows may report the optional real-runtime seam as skipped because the available daemon is incompatible, but that result cannot satisfy an authoritative release claim.
