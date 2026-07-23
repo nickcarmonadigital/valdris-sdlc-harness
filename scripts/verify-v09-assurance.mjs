@@ -87,6 +87,10 @@ let COMMIT = "0123456789abcdef0123456789abcdef01234567";
 const ENVIRONMENT = "staging";
 const SHA256 = /^[a-f0-9]{64}$/iu;
 const D = (value) => sha256(String(value));
+
+function canonicalTempDirectory(prefix) {
+  return realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
+}
 const LOCK_METADATA = (value = {}) => sha256(canonicalJson(value));
 const clone = (value) => structuredClone(value);
 
@@ -224,9 +228,7 @@ function containerRuntimeProbe() {
       probes.push({ runtime, outcome: "cli-unavailable" });
       continue;
     }
-    const isolationRoot = mkdtempSync(
-      path.join(tmpdir(), "valdris-runtime-probe-"),
-    );
+    const isolationRoot = canonicalTempDirectory("valdris-runtime-probe-");
     try {
       for (const directory of ["xdg-config", "xdg-cache", "docker"])
         mkdirSync(path.join(isolationRoot, directory));
@@ -2377,7 +2379,7 @@ function expectProcessRejected(rejected, label, result, expected) {
 }
 
 async function main() {
-  const root = mkdtempSync(path.join(tmpdir(), "valdris-v09-"));
+  const root = canonicalTempDirectory("valdris-v09-");
   const rejected = [];
   let executorRuntimeVerification = {
     status: "not-run",
@@ -4285,9 +4287,7 @@ async function main() {
       for (const target of interopFixturePaths)
         rmSync(target, { recursive: true, force: true });
     }
-    const learningRoot = mkdtempSync(
-      path.join(tmpdir(), "valdris-v09-learning-"),
-    );
+    const learningRoot = canonicalTempDirectory("valdris-v09-learning-");
     const primaryCommit = COMMIT;
     try {
       const learningFixture = buildFixture(learningRoot, {
@@ -4312,9 +4312,7 @@ async function main() {
       COMMIT = primaryCommit;
       rmSync(learningRoot, { recursive: true, force: true });
     }
-    const neutralHeadRoot = mkdtempSync(
-      path.join(tmpdir(), "valdris-v09-neutral-head-"),
-    );
+    const neutralHeadRoot = canonicalTempDirectory("valdris-v09-neutral-head-");
     try {
       const neutralFixture = buildFixture(neutralHeadRoot, {
         headProvider: "neutral-ledger",

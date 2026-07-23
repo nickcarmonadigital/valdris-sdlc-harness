@@ -146,7 +146,9 @@ function runtimeResult(status, output = "") {
   };
 }
 
-const root = mkdtempSync(path.join(tmpdir(), "valdris-executor-hardening-"));
+const root = realpathSync(
+  mkdtempSync(path.join(tmpdir(), "valdris-executor-hardening-")),
+);
 try {
   const gitCliPath = executableOnPath("git");
   const gitCliSha256 = sha256(readFileSync(gitCliPath));
