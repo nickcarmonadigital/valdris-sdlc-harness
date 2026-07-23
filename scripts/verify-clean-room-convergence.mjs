@@ -35,6 +35,10 @@ import {
 } from "./verification/clean-room-fixtures.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const DEFAULT_CHILD_TIMEOUT_MS = 120_000;
+const CHILD_TIMEOUT_MS_BY_SCRIPT = new Map([
+  ["verify-run-packet-trust.mjs", 300_000],
+]);
 const checks = [];
 const executedBindings = new Set();
 
@@ -67,14 +71,21 @@ function run(script, args, options = {}) {
       shell: false,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 120_000,
+      timeout:
+        options.timeoutMs ||
+        CHILD_TIMEOUT_MS_BY_SCRIPT.get(script) ||
+        DEFAULT_CHILD_TIMEOUT_MS,
       maxBuffer: 8 * 1024 * 1024,
     },
   );
 }
 
 function output(result) {
-  return `${result.stdout || ""}\n${result.stderr || ""}`;
+  const processError = result.error
+    ? `\n${result.error.name}: ${result.error.message}`
+    : "";
+  const signal = result.signal ? `\nsignal: ${result.signal}` : "";
+  return `${result.stdout || ""}\n${result.stderr || ""}${processError}${signal}`;
 }
 
 function sha256(value) {
