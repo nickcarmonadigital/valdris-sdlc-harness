@@ -88,10 +88,11 @@ function fsyncDirectory(target) {
   }
 }
 
-function identityCommand(command, args) {
+function identityCommand(command, args, maxOutputLength = 512) {
   const result = spawnSync(command, args, {
     encoding: "utf8",
     timeout: 5_000,
+    maxBuffer: maxOutputLength + 1,
     windowsHide: true,
     env: {
       PATH: process.env.PATH,
@@ -101,7 +102,7 @@ function identityCommand(command, args) {
   });
   if (result.error || result.status !== 0) return null;
   const output = result.stdout.trim();
-  return output.length > 0 && output.length <= 512 ? output : null;
+  return output.length > 0 && output.length <= maxOutputLength ? output : null;
 }
 
 function windowsPowerShell(command) {
@@ -146,11 +147,11 @@ function localHostIdentity() {
     return machineId ? `windows-machine-guid:${machineId}` : null;
   }
   if (platform() === "darwin") {
-    const output = identityCommand("/usr/sbin/ioreg", [
-      "-rd1",
-      "-c",
-      "IOPlatformExpertDevice",
-    ]);
+    const output = identityCommand(
+      "/usr/sbin/ioreg",
+      ["-rd1", "-c", "IOPlatformExpertDevice"],
+      64 * 1024,
+    );
     const match = output?.match(/"IOPlatformUUID"\s*=\s*"([^"]+)"/u);
     return match ? `darwin-platform-uuid:${match[1]}` : null;
   }
