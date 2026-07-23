@@ -244,12 +244,14 @@ function expectFailure(result, label, expectedText) {
 }
 
 function verifyGenuinePreV3PacketCompatibility() {
-  const worktreeParent = mkdtempSync(
-    path.join(os.tmpdir(), "valdris-pre-v3-worktree-"),
+  // Historical CLIs compare argv[1] with import.meta.url lexically. Resolve the
+  // macOS /var -> /private/var alias before spawning them so their main guards run.
+  const worktreeParent = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), "valdris-pre-v3-worktree-")),
   );
   const worktree = path.join(worktreeParent, "runtime");
-  const fixtureParent = mkdtempSync(
-    path.join(os.tmpdir(), "valdris-pre-v3-fixture-"),
+  const fixtureParent = realpathSync(
+    mkdtempSync(path.join(os.tmpdir(), "valdris-pre-v3-fixture-")),
   );
   const fixture = path.join(fixtureParent, "repository");
   const add = spawnSync(
