@@ -161,6 +161,25 @@ function windowsBootEventIdentity() {
   return `windows-kernel-boot-event:${record[1]}:${created[1]}`;
 }
 
+function windowsMachineIdentity() {
+  const registry = windowsSystemTool("reg.exe");
+  if (!registry) return null;
+  const output = identityCommand(
+    registry,
+    [
+      "QUERY",
+      String.raw`HKLM\SOFTWARE\Microsoft\Cryptography`,
+      "/v",
+      "MachineGuid",
+    ],
+    4 * 1024,
+  );
+  const match = output?.match(
+    /^\s*MachineGuid\s+REG_SZ\s+([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\s*$/imu,
+  );
+  return match ? `windows-machine-guid:${match[1].toLowerCase()}` : null;
+}
+
 function readIdentityFile(target) {
   try {
     const value = readFileSync(target, "utf8").trim();
@@ -178,10 +197,7 @@ function localHostIdentity() {
     return machineId ? `linux-machine-id:${machineId}` : null;
   }
   if (platform() === "win32") {
-    const machineId = windowsPowerShell(
-      "(Get-ItemProperty -LiteralPath 'HKLM:\\SOFTWARE\\Microsoft\\Cryptography' -Name MachineGuid -ErrorAction Stop).MachineGuid",
-    );
-    return machineId ? `windows-machine-guid:${machineId}` : null;
+    return windowsMachineIdentity();
   }
   if (platform() === "darwin") {
     const output = identityCommand(
