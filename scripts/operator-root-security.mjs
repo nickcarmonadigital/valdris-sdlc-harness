@@ -3,6 +3,7 @@ import {
   chmodSync,
   existsSync,
   lstatSync,
+  readdirSync,
   realpathSync,
   statSync,
 } from "node:fs";
@@ -303,14 +304,17 @@ export function hardenNewPrivateDirectory(
     chmodSync(realPath, 0o700);
     return assertOperatorRootSecurity(realPath, { platform });
   }
+  if (readdirSync(realPath).length !== 0)
+    throw new Error(
+      "new Windows private directory must be empty before ownership hardening",
+    );
   const powershell = windowsPowerShellPath(environment);
   const script = String.raw`
 $ErrorActionPreference = 'Stop'
 $target = $env:VALDRIS_OPERATOR_ROOT_TARGET
 $current = [Security.Principal.WindowsIdentity]::GetCurrent().User
 $acl = Get-Acl -LiteralPath $target
-$ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
-if ($ownerSid -ne $current.Value) { throw "private directory is not owned by current SID" }
+$acl.SetOwner($current)
 $acl.SetAccessRuleProtection($true, $false)
 foreach ($sid in @($current, [Security.Principal.SecurityIdentifier]'S-1-5-18', [Security.Principal.SecurityIdentifier]'S-1-5-32-544')) {
   $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')

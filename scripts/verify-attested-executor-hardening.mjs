@@ -101,6 +101,7 @@ $ErrorActionPreference = 'Stop'
 $target = $env:VALDRIS_TEST_ROOT
 $current = [Security.Principal.WindowsIdentity]::GetCurrent().User
 $acl = Get-Acl -LiteralPath $target
+$acl.SetOwner($current)
 $acl.SetAccessRuleProtection($true, $false)
 foreach ($sid in @($current, [Security.Principal.SecurityIdentifier]'S-1-5-18', [Security.Principal.SecurityIdentifier]'S-1-5-32-544')) {
   $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
