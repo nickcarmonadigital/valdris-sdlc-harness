@@ -112,12 +112,12 @@ assert(
     }) &&
     !destructiveCapsuleMutationProbeApplicable({
       platform: "linux",
-      geteuid: undefined,
+      geteuid: null,
       getuid: () => 0,
     }) &&
     destructiveCapsuleMutationProbeApplicable({
       platform: "linux",
-      geteuid: undefined,
+      geteuid: null,
       getuid: () => 1_000,
     }) &&
     destructiveCapsuleMutationProbeApplicable({ platform: "win32" }),
