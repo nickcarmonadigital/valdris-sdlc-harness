@@ -76,6 +76,25 @@ function expectFailure(label, operation, pattern) {
   throw new Error(`${label} unexpectedly passed`);
 }
 
+function finalFixtureFailure(primaryFailure, cleanupFailure) {
+  if (primaryFailure && cleanupFailure)
+    return new AggregateError(
+      [primaryFailure, cleanupFailure],
+      `attested executor verification failed: ${primaryFailure.message}; fixture cleanup also failed: ${cleanupFailure.message}`,
+    );
+  return primaryFailure || cleanupFailure;
+}
+
+const fixtureFailureAggregationProbe = finalFixtureFailure(
+  new Error("primary fixture failure"),
+  new Error("fixture cleanup failure"),
+);
+assert(
+  fixtureFailureAggregationProbe instanceof AggregateError &&
+    fixtureFailureAggregationProbe.errors.length === 2,
+  "fixture cleanup failure masked the primary verifier failure",
+);
+
 function executableOnPath(name) {
   const lookup = spawnSync(
     process.platform === "win32" ? "where.exe" : "which",
@@ -250,6 +269,7 @@ function executorDryRun(options) {
 const root = realpathSync.native(
   mkdtempSync(path.join(tmpdir(), "valdris-executor-hardening-")),
 );
+let verifierFailure;
 try {
   const linuxRuntimeCompatibility = referenceExecutorRuntimeCompatibility({
     operatingSystem: "linux",
@@ -982,6 +1002,25 @@ try {
       2,
     ),
   );
-} finally {
-  rmSync(root, { recursive: true, force: true });
+} catch (error) {
+  verifierFailure = error;
 }
+let fixtureCleanupFailure;
+try {
+  // Hosted Windows malware scanning can briefly retain the copied executable
+  // after its synchronous launch exits. Keep cleanup bounded, but allow Node's
+  // documented EPERM/EBUSY/ENOTEMPTY retry path to observe handle release.
+  rmSync(root, {
+    recursive: true,
+    force: true,
+    maxRetries: process.platform === "win32" ? 10 : 0,
+    retryDelay: 100,
+  });
+} catch (error) {
+  fixtureCleanupFailure = error;
+}
+const finalFailure = finalFixtureFailure(
+  verifierFailure,
+  fixtureCleanupFailure,
+);
+if (finalFailure) throw finalFailure;
