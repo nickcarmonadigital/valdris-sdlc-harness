@@ -181,10 +181,11 @@ function spawnWithinDeadline(
   deadline,
   phase,
   deadlineOptions = {},
+  spawnSyncImpl = spawnSync,
 ) {
   const { maxTimeoutMs, ...remainingOptions } = deadlineOptions;
   const remaining = deadline.remaining(phase, remainingOptions);
-  const result = spawnSync(command, argv, {
+  const result = spawnSyncImpl(command, argv, {
     ...options,
     timeout: Math.min(remaining, maxTimeoutMs || remaining),
   });
@@ -464,6 +465,9 @@ export function runCommissionedRuntimeCommand({
   environment,
   argv,
   options = {},
+  deadline,
+  phase,
+  deadlineOptions = {},
   spawnSyncImpl = spawnSync,
 }) {
   if (!environment || typeof environment !== "object")
@@ -478,14 +482,34 @@ export function runCommissionedRuntimeCommand({
     runtimeCli,
     runtimeCliSha256,
   );
-  const result = spawnSyncImpl(commissioned.path, argv, {
+  const commandOptions = {
     encoding: "utf8",
     windowsHide: true,
     ...options,
     env: environment,
     shell: false,
-  });
+  };
+  let result;
+  let executionFailure;
+  try {
+    if (deadline) {
+      if (typeof phase !== "string" || !phase)
+        throw new Error("runtime command phase is required with a deadline");
+      result = spawnWithinDeadline(
+        commissioned.path,
+        argv,
+        commandOptions,
+        deadline,
+        phase,
+        deadlineOptions,
+        spawnSyncImpl,
+      );
+    } else result = spawnSyncImpl(commissioned.path, argv, commandOptions);
+  } catch (error) {
+    executionFailure = error;
+  }
   assertCommissionedExecutableUnchanged("runtime CLI", commissioned);
+  if (executionFailure) throw executionFailure;
   return result;
 }
 
@@ -525,6 +549,7 @@ class RuntimeDaemonProbeUnavailableError extends Error {
 function runtimeInfoWithinDeadline(
   runtimeKind,
   runtimeCli,
+  runtimeCliSha256,
   argv,
   environment,
   deadline,
@@ -532,19 +557,19 @@ function runtimeInfoWithinDeadline(
 ) {
   let result;
   try {
-    result = spawnWithinDeadline(
+    result = runCommissionedRuntimeCommand({
       runtimeCli,
+      runtimeCliSha256,
+      environment,
       argv,
-      {
+      options: {
         encoding: "utf8",
-        env: environment,
-        shell: false,
         windowsHide: true,
         maxBuffer: 4_194_304,
       },
       deadline,
-      label,
-    );
+      phase: label,
+    });
   } catch (error) {
     if (
       error.message ===
@@ -583,6 +608,7 @@ function parseRuntimeJson(result, label) {
 export function probeRuntimeDaemonIdentity(
   runtimeKind,
   runtimeCli,
+  runtimeCliSha256,
   environment,
   deadline,
 ) {
@@ -594,6 +620,7 @@ export function probeRuntimeDaemonIdentity(
       runtimeInfoWithinDeadline(
         runtimeKind,
         runtimeCli,
+        runtimeCliSha256,
         ["info", "--format", "{{json .}}"],
         environment,
         deadline,
@@ -622,6 +649,7 @@ export function probeRuntimeDaemonIdentity(
       runtimeInfoWithinDeadline(
         runtimeKind,
         runtimeCli,
+        runtimeCliSha256,
         ["info", "--format", "json"],
         environment,
         deadline,
@@ -975,6 +1003,7 @@ function isRuntimeNotFound(result) {
 
 export function cleanupRuntimeResources({
   runtimeCli,
+  runtimeCliSha256,
   environment,
   deadline,
   cidFile,
@@ -986,19 +1015,19 @@ export function cleanupRuntimeResources({
   const run = (argv, phase) => {
     try {
       if (runCommand) return runCommand(argv, phase);
-      return spawnWithinDeadline(
+      return runCommissionedRuntimeCommand({
         runtimeCli,
+        runtimeCliSha256,
+        environment,
         argv,
-        {
+        options: {
           encoding: "utf8",
-          env: environment,
-          shell: false,
           windowsHide: true,
           maxBuffer: 1_048_576,
         },
         deadline,
         phase,
-      );
+      });
     } catch (error) {
       problems.push(`${phase}: ${error.message}`);
       return null;
@@ -1478,6 +1507,7 @@ function main(argv) {
           ...probeRuntimeDaemonIdentity(
             args.runtime,
             runtimeCli.path,
+            runtimeCli.sha256,
             cleanEnvironment,
             deadline,
           ),
@@ -1642,22 +1672,22 @@ function main(argv) {
         isolatedHooksRoot,
         isolatedGlobalConfig,
       });
-      const imported = spawnWithinDeadline(
-        runtimeCli.path,
-        ["import", "-", sourceTag],
-        {
+      const imported = runCommissionedRuntimeCommand({
+        runtimeCli: runtimeCli.path,
+        runtimeCliSha256: runtimeCli.sha256,
+        environment: cleanEnvironment,
+        argv: ["import", "-", sourceTag],
+        options: {
           cwd: buildRoot,
           input: sourceSnapshot.archive,
           encoding: "utf8",
-          env: cleanEnvironment,
-          shell: false,
           maxBuffer: 65_536,
           windowsHide: true,
         },
         deadline,
-        "source image import",
-        { reserveCleanup: true },
-      );
+        phase: "source image import",
+        deadlineOptions: { reserveCleanup: true },
+      });
       if (imported.error || imported.status !== 0)
         throw new Error(
           `failed to import frozen source image: ${imported.error?.message || imported.stderr || imported.stdout}`,
@@ -1667,9 +1697,11 @@ function main(argv) {
         `FROM ${args.image}\nCOPY --from=${sourceTag} /workspace/ /workspace/\nWORKDIR /workspace\nENTRYPOINT []\n`,
         { flag: "wx", mode: 0o600 },
       );
-      const built = spawnWithinDeadline(
-        runtimeCli.path,
-        [
+      const built = runCommissionedRuntimeCommand({
+        runtimeCli: runtimeCli.path,
+        runtimeCliSha256: runtimeCli.sha256,
+        environment: cleanEnvironment,
+        argv: [
           "build",
           "--pull=false",
           "--no-cache",
@@ -1678,36 +1710,34 @@ function main(argv) {
           executionTag,
           buildRoot,
         ],
-        {
+        options: {
           cwd: buildRoot,
           encoding: "utf8",
-          env: cleanEnvironment,
-          shell: false,
           maxBuffer: 4_194_304,
           windowsHide: true,
         },
         deadline,
-        "execution image build",
-        { reserveCleanup: true },
-      );
+        phase: "execution image build",
+        deadlineOptions: { reserveCleanup: true },
+      });
       if (built.error || built.status !== 0)
         throw new Error(
           `failed to build immutable execution image: ${built.error?.message || built.stderr || built.stdout}`,
         );
-      const inspected = spawnWithinDeadline(
-        runtimeCli.path,
-        ["image", "inspect", "--format={{.Id}}", executionTag],
-        {
+      const inspected = runCommissionedRuntimeCommand({
+        runtimeCli: runtimeCli.path,
+        runtimeCliSha256: runtimeCli.sha256,
+        environment: cleanEnvironment,
+        argv: ["image", "inspect", "--format={{.Id}}", executionTag],
+        options: {
           encoding: "utf8",
-          env: cleanEnvironment,
-          shell: false,
           maxBuffer: 65_536,
           windowsHide: true,
         },
         deadline,
-        "execution image inspection",
-        { reserveCleanup: true },
-      );
+        phase: "execution image inspection",
+        deadlineOptions: { reserveCleanup: true },
+      });
       const executionImageId = String(inspected.stdout || "").trim();
       if (
         inspected.error ||
@@ -1719,22 +1749,22 @@ function main(argv) {
         );
       executionImageSha256 = executionImageId.slice(7).toLowerCase();
       const invocation = runtimeArguments(executionImageId);
-      const result = spawnWithinDeadline(
-        runtimeCli.path,
-        invocation,
-        {
+      const result = runCommissionedRuntimeCommand({
+        runtimeCli: runtimeCli.path,
+        runtimeCliSha256: runtimeCli.sha256,
+        environment: cleanEnvironment,
+        argv: invocation,
+        options: {
           cwd: buildRoot,
           encoding: "utf8",
-          env: cleanEnvironment,
-          shell: false,
           killSignal: "SIGTERM",
           maxBuffer: args.outputBytes + 65_536,
           windowsHide: true,
         },
         deadline,
-        "container execution",
-        { reserveCleanup: true },
-      );
+        phase: "container execution",
+        deadlineOptions: { reserveCleanup: true },
+      });
       if (result.error)
         throw new Error(`executor failed: ${result.error.message}`);
       if (result.status !== 0)
@@ -1781,6 +1811,7 @@ function main(argv) {
       const finalDaemon = probeRuntimeDaemonIdentity(
         args.runtime,
         runtimeCli.path,
+        runtimeCli.sha256,
         cleanEnvironment,
         deadline,
       );
@@ -1803,6 +1834,7 @@ function main(argv) {
     } finally {
       const cleanupProblems = cleanupRuntimeResources({
         runtimeCli: runtimeCli.path,
+        runtimeCliSha256: runtimeCli.sha256,
         environment: cleanEnvironment,
         deadline,
         cidFile,

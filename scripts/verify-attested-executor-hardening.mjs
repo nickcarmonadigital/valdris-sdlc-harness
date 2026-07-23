@@ -267,6 +267,7 @@ try {
     probeRuntimeDaemonIdentity(
       "docker",
       process.execPath,
+      sha256(readFileSync(process.execPath)),
       {},
       {
         remaining(phase) {
@@ -408,6 +409,49 @@ try {
         "CONTAINER_CONNECTION",
       ].every((name) => !(name in isolatedRuntimeCommand.options.env)),
     "commissioned runtime command inherited an ambient endpoint selector",
+  );
+  const transientRuntime = path.join(root, "transient-runtime.bin");
+  const commissionedRuntimeBytes = Buffer.from("commissioned runtime\n");
+  writeFileSync(transientRuntime, commissionedRuntimeBytes);
+  const transientRuntimeSha256 = sha256(commissionedRuntimeBytes);
+  let transientSwapFailure;
+  let transientOutputAccepted = false;
+  try {
+    runCommissionedRuntimeCommand({
+      runtimeCli: transientRuntime,
+      runtimeCliSha256: transientRuntimeSha256,
+      environment: isolated,
+      argv: ["run", "fixture"],
+      deadline: createExecutionDeadline(5_000),
+      phase: "transient runtime swap",
+      spawnSyncImpl() {
+        writeFileSync(transientRuntime, "uncommissioned runtime\n");
+        return runtimeResult(0, "untrusted output");
+      },
+    });
+    transientOutputAccepted = true;
+  } catch (error) {
+    transientSwapFailure = error;
+  } finally {
+    writeFileSync(transientRuntime, commissionedRuntimeBytes);
+  }
+  assert(
+    !transientOutputAccepted &&
+      /runtime CLI binary changed during attested execution/u.test(
+        transientSwapFailure?.message || "",
+      ) &&
+      sha256(readFileSync(transientRuntime)) === transientRuntimeSha256,
+    "transient runtime replacement was not rejected before output acceptance",
+  );
+  const executorLifecycleSource = readFileSync(
+    fileURLToPath(new URL("./attested-proof-executor.mjs", import.meta.url)),
+    "utf8",
+  );
+  assert(
+    !/spawnWithinDeadline\(\s*runtimeCli(?:\.path)?\s*,/gu.test(
+      executorLifecycleSource,
+    ),
+    "executor lifecycle bypasses commissioned runtime command checks",
   );
   for (const [name, value] of Object.entries(previousEnvironment))
     if (value === undefined) delete process.env[name];
@@ -744,6 +788,7 @@ try {
           malformedDaemonIdentityFailsClosed: true,
           poisonedPathAndContexts: true,
           poisonedRuntimeEndpointSelectors: true,
+          transientRuntimeBinarySwapRejected: true,
           rawGitObjectTree: true,
           equivalentWorktreePathSpelling: true,
           aliasedOutputInsideSourceRejected: true,

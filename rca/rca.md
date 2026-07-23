@@ -76,6 +76,6 @@ The fix binds availability to the daemon identity already returned by `docker in
 - Image inspect, pull, and cleanup use the exact commissioned runtime binary path instead of resolving the runtime name through ambient `PATH`.
 - The isolated local-default runtime environment used for identity probing remains active for image inspect, pull, execution, and cleanup, so ambient Docker or Podman endpoint selectors cannot retarget later lifecycle operations.
 - Only typed probe-deadline failures or phase-specific, anchored `docker info`/`podman info` unavailable responses may produce an optional-seam skip. Misleading error text, malformed identity, permission, binary-integrity, and verifier failures remain fatal.
-- The runtime binary is hashed before the daemon probe and revalidated after every probe attempt—before any skip decision—and around image lifecycle operations.
+- The runtime binary is hashed before the daemon probe and revalidated immediately before and after every daemon probe, source import, image build, image inspection, container run, and cleanup command. A command cannot return output to materialization or receipt logic after a detected binary swap.
 
 This does not weaken authoritative release eligibility. A skipped local reference seam remains non-authoritative; an actual authoritative claim still requires a commissioned compatible executor and provider-backed receipts. Focused proof covers the classifier and the actual non-dry executor preflight, including rejection before output materialization.

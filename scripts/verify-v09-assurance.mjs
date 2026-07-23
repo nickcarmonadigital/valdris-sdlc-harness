@@ -255,6 +255,7 @@ function containerRuntimeProbe() {
         identity = probeRuntimeDaemonIdentity(
           runtime,
           runtimeCli,
+          runtimeCliSha256,
           runtimeEnvironment,
           createExecutionDeadline(15_000),
         );
