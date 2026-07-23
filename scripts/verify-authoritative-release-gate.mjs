@@ -11,6 +11,7 @@ import {
   readCandidatePackageAtCommit,
   resolveCandidateGitIdentity,
   runReleaseGit,
+  sameCandidateRootIdentity,
   validateCandidateSourceBinding,
   validateStableHeadProviderReceipt,
 } from "./authoritative-release-gate.mjs";
@@ -18,6 +19,7 @@ import { canonicalJson, sha256 } from "./proof-runner.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const gate = path.join(ROOT, "scripts", "authoritative-release-gate.mjs");
+let windowsFilesystemIdentityFallbackExercised = false;
 
 function run(args) {
   return spawnSync(process.execPath, [gate, ...args], {
@@ -137,15 +139,57 @@ try {
       tag: "v0.9.0",
     });
     if (
-      path.relative(
+      !sameCandidateRootIdentity(
         driveCaseIdentity.repositoryRoot,
         stableVersionMismatchRoot,
-      ) !== "" ||
+      ) ||
       driveCaseIdentity.headCommit !== mismatch.secondCommit
     )
       throw new Error(
         "Windows drive-letter casing did not resolve to the same canonical candidate checkout",
       );
+    const volumeLength = path.parse(stableVersionMismatchRoot).root.length;
+    const componentCaseIndex = Array.from(stableVersionMismatchRoot).findIndex(
+      (character, index) =>
+        index >= volumeLength && /^[A-Za-z]$/u.test(character),
+    );
+    if (componentCaseIndex < 0)
+      throw new Error(
+        "Windows component-casing regression could not find a path letter to toggle",
+      );
+    const componentLetter = stableVersionMismatchRoot[componentCaseIndex];
+    const componentCaseVariant = `${stableVersionMismatchRoot.slice(0, componentCaseIndex)}${componentLetter === componentLetter.toUpperCase() ? componentLetter.toLowerCase() : componentLetter.toUpperCase()}${stableVersionMismatchRoot.slice(componentCaseIndex + 1)}`;
+    if (
+      canonicalCandidateRootKey(componentCaseVariant) ===
+      canonicalCandidateRootKey(stableVersionMismatchRoot)
+    )
+      throw new Error(
+        "Windows directory-component case variant did not preserve distinct canonical keys",
+      );
+    try {
+      windowsFilesystemIdentityFallbackExercised = sameCandidateRootIdentity(
+        componentCaseVariant,
+        stableVersionMismatchRoot,
+      );
+    } catch (error) {
+      if (!["ENOENT", "ENOTDIR"].includes(error.code)) throw error;
+    }
+    if (windowsFilesystemIdentityFallbackExercised) {
+      const componentCaseIdentity = resolveCandidateGitIdentity({
+        repositoryRoot: componentCaseVariant,
+        tag: "v0.9.0",
+      });
+      if (
+        !sameCandidateRootIdentity(
+          componentCaseIdentity.repositoryRoot,
+          stableVersionMismatchRoot,
+        ) ||
+        componentCaseIdentity.headCommit !== mismatch.secondCommit
+      )
+        throw new Error(
+          "Windows directory-component casing did not resolve to the same candidate checkout",
+        );
+    }
   }
   const nestedCandidatePath = path.join(
     stableVersionMismatchRoot,
@@ -481,6 +525,7 @@ console.log(
         stableTagVersionSubstitutionRejected: true,
         windowsCanonicalDriveCaseAccepted: process.platform === "win32",
         windowsDirectoryCasePreserved: process.platform === "win32",
+        windowsFilesystemIdentityFallbackExercised,
         nestedCandidateRootRejected: true,
         repositoryRootCliFailsClosed: true,
         completeProductionCliArgumentsForwarded: true,

@@ -109,6 +109,21 @@ export function canonicalCandidateRootKey(candidateRoot) {
   );
 }
 
+export function sameCandidateRootIdentity(leftRoot, rightRoot) {
+  if (
+    canonicalCandidateRootKey(leftRoot) === canonicalCandidateRootKey(rightRoot)
+  )
+    return true;
+  if (process.platform !== "win32") return false;
+  const leftStats = lstatSync(leftRoot, { bigint: true });
+  const rightStats = lstatSync(rightRoot, { bigint: true });
+  return (
+    leftStats.ino !== 0n &&
+    leftStats.dev === rightStats.dev &&
+    leftStats.ino === rightStats.ino
+  );
+}
+
 export function resolveCandidateGitHeadIdentity(repositoryRoot) {
   const requestedRoot = path.resolve(repositoryRoot);
   const stats = lstatSync(requestedRoot);
@@ -122,12 +137,9 @@ export function resolveCandidateGitHeadIdentity(repositoryRoot) {
       "candidate root lookup",
     ),
   );
-  if (
-    canonicalCandidateRootKey(reportedRoot) !==
-    canonicalCandidateRootKey(canonicalRoot)
-  )
+  if (!sameCandidateRootIdentity(reportedRoot, canonicalRoot))
     throw new Error(
-      "candidate repository root must be the exact Git worktree root",
+      `candidate repository root must be the exact Git worktree root: ${JSON.stringify({ canonicalRoot, reportedRoot })}`,
     );
   const headCommit = runReleaseGit(
     canonicalRoot,
