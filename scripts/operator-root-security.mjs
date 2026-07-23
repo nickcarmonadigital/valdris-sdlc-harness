@@ -321,6 +321,9 @@ foreach ($sid in @($current, [Security.Principal.SecurityIdentifier]'S-1-5-18', 
   [void]$acl.AddAccessRule($rule)
 }
 Set-Acl -LiteralPath $target -AclObject $acl
+if (@(Get-ChildItem -LiteralPath $target -Force -ErrorAction Stop).Count -ne 0) {
+  throw "new Windows private directory changed during ownership hardening"
+}
 `;
   const result = spawnSyncImpl(
     powershell,
@@ -351,6 +354,10 @@ Set-Acl -LiteralPath $target -AclObject $acl
       `failed to harden Windows private directory: ${
         result.error?.message || result.stderr || result.stdout
       }`,
+    );
+  if (readdirSync(realPath).length !== 0)
+    throw new Error(
+      "new Windows private directory changed during ownership hardening",
     );
   return assertOperatorRootSecurity(realPath, {
     platform,

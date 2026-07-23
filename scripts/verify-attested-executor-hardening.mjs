@@ -22,6 +22,7 @@ import {
 import {
   assertOperatorRootSecurity,
   assertOperatorRootUnchanged,
+  hardenNewPrivateDirectory,
 } from "./operator-root-security.mjs";
 import { canonicalJson, sha256 } from "./proof-runner.mjs";
 
@@ -367,6 +368,40 @@ try {
     "primary execution and cleanup failures were not preserved together",
   );
 
+  const nonEmptyPrivateRoot = path.join(root, "non-empty-private-root");
+  mkdirSync(nonEmptyPrivateRoot, { mode: 0o700 });
+  writeFileSync(path.join(nonEmptyPrivateRoot, "untrusted-entry"), "blocked\n");
+  expectFailure(
+    "non-empty Windows private root",
+    () => hardenNewPrivateDirectory(nonEmptyPrivateRoot, { platform: "win32" }),
+    /must be empty before ownership hardening/u,
+  );
+
+  let windowsPostHardeningRace = "not-applicable";
+  if (process.platform === "win32") {
+    const racedPrivateRoot = path.join(root, "raced-private-root");
+    mkdirSync(racedPrivateRoot);
+    let hardeningCalls = 0;
+    expectFailure(
+      "post-hardening Windows private-root race",
+      () =>
+        hardenNewPrivateDirectory(racedPrivateRoot, {
+          spawnSyncImpl(command, args, options) {
+            const result = spawnSync(command, args, options);
+            hardeningCalls += 1;
+            if (!result.error && result.status === 0 && hardeningCalls === 1)
+              writeFileSync(
+                path.join(racedPrivateRoot, "raced-entry"),
+                "blocked\n",
+              );
+            return result;
+          },
+        }),
+      /changed during ownership hardening/u,
+    );
+    windowsPostHardeningRace = true;
+  }
+
   const operatorRoot = path.join(root, "operator-root");
   mkdirSync(operatorRoot, { mode: 0o700 });
   if (process.platform !== "win32") chmodSync(operatorRoot, 0o700);
@@ -391,6 +426,8 @@ try {
           submoduleFailClosed: true,
           cleanupUniqueNameFallback: true,
           cleanupFailureAggregation: true,
+          nonEmptyPrivateRootRejected: true,
+          windowsPostHardeningRace,
           operatorRootOwnerAndIdentity: true,
         },
       },
