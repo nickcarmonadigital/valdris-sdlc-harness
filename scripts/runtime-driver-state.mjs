@@ -124,48 +124,42 @@ function windowsPowerShell(command) {
   ]);
 }
 
-const WINDOWS_BOOT_IDENTITY_SCRIPT = String.raw`
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-
-namespace Valdris.RuntimeIdentity {
-  [StructLayout(LayoutKind.Sequential)]
-  public struct SystemTimeOfDayInformation {
-    public long BootTime;
-    public long CurrentTime;
-    public long TimeZoneBias;
-    public uint CurrentTimeZoneId;
-    public uint Reserved;
-    public ulong BootTimeBias;
-    public ulong SleepTimeBias;
-  }
-
-  public static class NativeMethods {
-    [DllImport("ntdll.dll")]
-    public static extern int NtQuerySystemInformation(
-      int systemInformationClass,
-      out SystemTimeOfDayInformation systemInformation,
-      int systemInformationLength,
-      IntPtr returnLength
-    );
-  }
+function windowsSystemTool(name) {
+  const systemRoot = process.env.SystemRoot || process.env.WINDIR;
+  return systemRoot && path.win32.isAbsolute(systemRoot)
+    ? path.win32.join(systemRoot, "System32", name)
+    : null;
 }
-'@
-$identity = New-Object Valdris.RuntimeIdentity.SystemTimeOfDayInformation
-$size = [Runtime.InteropServices.Marshal]::SizeOf([type][Valdris.RuntimeIdentity.SystemTimeOfDayInformation])
-$status = [Valdris.RuntimeIdentity.NativeMethods]::NtQuerySystemInformation(
-  3,
-  [ref]$identity,
-  $size,
-  [IntPtr]::Zero
-)
-if ($status -ne 0) { throw "NtQuerySystemInformation failed with NTSTATUS $status" }
-[DateTime]::FromFileTimeUtc($identity.BootTime).ToString(
-  'o',
-  [Globalization.CultureInfo]::InvariantCulture
-)
-`;
+
+function windowsBootEventIdentity() {
+  const wevtutil = windowsSystemTool("wevtutil.exe");
+  if (!wevtutil) return null;
+  const output = identityCommand(
+    wevtutil,
+    [
+      "qe",
+      "System",
+      "/q:*[System[Provider[@Name='Microsoft-Windows-Kernel-General'] and (EventID=12)]]",
+      "/rd:true",
+      "/c:1",
+      "/f:xml",
+    ],
+    64 * 1024,
+  );
+  if (!output) return null;
+  const provider = output.match(
+    /<Provider\b[^>]*\bName=['"]Microsoft-Windows-Kernel-General['"][^>]*\/>/u,
+  );
+  const eventId = output.match(/<EventID[^>]*>12<\/EventID>/u);
+  const created = output.match(
+    /<TimeCreated\b[^>]*\bSystemTime=['"]([^'"]{20,40})['"][^>]*\/>/u,
+  );
+  const record = output.match(
+    /<EventRecordID[^>]*>([0-9]{1,20})<\/EventRecordID>/u,
+  );
+  if (!provider || !eventId || !created || !record) return null;
+  return `windows-kernel-boot-event:${record[1]}:${created[1]}`;
+}
 
 function readIdentityFile(target) {
   try {
@@ -207,11 +201,9 @@ function localBootIdentity() {
     return bootId ? `linux-boot-id:${bootId}` : null;
   }
   if (platform() === "win32") {
-    // Win32_OperatingSystem via CIM can leave a WMI provider child alive after
-    // PowerShell is timed out, which defeats spawnSync's wall-clock bound on
-    // hosted Windows runners. Query the kernel's exact boot FILETIME directly.
-    const bootTime = windowsPowerShell(WINDOWS_BOOT_IDENTITY_SCRIPT);
-    return bootTime ? `windows-boot-time:${bootTime}` : null;
+    // The latest Kernel-General event 12 binds a monotonic event-record ID to
+    // the current Windows boot without relying on CIM/WMI or dynamic Add-Type.
+    return windowsBootEventIdentity();
   }
   if (platform() === "darwin") {
     const bootTime = identityCommand("/usr/sbin/sysctl", [
@@ -263,10 +255,16 @@ export function runtimeDriverLocalIdentity(pid = process.pid) {
   const hostId = localHostIdentity();
   const bootId = localBootIdentity();
   const processIdentity = localProcessCreationIdentity(pid);
-  if (!hostId || !bootId || !processIdentity)
+  if (!hostId || !bootId || !processIdentity) {
+    const missing = [
+      !hostId && "host",
+      !bootId && "boot",
+      !processIdentity && "process",
+    ].filter(Boolean);
     throw new Error(
-      "runtime-driver could not obtain exact host boot and process creation identity",
+      `runtime-driver could not obtain exact host boot and process creation identity (missing: ${missing.join(", ")})`,
     );
+  }
   return {
     host: hostname(),
     hostId,
