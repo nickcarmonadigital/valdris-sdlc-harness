@@ -414,7 +414,7 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 - executable runtime-session contracts for connector conformance, multi-agent DAG/fan-in, capability-authorized tool calls, exact hooks, human consequential-tool approvals, context v2, prior-head-attested memory, model routing, decision-linked traces, usage, reconciled economics, and green acceptance results;
 - Git-reconstructed AI-change review plus route-derived prototype-to-production promotion and production-learning receipts;
 - operator-pinned Ed25519 approval, executor, routing, trace, usage, promotion, learning, and monotonic-head receipts;
-- an optional OCI read-only proof executor with derived bounded outputs and a GitHub-backed compare-and-swap head adapter bound to the accepted proof-input set;
+- an optional OCI read-only proof executor that binds a trusted-host-operator versus isolated UID/GID 65534 workload boundary, no host mounts/network/ambient secrets, derived bounded outputs, an independently signed external-principal authority-separation receipt, and a GitHub-backed compare-and-swap head adapter bound to the accepted proof-input set; same-principal host compromise remains non-authoritative;
 - `valdris.run-packet.v3` binding assurance level and packet-commit catalog snapshots, while v2 and non-HEAD packets receive integrity-only structural inspection; full revalidation requires an isolated checkout at the exact packet commit;
 - `npm run assurance:readiness -- --level semantic|authoritative` reports missing adapters, thresholds, identities, approvals, executor/head providers, and applicability receipts before closure.
 

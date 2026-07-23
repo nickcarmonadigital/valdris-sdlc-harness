@@ -164,6 +164,7 @@ jobs:
           set -euo pipefail
           node "$GITHUB_WORKSPACE/validator/scripts/authoritative-release-gate.mjs" \
             --tag "$RELEASE_TAG" \
+            --repository-root "$GITHUB_WORKSPACE/candidate" \
             --run-root "$RUNNER_TEMP/authoritative-artifact/run-root"
 
       - name: Verify active stable-tag ruleset

@@ -5,8 +5,12 @@ import { fileURLToPath } from "node:url";
 import { readJson, resolveArtifactPath } from "./proof-runner.mjs";
 import {
   AUTHORITY_TRUST_SHA256_ENV,
+  RUNTIME_EXECUTION_THREAT_BOUNDARY,
   V09_CANONICAL_ARTIFACTS,
   authorityTrustStoreSha256,
+  runtimeExecutionIsolationBindingsMatch,
+  validExecutorAuthoritySeparationBinding,
+  validRuntimeExecutionIsolationBinding,
   validateAuthoritativeClosureDocument,
 } from "./v09-assurance-lib.mjs";
 
@@ -172,6 +176,21 @@ export function assessAssuranceReadiness(repoRoot, options = {}) {
       requiredTrustSha256.toLowerCase(),
   );
   const missingAuthority = [];
+  const commissionedRuntimeBoundary = validRuntimeExecutionIsolationBinding(
+    semantic?.acceptancePolicy?.proofExecutor,
+  );
+  const observedRuntimeBoundary = validRuntimeExecutionIsolationBinding(
+    runtime?.executorReceipt,
+  );
+  const runtimeBoundaryMatchesCommissioning =
+    runtimeExecutionIsolationBindingsMatch(
+      runtime?.executorReceipt,
+      semantic?.acceptancePolicy?.proofExecutor,
+    );
+  const executorAuthoritySeparated = validExecutorAuthoritySeparationBinding(
+    runtime,
+    semantic?.acceptancePolicy?.proofExecutor,
+  );
   if (requestedLevel === "authoritative") {
     if (activeAuthorityKeys === 0)
       missingAuthority.push("active operator-commissioned authority key");
@@ -179,6 +198,10 @@ export function assessAssuranceReadiness(repoRoot, options = {}) {
       missingAuthority.push(`operator-held ${AUTHORITY_TRUST_SHA256_ENV}`);
     for (const [field, label] of [
       ["executorReceipt", "immutable executor receipt"],
+      [
+        "executorAuthoritySeparationReceipt",
+        "independently signed executor authority-separation receipt",
+      ],
       ["bridgeHeadReceipt", "rollback-resistant head receipt"],
       ["traceReceipt", "trace receipt"],
       ["usageReceipt", "usage receipt"],
@@ -186,6 +209,26 @@ export function assessAssuranceReadiness(repoRoot, options = {}) {
       if (!runtime?.[field]) missingAuthority.push(label);
     if (!runtime?.modelRouting?.receipt)
       missingAuthority.push("model-routing receipt");
+    if (!commissionedRuntimeBoundary)
+      missingAuthority.push(
+        "commissioned trusted-host versus isolated-workload execution boundary",
+      );
+    if (!observedRuntimeBoundary)
+      missingAuthority.push(
+        "observed trusted-host versus isolated-workload executor receipt binding",
+      );
+    if (
+      commissionedRuntimeBoundary &&
+      observedRuntimeBoundary &&
+      !runtimeBoundaryMatchesCommissioning
+    )
+      missingAuthority.push(
+        "executor receipt isolation boundary matching commissioning",
+      );
+    if (!executorAuthoritySeparated)
+      missingAuthority.push(
+        "independent external-principal executor authority separation",
+      );
     if (!runtimeDriver?.implementationReceipt?.attestation)
       missingAuthority.push("attested implementation-execution receipt");
     if (
@@ -218,6 +261,7 @@ export function assessAssuranceReadiness(repoRoot, options = {}) {
     validation = validateAuthoritativeClosureDocument(closure, repoRoot, {
       policy,
       requiredTrustSha256,
+      now: options.now,
     });
   const semanticEligible =
     requestedLevel === "structural" ||
@@ -251,6 +295,17 @@ export function assessAssuranceReadiness(repoRoot, options = {}) {
       activeAuthorityKeys,
       pinPresent: Boolean(requiredTrustSha256),
       pinMatches: trustPinMatches,
+    },
+    runtimeExecutionBoundary: {
+      threatBoundary: RUNTIME_EXECUTION_THREAT_BOUNDARY,
+      commissioned: commissionedRuntimeBoundary,
+      observed: observedRuntimeBoundary,
+      matchesCommissioning: runtimeBoundaryMatchesCommissioning,
+      authoritySeparated: executorAuthoritySeparated,
+      authoritativeEligible:
+        runtimeBoundaryMatchesCommissioning &&
+        executorAuthoritySeparated &&
+        validation.valid,
     },
     missing: {
       artifacts: missingArtifacts,

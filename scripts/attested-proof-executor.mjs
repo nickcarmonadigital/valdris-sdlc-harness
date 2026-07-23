@@ -19,7 +19,11 @@ import { fileURLToPath } from "node:url";
 import { canonicalJson, safeIdentifier, sha256 } from "./proof-runner.mjs";
 import {
   AUTHORITY_TRUST_SHA256_ENV,
+  EXECUTOR_WALL_CLOCK_SCOPE,
+  REFERENCE_EXECUTOR_CONTAINER_GID,
+  REFERENCE_EXECUTOR_CONTAINER_UID,
   authorityAttestationPayload,
+  runtimeExecutionIsolationPolicy,
 } from "./v09-assurance-lib.mjs";
 import {
   assertOperatorRootSecurity,
@@ -31,10 +35,36 @@ const SHA256 = /^[a-f0-9]{64}$/i;
 const ARTIFACT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const FILTER_DRIVER = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const WINDOWS_DEVICE_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
-const CONTAINER_UID = 65_534;
-const CONTAINER_GID = 65_534;
+const CONTAINER_UID = REFERENCE_EXECUTOR_CONTAINER_UID;
+const CONTAINER_GID = REFERENCE_EXECUTOR_CONTAINER_GID;
 const MAX_SPAWN_TIMEOUT_MS = 2_147_483_647;
 const RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS = 10_000;
+
+export function commissionRuntimeExecutionBoundary(
+  owner,
+  { containerUid = CONTAINER_UID, containerGid = CONTAINER_GID } = {},
+) {
+  if (
+    !owner ||
+    !["uid", "sid"].includes(owner.type) ||
+    typeof owner.id !== "string" ||
+    owner.id.length === 0
+  )
+    throw new Error("runtime execution authority identity is invalid");
+  if (owner.type === "uid" && owner.id === String(containerUid))
+    throw new Error(
+      "runtime execution authority cannot equal the isolated workload UID",
+    );
+  return runtimeExecutionIsolationPolicy({
+    authorityIdentitySha256: sha256(canonicalJson(owner)),
+    containerUid,
+    containerGid,
+    hostMounts: false,
+    capsuleAccess: false,
+    liveWorktreeMount: false,
+    inheritAmbientSecrets: false,
+  });
+}
 
 function canonicalExistingPath(target) {
   return realpathSync.native(path.resolve(target));
@@ -147,10 +177,10 @@ export function createExecutionDeadline(
   startedMs = Date.now(),
   now = () => Date.now(),
 ) {
-  const cleanupReserveMs = Math.min(
-    10_000,
-    Math.max(1, Math.floor(limitMs / 10)),
-  );
+  const cleanupReserveMs =
+    process.platform === "win32"
+      ? Math.min(45_000, Math.max(1, Math.floor(limitMs / 3)))
+      : Math.min(10_000, Math.max(1, Math.floor(limitMs / 10)));
   const deadlineMs = startedMs + limitMs;
   const remaining = (phase, { reserveCleanup = false } = {}) => {
     const reserve = reserveCleanup ? cleanupReserveMs : 0;
@@ -172,6 +202,23 @@ export function createExecutionDeadline(
     elapsedMs() {
       return Math.max(0, now() - startedMs);
     },
+  };
+}
+
+export function finalizeExecutorCompletion(deadline, validateFinalState) {
+  if (!deadline || typeof validateFinalState !== "function")
+    throw new Error(
+      "executor completion finalizer requires a deadline and validator",
+    );
+  deadline.assert("final executor state validation");
+  validateFinalState();
+  deadline.assert("final executor state validation");
+  const completedOperationElapsedMs = deadline.elapsedMs();
+  return {
+    completedOperationElapsedMs,
+    finishedAt: new Date(
+      Date.parse(deadline.startedAt) + completedOperationElapsedMs,
+    ).toISOString(),
   };
 }
 
@@ -574,7 +621,11 @@ $fileAcl = Get-Acl -LiteralPath $capsule
       fileSddl: inspected.fileSddl,
     };
   };
-  const runIcacls = (target, grant, { deadlineAware = true } = {}) => {
+  const runIcacls = (
+    target,
+    grant,
+    { deadlineAware = true, reserveCleanup = true } = {},
+  ) => {
     const phase = "Windows runtime capsule ACL update";
     const argv = [
       target,
@@ -592,7 +643,7 @@ $fileAcl = Get-Acl -LiteralPath $capsule
     const result =
       deadline && deadlineAware
         ? spawnWithinDeadline(icacls, argv, options, deadline, phase, {
-            reserveCleanup: true,
+            reserveCleanup,
             maxTimeoutMs: RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS,
           })
         : spawnSync(icacls, argv, {
@@ -613,7 +664,10 @@ $fileAcl = Get-Acl -LiteralPath $capsule
       [capsuleRoot, "(OI)(CI)(F)"],
     ]) {
       try {
-        runIcacls(target, grant, { deadlineAware: false });
+        runIcacls(target, grant, {
+          deadlineAware: true,
+          reserveCleanup: false,
+        });
       } catch (error) {
         failures.push(error);
       }
@@ -678,10 +732,19 @@ export function stageCommissionedRuntimeExecutable({
   const privateRootIdentity = assertOperatorRootSecurity(privateRoot, {
     platform,
     environment,
+    deadline,
+    deadlinePhase: "runtime capsule parent ACL inspection",
+    reserveCleanup: true,
   });
   const capsuleRoot = path.join(privateRootIdentity.path, "runtime-capsule");
   mkdirSync(capsuleRoot, { mode: 0o700 });
-  hardenNewPrivateDirectory(capsuleRoot, { platform, environment });
+  hardenNewPrivateDirectory(capsuleRoot, {
+    platform,
+    environment,
+    deadline,
+    deadlinePhase: "runtime capsule root hardening",
+    reserveCleanup: true,
+  });
   const sourceBytes = readFileSync(source.path);
   if (sha256(sourceBytes) !== source.sha256)
     throw new Error("runtime CLI changed while staging the execution capsule");
@@ -713,12 +776,21 @@ export function stageCommissionedRuntimeExecutable({
   const capsuleRootIdentity = assertOperatorRootSecurity(capsuleRoot, {
     platform,
     environment,
+    deadline,
+    deadlinePhase: "runtime capsule root ACL inspection",
+    reserveCleanup: true,
   });
+  const isolationPolicy = commissionRuntimeExecutionBoundary(
+    capsuleRootIdentity.identity.owner,
+  );
   const assertProtected = (options) => {
     capsuleProtection.assertProtected(options);
     assertOperatorRootUnchanged(capsuleRoot, capsuleRootIdentity, {
       platform,
       environment,
+      deadline,
+      deadlinePhase: "runtime capsule root identity check",
+      reserveCleanup: options?.reserveCleanup === true,
     });
     const capsuleMode = lstatSync(capsule.path).mode & 0o777;
     if ((capsuleMode & 0o222) !== 0)
@@ -752,6 +824,16 @@ export function stageCommissionedRuntimeExecutable({
     rootPathSha256: capsuleRootIdentity.pathSha256,
     rootIdentitySha256: capsuleRootIdentity.identitySha256,
     mode: "hardened-private-capsule",
+    threatBoundary: isolationPolicy.threatBoundary,
+    samePrincipalCompromisePolicy:
+      isolationPolicy.samePrincipalCompromisePolicy,
+    authorityIdentitySha256: isolationPolicy.authorityIdentitySha256,
+    isolationPolicySha256: isolationPolicy.policySha256,
+    containerUid: isolationPolicy.untrustedWorkload.uid,
+    containerGid: isolationPolicy.untrustedWorkload.gid,
+    networkPolicy: isolationPolicy.untrustedWorkload.networkPolicy,
+    hostMounts: isolationPolicy.hostAccess.hostMounts,
+    capsuleAccess: isolationPolicy.hostAccess.capsuleAccess,
     assertProtected,
     release() {
       if (released) return;
@@ -1371,7 +1453,9 @@ export function cleanupRuntimeResources({
   const problems = [];
   const run = (argv, phase) => {
     try {
-      if (runCommand) return runCommand(argv, phase);
+      const deadlineOptions = { reserveCleanup: false };
+      if (runCommand)
+        return runCommand(argv, phase, { deadline, deadlineOptions });
       return runCommissionedRuntimeCommand({
         runtimeCli,
         runtimeCliSha256,
@@ -1384,6 +1468,7 @@ export function cleanupRuntimeResources({
         },
         deadline,
         phase,
+        deadlineOptions,
         runtimeGuard,
       });
     } catch (error) {
@@ -1795,7 +1880,11 @@ function main(argv) {
   const gitIsolationRoot = mkdtempSync(
     path.join(tmpdir(), "valdris-git-isolation-"),
   );
-  hardenNewPrivateDirectory(gitIsolationRoot);
+  hardenNewPrivateDirectory(gitIsolationRoot, {
+    deadline,
+    deadlinePhase: "executor isolation-root hardening",
+    reserveCleanup: true,
+  });
   const isolatedHooksRoot = path.join(gitIsolationRoot, "hooks");
   mkdirSync(isolatedHooksRoot, { mode: 0o700 });
   chmodSync(isolatedHooksRoot, 0o700);
@@ -1950,6 +2039,23 @@ function main(argv) {
         executionRootIdentitySha256: args.dryRun
           ? null
           : executionRuntime.rootIdentitySha256,
+        threatBoundary: args.dryRun ? null : executionRuntime.threatBoundary,
+        samePrincipalCompromisePolicy: args.dryRun
+          ? null
+          : executionRuntime.samePrincipalCompromisePolicy,
+        authorityIdentitySha256: args.dryRun
+          ? null
+          : executionRuntime.authorityIdentitySha256,
+        isolationPolicySha256: args.dryRun
+          ? null
+          : executionRuntime.isolationPolicySha256,
+        workloadIdentity: {
+          uid: CONTAINER_UID,
+          gid: CONTAINER_GID,
+        },
+        hostMounts: false,
+        capsuleAccess: false,
+        networkPolicy: "none",
         daemonIdentitySha256: daemon.identitySha256,
         daemonIdentityVerified: daemon.verified,
       },
@@ -1973,8 +2079,7 @@ function main(argv) {
         memory: args.memory,
         outputBytes: args.outputBytes,
         wallClockMs: args.wallClockMs,
-        wallClockScope:
-          "total host operation: preflight, archive, import, build, inspect, execution, materialization, and cleanup",
+        wallClockScope: EXECUTOR_WALL_CLOCK_SCOPE,
         cleanupReserveMs: deadline.cleanupReserveMs,
       },
     };
@@ -2010,6 +2115,9 @@ function main(argv) {
       {
         expectedPathSha256: secureOutputRootPathSha256,
         expectedIdentitySha256: secureOutputRootIdentitySha256,
+        deadline,
+        deadlinePhase: "commissioned output-root inspection",
+        reserveCleanup: true,
       },
     );
     const secureOutputRoot = secureOutputBoundary.path;
@@ -2024,14 +2132,26 @@ function main(argv) {
       }),
     );
     mkdirSync(outputRoot, { recursive: false, mode: 0o700 });
-    assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
+    assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary, {
+      deadline,
+      deadlinePhase: "commissioned output-root creation check",
+      reserveCleanup: true,
+    });
     if (canonicalExistingPath(outputRoot) !== futureOutputRoot)
       throw new Error("--output-dir changed during exclusive creation");
-    const executionOutputBoundary = assertOperatorRootSecurity(outputRoot);
+    const executionOutputBoundary = assertOperatorRootSecurity(outputRoot, {
+      deadline,
+      deadlinePhase: "execution output-root inspection",
+      reserveCleanup: true,
+    });
     const buildRoot = mkdtempSync(
       path.join(tmpdir(), "valdris-proof-image-context-"),
     );
-    hardenNewPrivateDirectory(buildRoot);
+    hardenNewPrivateDirectory(buildRoot, {
+      deadline,
+      deadlinePhase: "executor build-root hardening",
+      reserveCleanup: true,
+    });
     const tagNonce = sha256(
       `${args.runId}:${before.commit}:${Date.now()}:${buildRoot}`,
     ).slice(0, 24);
@@ -2175,8 +2295,20 @@ function main(argv) {
           precreatedOutputRoot: true,
           deadline,
           assertOutputBoundary() {
-            assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
-            assertOperatorRootUnchanged(outputRoot, executionOutputBoundary);
+            assertOperatorRootUnchanged(
+              secureOutputRoot,
+              secureOutputBoundary,
+              {
+                deadline,
+                deadlinePhase: "output-root materialization check",
+                reserveCleanup: true,
+              },
+            );
+            assertOperatorRootUnchanged(outputRoot, executionOutputBoundary, {
+              deadline,
+              deadlinePhase: "execution output materialization check",
+              reserveCleanup: true,
+            });
           },
         },
         before,
@@ -2188,8 +2320,16 @@ function main(argv) {
       const totalBytes = inventory.reduce((sum, entry) => sum + entry.size, 0);
       if (totalBytes > args.outputBytes)
         throw new Error("executor output exceeded the commissioned byte limit");
-      assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
-      assertOperatorRootUnchanged(outputRoot, executionOutputBoundary);
+      assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary, {
+        deadline,
+        deadlinePhase: "output-root postflight",
+        reserveCleanup: true,
+      });
+      assertOperatorRootUnchanged(outputRoot, executionOutputBoundary, {
+        deadline,
+        deadlinePhase: "execution output postflight",
+        reserveCleanup: true,
+      });
       assertCommissionedExecutableUnchanged("Git CLI", gitCli);
       assertCommissionedExecutableUnchanged(
         "runtime execution capsule",
@@ -2282,8 +2422,15 @@ function main(argv) {
       throw error;
     }
     try {
-      deadline.assert("receipt signing");
-      const finishedAt = new Date().toISOString();
+      const completion = finalizeExecutorCompletion(deadline, () => {
+        assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary, {
+          deadline,
+          deadlinePhase: "receipt output-root commit check",
+        });
+        if (canonicalExistingPath(outputRoot) !== futureOutputRoot)
+          throw new Error("executor output root changed before receipt commit");
+      });
+      const finishedAt = completion.finishedAt;
       const receipt = signReceipt({
         schema: "valdris.proof-executor-receipt.v1",
         actor: {
@@ -2323,6 +2470,18 @@ function main(argv) {
             runtimeExecutionPathSha256: executionRuntime.pathSha256,
             runtimeExecutionRootIdentitySha256:
               executionRuntime.rootIdentitySha256,
+            runtimeExecutionThreatBoundary: executionRuntime.threatBoundary,
+            runtimeExecutionSamePrincipalCompromisePolicy:
+              executionRuntime.samePrincipalCompromisePolicy,
+            runtimeExecutionAuthorityIdentitySha256:
+              executionRuntime.authorityIdentitySha256,
+            runtimeExecutionIsolationPolicySha256:
+              executionRuntime.isolationPolicySha256,
+            containerUid: executionRuntime.containerUid,
+            containerGid: executionRuntime.containerGid,
+            hostMounts: executionRuntime.hostMounts,
+            capsuleAccess: executionRuntime.capsuleAccess,
+            networkPolicy: executionRuntime.networkPolicy,
             gitCliSha256: gitCli.sha256,
             daemonIdentitySha256: daemon.identitySha256,
           }),
@@ -2362,27 +2521,37 @@ function main(argv) {
         runtimeExecutionSha256: executionRuntime.sha256,
         runtimeExecutionRootPathSha256: executionRuntime.rootPathSha256,
         runtimeExecutionRootIdentitySha256: executionRuntime.rootIdentitySha256,
+        runtimeExecutionThreatBoundary: executionRuntime.threatBoundary,
+        runtimeExecutionSamePrincipalCompromisePolicy:
+          executionRuntime.samePrincipalCompromisePolicy,
+        runtimeExecutionAuthorityIdentitySha256:
+          executionRuntime.authorityIdentitySha256,
+        runtimeExecutionIsolationPolicySha256:
+          executionRuntime.isolationPolicySha256,
+        containerUid: executionRuntime.containerUid,
+        containerGid: executionRuntime.containerGid,
+        hostMounts: executionRuntime.hostMounts,
+        capsuleAccess: executionRuntime.capsuleAccess,
         gitCliPath: gitCli.path,
         gitCliPathSha256: gitCli.pathSha256,
         gitCliSha256: gitCli.sha256,
         daemonIdentity: daemon.identity,
         daemonIdentitySha256: daemon.identitySha256,
-        networkPolicy: args.network,
+        networkPolicy: executionRuntime.networkPolicy,
         limits: {
           cpu: args.cpu,
           memory: args.memory,
           outputBytes: args.outputBytes,
           wallClockMs: args.wallClockMs,
           wallClockScope: plan.limits.wallClockScope,
+          cleanupReserveMs: deadline.cleanupReserveMs,
         },
         startedAt: deadline.startedAt,
         finishedAt,
+        completedOperationElapsedMs: completion.completedOperationElapsedMs,
         exitCode: receiptFields.resultStatus,
         mutationResult: "source-frozen-immutable-image",
       });
-      assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
-      if (canonicalExistingPath(outputRoot) !== futureOutputRoot)
-        throw new Error("executor output root changed before receipt commit");
       mkdirSync(path.dirname(receiptPath), { recursive: true });
       writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, {
         flag: "wx",

@@ -1,4 +1,4 @@
-import { verify as verifySignature } from "node:crypto";
+import { createPublicKey, verify as verifySignature } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -61,6 +61,147 @@ export const ASSURANCE_LEVELS = Object.freeze([
   "semantic",
   "authoritative",
 ]);
+export const RUNTIME_EXECUTION_THREAT_BOUNDARY =
+  "trusted-host-operator-vs-isolated-untrusted-workload";
+export const RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY =
+  "external-isolation-required";
+export const EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA =
+  "valdris.executor-authority-separation-receipt.v1";
+export const EXECUTOR_AUTHORITY_SEPARATION_MODE =
+  "independent-external-principal";
+export const EXECUTOR_WALL_CLOCK_SCOPE =
+  "total host operation: preflight, archive, import, build, inspect, execution, materialization, and cleanup";
+export const REFERENCE_EXECUTOR_CONTAINER_UID = 65_534;
+export const REFERENCE_EXECUTOR_CONTAINER_GID = 65_534;
+
+export function validExecutorResourceLimits(limits) {
+  if (!object(limits)) return false;
+  if (!Number.isFinite(limits.cpu) || limits.cpu <= 0) return false;
+  for (const field of ["memory", "outputBytes", "wallClockMs"])
+    if (!Number.isSafeInteger(limits[field]) || limits[field] < 1) return false;
+  if (
+    limits.wallClockScope !== EXECUTOR_WALL_CLOCK_SCOPE ||
+    !Number.isSafeInteger(limits.cleanupReserveMs) ||
+    limits.cleanupReserveMs < 1 ||
+    limits.cleanupReserveMs >= limits.wallClockMs ||
+    limits.cleanupReserveMs >
+      Math.min(45_000, Math.max(1, Math.floor(limits.wallClockMs / 3)))
+  )
+    return false;
+  return true;
+}
+
+export function runtimeExecutionIsolationPolicy({
+  authorityIdentitySha256,
+  threatBoundary = RUNTIME_EXECUTION_THREAT_BOUNDARY,
+  samePrincipalCompromisePolicy = RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY,
+  containerUid = REFERENCE_EXECUTOR_CONTAINER_UID,
+  containerGid = REFERENCE_EXECUTOR_CONTAINER_GID,
+  networkPolicy = "none",
+  hostMounts = false,
+  capsuleAccess = false,
+  liveWorktreeMount = false,
+  inheritAmbientSecrets = false,
+}) {
+  const policy = {
+    schema: "valdris.runtime-execution-isolation-policy.v1",
+    threatBoundary,
+    authorityIdentitySha256,
+    samePrincipalCompromisePolicy,
+    untrustedWorkload: {
+      kind: "linux-container-uid-gid",
+      uid: containerUid,
+      gid: containerGid,
+      networkPolicy,
+    },
+    hostAccess: {
+      hostMounts,
+      capsuleAccess,
+      liveWorktreeMount,
+      inheritAmbientSecrets,
+    },
+  };
+  return {
+    ...policy,
+    policySha256: sha256(canonicalJson(policy)),
+  };
+}
+
+export function validRuntimeExecutionIsolationBinding(executor) {
+  if (!executor || typeof executor !== "object") return false;
+  if (
+    executor.runtimeExecutionThreatBoundary !==
+      RUNTIME_EXECUTION_THREAT_BOUNDARY ||
+    executor.runtimeExecutionSamePrincipalCompromisePolicy !==
+      RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY ||
+    !SHA256.test(executor.runtimeExecutionAuthorityIdentitySha256 || "") ||
+    !SHA256.test(executor.runtimeExecutionIsolationPolicySha256 || "") ||
+    executor.containerUid !== REFERENCE_EXECUTOR_CONTAINER_UID ||
+    executor.containerGid !== REFERENCE_EXECUTOR_CONTAINER_GID ||
+    executor.networkPolicy !== "none" ||
+    executor.hostMounts !== false ||
+    executor.capsuleAccess !== false ||
+    executor.liveWorktreeMount !== false ||
+    executor.inheritAmbientSecrets !== false
+  )
+    return false;
+  const expected = runtimeExecutionIsolationPolicy({
+    authorityIdentitySha256: executor.runtimeExecutionAuthorityIdentitySha256,
+    threatBoundary: executor.runtimeExecutionThreatBoundary,
+    samePrincipalCompromisePolicy:
+      executor.runtimeExecutionSamePrincipalCompromisePolicy,
+    containerUid: executor.containerUid,
+    containerGid: executor.containerGid,
+    networkPolicy: executor.networkPolicy,
+    hostMounts: executor.hostMounts,
+    capsuleAccess: executor.capsuleAccess,
+    liveWorktreeMount: executor.liveWorktreeMount,
+    inheritAmbientSecrets: executor.inheritAmbientSecrets,
+  });
+  return (
+    executor.runtimeExecutionIsolationPolicySha256 === expected.policySha256
+  );
+}
+
+export function runtimeExecutionIsolationBindingsMatch(observed, commissioned) {
+  return (
+    validRuntimeExecutionIsolationBinding(observed) &&
+    validRuntimeExecutionIsolationBinding(commissioned) &&
+    observed.runtimeExecutionIsolationPolicySha256 ===
+      commissioned.runtimeExecutionIsolationPolicySha256
+  );
+}
+
+export function validExecutorAuthoritySeparationBinding(
+  runtime,
+  commissionedExecutor,
+) {
+  const executor = runtime?.executorReceipt;
+  const separation = runtime?.executorAuthoritySeparationReceipt;
+  return (
+    separation?.schema === EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA &&
+    separation?.runId === runtime?.runId &&
+    separation?.mode === EXECUTOR_AUTHORITY_SEPARATION_MODE &&
+    separation?.workloadCannotAccessAuthority === true &&
+    separation?.deliveryAgentCannotAccessAuthority === true &&
+    separation?.executorEventId === executor?.eventId &&
+    separation?.executorReceiptPayloadSha256 ===
+      executor?.attestation?.payloadSha256 &&
+    separation?.authorityIdentitySha256 ===
+      executor?.runtimeExecutionAuthorityIdentitySha256 &&
+    separation?.isolationPolicySha256 ===
+      executor?.runtimeExecutionIsolationPolicySha256 &&
+    SHA256.test(separation?.validatorSha256 || "") &&
+    separation?.validatorSha256 ===
+      commissionedExecutor?.authoritySeparationValidatorSha256 &&
+    SHA256.test(separation?.providerIdentitySha256 || "") &&
+    separation?.providerIdentitySha256 ===
+      commissionedExecutor?.authoritySeparationProviderIdentitySha256 &&
+    separation?.attestation?.keyId !== executor?.attestation?.keyId &&
+    separation?.actor?.id !== executor?.actor?.id &&
+    separation?.actor?.type === "service"
+  );
+}
 
 export const V09_CANONICAL_ARTIFACTS = Object.freeze({
   readiness: "run/implementation-readiness.json",
@@ -83,6 +224,7 @@ const RECEIPT_SCHEMAS = new Set([
   IMPLEMENTATION_START_RECEIPT_SCHEMA,
   "valdris.semantic-execution-receipt.v1",
   "valdris.proof-executor-receipt.v1",
+  EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA,
   "valdris.bridge-head-receipt.v1",
   "valdris.model-routing-receipt.v1",
   TRACE_RECEIPT_SCHEMA,
@@ -594,6 +736,16 @@ export function authorityTrustStoreSha256(document) {
   return sha256(canonicalJson(document));
 }
 
+function authorityPublicKeyFingerprint(publicKeyPem) {
+  try {
+    return sha256(
+      createPublicKey(publicKeyPem).export({ format: "der", type: "spki" }),
+    );
+  } catch {
+    return null;
+  }
+}
+
 export function validateAuthorityTrustStore(document) {
   const problems = [];
   if (!object(document))
@@ -611,6 +763,7 @@ export function validateAuthorityTrustStore(document) {
       problems: [...problems, "authority trust store keys must be an array"],
     };
   const seen = new Set();
+  const activePublicKeyFingerprints = new Map();
   for (const [index, key] of document.keys.entries()) {
     const label = `authority trust key ${index + 1}`;
     if (!object(key)) {
@@ -629,6 +782,18 @@ export function validateAuthorityTrustStore(document) {
       !key.publicKeyPem.includes("BEGIN PUBLIC KEY")
     )
       problems.push(`${label}.publicKeyPem is invalid`);
+    else {
+      const fingerprint = authorityPublicKeyFingerprint(key.publicKeyPem);
+      if (!fingerprint) problems.push(`${label}.publicKeyPem cannot be parsed`);
+      else if (key.status === "active") {
+        const priorKeyId = activePublicKeyFingerprints.get(fingerprint);
+        if (priorKeyId)
+          problems.push(
+            `authority trust store reuses one active public key across key IDs ${priorKeyId} and ${key.keyId}`,
+          );
+        else activePublicKeyFingerprints.set(fingerprint, key.keyId);
+      }
+    }
     uniqueStrings(
       key.allowedSchemas,
       `${label}.allowedSchemas`,
@@ -1420,6 +1585,12 @@ export function validateSemanticAssuranceDocument(document, options = {}) {
       !["docker", "podman"].includes(proofExecutor.runtimeKind) ||
       proofExecutor.runtimeEndpoint !== "local-default" ||
       proofExecutor.runtimeExecutionMode !== "hardened-private-capsule" ||
+      !validRuntimeExecutionIsolationBinding(proofExecutor) ||
+      proofExecutor.authoritySeparationMode !==
+        EXECUTOR_AUTHORITY_SEPARATION_MODE ||
+      !digest(proofExecutor.authoritySeparationValidatorSha256) ||
+      !digest(proofExecutor.authoritySeparationProviderIdentitySha256) ||
+      !validExecutorResourceLimits(proofExecutor.limits) ||
       !portableAbsolutePath(proofExecutor.runtimeCliPath) ||
       proofExecutor.runtimeCliPathSha256 !==
         sha256(proofExecutor.runtimeCliPath || "") ||
@@ -1431,7 +1602,7 @@ export function validateSemanticAssuranceDocument(document, options = {}) {
       !digest(proofExecutor.daemonIdentitySha256))
   )
     problems.push(
-      "authoritative acceptance policy must commission absolute and exact Git/runtime binaries, hardened private runtime-capsule execution, local-default daemon identity, command, validator set, image, executor identity, raw-object source mode, stable output-root identity, and dual container identity",
+      "authoritative acceptance policy must commission absolute and exact Git/runtime binaries, a trusted-host versus isolated-workload threat boundary, independent external authority separation, hardened private runtime-capsule execution, local-default daemon identity, exact resource ceilings, command, validator set, image, executor identity, raw-object source mode, stable output-root identity, and dual container identity",
     );
   if (
     options.level === "authoritative" &&
@@ -2521,6 +2692,13 @@ export function validateRuntimeSessionDocument(document, options = {}) {
       problems,
     );
     validateAttestedRuntimeReceipt(
+      document.executorAuthoritySeparationReceipt,
+      EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA,
+      options,
+      "executor authority-separation receipt",
+      problems,
+    );
+    validateAttestedRuntimeReceipt(
       document.bridgeHeadReceipt,
       "valdris.bridge-head-receipt.v1",
       options,
@@ -2574,6 +2752,12 @@ export function validateRuntimeSessionDocument(document, options = {}) {
     const snapshotManifest = executor?.sourceSnapshotManifest;
     const daemonIdentity = executor?.daemonIdentity;
     if (
+      !validExecutorAuthoritySeparationBinding(document, commissionedExecutor)
+    )
+      problems.push(
+        "authoritative executor lacks an independently signed external-principal authority-separation receipt",
+      );
+    if (
       executor?.readOnlySource !== true ||
       executor?.sourceSnapshotMode !==
         "git-raw-object-tree-content-addressed-oci-layer" ||
@@ -2593,17 +2777,13 @@ export function validateRuntimeSessionDocument(document, options = {}) {
         ) ||
       executor?.containerIdentity !== "cidfile-and-unique-name" ||
       executor?.inheritAmbientSecrets !== false ||
-      !["none", "allowlist"].includes(executor?.networkPolicy)
+      !validRuntimeExecutionIsolationBinding(executor)
     )
       problems.push("authoritative executor receipt violates isolation policy");
-    for (const field of ["cpu", "memory", "outputBytes", "wallClockMs"])
-      if (
-        !Number.isFinite(executor?.limits?.[field]) ||
-        executor.limits[field] <= 0
-      )
-        problems.push(
-          `authoritative executor receipt limit ${field} is invalid`,
-        );
+    if (!validExecutorResourceLimits(executor?.limits))
+      problems.push(
+        "authoritative executor receipt resource limits, total wall-clock scope, or cleanup reserve are invalid",
+      );
     if (executor?.mutationResult !== "source-frozen-immutable-image")
       problems.push(
         "authoritative executor receipt must prove execution used a frozen immutable source image",
@@ -2628,6 +2808,7 @@ export function validateRuntimeSessionDocument(document, options = {}) {
       !["docker", "podman"].includes(executor?.runtimeKind) ||
       executor?.runtimeEndpoint !== "local-default" ||
       executor?.runtimeExecutionMode !== "hardened-private-capsule" ||
+      !validRuntimeExecutionIsolationBinding(executor) ||
       !portableAbsolutePath(executor?.runtimeCliPath) ||
       executor?.runtimeCliPathSha256 !==
         sha256(executor?.runtimeCliPath || "") ||
@@ -2642,7 +2823,7 @@ export function validateRuntimeSessionDocument(document, options = {}) {
       !digest(executor?.daemonIdentitySha256)
     )
       problems.push(
-        "authoritative executor receipt does not bind raw source manifest, execution image, argv, executor, Git/runtime binaries, hardened runtime capsule, daemon, stable output root, input, and output identities",
+        "authoritative executor receipt does not bind raw source manifest, execution image, argv, executor, Git/runtime binaries, trusted-host versus isolated-workload boundary, hardened runtime capsule, daemon, stable output root, input, and output identities",
       );
     if (
       !object(snapshotManifest) ||
@@ -2713,6 +2894,21 @@ export function validateRuntimeSessionDocument(document, options = {}) {
         executor?.runtimeEndpoint !== commissionedExecutor.runtimeEndpoint ||
         executor?.runtimeExecutionMode !==
           commissionedExecutor.runtimeExecutionMode ||
+        executor?.runtimeExecutionThreatBoundary !==
+          commissionedExecutor.runtimeExecutionThreatBoundary ||
+        executor?.runtimeExecutionSamePrincipalCompromisePolicy !==
+          commissionedExecutor.runtimeExecutionSamePrincipalCompromisePolicy ||
+        executor?.runtimeExecutionAuthorityIdentitySha256 !==
+          commissionedExecutor.runtimeExecutionAuthorityIdentitySha256 ||
+        executor?.runtimeExecutionIsolationPolicySha256 !==
+          commissionedExecutor.runtimeExecutionIsolationPolicySha256 ||
+        executor?.containerUid !== commissionedExecutor.containerUid ||
+        executor?.containerGid !== commissionedExecutor.containerGid ||
+        executor?.hostMounts !== commissionedExecutor.hostMounts ||
+        executor?.capsuleAccess !== commissionedExecutor.capsuleAccess ||
+        executor?.networkPolicy !== commissionedExecutor.networkPolicy ||
+        executor?.inheritAmbientSecrets !==
+          commissionedExecutor.inheritAmbientSecrets ||
         executor?.runtimeCliPath !== commissionedExecutor.runtimeCliPath ||
         executor?.runtimeCliPathSha256 !==
           commissionedExecutor.runtimeCliPathSha256 ||
@@ -2721,19 +2917,28 @@ export function validateRuntimeSessionDocument(document, options = {}) {
         executor?.gitCliPathSha256 !== commissionedExecutor.gitCliPathSha256 ||
         executor?.gitCliSha256 !== commissionedExecutor.gitCliSha256 ||
         executor?.daemonIdentitySha256 !==
-          commissionedExecutor.daemonIdentitySha256)
+          commissionedExecutor.daemonIdentitySha256 ||
+        canonicalJson(executor?.limits) !==
+          canonicalJson(commissionedExecutor.limits))
     )
       problems.push(
-        "authoritative executor receipt substituted a commissioned command, validator, image, executor, raw source mode, output-root identity, Git/runtime binary or capsule mode, daemon, or container identity",
+        "authoritative executor receipt substituted a commissioned command, validator, image, executor, raw source mode, output-root identity, Git/runtime binary or capsule mode, daemon, container identity, or resource limits",
       );
+    const executorElapsedMs =
+      Date.parse(executor?.finishedAt) - Date.parse(executor?.startedAt);
     if (
       !canonicalIso(executor?.startedAt) ||
       !canonicalIso(executor?.finishedAt) ||
-      Date.parse(executor?.finishedAt) < Date.parse(executor?.startedAt) ||
+      !Number.isFinite(executorElapsedMs) ||
+      executorElapsedMs < 0 ||
+      !Number.isSafeInteger(executor?.completedOperationElapsedMs) ||
+      executor.completedOperationElapsedMs !== executorElapsedMs ||
+      (validExecutorResourceLimits(executor?.limits) &&
+        executorElapsedMs > executor.limits.wallClockMs) ||
       executor?.exitCode !== 0
     )
       problems.push(
-        "authoritative executor receipt timestamps or exit result are invalid",
+        "authoritative executor receipt timestamps or completed operation duration exceed the commissioned total wall-clock limit or its exit result is invalid",
       );
     for (const [label, receipt] of [
       ["model routing", document.modelRouting?.receipt],
@@ -2979,7 +3184,10 @@ export function validateRuntimeSessionDocument(document, options = {}) {
         problems.push(
           "GitHub bridge-head proof does not prove the commissioned protected target and provider response",
         );
-    }
+    } else
+      problems.push(
+        "authoritative bridge-head provider has no built-in executable validator; commission the GitHub reference adapter or add a reviewed provider validator",
+      );
   }
   if (document.interop !== undefined && !Array.isArray(document.interop))
     problems.push("runtime session interop must be an array when present");
@@ -3957,6 +4165,7 @@ export function validateAuthoritativeClosureDocument(
         }
       })(),
     loaded.runtime?.executorReceipt,
+    loaded.runtime?.executorAuthoritySeparationReceipt,
     loaded.runtime?.bridgeHeadReceipt,
     loaded.promotion,
     loaded.learning,

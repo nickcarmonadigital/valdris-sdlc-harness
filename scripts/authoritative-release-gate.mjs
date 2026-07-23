@@ -11,6 +11,8 @@ import {
 } from "./proof-runner.mjs";
 import {
   V09_CANONICAL_ARTIFACTS,
+  validExecutorAuthoritySeparationBinding,
+  validRuntimeExecutionIsolationBinding,
   validateAuthoritativeClosureDocument,
 } from "./v09-assurance-lib.mjs";
 
@@ -28,6 +30,8 @@ function digest(value) {
 export function validateStableHeadProviderReceipt(head) {
   const problems = [];
   if (
+    head?.provider !== "github" ||
+    head?.providerProof?.schema !== "valdris.github-head-provider-proof.v1" ||
     !safeIdentifier(head?.provider) ||
     !digest(head?.providerIdentitySha256) ||
     !object(head?.providerProof) ||
@@ -39,7 +43,7 @@ export function validateStableHeadProviderReceipt(head) {
     !digest(head?.protectionPolicySha256)
   )
     problems.push(
-      "stable release requires a commissioned provider-backed rollback-resistant head receipt with exact provider, proof, receipt, target, and protection identities",
+      "stable release requires the commissioned GitHub rollback-resistant head adapter until another provider has an executable authoritative validator",
     );
   return { valid: problems.length === 0, problems };
 }
@@ -50,6 +54,7 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === "--tag") args.tag = argv[++index];
     else if (arg === "--run-root") args.runRoot = argv[++index];
+    else if (arg === "--repository-root") args.repositoryRoot = argv[++index];
     else if (arg === "--help" || arg === "-h") args.help = true;
     else throw new Error(`unknown argument: ${arg}`);
   }
@@ -63,11 +68,12 @@ function stableRelease(tag) {
 export function evaluateAuthoritativeRelease({
   tag,
   runRoot,
-  repositoryRoot = ROOT,
+  repositoryRoot,
   validationOptions = {},
 }) {
+  const candidateRoot = repositoryRoot ? path.resolve(repositoryRoot) : ROOT;
   const packageDocument = JSON.parse(
-    readFileSync(path.join(repositoryRoot, "package.json"), "utf8"),
+    readFileSync(path.join(candidateRoot, "package.json"), "utf8"),
   );
   const requestedTag = tag || `v${packageDocument.version}`;
   if (!stableRelease(requestedTag))
@@ -78,6 +84,26 @@ export function evaluateAuthoritativeRelease({
       authoritativeEligible: false,
       reason:
         "prerelease development is allowed without claiming authoritative release eligibility",
+    };
+  if (!repositoryRoot)
+    return {
+      ok: false,
+      tag: requestedTag,
+      releaseClass: "stable",
+      authoritativeEligible: false,
+      problems: [
+        "a stable release requires repositoryRoot for the exact verified candidate checkout",
+      ],
+    };
+  if (requestedTag !== `v${packageDocument.version}`)
+    return {
+      ok: false,
+      tag: requestedTag,
+      releaseClass: "stable",
+      authoritativeEligible: false,
+      problems: [
+        `stable release tag ${requestedTag} does not match candidate package version v${packageDocument.version}`,
+      ],
     };
   if (!runRoot)
     return {
@@ -93,6 +119,7 @@ export function evaluateAuthoritativeRelease({
   let closure;
   let validation;
   let runtime;
+  let semantic;
   try {
     closure = readJson(
       resolveArtifactPath(
@@ -108,6 +135,11 @@ export function evaluateAuthoritativeRelease({
     );
     runtime = readJson(
       resolveArtifactPath(canonicalRunRoot, V09_CANONICAL_ARTIFACTS.runtime, {
+        mustExist: true,
+      }),
+    );
+    semantic = readJson(
+      resolveArtifactPath(canonicalRunRoot, V09_CANONICAL_ARTIFACTS.semantic, {
         mustExist: true,
       }),
     );
@@ -132,6 +164,11 @@ export function evaluateAuthoritativeRelease({
       "git-raw-object-tree-content-addressed-oci-layer" ||
     executor?.runtimeEndpoint !== "local-default" ||
     executor?.runtimeExecutionMode !== "hardened-private-capsule" ||
+    !validRuntimeExecutionIsolationBinding(executor) ||
+    !validExecutorAuthoritySeparationBinding(
+      runtime,
+      semantic?.acceptancePolicy?.proofExecutor,
+    ) ||
     !executor?.sourceSnapshotManifestSha256 ||
     !executor?.daemonIdentitySha256 ||
     !executor?.runtimeCliSha256 ||
@@ -143,7 +180,7 @@ export function evaluateAuthoritativeRelease({
     !executor?.outputRootIdentitySha256
   )
     problems.push(
-      "stable release requires a real commissioned OCI executor receipt with raw-tree, binary, daemon, and output-root identities",
+      "stable release requires a real commissioned OCI executor plus an independently signed external-principal authority-separation receipt with raw-tree, binary, daemon, output-root, and trusted-host versus isolated-workload identities",
     );
   problems.push(...validateStableHeadProviderReceipt(head).problems);
   return {
@@ -159,13 +196,14 @@ function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
     console.log(
-      "Usage: node scripts/authoritative-release-gate.mjs [--tag v0.9.0] [--run-root ABSOLUTE_PATH]",
+      "Usage: node scripts/authoritative-release-gate.mjs [--tag v0.9.0] [--run-root ABSOLUTE_PATH] [--repository-root VERIFIED_CANDIDATE_PATH]",
     );
     return;
   }
   const result = evaluateAuthoritativeRelease({
     tag: args.tag,
     runRoot: args.runRoot,
+    repositoryRoot: args.repositoryRoot,
   });
   console.log(JSON.stringify(result, null, 2));
   if (!result.ok) process.exitCode = 1;

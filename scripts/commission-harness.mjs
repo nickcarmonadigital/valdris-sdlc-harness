@@ -2471,8 +2471,36 @@ function generatePack(args, detected, answers) {
       trustPinEnvironment: "VALDRIS_AUTHORITY_TRUST_SHA256",
       generatedTrustDigest: generatedAuthorityTrustSha256,
       authoritativeClaimAvailable: "derived-at-runtime",
+      runtimeExecutionBoundary: {
+        policySchema: "valdris.runtime-execution-isolation-policy.v1",
+        threatBoundary: "trusted-host-operator-vs-isolated-untrusted-workload",
+        samePrincipalCompromisePolicy: "external-isolation-required",
+        authoritySeparationMode: "independent-external-principal",
+        requiredAuthoritySeparationReceipt:
+          "valdris.executor-authority-separation-receipt.v1",
+        requiredCommissionedLimits: [
+          "cpu",
+          "memory",
+          "outputBytes",
+          "wallClockMs",
+          "wallClockScope",
+          "cleanupReserveMs",
+        ],
+        trustedComputingBase: [
+          "host operator and operating-system administrator roots",
+          "executor signing and receipt roots",
+        ],
+        untrustedWorkload: {
+          uid: 65534,
+          gid: 65534,
+          networkPolicy: "none",
+          hostMounts: false,
+          capsuleAccess: false,
+          ambientSecrets: false,
+        },
+      },
       commissioningRule:
-        "Authoritative claims require provider-backed signed approval, executor, model-routing, trace, usage, and rollback-resistant bridge-head receipts. The executing agent cannot enroll its own key.",
+        "Authoritative claims require provider-backed signed approval, executor, independently signed external-principal authority separation, model-routing, trace, usage, and rollback-resistant bridge-head receipts. The executing agent cannot enroll its own key.",
       gateCommand: `node ${scriptFromRepo}/authoritative-assurance-gate.mjs --repo .`,
       readinessCommand: `node ${scriptFromRepo}/assurance-readiness.mjs --repo . --level authoritative`,
       referenceExecutor: `node ${scriptFromRepo}/attested-proof-executor.mjs`,

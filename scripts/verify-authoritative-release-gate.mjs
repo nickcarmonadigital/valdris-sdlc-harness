@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { validateStableHeadProviderReceipt } from "./authoritative-release-gate.mjs";
+import {
+  evaluateAuthoritativeRelease,
+  validateStableHeadProviderReceipt,
+} from "./authoritative-release-gate.mjs";
 import { canonicalJson, sha256 } from "./proof-runner.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -38,13 +43,67 @@ if (
 const stableWithoutProviderProof = run(["--tag", "v0.9.0"]);
 if (
   stableWithoutProviderProof.status === 0 ||
-  !/real commissioned authoritative run/u.test(
+  !/requires repositoryRoot/u.test(
     stableWithoutProviderProof.stdout + stableWithoutProviderProof.stderr,
   )
 )
   throw new Error(
-    "stable authoritative release unexpectedly passed without a real provider-backed packet",
+    "stable authoritative release accepted a CLI request without an explicit candidate checkout",
   );
+
+const directStableWithoutCandidateRoot = evaluateAuthoritativeRelease({
+  tag: "v0.9.0",
+});
+if (
+  directStableWithoutCandidateRoot.ok ||
+  !directStableWithoutCandidateRoot.problems?.some((problem) =>
+    problem.includes("requires repositoryRoot"),
+  )
+)
+  throw new Error(
+    "programmatic stable authoritative release accepted no candidate checkout",
+  );
+
+const stableVersionMismatch = run([
+  "--tag",
+  "v0.9.0",
+  "--repository-root",
+  ROOT,
+]);
+if (
+  stableVersionMismatch.status === 0 ||
+  !/does not match candidate package version/u.test(
+    stableVersionMismatch.stdout + stableVersionMismatch.stderr,
+  )
+)
+  throw new Error(
+    "stable authoritative release accepted a tag that does not match the candidate package version",
+  );
+
+const stableCandidateRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-stable-release-candidate-"),
+);
+try {
+  writeFileSync(
+    path.join(stableCandidateRoot, "package.json"),
+    `${JSON.stringify({ version: "0.9.0" })}\n`,
+  );
+  const missingPacket = evaluateAuthoritativeRelease({
+    tag: "v0.9.0",
+    repositoryRoot: stableCandidateRoot,
+  });
+  if (
+    missingPacket.ok ||
+    !missingPacket.problems.some((problem) =>
+      problem.includes("real commissioned authoritative run"),
+    )
+  )
+    throw new Error(
+      "matching stable tag unexpectedly passed without a real provider-backed packet",
+    );
+} finally {
+  rmSync(stableCandidateRoot, { recursive: true, force: true });
+}
 
 const neutralProviderProof = {
   schema: "example.neutral-head-provider-proof.v1",
@@ -61,10 +120,13 @@ const neutralHead = {
   protectionPolicySha256: sha256("neutral-protection"),
 };
 const neutralValidation = validateStableHeadProviderReceipt(neutralHead);
-if (!neutralValidation.valid)
-  throw new Error(
-    `provider-neutral stable head unexpectedly failed: ${neutralValidation.problems.join("; ")}`,
-  );
+if (
+  neutralValidation.valid ||
+  !neutralValidation.problems.some((problem) =>
+    problem.includes("GitHub rollback-resistant head adapter"),
+  )
+)
+  throw new Error("unvalidated provider-neutral stable head was accepted");
 const missingNeutralBindings = structuredClone(neutralHead);
 delete missingNeutralBindings.providerProof;
 delete missingNeutralBindings.providerReceiptSha256;
@@ -85,7 +147,9 @@ console.log(
       tests: {
         localPrereleaseAllowed: true,
         stableTagRequiresRealOciAndProviderProof: true,
-        providerNeutralStableHeadAllowed: true,
+        unvalidatedProviderNeutralHeadRejected: true,
+        explicitCandidateCheckoutRequired: true,
+        stableTagVersionSubstitutionRejected: true,
         missingOrMismatchedProviderBindingsRejected: true,
       },
     },

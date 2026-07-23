@@ -4,6 +4,8 @@ Stable Valdris releases are created only by `.github/workflows/authoritative-rel
 
 Release candidates remain unchanged. Versions and tags containing a prerelease suffix, such as `0.9.0-rc.1` and `v0.9.0-rc.1`, are not authoritative and are rejected by the stable workflow.
 
+A stable tag must exactly equal `v` plus the candidate `package.json` version. A request for `v0.9.0` therefore fails against a `0.9.0-rc.1` checkout instead of releasing evidence from a different candidate version.
+
 ## 1. Commission the authoritative evidence producer
 
 Choose one same-repository workflow that performs the real commissioned authoritative run. Record its immutable GitHub numeric workflow ID and repository-relative path. The producer must:
@@ -86,7 +88,7 @@ Verify the ruleset with a negative test: an administrator and the ordinary workf
 
 From the default branch, dispatch **Authoritative Stable Release** with:
 
-- `stable_tag`: exact stable SemVer, such as `v0.9.0`;
+- `stable_tag`: exact stable SemVer equal to `v` plus the candidate `package.json` version, such as `v0.9.0` for version `0.9.0`;
 - `trusted_run_id`: the successful commissioned producer run; and
 - `source_commit`: the lowercase commit SHA recorded by that run.
 

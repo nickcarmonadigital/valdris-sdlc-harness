@@ -13,6 +13,7 @@ import {
   validateTrustedReleaseMetadata,
   validateTrustedReleaseSource,
 } from "./authoritative-release-source-gate.mjs";
+import { evaluateAuthoritativeRelease } from "./authoritative-release-gate.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW_PATH = path.join(
@@ -84,6 +85,10 @@ for (const [fragment, label] of [
   ],
   ["--metadata-only", "pre-download run validation"],
   ['--run-root "$RUNNER_TEMP/authoritative-artifact/run-root"', "run root"],
+  [
+    '--repository-root "$GITHUB_WORKSPACE/candidate"',
+    "verified candidate package-version binding",
+  ],
   ["gh api --hostname github.com", "explicit provider hostname"],
   ["installation/repositories?per_page=100", "release App installation proof"],
   [
@@ -141,6 +146,25 @@ const fixtureRoot = mkdtempSync(
 try {
   const artifactRoot = path.join(fixtureRoot, "artifact");
   const runRoot = path.join(artifactRoot, "run-root");
+  const candidateRoot = path.join(fixtureRoot, "candidate");
+  mkdirSync(candidateRoot, { recursive: true });
+  writeFileSync(
+    path.join(candidateRoot, "package.json"),
+    `${JSON.stringify({ version: "0.9.1" })}\n`,
+  );
+  const substitutedCandidateVersion = evaluateAuthoritativeRelease({
+    tag: "v0.9.0",
+    repositoryRoot: candidateRoot,
+  });
+  if (
+    substitutedCandidateVersion.ok ||
+    !substitutedCandidateVersion.problems?.some((problem) =>
+      problem.includes("does not match candidate package version"),
+    )
+  )
+    problems.push(
+      "stable release gate accepted a tag from a substituted candidate package version",
+    );
   mkdirSync(path.join(runRoot, "assurance"), { recursive: true });
   mkdirSync(path.join(runRoot, "runtime"), { recursive: true });
   const expected = {
@@ -325,6 +349,7 @@ console.log(
         leastPrivilegeTokens: true,
         trustedSameRepositoryRun: true,
         exactArtifactAndCommit: true,
+        exactCandidatePackageVersion: true,
         protectedTrustRequired: true,
         stableGateBeforeTag: true,
         dedicatedReleaseIdentity: true,

@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { canonicalJson, fileSha256, sha256 } from "./proof-runner.mjs";
 import { validateAuthoritativeAssurance } from "./authoritative-assurance-gate.mjs";
 import { evaluateAuthoritativeRelease } from "./authoritative-release-gate.mjs";
+import { assessAssuranceReadiness } from "./assurance-readiness.mjs";
 import {
   createExecutionDeadline,
   isolatedRuntimeEnvironment,
@@ -58,16 +59,23 @@ import {
 import {
   AUTHORITY_TRUST_SCHEMA,
   CONTEXT_MANIFEST_V2_SCHEMA,
+  EXECUTOR_AUTHORITY_SEPARATION_MODE,
+  EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA,
+  EXECUTOR_WALL_CLOCK_SCOPE,
+  RUNTIME_EXECUTION_THREAT_BOUNDARY,
+  RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY,
   V09_CANONICAL_ARTIFACTS,
   authorityAttestationPayload,
   authorityTrustStoreSha256,
   authoritativeProofInputSetManifest,
   runtimeConformanceSetSha256,
+  runtimeExecutionIsolationPolicy,
   runtimeSessionIdentity,
   semanticProofSetManifest,
   semanticProofSetSha256,
   semanticValidatorSetSha256,
   validateAuthoritativeClosureDocument,
+  validateAuthorityTrustStore,
   validateChangeReviewDocument,
   validateImplementationReadinessDocument,
   validateLearningReceiptDocument,
@@ -556,6 +564,8 @@ function buildFixture(
   const headCommit = git(root, ["rev-parse", "HEAD"]);
   COMMIT = headCommit;
   const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+  const { publicKey: separationPublicKey, privateKey: separationPrivateKey } =
+    generateKeyPairSync("ed25519");
   const allowedSchemas = [
     "uash.approval-receipt.v1",
     "uash.implementation-readiness-receipt.v1",
@@ -587,13 +597,26 @@ function buildFixture(
         allowedSchemas,
         allowedActorIds: ["release-operator"],
       },
+      {
+        keyId: "authority-separation-key",
+        algorithm: "ed25519",
+        status: "active",
+        publicKeyPem: separationPublicKey
+          .export({ format: "pem", type: "spki" })
+          .toString(),
+        allowedSchemas: [EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA],
+        allowedActorIds: ["external-executor-authority"],
+      },
     ],
   };
   const trustPin = authorityTrustStoreSha256(trustStore);
   writeJson(root, "controls/authority-trust.v1.json", trustStore);
+  writeJson(root, "controls/authoritative-assurance.v1.json", POLICY);
 
   function receipt(schema, eventId, fields = {}) {
     const signedAt = fields._signedAt || GENERATED;
+    const keyId = fields._keyId || "operator-key";
+    const actorId = fields._actorId || "release-operator";
     const actorType =
       fields._actorType ||
       (["uash.approval-receipt.v1", "uash.tool-approval-receipt.v1"].includes(
@@ -604,23 +627,25 @@ function buildFixture(
     const receiptFields = { ...fields };
     delete receiptFields._signedAt;
     delete receiptFields._actorType;
+    delete receiptFields._keyId;
+    delete receiptFields._actorId;
     const document = {
       schema,
-      actor: { id: "release-operator", type: actorType },
+      actor: { id: actorId, type: actorType },
       eventId,
       correlationSha256: D(`${eventId}-correlation`),
       authorityTrustSha256: trustPin,
       issuedAt: GENERATED,
       expiresAt: "2099-01-01T00:00:00.000Z",
       ...receiptFields,
-      attestation: { scheme: "ed25519", keyId: "operator-key", signedAt },
+      attestation: { scheme: "ed25519", keyId, signedAt },
     };
     const payload = canonicalJson(authorityAttestationPayload(document));
     document.attestation.payloadSha256 = sha256(payload);
     document.attestation.signature = signPayload(
       null,
       Buffer.from(payload),
-      privateKey,
+      keyId === "authority-separation-key" ? separationPrivateKey : privateKey,
     ).toString("base64");
     return document;
   }
@@ -1248,6 +1273,12 @@ function buildFixture(
       fullReplayInterval: 1,
     },
   };
+  const runtimeExecutionAuthorityIdentitySha256 = D(
+    "trusted-host-operator-authority",
+  );
+  const runtimeExecutionIsolation = runtimeExecutionIsolationPolicy({
+    authorityIdentitySha256: runtimeExecutionAuthorityIdentitySha256,
+  });
   const acceptancePolicy = {
     schema: "valdris.acceptance-policy.v1",
     owner: "product-owner",
@@ -1280,6 +1311,33 @@ function buildFixture(
       runtimeKind: "docker",
       runtimeEndpoint: "local-default",
       runtimeExecutionMode: "hardened-private-capsule",
+      runtimeExecutionThreatBoundary: RUNTIME_EXECUTION_THREAT_BOUNDARY,
+      runtimeExecutionSamePrincipalCompromisePolicy:
+        RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY,
+      runtimeExecutionAuthorityIdentitySha256,
+      runtimeExecutionIsolationPolicySha256:
+        runtimeExecutionIsolation.policySha256,
+      containerUid: runtimeExecutionIsolation.untrustedWorkload.uid,
+      containerGid: runtimeExecutionIsolation.untrustedWorkload.gid,
+      networkPolicy: runtimeExecutionIsolation.untrustedWorkload.networkPolicy,
+      hostMounts: false,
+      capsuleAccess: false,
+      inheritAmbientSecrets: false,
+      authoritySeparationMode: EXECUTOR_AUTHORITY_SEPARATION_MODE,
+      authoritySeparationValidatorSha256: D(
+        "executor-authority-separation-validator",
+      ),
+      authoritySeparationProviderIdentitySha256: D(
+        "executor-authority-separation-provider",
+      ),
+      limits: {
+        cpu: 2,
+        memory: 1_073_741_824,
+        outputBytes: 10_485_760,
+        wallClockMs: 120_000,
+        wallClockScope: EXECUTOR_WALL_CLOCK_SCOPE,
+        cleanupReserveMs: 10_000,
+      },
       runtimeCliPath: "/opt/valdris/bin/docker",
       runtimeCliPathSha256: sha256("/opt/valdris/bin/docker"),
       runtimeCliSha256: D("commissioned-docker-binary"),
@@ -1868,6 +1926,7 @@ function buildFixture(
     traceReceipt: null,
     usageReceipt: null,
     executorReceipt: null,
+    executorAuthoritySeparationReceipt: null,
     bridgeHeadReceipt: receipt(
       "valdris.bridge-head-receipt.v1",
       "bridge-head-receipt",
@@ -2261,6 +2320,19 @@ function buildFixture(
       runtimeKind: acceptancePolicy.proofExecutor.runtimeKind,
       runtimeEndpoint: acceptancePolicy.proofExecutor.runtimeEndpoint,
       runtimeExecutionMode: acceptancePolicy.proofExecutor.runtimeExecutionMode,
+      runtimeExecutionThreatBoundary:
+        acceptancePolicy.proofExecutor.runtimeExecutionThreatBoundary,
+      runtimeExecutionSamePrincipalCompromisePolicy:
+        acceptancePolicy.proofExecutor
+          .runtimeExecutionSamePrincipalCompromisePolicy,
+      runtimeExecutionAuthorityIdentitySha256:
+        acceptancePolicy.proofExecutor.runtimeExecutionAuthorityIdentitySha256,
+      runtimeExecutionIsolationPolicySha256:
+        acceptancePolicy.proofExecutor.runtimeExecutionIsolationPolicySha256,
+      containerUid: acceptancePolicy.proofExecutor.containerUid,
+      containerGid: acceptancePolicy.proofExecutor.containerGid,
+      hostMounts: acceptancePolicy.proofExecutor.hostMounts,
+      capsuleAccess: acceptancePolicy.proofExecutor.capsuleAccess,
       runtimeCliPath: acceptancePolicy.proofExecutor.runtimeCliPath,
       runtimeCliPathSha256: acceptancePolicy.proofExecutor.runtimeCliPathSha256,
       runtimeCliSha256: acceptancePolicy.proofExecutor.runtimeCliSha256,
@@ -2282,16 +2354,36 @@ function buildFixture(
       isolatedOutput: true,
       inheritAmbientSecrets: false,
       networkPolicy: "none",
-      limits: {
-        cpu: 2,
-        memory: 1073741824,
-        outputBytes: 10485760,
-        wallClockMs: 120000,
-      },
+      limits: { ...acceptancePolicy.proofExecutor.limits },
       startedAt: "2030-01-01T11:58:00.000Z",
       finishedAt: "2030-01-01T11:59:00.000Z",
+      completedOperationElapsedMs: 60_000,
       exitCode: 0,
       mutationResult: "source-frozen-immutable-image",
+    },
+  );
+  runtime.executorAuthoritySeparationReceipt = receipt(
+    EXECUTOR_AUTHORITY_SEPARATION_RECEIPT_SCHEMA,
+    "executor-authority-separation",
+    {
+      _keyId: "authority-separation-key",
+      _actorId: "external-executor-authority",
+      runId: RUN_ID,
+      mode: EXECUTOR_AUTHORITY_SEPARATION_MODE,
+      workloadCannotAccessAuthority: true,
+      deliveryAgentCannotAccessAuthority: true,
+      executorEventId: runtime.executorReceipt.eventId,
+      executorReceiptPayloadSha256:
+        runtime.executorReceipt.attestation.payloadSha256,
+      authorityIdentitySha256:
+        runtime.executorReceipt.runtimeExecutionAuthorityIdentitySha256,
+      isolationPolicySha256:
+        runtime.executorReceipt.runtimeExecutionIsolationPolicySha256,
+      validatorSha256:
+        acceptancePolicy.proofExecutor.authoritySeparationValidatorSha256,
+      providerIdentitySha256:
+        acceptancePolicy.proofExecutor
+          .authoritySeparationProviderIdentitySha256,
     },
   );
   adapters[0].executionReceipt = receipt(
@@ -2398,6 +2490,7 @@ function buildFixture(
       },
     ],
   };
+  writeJson(root, V09_CANONICAL_ARTIFACTS.authoritative, closure);
   return {
     trustStore,
     trustPin,
@@ -2467,6 +2560,91 @@ async function main() {
       "runtime baseline",
       validateRuntimeSessionDocument(fixture.documents.runtime, options),
     );
+    const aliasedAuthorityTrustStore = clone(fixture.trustStore);
+    aliasedAuthorityTrustStore.keys[1].publicKeyPem =
+      aliasedAuthorityTrustStore.keys[0].publicKeyPem;
+    expectInvalid(
+      rejected,
+      "executor authority-separation duplicate public-key alias",
+      validateAuthorityTrustStore(aliasedAuthorityTrustStore),
+      "reuses one active public key across key IDs",
+    );
+    const readinessReport = assessAssuranceReadiness(root, {
+      level: "authoritative",
+      requiredTrustSha256: fixture.trustPin,
+      now: NOW,
+    });
+    if (
+      readinessReport.runtimeExecutionBoundary?.commissioned !== true ||
+      readinessReport.runtimeExecutionBoundary?.observed !== true ||
+      readinessReport.runtimeExecutionBoundary?.matchesCommissioning !== true ||
+      readinessReport.runtimeExecutionBoundary?.authoritySeparated !== true ||
+      readinessReport.runtimeExecutionBoundary?.authoritativeEligible !== true
+    )
+      throw new Error(
+        `assurance readiness did not expose the matching runtime isolation boundary: ${JSON.stringify(readinessReport.runtimeExecutionBoundary)}; validation=${readinessReport.validationProblems.join("; ")}`,
+      );
+    {
+      const semanticPath = path.join(
+        root,
+        ...V09_CANONICAL_ARTIFACTS.semantic.split("/"),
+      );
+      const runtimePath = path.join(
+        root,
+        ...V09_CANONICAL_ARTIFACTS.runtime.split("/"),
+      );
+      const semanticOriginal = readFileSync(semanticPath, "utf8");
+      const runtimeOriginal = readFileSync(runtimePath, "utf8");
+      try {
+        const semantic = JSON.parse(semanticOriginal);
+        const commissionedExecutor = semantic.acceptancePolicy.proofExecutor;
+        commissionedExecutor.runtimeExecutionAuthorityIdentitySha256 = D(
+          "alternate-commissioned-host-authority",
+        );
+        commissionedExecutor.runtimeExecutionIsolationPolicySha256 =
+          runtimeExecutionIsolationPolicy({
+            authorityIdentitySha256:
+              commissionedExecutor.runtimeExecutionAuthorityIdentitySha256,
+          }).policySha256;
+        writeJson(root, V09_CANONICAL_ARTIFACTS.semantic, semantic);
+        const runtime = JSON.parse(runtimeOriginal);
+        const observedExecutor = runtime.executorReceipt;
+        observedExecutor.runtimeExecutionAuthorityIdentitySha256 = D(
+          "alternate-observed-host-authority",
+        );
+        observedExecutor.runtimeExecutionIsolationPolicySha256 =
+          runtimeExecutionIsolationPolicy({
+            authorityIdentitySha256:
+              observedExecutor.runtimeExecutionAuthorityIdentitySha256,
+          }).policySha256;
+        writeJson(root, V09_CANONICAL_ARTIFACTS.runtime, runtime);
+        const mismatchedReadiness = assessAssuranceReadiness(root, {
+          level: "authoritative",
+          requiredTrustSha256: fixture.trustPin,
+          now: NOW,
+        });
+        if (
+          mismatchedReadiness.runtimeExecutionBoundary?.commissioned !== true ||
+          mismatchedReadiness.runtimeExecutionBoundary?.observed !== true ||
+          mismatchedReadiness.runtimeExecutionBoundary?.matchesCommissioning !==
+            false ||
+          mismatchedReadiness.runtimeExecutionBoundary
+            ?.authoritativeEligible !== false ||
+          !mismatchedReadiness.missing.authoritative.includes(
+            "executor receipt isolation boundary matching commissioning",
+          )
+        )
+          throw new Error(
+            "assurance readiness accepted mismatched commissioned and observed runtime isolation boundaries",
+          );
+        rejected.push(
+          "readiness commissioned-observed isolation boundary mismatch",
+        );
+      } finally {
+        writeFileSync(semanticPath, semanticOriginal);
+        writeFileSync(runtimePath, runtimeOriginal);
+      }
+    }
     expectValid(
       "readiness baseline",
       validateImplementationReadinessDocument(fixture.documents.readiness, {
@@ -4372,7 +4550,13 @@ async function main() {
       rmSync(learningRoot, { recursive: true, force: true });
     }
     const neutralHeadRoot = canonicalTempDirectory("valdris-v09-neutral-head-");
+    const neutralReleaseRepository = canonicalTempDirectory(
+      "valdris-v09-neutral-release-metadata-",
+    );
     try {
+      writeJson(neutralReleaseRepository, "package.json", {
+        version: "0.9.0",
+      });
       const neutralFixture = buildFixture(neutralHeadRoot, {
         headProvider: "neutral-ledger",
       });
@@ -4385,13 +4569,15 @@ async function main() {
         requiredTrustSha256: neutralFixture.trustPin,
         acceptancePolicy: neutralFixture.documents.semantic.acceptancePolicy,
       };
-      expectValid(
-        "provider-neutral authoritative head baseline",
+      expectInvalid(
+        rejected,
+        "unvalidated provider-neutral authoritative head",
         validateAuthoritativeClosureDocument(
           neutralFixture.closure,
           neutralHeadRoot,
           neutralValidationOptions,
         ),
+        "no built-in executable validator",
       );
       writeJson(
         neutralHeadRoot,
@@ -4402,72 +4588,26 @@ async function main() {
         evaluateAuthoritativeRelease({
           tag: "v0.9.0",
           runRoot: neutralHeadRoot,
-          repositoryRoot: ROOT,
+          repositoryRoot: neutralReleaseRepository,
           validationOptions: neutralValidationOptions,
         });
       const neutralRelease = evaluateNeutralRelease();
-      if (!neutralRelease.ok || !neutralRelease.authoritativeEligible)
-        throw new Error(
-          `provider-neutral stable release unexpectedly failed: ${neutralRelease.problems.join("; ")}`,
-        );
-      const originalRuntime = clone(neutralFixture.documents.runtime);
-      const originalClosure = clone(neutralFixture.closure);
-      const runNeutralReleaseMutation = (label, mutate, expected) => {
-        const runtime = clone(originalRuntime);
-        mutate(runtime.bridgeHeadReceipt);
-        writeJson(neutralHeadRoot, V09_CANONICAL_ARTIFACTS.runtime, runtime);
-        const closure = clone(originalClosure);
-        closure.artifacts.runtime.sha256 = fileSha256(
-          path.join(
-            neutralHeadRoot,
-            ...V09_CANONICAL_ARTIFACTS.runtime.split("/"),
+      if (
+        neutralRelease.ok ||
+        !neutralRelease.problems.some((problem) =>
+          problem.includes(
+            "GitHub rollback-resistant head adapter until another provider has an executable authoritative validator",
           ),
-        );
-        writeJson(
-          neutralHeadRoot,
-          V09_CANONICAL_ARTIFACTS.authoritative,
-          closure,
-        );
-        const result = evaluateNeutralRelease();
-        if (result.ok)
-          throw new Error(`${label} unexpectedly passed stable release`);
-        if (
-          expected &&
-          !result.problems.some((problem) => problem.includes(expected))
         )
-          throw new Error(
-            `${label} failed for the wrong reason: ${result.problems.join("; ")}`,
-          );
-        rejected.push(label);
-      };
-      runNeutralReleaseMutation(
-        "stable release missing neutral provider bindings",
-        (head) => {
-          delete head.providerIdentitySha256;
-          delete head.providerProof;
-          delete head.providerReceiptSha256;
-          delete head.targetSha256;
-          delete head.protectionPolicySha256;
-        },
-        "exact provider, proof, receipt, target, and protection identities",
-      );
-      runNeutralReleaseMutation(
-        "stable release neutral provider-proof digest mismatch",
-        (head) => {
-          head.providerProofSha256 = D("mismatched-neutral-provider-proof");
-        },
-        "exact provider, proof, receipt, target, and protection identities",
-      );
-      runNeutralReleaseMutation(
-        "stable release commissioned provider identity mismatch",
-        (head) => {
-          head.providerIdentitySha256 = D("foreign-neutral-provider");
-        },
-        "exact commissioned provider target",
-      );
+      )
+        throw new Error(
+          `unvalidated provider-neutral stable release failed for the wrong reason: ${neutralRelease.problems.join("; ")}`,
+        );
+      rejected.push("unvalidated provider-neutral stable release");
     } finally {
       COMMIT = primaryCommit;
       rmSync(neutralHeadRoot, { recursive: true, force: true });
+      rmSync(neutralReleaseRepository, { recursive: true, force: true });
     }
 
     const cases = [
@@ -4573,6 +4713,120 @@ async function main() {
           return validateSemanticAssuranceDocument(d, options);
         },
         "absolute and exact Git/runtime binaries",
+      ],
+      [
+        "acceptance-policy runtime threat-boundary omission",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          delete d.acceptancePolicy.proofExecutor
+            .runtimeExecutionThreatBoundary;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy same-principal policy substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.runtimeExecutionSamePrincipalCompromisePolicy =
+            "local-permissions-sufficient";
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy authority identity substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.runtimeExecutionAuthorityIdentitySha256 =
+            D("substituted-runtime-authority");
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy isolation digest mismatch",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.runtimeExecutionIsolationPolicySha256 =
+            D("substituted-runtime-isolation-policy");
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy workload identity substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.containerUid = 1_000;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy network access substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.networkPolicy = "allowlist";
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy host mount substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.hostMounts = true;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy capsule access substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.capsuleAccess = true;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "trusted-host versus isolated-workload threat boundary",
+      ],
+      [
+        "acceptance-policy authority-separation mode substitution",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.authoritySeparationMode =
+            "same-principal-local";
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "independent external authority separation",
+      ],
+      [
+        "acceptance-policy authority-separation validator omission",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          delete d.acceptancePolicy.proofExecutor
+            .authoritySeparationValidatorSha256;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "independent external authority separation",
+      ],
+      [
+        "acceptance-policy executor resource limits omission",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          delete d.acceptancePolicy.proofExecutor.limits;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "exact resource ceilings",
+      ],
+      [
+        "acceptance-policy cleanup reserve overflow",
+        () => {
+          const d = clone(fixture.documents.semantic);
+          d.acceptancePolicy.proofExecutor.limits.cleanupReserveMs = 60_000;
+          return validateSemanticAssuranceDocument(d, options);
+        },
+        "exact resource ceilings",
       ],
       [
         "forged approval",
@@ -5668,6 +5922,51 @@ async function main() {
         "accepted gate, semantic, review, routing, and evaluation proof inputs",
       ],
       [
+        "executor authority-separation cross-closure replay",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          const original = runtime.executorAuthoritySeparationReceipt;
+          const {
+            schema,
+            actor: _actor,
+            eventId: _eventId,
+            correlationSha256: _correlationSha256,
+            authorityTrustSha256: _authorityTrustSha256,
+            issuedAt: _issuedAt,
+            attestation: _attestation,
+            ...binding
+          } = original;
+          runtime.executorAuthoritySeparationReceipt = fixture.receipt(
+            schema,
+            runtime.executorReceipt.eventId,
+            {
+              ...binding,
+              _keyId: "authority-separation-key",
+              _actorId: "external-executor-authority",
+              _actorType: "service",
+            },
+          );
+          runtime.sessionIdentitySha256 = runtimeSessionIdentity(runtime);
+          writeJson(root, V09_CANONICAL_ARTIFACTS.runtime, runtime);
+          const closure = clone(fixture.closure);
+          closure.artifacts.runtime.sha256 = fileSha256(
+            path.join(root, ...V09_CANONICAL_ARTIFACTS.runtime.split("/")),
+          );
+          const result = validateAuthoritativeClosureDocument(
+            closure,
+            root,
+            options,
+          );
+          writeJson(
+            root,
+            V09_CANONICAL_ARTIFACTS.runtime,
+            fixture.documents.runtime,
+          );
+          return result;
+        },
+        "authority receipt replay detected across closure",
+      ],
+      [
         "AI identity substitution",
         () => {
           const semantic = clone(fixture.documents.semantic);
@@ -6152,6 +6451,179 @@ async function main() {
           return validateRuntimeSessionDocument(runtime, options);
         },
         "violates isolation policy",
+      ],
+      [
+        "executor runtime threat-boundary substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.runtimeExecutionThreatBoundary =
+            "same-principal-local-filesystem";
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor same-principal policy substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.runtimeExecutionSamePrincipalCompromisePolicy =
+            "local-permissions-sufficient";
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor authority identity substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.runtimeExecutionAuthorityIdentitySha256 = D(
+            "substituted-runtime-authority",
+          );
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor isolation digest substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.runtimeExecutionIsolationPolicySha256 = D(
+            "substituted-runtime-isolation-policy",
+          );
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor workload identity substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.containerGid = 1_000;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor network access substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.networkPolicy = "allowlist";
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor host mount substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.hostMounts = true;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor capsule access substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.capsuleAccess = true;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "violates isolation policy",
+      ],
+      [
+        "executor authority-separation receipt omission",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          delete runtime.executorAuthoritySeparationReceipt;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "independently signed external-principal",
+      ],
+      [
+        "executor authority-separation same signer",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorAuthoritySeparationReceipt.attestation.keyId =
+            runtime.executorReceipt.attestation.keyId;
+          runtime.executorAuthoritySeparationReceipt.actor.id =
+            runtime.executorReceipt.actor.id;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "independently signed external-principal",
+      ],
+      [
+        "executor authority-separation access overclaim",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorAuthoritySeparationReceipt.deliveryAgentCannotAccessAuthority = false;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "independently signed external-principal",
+      ],
+      [
+        "executor authority-separation validator substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorAuthoritySeparationReceipt.validatorSha256 = D(
+            "substituted-authority-separation-validator",
+          );
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "independently signed external-principal",
+      ],
+      [
+        "executor raised resource limit",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.limits.cpu += 1;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "substituted a commissioned command",
+      ],
+      [
+        "executor wall-clock scope substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.limits.wallClockScope = "container only";
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "total wall-clock scope",
+      ],
+      [
+        "executor cleanup reserve omission",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          delete runtime.executorReceipt.limits.cleanupReserveMs;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "cleanup reserve",
+      ],
+      [
+        "executor cleanup reserve overflow",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.limits.cleanupReserveMs = 60_000;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "cleanup reserve",
+      ],
+      [
+        "executor elapsed time exceeds wall-clock limit",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.startedAt = "2030-01-01T11:56:00.000Z";
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "exceed the commissioned total wall-clock limit",
+      ],
+      [
+        "executor completed-operation duration substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.completedOperationElapsedMs += 1;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "completed operation duration",
       ],
       [
         "executor output-root policy substitution",
@@ -7107,7 +7579,8 @@ async function main() {
       deterministicDeadline.remaining("deterministic baseline") !== 100 ||
       deterministicDeadline.remaining("deterministic cleanup", {
         reserveCleanup: true,
-      }) !== 90
+      }) !==
+        100 - deterministicDeadline.cleanupReserveMs
     )
       throw new Error(
         "executor deadline does not reserve bounded cleanup time",
@@ -7513,14 +7986,45 @@ async function main() {
           );
           const receiptDurationMs =
             Date.parse(receipt.finishedAt) - Date.parse(receipt.startedAt);
+          const receiptIsolationPolicy = runtimeExecutionIsolationPolicy({
+            authorityIdentitySha256:
+              receipt.runtimeExecutionAuthorityIdentitySha256,
+            threatBoundary: receipt.runtimeExecutionThreatBoundary,
+            samePrincipalCompromisePolicy:
+              receipt.runtimeExecutionSamePrincipalCompromisePolicy,
+            containerUid: receipt.containerUid,
+            containerGid: receipt.containerGid,
+            networkPolicy: receipt.networkPolicy,
+            hostMounts: receipt.hostMounts,
+            capsuleAccess: receipt.capsuleAccess,
+            liveWorktreeMount: receipt.liveWorktreeMount,
+            inheritAmbientSecrets: receipt.inheritAmbientSecrets,
+          });
           if (
             receiptDurationMs < 0 ||
             receiptDurationMs > receipt.limits?.wallClockMs ||
+            receipt.completedOperationElapsedMs !== receiptDurationMs ||
             receipt.limits?.wallClockScope !==
               dryRunPlan.limits.wallClockScope ||
             receipt.runtimeKind !== runtime ||
             receipt.runtimeCliSha256 !== runtimeProbe.runtimeCliSha256 ||
             receipt.runtimeExecutionMode !== "hardened-private-capsule" ||
+            receipt.runtimeExecutionThreatBoundary !==
+              RUNTIME_EXECUTION_THREAT_BOUNDARY ||
+            receipt.runtimeExecutionSamePrincipalCompromisePolicy !==
+              RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY ||
+            !/^[a-f0-9]{64}$/u.test(
+              receipt.runtimeExecutionAuthorityIdentitySha256 || "",
+            ) ||
+            receipt.runtimeExecutionIsolationPolicySha256 !==
+              receiptIsolationPolicy.policySha256 ||
+            receipt.containerUid !== 65_534 ||
+            receipt.containerGid !== 65_534 ||
+            receipt.networkPolicy !== "none" ||
+            receipt.hostMounts !== false ||
+            receipt.capsuleAccess !== false ||
+            receipt.liveWorktreeMount !== false ||
+            receipt.inheritAmbientSecrets !== false ||
             receipt.runtimeExecutionSha256 !== receipt.runtimeCliSha256 ||
             !/^[a-f0-9]{64}$/u.test(receipt.runtimeExecutionPathSha256 || "") ||
             !/^[a-f0-9]{64}$/u.test(
@@ -7652,7 +8156,7 @@ async function main() {
         {
           ok: true,
           seam: "v0.9 semantic and authoritative assurance",
-          positiveTests: 15,
+          positiveTests: 16,
           negativeTests: rejected.length,
           rejected,
           executorRuntimeVerification,

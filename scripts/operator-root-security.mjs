@@ -94,7 +94,41 @@ function windowsPowerShellPath(environment) {
   return realpathSync.native(candidate);
 }
 
-function inspectWindowsAcl(realPath, { environment, spawnSyncImpl }) {
+function windowsOperationTimeout(
+  deadline,
+  phase,
+  { reserveCleanup = false } = {},
+) {
+  if (!deadline) return WINDOWS_ACL_COMMAND_TIMEOUT_MS;
+  return Math.min(
+    WINDOWS_ACL_COMMAND_TIMEOUT_MS,
+    deadline.remaining(phase, { reserveCleanup }),
+  );
+}
+
+function assertWindowsOperationDeadline(
+  result,
+  deadline,
+  phase,
+  { reserveCleanup = false } = {},
+) {
+  if (result.error?.code === "ETIMEDOUT" && deadline)
+    throw new Error(
+      `executor total wall-clock deadline exceeded during ${phase}`,
+    );
+  deadline?.assert(phase, { reserveCleanup });
+}
+
+function inspectWindowsAcl(
+  realPath,
+  {
+    environment,
+    spawnSyncImpl,
+    deadline,
+    deadlinePhase = "Windows operator-root ACL inspection",
+    reserveCleanup = false,
+  },
+) {
   const script = String.raw`
 $ErrorActionPreference = 'Stop'
 $target = $env:VALDRIS_OPERATOR_ROOT_TARGET
@@ -139,9 +173,14 @@ $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentif
       shell: false,
       windowsHide: true,
       maxBuffer: 1_048_576,
-      timeout: WINDOWS_ACL_COMMAND_TIMEOUT_MS,
+      timeout: windowsOperationTimeout(deadline, deadlinePhase, {
+        reserveCleanup,
+      }),
     },
   );
+  assertWindowsOperationDeadline(result, deadline, deadlinePhase, {
+    reserveCleanup,
+  });
   if (result.error || result.status !== 0)
     throw new Error(
       `failed to inspect Windows operator-root ACL: ${
@@ -159,13 +198,25 @@ $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentif
 
 function inspectWindowsRoot(
   realPath,
-  { environment = process.env, spawnSyncImpl = spawnSync } = {},
+  {
+    environment = process.env,
+    spawnSyncImpl = spawnSync,
+    deadline,
+    deadlinePhase,
+    reserveCleanup,
+  } = {},
 ) {
   const linkStats = lstatSync(realPath);
   const stats = statSync(realPath, { bigint: true });
   if (!linkStats.isDirectory() || linkStats.isSymbolicLink())
     throw new Error("operator root must be a real directory");
-  const acl = inspectWindowsAcl(realPath, { environment, spawnSyncImpl });
+  const acl = inspectWindowsAcl(realPath, {
+    environment,
+    spawnSyncImpl,
+    deadline,
+    deadlinePhase,
+    reserveCleanup,
+  });
   if (
     !acl ||
     typeof acl.currentSid !== "string" ||
@@ -228,21 +279,33 @@ export function inspectOperatorRoot(
     platform = process.platform,
     environment = process.env,
     spawnSyncImpl = spawnSync,
+    deadline,
+    deadlinePhase = "operator-root inspection",
+    reserveCleanup = false,
   } = {},
 ) {
+  deadline?.assert(deadlinePhase, { reserveCleanup });
   const realPath = canonicalRealPath(target);
   const identity =
     platform === "win32"
-      ? inspectWindowsRoot(realPath, { environment, spawnSyncImpl })
+      ? inspectWindowsRoot(realPath, {
+          environment,
+          spawnSyncImpl,
+          deadline,
+          deadlinePhase,
+          reserveCleanup,
+        })
       : inspectPosixRoot(realPath);
   identity.platform = platform;
   const identitySha256 = sha256(canonicalJson(identity));
-  return {
+  const inspected = {
     path: realPath,
     pathSha256: sha256(realPath),
     identity,
     identitySha256,
   };
+  deadline?.assert(deadlinePhase, { reserveCleanup });
+  return inspected;
 }
 
 export function assertOperatorRootSecurity(
@@ -294,8 +357,12 @@ export function hardenNewPrivateDirectory(
     platform = process.platform,
     environment = process.env,
     spawnSyncImpl = spawnSync,
+    deadline,
+    deadlinePhase = "Windows private-directory hardening",
+    reserveCleanup = false,
   } = {},
 ) {
+  deadline?.assert(deadlinePhase, { reserveCleanup });
   const realPath = canonicalRealPath(target);
   const stats = lstatSync(realPath);
   if (!stats.isDirectory() || stats.isSymbolicLink())
@@ -346,9 +413,14 @@ if (@(Get-ChildItem -LiteralPath $target -Force -ErrorAction Stop).Count -ne 0) 
       shell: false,
       windowsHide: true,
       maxBuffer: 1_048_576,
-      timeout: WINDOWS_ACL_COMMAND_TIMEOUT_MS,
+      timeout: windowsOperationTimeout(deadline, deadlinePhase, {
+        reserveCleanup,
+      }),
     },
   );
+  assertWindowsOperationDeadline(result, deadline, deadlinePhase, {
+    reserveCleanup,
+  });
   if (result.error || result.status !== 0)
     throw new Error(
       `failed to harden Windows private directory: ${
@@ -363,6 +435,9 @@ if (@(Get-ChildItem -LiteralPath $target -Force -ErrorAction Stop).Count -ne 0) 
     platform,
     environment,
     spawnSyncImpl,
+    deadline,
+    deadlinePhase: `${deadlinePhase} verification`,
+    reserveCleanup,
   });
 }
 

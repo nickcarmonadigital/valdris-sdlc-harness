@@ -1133,6 +1133,28 @@ try {
         "VALDRIS_AUTHORITY_TRUST_SHA256" &&
       adapter.authoritativeAssurance?.authoritativeClaimAvailable ===
         "derived-at-runtime" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary?.policySchema ===
+        "valdris.runtime-execution-isolation-policy.v1" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.threatBoundary ===
+        "trusted-host-operator-vs-isolated-untrusted-workload" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.samePrincipalCompromisePolicy === "external-isolation-required" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.authoritySeparationMode === "independent-external-principal" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.requiredAuthoritySeparationReceipt ===
+        "valdris.executor-authority-separation-receipt.v1" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.untrustedWorkload?.uid === 65534 &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.untrustedWorkload?.gid === 65534 &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.untrustedWorkload?.networkPolicy === "none" &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.untrustedWorkload?.hostMounts === false &&
+      adapter.authoritativeAssurance?.runtimeExecutionBoundary
+        ?.untrustedWorkload?.capsuleAccess === false &&
       adapter.authoritativeAssurance?.readinessCommand?.includes(
         "assurance-readiness.mjs",
       ),
@@ -1928,7 +1950,11 @@ try {
       generatedLayerZeroPlaybook.includes(
         "not a fourteenth production domain",
       ) &&
-      generatedAuthoritativePlaybook.includes("valdris.run-packet.v3"),
+      generatedAuthoritativePlaybook.includes("valdris.run-packet.v3") &&
+      generatedAuthoritativePlaybook.includes(
+        "trusted-host-operator-vs-isolated-untrusted-workload",
+      ) &&
+      generatedAuthoritativePlaybook.includes("external-isolation-required"),
     "generated knowledge vault missing Layer 0, assurance-domain taxonomy, or v0.9 authority playbook",
   );
 

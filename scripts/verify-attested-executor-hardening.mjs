@@ -19,8 +19,10 @@ import {
   aggregateExecutionCleanupFailure,
   classifyRuntimeDaemonInfoFailure,
   cleanupRuntimeResources,
+  commissionRuntimeExecutionBoundary,
   commissionedExecutable,
   createExecutionDeadline,
+  finalizeExecutorCompletion,
   isolatedRuntimeEnvironment,
   materializeRawGitTreeSnapshot,
   probeRuntimeDaemonIdentity,
@@ -35,9 +37,18 @@ import {
   hardenNewPrivateDirectory,
 } from "./operator-root-security.mjs";
 import { canonicalJson, sha256 } from "./proof-runner.mjs";
+import {
+  RUNTIME_EXECUTION_THREAT_BOUNDARY,
+  RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY,
+  runtimeExecutionIsolationPolicy,
+} from "./v09-assurance-lib.mjs";
 
-const EXECUTOR_PROBE_WALL_CLOCK_MS = 90_000;
-const EXECUTOR_PROBE_PARENT_TIMEOUT_MS = 105_000;
+const EXECUTOR_PROBE_WALL_CLOCK_MS =
+  process.platform === "win32" ? 300_000 : 90_000;
+const EXECUTOR_PROBE_PARENT_TIMEOUT_MS =
+  process.platform === "win32" ? 330_000 : 105_000;
+const RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS =
+  process.platform === "win32" ? 240_000 : 10_000;
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -287,6 +298,70 @@ try {
     runtimeProbeFailureMayBeSkipped(typedTimeoutFailure),
     "typed daemon-probe timeout was not skippable",
   );
+  let cleanupNow = 1_000;
+  const reserveWindowDeadline = createExecutionDeadline(
+    100,
+    cleanupNow,
+    () => cleanupNow,
+  );
+  cleanupNow = 1_099;
+  const cleanupCommands = [];
+  const cleanupProblems = cleanupRuntimeResources({
+    runtimeCli: process.execPath,
+    runtimeCliSha256: sha256(readFileSync(process.execPath)),
+    runtimeGuard: null,
+    environment: {},
+    deadline: reserveWindowDeadline,
+    cidFile: path.join(root, "absent-cleanup.cid"),
+    containerName: "cleanup-reserve-container",
+    imageReferences: ["example.invalid/cleanup@sha256:" + "1".repeat(64)],
+    runCommand(argv, phase, context) {
+      const remaining = context.deadline.remaining(
+        phase,
+        context.deadlineOptions,
+      );
+      assert(
+        context.deadlineOptions.reserveCleanup === false && remaining === 1,
+        "cleanup command did not consume the reserved wall-clock window",
+      );
+      cleanupCommands.push(argv);
+      if (phase.includes(" verify ")) return runtimeResult(1, "not found");
+      if (phase.includes(" inspect ")) return runtimeResult(0, "present");
+      return runtimeResult(0, "removed");
+    },
+  });
+  assert(
+    cleanupProblems.length === 0 && cleanupCommands.length === 6,
+    `cleanup did not finish inside its reserved window: ${cleanupProblems.join("; ")}`,
+  );
+  const completionObservedStartedMs = Date.now();
+  const completionDeadline = createExecutionDeadline(
+    10_000,
+    completionObservedStartedMs,
+  );
+  const completion = finalizeExecutorCompletion(completionDeadline, () => {
+    const delayedValidation = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        "Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 75)",
+      ],
+      { encoding: "utf8", timeout: 5_000, windowsHide: true },
+    );
+    if (delayedValidation.error || delayedValidation.status !== 0)
+      throw new Error(
+        `process-observed final validation fixture failed: ${delayedValidation.error?.message || delayedValidation.stderr}`,
+      );
+  });
+  const completionObservedElapsedMs = Date.now() - completionObservedStartedMs;
+  assert(
+    completion.completedOperationElapsedMs >= 50 &&
+      completion.completedOperationElapsedMs <= completionObservedElapsedMs &&
+      Date.parse(completion.finishedAt) -
+        Date.parse(completionDeadline.startedAt) ===
+        completion.completedOperationElapsedMs,
+    "signed executor completion duration did not include final process-observed validation",
+  );
   for (const [runtimeKind, message] of [
     ["docker", "Docker local-default daemon identity returned malformed JSON"],
     ["docker", "Docker daemon did not expose a stable ID and version"],
@@ -423,8 +498,28 @@ try {
     runtimeCli: transientRuntime,
     runtimeCliSha256: transientRuntimeSha256,
     privateRoot: capsuleParent,
-    deadline: createExecutionDeadline(10_000),
+    deadline: createExecutionDeadline(RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS),
   });
+  const expectedIsolationPolicy = runtimeExecutionIsolationPolicy({
+    authorityIdentitySha256: runtimeCapsule.authorityIdentitySha256,
+  });
+  assert(
+    runtimeCapsule.threatBoundary === RUNTIME_EXECUTION_THREAT_BOUNDARY &&
+      runtimeCapsule.samePrincipalCompromisePolicy ===
+        RUNTIME_SAME_PRINCIPAL_COMPROMISE_POLICY &&
+      runtimeCapsule.containerUid === 65_534 &&
+      runtimeCapsule.containerGid === 65_534 &&
+      runtimeCapsule.hostMounts === false &&
+      runtimeCapsule.capsuleAccess === false &&
+      runtimeCapsule.isolationPolicySha256 ===
+        expectedIsolationPolicy.policySha256,
+    "runtime capsule did not bind the commissioned execution threat boundary",
+  );
+  expectFailure(
+    "same-principal workload authority",
+    () => commissionRuntimeExecutionBoundary({ type: "uid", id: "65534" }),
+    /authority cannot equal the isolated workload UID/u,
+  );
   let launchedRuntimePath;
   let sourceRestoredBeforeReturn = false;
   let capsuleWriteBlocked = false;
@@ -484,7 +579,7 @@ try {
       runtimeCli: process.execPath,
       runtimeCliSha256: sha256(readFileSync(process.execPath)),
       privateRoot: executableCapsuleParent,
-      deadline: createExecutionDeadline(30_000),
+      deadline: createExecutionDeadline(RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS),
     });
     try {
       const launched = runCommissionedRuntimeCommand({
@@ -492,7 +587,7 @@ try {
         runtimeCliSha256: executableCapsule.sha256,
         environment: isolated,
         argv: ["--version"],
-        deadline: createExecutionDeadline(30_000),
+        deadline: createExecutionDeadline(RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS),
         phase: "Windows protected capsule launch",
         runtimeGuard: executableCapsule,
       });
@@ -853,6 +948,8 @@ try {
           poisonedPathAndContexts: true,
           poisonedRuntimeEndpointSelectors: true,
           transientRuntimeBinarySwapIsolatedByCapsule: true,
+          runtimeThreatBoundaryCommissioned: true,
+          samePrincipalWorkloadAuthorityRejected: true,
           windowsProtectedCapsuleLaunch,
           rawGitObjectTree: true,
           equivalentWorktreePathSpelling: true,
@@ -860,6 +957,8 @@ try {
           exportIgnoreAdversary: true,
           exportSubstAdversary: true,
           submoduleFailClosed: true,
+          cleanupConsumesReservedDeadline: true,
+          finalValidationIncludedInSignedDuration: true,
           cleanupUniqueNameFallback: true,
           cleanupFailureAggregation: true,
           nonEmptyPrivateRootRejected: true,

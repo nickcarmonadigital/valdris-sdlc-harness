@@ -43,7 +43,7 @@ The executor correctly resolved both paths to the same Windows directory, then i
 - Derive future output paths from the native-canonical existing parent.
 - Evaluate source/output overlap with `path.relative()` after native canonicalization.
 - Preserve link/junction rejection and fail-closed output-root identity checks.
-- Run the executor hardening verifier as a five-minute CI preflight, with shorter nested child-process deadlines, before the long semantic/authoritative suite.
+- Run the executor hardening verifier as a bounded CI preflight, with shorter nested child-process deadlines and deadline-aware Windows ACL operations, before the long semantic/authoritative suite.
 
 ## Rejected hypotheses
 
@@ -60,7 +60,7 @@ The executor correctly resolved both paths to the same Windows directory, then i
 
 ## Hosted verifier timing follow-up
 
-The first fail-fast CI run reached the new real-CLI regression but the verifier killed its child at 30 seconds on the hosted Windows image. That was a verifier ceiling, not an executor rejection. Each of the verifier's two real-CLI probes now commissions a 90-second executor wall-clock limit and retains a separate 105-second parent kill ceiling for cleanup. Their aggregate 210-second child ceiling plus verifier overhead runs under a five-minute job-step ceiling. This preserves nested, fail-closed deadlines while remaining far earlier than the long assurance suite.
+The first fail-fast CI run reached the new real-CLI regression but the verifier killed its child at 30 seconds on the hosted Windows image. That was a verifier ceiling, not an executor rejection. POSIX probes now use 90/105-second executor/parent limits; hosted Windows uses 300/330-second limits because PowerShell ACL inspection is materially slower. The shared wall-clock deadline is propagated into those ACL operations. CI ceilings exceed the sequential maximum: thirty minutes for the Ubuntu/Windows matrix and ten minutes for macOS. This preserves nested, fail-closed deadlines while remaining bounded before the long assurance suite.
 
 ## Windows-container OCI compatibility follow-up
 
@@ -76,6 +76,21 @@ The fix binds availability to the daemon identity already returned by `docker in
 - Image inspect, pull, and cleanup use the exact commissioned runtime binary path instead of resolving the runtime name through ambient `PATH`.
 - The isolated local-default runtime environment used for identity probing remains active for image inspect, pull, execution, and cleanup, so ambient Docker or Podman endpoint selectors cannot retarget later lifecycle operations.
 - Only typed probe-deadline failures or phase-specific, anchored `docker info`/`podman info` unavailable responses may produce an optional-seam skip. Misleading error text, malformed identity, permission, binary-integrity, and verifier failures remain fatal.
-- The commissioned runtime is copied from verified bytes into a randomly rooted, owner-restricted execution capsule before any daemon probe. POSIX capsules remove directory write authority; Windows capsules apply an owner-only read/execute ACL to both the executable and parent directory. Every daemon probe, source import, image build, image inspection, container run, and cleanup command launches only that protected capsule and revalidates its ACL, root identity, path, and bytes before and after the spawn. The receipt binds the commissioned source identity plus the capsule path, root, and content digests.
+- The commissioned runtime is copied from verified bytes into a randomly rooted, operator-owned execution capsule before any daemon probe. POSIX capsules remove directory write authority; Windows capsules apply an owner-only read/execute ACL to both the executable and parent directory. Every daemon probe, source import, image build, image inspection, container run, and cleanup command launches only that capsule and revalidates its ACL, root identity, path, and bytes before and after the spawn. The receipt binds the commissioned source identity plus the capsule path, root, content, authority, and isolation-policy digests; the same-principal limit is stated below.
 
 This does not weaken authoritative release eligibility. A skipped local reference seam remains non-authoritative; an actual authoritative claim still requires a commissioned compatible executor and provider-backed receipts. Focused proof covers the classifier and the actual non-dry executor preflight, including rejection before output materialization.
+
+## Runtime capsule authority-boundary follow-up
+
+The next adversarial review correctly observed that a process already running as the capsule owner can restore write permission, replace the executable, launch it, and restore the original bytes and permissions before a postflight check. Local file modes and ACLs cannot solve that same-principal case.
+
+The correction defines and enforces the real boundary instead of overstating local immutability:
+
+- The host operator, root or Windows SYSTEM/Administrators, executor code, signing key, and receipt roots form the trusted computing base.
+- Untrusted repository code runs only inside the Linux OCI workload as UID/GID 65534, with no host mounts, capsule access, network, or ambient secrets.
+- Commissioning and receipts bind the authority identity and `valdris.runtime-execution-isolation-policy.v1` digest; semantic, runtime, release, and readiness gates fail on substitution.
+- Authoritative closure additionally requires `valdris.executor-authority-separation-receipt.v1` from a different commissioned key and actor, binding the exact executor receipt and attesting that workload and delivery agent cannot access the authority.
+- A POSIX authority equal to the workload UID is rejected.
+- Arbitrary same-principal host execution invalidates local authority and has the explicit policy `external-isolation-required`; a separately owned account or external executor must be commissioned.
+
+The capsule remains useful against workspace/path replacement and other non-authority principals. It is not described or accepted as protection from its owner or an OS administrator.

@@ -2,6 +2,7 @@
 
 ## 2026-07-23
 
+- **Update**: Bound authoritative OCI execution to an explicit trusted-host-operator versus isolated UID/GID 65534 workload policy with no host mounts, network, capsule access, or ambient secrets; a distinct signed authority-separation receipt is now required and same-principal host compromise remains non-authoritative.
 - **Update**: Added a protected, manual pre-tag stable-release path that binds a trusted same-repository authoritative workflow run, exact artifact provenance, intended commit, operator-held trust, real provider evidence, and a ruleset-authorized release App before creating a stable tag.
 - **Update**: Kept release-candidate validation outside the stable-tag path and documented the required environment, producer artifact, and stable-tag ruleset commissioning.
 
