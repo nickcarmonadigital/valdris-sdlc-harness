@@ -27,6 +27,7 @@ This review covers the local attested proof executor's repository, output-root, 
 - Check containment only after canonicalization.
 - Continue rejecting symbolic links/junctions, pre-existing output roots, source overlap, path mutation, and operator-root identity drift.
 - Execute the focused path/identity verifier before expensive assurance suites on every CI platform.
+- Bound each of the two focused executor probes with nested 90-second executor and 105-second parent ceilings, under a five-minute aggregate CI ceiling, so hosted setup cannot hang indefinitely.
 
 ## Positive and negative proof
 

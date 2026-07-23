@@ -43,7 +43,7 @@ The executor correctly resolved both paths to the same Windows directory, then i
 - Derive future output paths from the native-canonical existing parent.
 - Evaluate source/output overlap with `path.relative()` after native canonicalization.
 - Preserve link/junction rejection and fail-closed output-root identity checks.
-- Run the executor hardening verifier as a two-minute CI preflight before the long semantic/authoritative suite.
+- Run the executor hardening verifier as a five-minute CI preflight, with shorter nested child-process deadlines, before the long semantic/authoritative suite.
 
 ## Rejected hypotheses
 
@@ -57,3 +57,7 @@ The executor correctly resolved both paths to the same Windows directory, then i
 - Red before fix: `verify:attested-executor` rejected the case-equivalent worktree with the exact hosted error.
 - Green after fix: the same CLI regression passes and the aliased inside-source output is rejected.
 - Required follow-up: full Windows `verify:v09-assurance`, `verify:harness`, runtime closure, privacy, code-intelligence, and clean-worktree gates must pass in CI before merge.
+
+## Hosted verifier timing follow-up
+
+The first fail-fast CI run reached the new real-CLI regression but the verifier killed its child at 30 seconds on the hosted Windows image. That was a verifier ceiling, not an executor rejection. Each of the verifier's two real-CLI probes now commissions a 90-second executor wall-clock limit and retains a separate 105-second parent kill ceiling for cleanup. Their aggregate 210-second child ceiling plus verifier overhead runs under a five-minute job-step ceiling. This preserves nested, fail-closed deadlines while remaining far earlier than the long assurance suite.

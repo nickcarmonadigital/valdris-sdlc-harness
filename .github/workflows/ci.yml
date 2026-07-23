@@ -63,7 +63,7 @@ jobs:
 
       - name: Attested executor path and identity preflight
         run: npm run verify:attested-executor
-        timeout-minutes: 2
+        timeout-minutes: 5
 
       - name: Formatting and whitespace gate
         run: npm run format:check
@@ -210,7 +210,7 @@ jobs:
 
       - name: Attested executor path and identity preflight
         run: npm run verify:attested-executor
-        timeout-minutes: 2
+        timeout-minutes: 5
 
       - name: Clean-room convergence and generated-pack verifier
         run: npm run verify:clean-room-convergence

@@ -27,6 +27,9 @@ import {
 } from "./operator-root-security.mjs";
 import { canonicalJson, sha256 } from "./proof-runner.mjs";
 
+const EXECUTOR_PROBE_WALL_CLOCK_MS = 90_000;
+const EXECUTOR_PROBE_PARENT_TIMEOUT_MS = 105_000;
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -150,6 +153,10 @@ function runtimeResult(status, output = "") {
 }
 
 function executorDryRun({ gitCliPath, gitCliSha256, repo, output }) {
+  assert(
+    EXECUTOR_PROBE_PARENT_TIMEOUT_MS > EXECUTOR_PROBE_WALL_CLOCK_MS,
+    "executor probe parent timeout must preserve time for child cleanup",
+  );
   const executor = fileURLToPath(
     new URL("./attested-proof-executor.mjs", import.meta.url),
   );
@@ -189,12 +196,14 @@ function executorDryRun({ gitCliPath, gitCliSha256, repo, output }) {
       "6".repeat(64),
       "--output-dir",
       output,
+      "--wall-clock-ms",
+      String(EXECUTOR_PROBE_WALL_CLOCK_MS),
       "--dry-run",
     ],
     {
       encoding: "utf8",
       shell: false,
-      timeout: 30_000,
+      timeout: EXECUTOR_PROBE_PARENT_TIMEOUT_MS,
       windowsHide: true,
     },
   );
