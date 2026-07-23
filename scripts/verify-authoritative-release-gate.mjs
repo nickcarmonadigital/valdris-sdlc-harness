@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  canonicalCandidateRootKey,
   evaluateAuthoritativeRelease,
   readCandidatePackageAtCommit,
   resolveCandidateGitIdentity,
@@ -107,6 +108,65 @@ try {
     "v0.9.0",
     mismatch.secondCommit,
   ]);
+  if (process.platform === "win32") {
+    const driveCaseVariant = stableVersionMismatchRoot.replace(
+      /^([A-Za-z]):/u,
+      (_, drive) =>
+        `${drive === drive.toUpperCase() ? drive.toLowerCase() : drive.toUpperCase()}:`,
+    );
+    if (driveCaseVariant === stableVersionMismatchRoot)
+      throw new Error(
+        "Windows drive-letter casing regression did not create a distinct path spelling",
+      );
+    if (
+      canonicalCandidateRootKey(driveCaseVariant) !==
+      canonicalCandidateRootKey(stableVersionMismatchRoot)
+    )
+      throw new Error(
+        "Windows drive-letter casing did not normalize to the same volume identity",
+      );
+    if (
+      canonicalCandidateRootKey("C:\\Build\\Candidate") ===
+      canonicalCandidateRootKey("c:\\Build\\candidate")
+    )
+      throw new Error(
+        "Windows candidate-root identity folded non-volume path casing",
+      );
+    const driveCaseIdentity = resolveCandidateGitIdentity({
+      repositoryRoot: driveCaseVariant,
+      tag: "v0.9.0",
+    });
+    if (
+      path.relative(
+        driveCaseIdentity.repositoryRoot,
+        stableVersionMismatchRoot,
+      ) !== "" ||
+      driveCaseIdentity.headCommit !== mismatch.secondCommit
+    )
+      throw new Error(
+        "Windows drive-letter casing did not resolve to the same canonical candidate checkout",
+      );
+  }
+  const nestedCandidatePath = path.join(
+    stableVersionMismatchRoot,
+    "nested-candidate-path",
+  );
+  mkdirSync(nestedCandidatePath);
+  let nestedCandidateRejected = false;
+  try {
+    resolveCandidateGitIdentity({
+      repositoryRoot: nestedCandidatePath,
+      tag: "v0.9.0",
+    });
+  } catch (error) {
+    nestedCandidateRejected = error.message.includes(
+      "must be the exact Git worktree root",
+    );
+  }
+  if (!nestedCandidateRejected)
+    throw new Error(
+      "a nested candidate directory was accepted as the exact Git worktree root",
+    );
   const stableVersionMismatch = evaluateAuthoritativeRelease({
     tag: "v0.9.0",
     repositoryRoot: stableVersionMismatchRoot,
@@ -118,7 +178,7 @@ try {
     )
   )
     throw new Error(
-      "stable authoritative release accepted a tag that does not match the candidate package version",
+      `stable authoritative release did not reject the candidate package-version mismatch for the expected reason: ${JSON.stringify(stableVersionMismatch)}`,
     );
 
   const missingCandidateRoot = path.join(
@@ -419,6 +479,9 @@ console.log(
         promotionAndBridgeBindingsMustMatch: true,
         sameVersionDifferentCandidateHeadRejected: true,
         stableTagVersionSubstitutionRejected: true,
+        windowsCanonicalDriveCaseAccepted: process.platform === "win32",
+        windowsDirectoryCasePreserved: process.platform === "win32",
+        nestedCandidateRootRejected: true,
         repositoryRootCliFailsClosed: true,
         completeProductionCliArgumentsForwarded: true,
         missingOrMismatchedProviderBindingsRejected: true,

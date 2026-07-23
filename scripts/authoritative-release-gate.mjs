@@ -101,6 +101,14 @@ export function runReleaseGit(repositoryRoot, args, label) {
   return result.stdout.trim();
 }
 
+export function canonicalCandidateRootKey(candidateRoot) {
+  if (process.platform !== "win32") return candidateRoot;
+  return candidateRoot.replace(
+    /^([A-Za-z]):(?=[\\/])/u,
+    (_, drive) => `${drive.toUpperCase()}:`,
+  );
+}
+
 export function resolveCandidateGitHeadIdentity(repositoryRoot) {
   const requestedRoot = path.resolve(repositoryRoot);
   const stats = lstatSync(requestedRoot);
@@ -114,7 +122,10 @@ export function resolveCandidateGitHeadIdentity(repositoryRoot) {
       "candidate root lookup",
     ),
   );
-  if (reportedRoot !== canonicalRoot)
+  if (
+    canonicalCandidateRootKey(reportedRoot) !==
+    canonicalCandidateRootKey(canonicalRoot)
+  )
     throw new Error(
       "candidate repository root must be the exact Git worktree root",
     );
