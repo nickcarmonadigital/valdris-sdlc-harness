@@ -52,7 +52,11 @@ const EXECUTOR_PROBE_PARENT_TIMEOUT_MS =
 const RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS =
   process.platform === "win32" ? 480_000 : 10_000;
 const RUNTIME_COMMAND_FIXTURE_DEADLINE_MS =
-  process.platform === "win32" ? 60_000 : 5_000;
+  // Hosted Windows ACL validation is a bounded sequence of 30-second
+  // subprocesses before and after the injected spawn. Keep the fixture's total
+  // command allowance aligned with the capsule lifecycle while preserving the
+  // short POSIX bound; production subprocess ceilings remain unchanged.
+  process.platform === "win32" ? 480_000 : 5_000;
 
 const localSystemRemovalArgs = windowsRuntimeCapsuleAuxiliaryWriterRemovalArgs(
   "capsule-root",
