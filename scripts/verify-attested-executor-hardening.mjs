@@ -50,6 +50,8 @@ const EXECUTOR_PROBE_PARENT_TIMEOUT_MS =
   process.platform === "win32" ? 330_000 : 105_000;
 const RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS =
   process.platform === "win32" ? 240_000 : 10_000;
+const RUNTIME_COMMAND_FIXTURE_DEADLINE_MS =
+  process.platform === "win32" ? 60_000 : 5_000;
 
 const localSystemRemovalArgs = windowsRuntimeCapsuleAuxiliaryWriterRemovalArgs(
   "capsule-root",
@@ -562,7 +564,7 @@ try {
       runtimeCliSha256: runtimeCapsule.sha256,
       environment: isolated,
       argv: ["run", "fixture"],
-      deadline: createExecutionDeadline(5_000),
+      deadline: createExecutionDeadline(RUNTIME_COMMAND_FIXTURE_DEADLINE_MS),
       phase: "transient runtime swap",
       runtimeGuard: runtimeCapsule,
       spawnSyncImpl(command) {
