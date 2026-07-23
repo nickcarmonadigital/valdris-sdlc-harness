@@ -57,6 +57,10 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Runtime-driver local identity preflight
+        run: npm run verify:runtime-driver-identity
+        timeout-minutes: 2
+
       - name: Formatting and whitespace gate
         run: npm run format:check
         env:
@@ -198,6 +202,10 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Runtime-driver local identity preflight
+        run: npm run verify:runtime-driver-identity
+        timeout-minutes: 2
 
       - name: Clean-room convergence and generated-pack verifier
         run: npm run verify:clean-room-convergence

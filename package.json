@@ -80,6 +80,7 @@
     "verify:routing-convergence": "node scripts/verify-routing-convergence.mjs",
     "verify:restricted-residue-convergence": "node scripts/verify-restricted-residue-convergence.mjs",
     "verify:clean-room-convergence": "node scripts/verify-clean-room-convergence.mjs",
+    "verify:runtime-driver-identity": "node scripts/verify-runtime-driver-identity.mjs",
     "verify:v09-assurance": "node scripts/verify-v09-assurance.mjs",
     "verify:attested-executor": "node scripts/verify-attested-executor-hardening.mjs",
     "verify:authoritative-release": "node scripts/verify-authoritative-release-gate.mjs",
