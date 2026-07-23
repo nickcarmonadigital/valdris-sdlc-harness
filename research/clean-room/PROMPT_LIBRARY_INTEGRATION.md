@@ -12,13 +12,13 @@ The new Prompt Library is the missing enforcement layer. It converts the harness
 
 In the restricted source harness, the prompt library names these gate artifacts:
 
-| Gate | Required artifact |
-|---|---|
-| RCA / cause proof | `rca/rca.json` |
-| Validation proof | `proof/proof.json` |
-| Code/design anchoring | `design/anchors.json` |
-| Live deployed behavior | `smoke/smoke_proof.json` |
-| Harness contradiction | `correction/<slug>` PR / correction artifact |
+| Gate                   | Required artifact                            |
+| ---------------------- | -------------------------------------------- |
+| RCA / cause proof      | `rca/rca.json`                               |
+| Validation proof       | `proof/proof.json`                           |
+| Code/design anchoring  | `design/anchors.json`                        |
+| Live deployed behavior | `smoke/smoke_proof.json`                     |
+| Harness contradiction  | `correction/<slug>` PR / correction artifact |
 
 Universal platform translation:
 
@@ -79,20 +79,20 @@ Cannot mark done:
 
 The L1–L12 anti-skip nudges become platform-level remediation buttons:
 
-| Nudge | Platform action |
-|---|---|
-| Cause without evidence | Reopen RCA stage and require runtime evidence |
-| No proof | Run proof gate / mark blocked |
-| Skipped preflight | Run freshness/source-of-truth check |
-| No Red Zone classification | Run redzone gate and request approval |
-| Ignored contradiction | Open correction workflow |
-| No lane | Force route/classification stage |
-| No live smoke | Require smoke gate for deployed change |
-| No red baseline | Reopen acceptance-first planning |
-| Process narration | Convert final to Answer Contract |
-| Unbacked neighbor-path claim | Require pinned source citation |
-| No artifacts at end | Fail finish-line validator |
-| Prod not verified | Require prod deploy verification/watch window |
+| Nudge                        | Platform action                               |
+| ---------------------------- | --------------------------------------------- |
+| Cause without evidence       | Reopen RCA stage and require runtime evidence |
+| No proof                     | Run proof gate / mark blocked                 |
+| Skipped preflight            | Run freshness/source-of-truth check           |
+| No Red Zone classification   | Run redzone gate and request approval         |
+| Ignored contradiction        | Open correction workflow                      |
+| No lane                      | Force route/classification stage              |
+| No live smoke                | Require smoke gate for deployed change        |
+| No red baseline              | Reopen acceptance-first planning              |
+| Process narration            | Convert final to Answer Contract              |
+| Unbacked neighbor-path claim | Require pinned source citation                |
+| No artifacts at end          | Fail finish-line validator                    |
+| Prod not verified            | Require prod deploy verification/watch window |
 
 ### 4. Prompt packs per lane
 

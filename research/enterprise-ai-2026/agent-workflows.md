@@ -111,12 +111,12 @@ A2A is for communication between independent, potentially opaque agent systems. 
 
 Use them this way:
 
-| Boundary | Protocol | Valdris use |
-|---|---|---|
-| Runtime needs tools or context | MCP | expose run, artifact, gate, approval-request, and finish-check capabilities |
-| Valdris delegates a bounded job to an independent remote agent | A2A | create a child task bound to one milestone and ingest verified artifacts |
-| Local Codex/Claude process | native SDK/App Server/CLI | richest runtime events and resume semantics |
-| CI and deployment | GitHub Actions or provider API | externally verifiable commands, environments, and release evidence |
+| Boundary                                                       | Protocol                       | Valdris use                                                                 |
+| -------------------------------------------------------------- | ------------------------------ | --------------------------------------------------------------------------- |
+| Runtime needs tools or context                                 | MCP                            | expose run, artifact, gate, approval-request, and finish-check capabilities |
+| Valdris delegates a bounded job to an independent remote agent | A2A                            | create a child task bound to one milestone and ingest verified artifacts    |
+| Local Codex/Claude process                                     | native SDK/App Server/CLI      | richest runtime events and resume semantics                                 |
+| CI and deployment                                              | GitHub Actions or provider API | externally verifiable commands, environments, and release evidence          |
 
 Do not model every local subagent as A2A. Do not expose a remote peer agent as an unrestricted MCP tool without a task, identity, authorization, and artifact boundary.
 
@@ -181,19 +181,19 @@ What Valdris must add or change:
 
 ### Gaps that block the target architecture
 
-| Gap | Current evidence | Required correction |
-|---|---|---|
-| No executable skill catalog | `operatingIntelligence.skillRegistry.inventory` is generated from comma-separated answers | generate canonical skill directories, registry, lock/digest file, activation evals, and runtime projections |
-| No composition engine | front doors contain one fixed 14-node sequence | compile a task-specific milestone DAG from the selected skill bundle |
-| Node vocabulary is closed | bridge rejects node IDs outside its fixed set | distinguish stable phase IDs from adapter-defined milestone IDs; validate both schemas |
-| Native goals are not bound | no Codex thread goal, Claude session goal, or runtime binding artifact | add canonical goal schema and runtime binding records |
-| Checkpoints are not durable | event JSONL records node events but not resumable milestone snapshots | add append-only checkpoint transitions with repository and proof digests |
-| Operating intelligence is policy-only | `docs/OPERATING_INTELLIGENCE_LAYER.md` marks eval/trajectory/economics gates partial | implement typed gates and make them route-conditionally required |
-| Proof is too weakly bound | command output and exit code are checked, but proof is not a full subject manifest | bind every proof to run, goal, milestone, repo, commit/tree, environment, command, time, and content digest |
-| Run start requires supplied IDs | generated prompts ask for `RUN_ID` before work | allow the router/bridge to create a run safely; never make users invent IDs |
-| Runtime connector is Claude-named | bridge file and service names are Claude-centric although actors include Codex/Hermes | split core run service from runtime adapters |
-| No MCP/A2A runtime | commissioning fields and docs exist, but hosted daemon/peer interface is future | build MCP first; add A2A only for real peer delegation |
-| No skill drift enforcement | the knowledge vault has a validator, skills do not | validate frontmatter, links, referenced scripts, hashes, ownership, eval cases, and generated-copy parity |
+| Gap                                   | Current evidence                                                                          | Required correction                                                                                         |
+| ------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| No executable skill catalog           | `operatingIntelligence.skillRegistry.inventory` is generated from comma-separated answers | generate canonical skill directories, registry, lock/digest file, activation evals, and runtime projections |
+| No composition engine                 | front doors contain one fixed 14-node sequence                                            | compile a task-specific milestone DAG from the selected skill bundle                                        |
+| Node vocabulary is closed             | bridge rejects node IDs outside its fixed set                                             | distinguish stable phase IDs from adapter-defined milestone IDs; validate both schemas                      |
+| Native goals are not bound            | no Codex thread goal, Claude session goal, or runtime binding artifact                    | add canonical goal schema and runtime binding records                                                       |
+| Checkpoints are not durable           | event JSONL records node events but not resumable milestone snapshots                     | add append-only checkpoint transitions with repository and proof digests                                    |
+| Operating intelligence is policy-only | `docs/OPERATING_INTELLIGENCE_LAYER.md` marks eval/trajectory/economics gates partial      | implement typed gates and make them route-conditionally required                                            |
+| Proof is too weakly bound             | command output and exit code are checked, but proof is not a full subject manifest        | bind every proof to run, goal, milestone, repo, commit/tree, environment, command, time, and content digest |
+| Run start requires supplied IDs       | generated prompts ask for `RUN_ID` before work                                            | allow the router/bridge to create a run safely; never make users invent IDs                                 |
+| Runtime connector is Claude-named     | bridge file and service names are Claude-centric although actors include Codex/Hermes     | split core run service from runtime adapters                                                                |
+| No MCP/A2A runtime                    | commissioning fields and docs exist, but hosted daemon/peer interface is future           | build MCP first; add A2A only for real peer delegation                                                      |
+| No skill drift enforcement            | the knowledge vault has a validator, skills do not                                        | validate frontmatter, links, referenced scripts, hashes, ownership, eval cases, and generated-copy parity   |
 
 ## Target architecture
 
@@ -225,32 +225,32 @@ flowchart TD
 
 ### Ownership rule
 
-| Concern | Owner |
-|---|---|
-| Natural-language reasoning, edits, local command proposals | runtime agent |
-| Work classification and skill-bundle validity | Valdris router |
-| Goal, milestone, checkpoint, and approval state | Valdris ledger |
-| Tool permission and Red Zone enforcement | Valdris policy kernel plus runtime hooks/settings |
-| Test/eval execution | runtime or CI |
-| Proof validity and freshness | Valdris gate |
-| Production credentials and approval | human/protected environment |
-| Runtime session storage | runtime adapter |
-| Cross-runtime replay and audit | Valdris |
+| Concern                                                    | Owner                                             |
+| ---------------------------------------------------------- | ------------------------------------------------- |
+| Natural-language reasoning, edits, local command proposals | runtime agent                                     |
+| Work classification and skill-bundle validity              | Valdris router                                    |
+| Goal, milestone, checkpoint, and approval state            | Valdris ledger                                    |
+| Tool permission and Red Zone enforcement                   | Valdris policy kernel plus runtime hooks/settings |
+| Test/eval execution                                        | runtime or CI                                     |
+| Proof validity and freshness                               | Valdris gate                                      |
+| Production credentials and approval                        | human/protected environment                       |
+| Runtime session storage                                    | runtime adapter                                   |
+| Cross-runtime replay and audit                             | Valdris                                           |
 
 ## The eight composable skills
 
 These are the user-facing choices. A user may name one explicitly; otherwise `valdris-route` selects the bundle. Every nontrivial mutating bundle ends in `valdris-handoff`.
 
-| Skill | Use when | Typical upstream techniques | Required outputs | Default invocation |
-|---|---|---|---|---|
-| `valdris-route` | any new request, issue, audit, bug, feature, incident, or goal | ask-matt-style routing, risk and maturity classification | `run/intake.json`, `run/route.json`, goal decision, skill bundle | user or model; always first logically |
-| `valdris-discover` | ambiguity, product/design questions, research, specifications, huge foggy work | grill-with-docs, domain modeling, research, prototype, wayfinder, to-spec, to-tickets | glossary/ADR updates, research, decision map, spec, ticket DAG | user or model; writes docs/tracker only within scope |
-| `valdris-diagnose` | bug, failure, flake, regression, performance issue, incident symptom | tight failing loop, bisection, RCA, evidence timeline | reproducer, hypotheses ledger, root cause, recovery path, regression-test proposal | user or model; no fix unless task authorizes change |
-| `valdris-deliver` | accepted issue/spec needs implementation | implement, TDD, vertical slices | code, tests, local validation, implementation events | user or model when task clearly authorizes changes |
-| `valdris-architect` | architecture, refactor, migration, new module boundary, hard-to-reverse decision | code intelligence, deep modules, prototypes, ADRs, expand-contract | graph/anchors, design, ADR, migration/rollback plan | user or model; approval before hard-to-reverse external change |
-| `valdris-assure` | security/privacy, AI/RAG/agent behavior, data integrity, production readiness, review | threat modeling, 13 layers, evals, trajectory review, two-axis code review | profile-specific assessments, tests/evals, layer assessment, findings | user or model; read/verify by default; remediation needs authorization |
-| `valdris-release` | CI/CD, staging, production, cloud mutation, rollout, rollback, live smoke | release checklist, protected environments, canary, smoke, observability | release plan, approvals, deployment and rollback proof, live smoke | user-only for external mutation; model may plan/dry-run |
-| `valdris-handoff` | checkpoint, context boundary, PR/review, or run completion | proof packet, code review, handoff, memory proposal, self-heal | proof manifest, review, final handoff, next action, self-heal result | user or model; mandatory after mutation and before done |
+| Skill               | Use when                                                                              | Typical upstream techniques                                                           | Required outputs                                                                   | Default invocation                                                     |
+| ------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `valdris-route`     | any new request, issue, audit, bug, feature, incident, or goal                        | ask-matt-style routing, risk and maturity classification                              | `run/intake.json`, `run/route.json`, goal decision, skill bundle                   | user or model; always first logically                                  |
+| `valdris-discover`  | ambiguity, product/design questions, research, specifications, huge foggy work        | grill-with-docs, domain modeling, research, prototype, wayfinder, to-spec, to-tickets | glossary/ADR updates, research, decision map, spec, ticket DAG                     | user or model; writes docs/tracker only within scope                   |
+| `valdris-diagnose`  | bug, failure, flake, regression, performance issue, incident symptom                  | tight failing loop, bisection, RCA, evidence timeline                                 | reproducer, hypotheses ledger, root cause, recovery path, regression-test proposal | user or model; no fix unless task authorizes change                    |
+| `valdris-deliver`   | accepted issue/spec needs implementation                                              | implement, TDD, vertical slices                                                       | code, tests, local validation, implementation events                               | user or model when task clearly authorizes changes                     |
+| `valdris-architect` | architecture, refactor, migration, new module boundary, hard-to-reverse decision      | code intelligence, deep modules, prototypes, ADRs, expand-contract                    | graph/anchors, design, ADR, migration/rollback plan                                | user or model; approval before hard-to-reverse external change         |
+| `valdris-assure`    | security/privacy, AI/RAG/agent behavior, data integrity, production readiness, review | threat modeling, 13 layers, evals, trajectory review, two-axis code review            | profile-specific assessments, tests/evals, layer assessment, findings              | user or model; read/verify by default; remediation needs authorization |
+| `valdris-release`   | CI/CD, staging, production, cloud mutation, rollout, rollback, live smoke             | release checklist, protected environments, canary, smoke, observability               | release plan, approvals, deployment and rollback proof, live smoke                 | user-only for external mutation; model may plan/dry-run                |
+| `valdris-handoff`   | checkpoint, context boundary, PR/review, or run completion                            | proof packet, code review, handoff, memory proposal, self-heal                        | proof manifest, review, final handoff, next action, self-heal result               | user or model; mandatory after mutation and before done                |
 
 ### Assurance profiles
 
@@ -322,15 +322,15 @@ The route is deterministic around model judgment:
 
 ### User versus model invocation
 
-| Action | Model may select? | Human confirmation |
-|---|---:|---|
-| Route, read, research, classify, plan, audit | yes | only for material ambiguity or private-data access |
-| Edit files in authorized workspace | yes when task authorizes change | no additional confirmation for low-risk local work |
-| Run tests/evals/scans | yes | no, unless cost/data/tool policy requires it |
-| Commit | only if commissioning permits | task or standing repo authorization |
-| Push/open PR/update issue | only if commissioning permits | task or standing integration authorization |
-| Stage deploy | only through release skill | commissioning policy or scoped approval |
-| Production deploy, secret/config mutation, billing/auth/customer data, destructive operation | no autonomous grant | explicit scoped Red Zone approval |
+| Action                                                                                       |               Model may select? | Human confirmation                                 |
+| -------------------------------------------------------------------------------------------- | ------------------------------: | -------------------------------------------------- |
+| Route, read, research, classify, plan, audit                                                 |                             yes | only for material ambiguity or private-data access |
+| Edit files in authorized workspace                                                           | yes when task authorizes change | no additional confirmation for low-risk local work |
+| Run tests/evals/scans                                                                        |                             yes | no, unless cost/data/tool policy requires it       |
+| Commit                                                                                       |   only if commissioning permits | task or standing repo authorization                |
+| Push/open PR/update issue                                                                    |   only if commissioning permits | task or standing integration authorization         |
+| Stage deploy                                                                                 |      only through release skill | commissioning policy or scoped approval            |
+| Production deploy, secret/config mutation, billing/auth/customer data, destructive operation |             no autonomous grant | explicit scoped Red Zone approval                  |
 
 Runtime-specific `disable-model-invocation` or equivalent fields are defense in depth. The registry and bridge decide whether an invocation is valid.
 
@@ -542,10 +542,10 @@ Add only after Valdris delegates to independent agents across a process, vendor,
 
 Keep the existing event contract idea, but split events into three trust levels:
 
-| Level | Examples | Meaning |
-|---|---|---|
-| Observation | runtime started turn, tool called, file reported written | useful telemetry; no gate implication |
-| Candidate evidence | test result, CI conclusion, artifact hash, approval request | must be verified |
+| Level               | Examples                                                           | Meaning                                |
+| ------------------- | ------------------------------------------------------------------ | -------------------------------------- |
+| Observation         | runtime started turn, tool called, file reported written           | useful telemetry; no gate implication  |
+| Candidate evidence  | test result, CI conclusion, artifact hash, approval request        | must be verified                       |
 | Verified transition | gate passed, milestone completed, approval accepted, goal achieved | emitted only by Valdris control kernel |
 
 Canonical event envelope additions:

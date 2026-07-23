@@ -62,17 +62,23 @@ const optionMap = {
 };
 
 function safeOptionLabel(value) {
-  return /^--[A-Za-z][A-Za-z0-9_.-]{0,127}/.exec(String(value || ""))?.[0] || "--[invalid]";
+  return (
+    /^--[A-Za-z][A-Za-z0-9_.-]{0,127}/.exec(String(value || ""))?.[0] ||
+    "--[invalid]"
+  );
 }
 
 const removedHumanCredentialOption = ["--human", "token"].join("-");
 const firstMessageArgument = rest[0];
-if (typeof firstMessageArgument === "string" && firstMessageArgument.startsWith("--")
-  && (optionMap[firstMessageArgument]
-    || firstMessageArgument === removedHumanCredentialOption
-    || firstMessageArgument.startsWith(`${removedHumanCredentialOption}=`)
-    || firstMessageArgument.startsWith(`${removedHumanCredentialOption} `)
-    || !/\s/.test(firstMessageArgument))) {
+if (
+  typeof firstMessageArgument === "string" &&
+  firstMessageArgument.startsWith("--") &&
+  (optionMap[firstMessageArgument] ||
+    firstMessageArgument === removedHumanCredentialOption ||
+    firstMessageArgument.startsWith(`${removedHumanCredentialOption}=`) ||
+    firstMessageArgument.startsWith(`${removedHumanCredentialOption} `) ||
+    !/\s/.test(firstMessageArgument))
+) {
   console.error(`Unknown option: ${safeOptionLabel(firstMessageArgument)}`);
   process.exit(2);
 }
@@ -83,7 +89,11 @@ for (let i = 1; i < rest.length; i += 1) {
   const key = optionMap[item];
   if (key) {
     const value = rest[i + 1];
-    if (typeof value !== "string" || value.length === 0 || value.startsWith("--")) {
+    if (
+      typeof value !== "string" ||
+      value.length === 0 ||
+      value.startsWith("--")
+    ) {
       console.error(`Option ${item} requires a non-empty, non-flag value`);
       process.exit(2);
     }
@@ -107,10 +117,15 @@ if (!bridgeToken) {
   console.error("UASH_BRIDGE_ACCESS_TOKEN is required for bridge event writes");
   process.exit(2);
 }
-const humanApprovalDecision = type === "approval.granted" || type === "approval.denied";
-const humanToken = humanApprovalDecision ? process.env.UASH_HUMAN_APPROVAL_TOKEN : undefined;
+const humanApprovalDecision =
+  type === "approval.granted" || type === "approval.denied";
+const humanToken = humanApprovalDecision
+  ? process.env.UASH_HUMAN_APPROVAL_TOKEN
+  : undefined;
 if (humanApprovalDecision && !humanToken) {
-  console.error("UASH_HUMAN_APPROVAL_TOKEN is required in the separate operator shell for approval grant/deny events");
+  console.error(
+    "UASH_HUMAN_APPROVAL_TOKEN is required in the separate operator shell for approval grant/deny events",
+  );
   process.exit(2);
 }
 const headers = { "content-type": "application/json" };

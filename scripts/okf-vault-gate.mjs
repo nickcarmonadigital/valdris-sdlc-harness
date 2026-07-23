@@ -35,7 +35,8 @@ function listMarkdownFiles(rootDir, currentDir = rootDir) {
   for (const entry of readdirSync(currentDir, { withFileTypes: true })) {
     if (entry.name === "node_modules" || entry.name === ".git") continue;
     const fullPath = path.join(currentDir, entry.name);
-    if (entry.isDirectory()) files.push(...listMarkdownFiles(rootDir, fullPath));
+    if (entry.isDirectory())
+      files.push(...listMarkdownFiles(rootDir, fullPath));
     else if (entry.isFile() && entry.name.endsWith(".md")) files.push(fullPath);
   }
   return files;
@@ -44,7 +45,9 @@ function listMarkdownFiles(rootDir, currentDir = rootDir) {
 function parseFrontmatter(text) {
   const lines = text.split(/\r?\n/);
   if (lines[0] !== "---") return null;
-  const end = lines.findIndex((line, index) => index > 0 && line.trim() === "---");
+  const end = lines.findIndex(
+    (line, index) => index > 0 && line.trim() === "---",
+  );
   if (end === -1) return null;
   const frontmatter = {};
   for (const rawLine of lines.slice(1, end)) {
@@ -79,7 +82,8 @@ function markdownLinks(text) {
 }
 
 function resolveLinkTarget(bundleRoot, sourceFile, target) {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) return null;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#"))
+    return null;
   const withoutAnchor = target.split("#")[0];
   if (!withoutAnchor) return null;
   const base = withoutAnchor.startsWith("/")
@@ -94,13 +98,23 @@ function validateOkfVault(repo, root = "knowledge") {
   const bundleRoot = path.resolve(repo, root);
 
   if (!existsSync(bundleRoot) || !statSync(bundleRoot).isDirectory()) {
-    return { ok: false, root, conceptCount: 0, indexCount: 0, logCount: 0, problems: [`OKF vault root missing: ${root}`], warnings };
+    return {
+      ok: false,
+      root,
+      conceptCount: 0,
+      indexCount: 0,
+      logCount: 0,
+      problems: [`OKF vault root missing: ${root}`],
+      warnings,
+    };
   }
 
   const rootIndex = path.join(bundleRoot, "index.md");
   const rootLog = path.join(bundleRoot, "log.md");
-  if (!existsSync(rootIndex)) problems.push("root index.md is required for progressive disclosure");
-  if (!existsSync(rootLog)) problems.push("root log.md is required for update history");
+  if (!existsSync(rootIndex))
+    problems.push("root index.md is required for progressive disclosure");
+  if (!existsSync(rootLog))
+    problems.push("root log.md is required for update history");
 
   const files = listMarkdownFiles(bundleRoot);
   let conceptCount = 0;
@@ -114,13 +128,19 @@ function validateOkfVault(repo, root = "knowledge") {
 
     if (basename === "index.md") {
       indexCount += 1;
-      if (!markdownLinks(text).length) problems.push(`${rel}: index.md must include at least one markdown link`);
+      if (!markdownLinks(text).length)
+        problems.push(
+          `${rel}: index.md must include at least one markdown link`,
+        );
       continue;
     }
 
     if (basename === "log.md") {
       logCount += 1;
-      if (!/^## \d{4}-\d{2}-\d{2}/m.test(text)) problems.push(`${rel}: log.md must include ISO date headings like ## YYYY-MM-DD`);
+      if (!/^## \d{4}-\d{2}-\d{2}/m.test(text))
+        problems.push(
+          `${rel}: log.md must include ISO date headings like ## YYYY-MM-DD`,
+        );
       continue;
     }
 
@@ -128,13 +148,19 @@ function validateOkfVault(repo, root = "knowledge") {
     conceptCount += 1;
     const parsed = parseFrontmatter(text);
     if (!parsed) {
-      problems.push(`${rel}: concept documents must start with YAML frontmatter`);
+      problems.push(
+        `${rel}: concept documents must start with YAML frontmatter`,
+      );
       continue;
     }
     for (const field of REQUIRED_CONCEPT_FIELDS) {
-      if (!String(parsed.frontmatter[field] || "").trim()) problems.push(`${rel}: missing frontmatter field ${field}`);
+      if (!String(parsed.frontmatter[field] || "").trim())
+        problems.push(`${rel}: missing frontmatter field ${field}`);
     }
-    if (parsed.frontmatter.timestamp && Number.isNaN(Date.parse(parsed.frontmatter.timestamp))) {
+    if (
+      parsed.frontmatter.timestamp &&
+      Number.isNaN(Date.parse(parsed.frontmatter.timestamp))
+    ) {
       problems.push(`${rel}: timestamp must be ISO 8601 when present`);
     }
   }
@@ -145,15 +171,28 @@ function validateOkfVault(repo, root = "knowledge") {
       const resolved = resolveLinkTarget(bundleRoot, file, target);
       if (!resolved) continue;
       if (!resolved.startsWith(bundleRoot)) {
-        problems.push(`${normalizeSlash(path.relative(bundleRoot, file))}: link escapes knowledge root: ${target}`);
+        problems.push(
+          `${normalizeSlash(path.relative(bundleRoot, file))}: link escapes knowledge root: ${target}`,
+        );
       } else if (!existsSync(resolved)) {
-        problems.push(`${normalizeSlash(path.relative(bundleRoot, file))}: broken internal link: ${target}`);
+        problems.push(
+          `${normalizeSlash(path.relative(bundleRoot, file))}: broken internal link: ${target}`,
+        );
       }
     }
   }
 
-  if (conceptCount === 0) problems.push("knowledge vault must include at least one concept document");
-  return { ok: problems.length === 0, root, conceptCount, indexCount, logCount, problems, warnings };
+  if (conceptCount === 0)
+    problems.push("knowledge vault must include at least one concept document");
+  return {
+    ok: problems.length === 0,
+    root,
+    conceptCount,
+    indexCount,
+    logCount,
+    problems,
+    warnings,
+  };
 }
 
 async function main() {
@@ -167,7 +206,10 @@ async function main() {
   console.log(output);
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
   main().catch((error) => {
     console.error(error.message);
     process.exit(1);

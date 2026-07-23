@@ -27,9 +27,9 @@ Catalog `dependencies` are hard assurance prerequisites. `conditionalDependencie
 
 `production/layer-assessment.json` must classify every canonical domain exactly once using the compatibility `layer` field.
 
-* `passed` requires evidence.
-* `skipped` requires a reason.
-* `failed`, `pending`, `blocked`, `required`, and `needs_approval` block completion.
+- `passed` requires evidence.
+- `skipped` requires a reason.
+- `failed`, `pending`, `blocked`, `required`, and `needs_approval` block completion.
 
 # Command
 

@@ -1,10 +1,20 @@
-export type NodeStatus = "done" | "active" | "blocked" | "skipped" | "pending" | "warning";
+export type NodeStatus =
+  "done" | "active" | "blocked" | "skipped" | "pending" | "warning";
 
 export type HarnessNode = {
   id: string;
   label: string;
   layer: string;
-  kind: "input" | "scan" | "adapter" | "runtime" | "router" | "skill" | "gate" | "artifact" | "human";
+  kind:
+    | "input"
+    | "scan"
+    | "adapter"
+    | "runtime"
+    | "router"
+    | "skill"
+    | "gate"
+    | "artifact"
+    | "human";
   description: string;
   artifact: string;
   owner: string;
@@ -47,368 +57,496 @@ export const harnessNodes: HarnessNode[] = [
     label: "Blueprint / Live / Replay mode",
     layer: "Commission",
     kind: "input",
-    description: "Declare whether the board is static topology, real connector telemetry, or historical replay.",
+    description:
+      "Declare whether the board is static topology, real connector telemetry, or historical replay.",
     artifact: "run/mode.json",
     owner: "control plane",
     tools: ["mode selector", "event source metadata"],
-    whyItExists: "No fake telemetry: a demo topology must never look like Claude/Codex actually ran it.",
-    recovery: "If data source is unknown, label it Blueprint or Replay until connector events prove Live Run.",
+    whyItExists:
+      "No fake telemetry: a demo topology must never look like Claude/Codex actually ran it.",
+    recovery:
+      "If data source is unknown, label it Blueprint or Replay until connector events prove Live Run.",
   },
   {
     id: "commission",
     label: "Commissioning interview",
     layer: "Commission",
     kind: "input",
-    description: "Ask how this repo works, who approves risk, what production means, and which lane families apply.",
+    description:
+      "Ask how this repo works, who approves risk, what production means, and which lane families apply.",
     artifact: "project-adapter.json",
     owner: "human + harness",
     tools: ["commission-harness.mjs", "question bank"],
-    whyItExists: "GitNexus/code intelligence can infer code structure, but it cannot know team authority, source-of-truth order, answer style, or Red Zone boundaries.",
-    recovery: "If answers are missing or stale, pause and re-run commissioning before letting an agent touch the repo.",
+    whyItExists:
+      "GitNexus/code intelligence can infer code structure, but it cannot know team authority, source-of-truth order, answer style, or Red Zone boundaries.",
+    recovery:
+      "If answers are missing or stale, pause and re-run commissioning before letting an agent touch the repo.",
   },
   {
     id: "repo-scan",
     label: "Repo scan",
     layer: "Commission",
     kind: "scan",
-    description: "Detect package manager, frameworks, validation commands, repo role, and obvious workflow files.",
+    description:
+      "Detect package manager, frameworks, validation commands, repo role, and obvious workflow files.",
     artifact: "adapter.detected",
     owner: "harness scanner",
-    tools: ["package.json", "pyproject.toml", ".github/workflows", "Dockerfiles"],
-    whyItExists: "The harness should prefill what machines can know so the human only answers what code cannot reveal.",
-    recovery: "If detection is wrong, edit the adapter and mark that field as human-confirmed.",
+    tools: [
+      "package.json",
+      "pyproject.toml",
+      ".github/workflows",
+      "Dockerfiles",
+    ],
+    whyItExists:
+      "The harness should prefill what machines can know so the human only answers what code cannot reveal.",
+    recovery:
+      "If detection is wrong, edit the adapter and mark that field as human-confirmed.",
   },
   {
     id: "code-intelligence",
     label: "GitNexus code-intelligence scan",
     layer: "Commission",
     kind: "scan",
-    description: "Build or refresh GitNexus-backed code intelligence before architecture claims, risky refactors, or code-path debugging.",
+    description:
+      "Build or refresh GitNexus-backed code intelligence before architecture claims, risky refactors, or code-path debugging.",
     artifact: "graph/gitnexus.json + graph/graph.json + design/anchors.json",
     owner: "GitNexus/code-intelligence adapter",
-    tools: ["GitNexus", "code graph", "context", "impact", "local static fallback"],
-    whyItExists: "This is the map layer: where code lives, what calls it, and what could break if the agent edits it.",
-    recovery: "If GitNexus is stale or unavailable, say so, disclose any local fallback, and use pinned code citations instead of pretending GitNexus-backed analysis ran.",
+    tools: [
+      "GitNexus",
+      "code graph",
+      "context",
+      "impact",
+      "local static fallback",
+    ],
+    whyItExists:
+      "This is the map layer: where code lives, what calls it, and what could break if the agent edits it.",
+    recovery:
+      "If GitNexus is stale or unavailable, say so, disclose any local fallback, and use pinned code citations instead of pretending GitNexus-backed analysis ran.",
   },
   {
     id: "adapter",
     label: "Project adapter generated",
     layer: "Commission",
     kind: "adapter",
-    description: "Write the local laws of the repo: lanes, production layers, validation, Red Zone, branch/deploy, and answer contract.",
+    description:
+      "Write the local laws of the repo: lanes, production layers, validation, Red Zone, branch/deploy, and answer contract.",
     artifact: "project.yaml",
     owner: "harness generator",
     tools: ["project-adapter.json", "project.yaml"],
-    whyItExists: "Universal core stays stable; the adapter makes it specific enough that Claude/Codex cannot freelance.",
-    recovery: "Adapter drift routes to self-healing: update the adapter with evidence and rerun coherence checks.",
+    whyItExists:
+      "Universal core stays stable; the adapter makes it specific enough that Claude/Codex cannot freelance.",
+    recovery:
+      "Adapter drift routes to self-healing: update the adapter with evidence and rerun coherence checks.",
   },
   {
     id: "front-door",
     label: "Agent front door installed",
     layer: "Front door",
     kind: "runtime",
-    description: "Generate AGENTS.md / CLAUDE.md / command templates so agents enter through the harness.",
+    description:
+      "Generate AGENTS.md / CLAUDE.md / command templates so agents enter through the harness.",
     artifact: "AGENTS.md + CLAUDE.md",
     owner: "connector installer",
     tools: ["AGENTS.md", "CLAUDE.md", "valdris-sdlc-harness command"],
-    whyItExists: "The agent starts with the flow, not with a vague prompt. This is the door into the operating system.",
-    recovery: "If the front door is missing, block until generated instructions are installed or pasted.",
+    whyItExists:
+      "The agent starts with the flow, not with a vague prompt. This is the door into the operating system.",
+    recovery:
+      "If the front door is missing, block until generated instructions are installed or pasted.",
   },
   {
     id: "run-start",
     label: "Run packet opened",
     layer: "Front door",
     kind: "artifact",
-    description: "Create a durable record for task, repo, branch, lane, runtime, risk, events, artifacts, and mode.",
+    description:
+      "Create a durable record for task, repo, branch, lane, runtime, risk, events, artifacts, and mode.",
     artifact: "runs/<id>/run.json",
     owner: "control plane",
     tools: ["localStorage demo", "JSONL bridge", "future DB"],
-    whyItExists: "A run is not a chat. It is an auditable object with state, proof, approvals, and handoff.",
-    recovery: "If no run packet exists, the app cannot honestly visualize completion; create or recover the packet first.",
+    whyItExists:
+      "A run is not a chat. It is an auditable object with state, proof, approvals, and handoff.",
+    recovery:
+      "If no run packet exists, the app cannot honestly visualize completion; create or recover the packet first.",
   },
   {
     id: "intake",
     label: "01 Intake",
     layer: "Front door",
     kind: "router",
-    description: "Capture task, repo, branch, affected users, environment, screenshots/logs, risk, and work type.",
+    description:
+      "Capture task, repo, branch, affected users, environment, screenshots/logs, risk, and work type.",
     artifact: "run/intake.json",
     owner: "agent + human",
     tools: ["intake form", "issue import", "chat prompt"],
-    whyItExists: "Most misses start here: wrong repo, wrong branch, wrong risk, or unclear symptom.",
-    recovery: "Ask only for the missing field that changes routing; otherwise continue with explicit assumptions.",
+    whyItExists:
+      "Most misses start here: wrong repo, wrong branch, wrong risk, or unclear symptom.",
+    recovery:
+      "Ask only for the missing field that changes routing; otherwise continue with explicit assumptions.",
   },
   {
     id: "classify",
     label: "Classify lane family",
     layer: "Route + design",
     kind: "router",
-    description: "Classify bug, feature, refactor, docs/process, incident, data, security, system design, cloud/platform, or QA/release work.",
+    description:
+      "Classify bug, feature, refactor, docs/process, incident, data, security, system design, cloud/platform, or QA/release work.",
     artifact: "run/route.json",
     owner: "router",
     tools: ["CONTEXT.md", "lane taxonomy"],
-    whyItExists: "Wrong lane causes wrong proof: cloud changes need rollback, bugs need RCA, features need spec, QA needs break-it evidence.",
-    recovery: "If classification is ambiguous, show candidate paths and ask only for the decision that changes execution.",
+    whyItExists:
+      "Wrong lane causes wrong proof: cloud changes need rollback, bugs need RCA, features need spec, QA needs break-it evidence.",
+    recovery:
+      "If classification is ambiguous, show candidate paths and ask only for the decision that changes execution.",
   },
   {
     id: "skill-selector",
     label: "Skill selector",
     layer: "Route + design",
     kind: "skill",
-    description: "Load the right procedure pack: /debug, /grill-with-docs, /to-prd, refactor, cloud/platform, QA, or incident.",
+    description:
+      "Load the right procedure pack: /debug, /grill-with-docs, /to-prd, refactor, cloud/platform, QA, or incident.",
     artifact: "run/skills.json",
     owner: "harness router",
-    tools: ["/debug", "/grill-with-docs", "/to-prd", "/improve-codebase-architecture"],
-    whyItExists: "The visual should show not just the lane, but which procedure was actually used and why others were skipped.",
-    recovery: "If a needed skill was not loaded, mark missing-procedure and loop back before implementation.",
+    tools: [
+      "/debug",
+      "/grill-with-docs",
+      "/to-prd",
+      "/improve-codebase-architecture",
+    ],
+    whyItExists:
+      "The visual should show not just the lane, but which procedure was actually used and why others were skipped.",
+    recovery:
+      "If a needed skill was not loaded, mark missing-procedure and loop back before implementation.",
   },
   {
     id: "system-design",
     label: "System Design lane",
     layer: "Route + design",
     kind: "artifact",
-    description: "Capture requirements, constraints, APIs, data model, scaling, protocols, failure modes, and ADRs.",
+    description:
+      "Capture requirements, constraints, APIs, data model, scaling, protocols, failure modes, and ADRs.",
     artifact: "design/system_design.md",
     owner: "architecture runtime",
     tools: ["SDD", "ADR", "architecture checklist", "GitNexus"],
-    whyItExists: "System design prevents the agent from coding the first fuzzy interpretation of a hard-to-reverse change.",
-    recovery: "If design is missing for architecture-impacting work, block implementation until assumptions and tradeoffs are explicit.",
+    whyItExists:
+      "System design prevents the agent from coding the first fuzzy interpretation of a hard-to-reverse change.",
+    recovery:
+      "If design is missing for architecture-impacting work, block implementation until assumptions and tradeoffs are explicit.",
   },
   {
     id: "debug-skill",
     label: "Bug path: /debug",
     layer: "Route + design",
     kind: "skill",
-    description: "Reproduce, minimize, instrument, and form hypotheses without claiming cause too early.",
+    description:
+      "Reproduce, minimize, instrument, and form hypotheses without claiming cause too early.",
     artifact: "debug/repro.md",
     owner: "Claude/Codex runtime",
     tools: ["/debug", "logs", "tests", "instrumentation"],
-    whyItExists: "Bug fixes need the failing behavior shown, not a plausible static-code story.",
-    recovery: "If reproduction fails, record UNKNOWN instead of inventing a cause and route to evidence collection.",
+    whyItExists:
+      "Bug fixes need the failing behavior shown, not a plausible static-code story.",
+    recovery:
+      "If reproduction fails, record UNKNOWN instead of inventing a cause and route to evidence collection.",
   },
   {
     id: "grill-skill",
     label: "Feature path: /grill-with-docs",
     layer: "Route + design",
     kind: "skill",
-    description: "Interrogate feature assumptions, edge cases, terms, users, and hard-to-reverse decisions.",
+    description:
+      "Interrogate feature assumptions, edge cases, terms, users, and hard-to-reverse decisions.",
     artifact: "product/questions.md",
     owner: "planning runtime",
     tools: ["/grill-with-docs", "project glossary", "decision prompts"],
-    whyItExists: "New behavior needs a spec before code. This prevents agents from building the first fuzzy interpretation.",
-    recovery: "Unresolved questions become explicit blocking decisions instead of hidden assumptions.",
+    whyItExists:
+      "New behavior needs a spec before code. This prevents agents from building the first fuzzy interpretation.",
+    recovery:
+      "Unresolved questions become explicit blocking decisions instead of hidden assumptions.",
   },
   {
     id: "prd-skill",
     label: "Feature path: /to-prd + ADR",
     layer: "Route + design",
     kind: "skill",
-    description: "Convert decisions into PRD, acceptance criteria, tests, and architecture decision records.",
+    description:
+      "Convert decisions into PRD, acceptance criteria, tests, and architecture decision records.",
     artifact: "design/prd.md + docs/adr/*.md",
     owner: "planning runtime",
     tools: ["/to-prd", "ADR template", "acceptance tests"],
-    whyItExists: "The harness should show whether feature work has a real spec or is just vibes with code.",
-    recovery: "If a hard-to-reverse decision appears without ADR, block implementation until captured.",
+    whyItExists:
+      "The harness should show whether feature work has a real spec or is just vibes with code.",
+    recovery:
+      "If a hard-to-reverse decision appears without ADR, block implementation until captured.",
   },
   {
     id: "refactor-skill",
     label: "Refactor path: architecture skill",
     layer: "Route + design",
     kind: "skill",
-    description: "Use architecture-improvement workflow for shape changes that should not change behavior.",
+    description:
+      "Use architecture-improvement workflow for shape changes that should not change behavior.",
     artifact: "design/refactor-plan.md",
     owner: "architecture runtime",
-    tools: ["/improve-codebase-architecture", "GitNexus", "behavior lock tests"],
-    whyItExists: "Refactors are not features. The proof is behavior preservation plus cleaner structure.",
-    recovery: "If behavior changes, reclassify as feature/bug and require the appropriate gate.",
+    tools: [
+      "/improve-codebase-architecture",
+      "GitNexus",
+      "behavior lock tests",
+    ],
+    whyItExists:
+      "Refactors are not features. The proof is behavior preservation plus cleaner structure.",
+    recovery:
+      "If behavior changes, reclassify as feature/bug and require the appropriate gate.",
   },
   {
     id: "production-readiness",
     label: "Production Readiness Layer Pack",
     layer: "Production layers",
     kind: "gate",
-    description: "Classify the 13 production layers as touched, required, skipped, failed, or pending.",
+    description:
+      "Classify the 13 production layers as touched, required, skipped, failed, or pending.",
     artifact: "production/layer-assessment.json",
     owner: "harness router",
     tools: ["production layer checklist", "adapter.productionReadiness"],
-    whyItExists: "Real full-stack work includes auth, hosting, CI/CD, security, rate limiting, caching, load balancing, logs, and recovery.",
-    recovery: "If a layer is missing, add required proof or skip it with an explicit reason before finish-line.",
+    whyItExists:
+      "Real full-stack work includes auth, hosting, CI/CD, security, rate limiting, caching, load balancing, logs, and recovery.",
+    recovery:
+      "If a layer is missing, add required proof or skip it with an explicit reason before finish-line.",
   },
   {
     id: "cloud-platform",
     label: "Cloud / Platform lane",
     layer: "Production layers",
     kind: "gate",
-    description: "Service map, IAM/secrets, networking, IaC/deploy, observability, cost, rollback, and runbook checks.",
+    description:
+      "Service map, IAM/secrets, networking, IaC/deploy, observability, cost, rollback, and runbook checks.",
     artifact: "cloud/service-map.json",
     owner: "platform runtime",
     tools: ["AWS CLI", "CloudWatch", "IaC", "deploy logs", "health check"],
-    whyItExists: "Cloud changes can affect security, cost, uptime, customer data, and rollback; they are not just code.",
-    recovery: "Attach service map and proof, or skip with reason if no cloud/platform surface is touched.",
+    whyItExists:
+      "Cloud changes can affect security, cost, uptime, customer data, and rollback; they are not just code.",
+    recovery:
+      "Attach service map and proof, or skip with reason if no cloud/platform surface is touched.",
   },
   {
     id: "iam-secrets-check",
     label: "IAM / secrets check",
     layer: "Production layers",
     kind: "gate",
-    description: "Detect role, token, env var, KMS, service account, RLS, or permission changes.",
+    description:
+      "Detect role, token, env var, KMS, service account, RLS, or permission changes.",
     artifact: "security/iam-secrets-check.json",
     owner: "security/platform gate",
     tools: ["IAM", "Secrets Manager", "env policy", "RLS tests"],
-    whyItExists: "Most dangerous production failures involve permissions or secrets, not UI code.",
-    recovery: "Require explicit approval and negative authz proof, or record why no IAM/secrets surface exists.",
+    whyItExists:
+      "Most dangerous production failures involve permissions or secrets, not UI code.",
+    recovery:
+      "Require explicit approval and negative authz proof, or record why no IAM/secrets surface exists.",
   },
   {
     id: "observability-cost-rollback",
     label: "Observability / cost / rollback",
     layer: "Production layers",
     kind: "gate",
-    description: "Confirm logs/metrics/traces/alerts, cost/scaling risk, and rollback path for production-impacting changes.",
+    description:
+      "Confirm logs/metrics/traces/alerts, cost/scaling risk, and rollback path for production-impacting changes.",
     artifact: "cloud/operability-proof.json",
     owner: "SRE/platform gate",
     tools: ["logs", "metrics", "alerts", "FinOps", "rollback plan"],
-    whyItExists: "Production changes must be operated at 2 AM, not just deployed once.",
-    recovery: "Attach dashboard/log/request ID and rollback plan, or skip with explicit no-production-impact reason.",
+    whyItExists:
+      "Production changes must be operated at 2 AM, not just deployed once.",
+    recovery:
+      "Attach dashboard/log/request ID and rollback plan, or skip with explicit no-production-impact reason.",
   },
   {
     id: "design-anchors",
     label: "Design anchors",
     layer: "Build + gates",
     kind: "artifact",
-    description: "Pin cited code paths, blast radius, acceptance criteria, and relevant graph nodes before editing.",
+    description:
+      "Pin cited code paths, blast radius, acceptance criteria, and relevant graph nodes before editing.",
     artifact: "design/anchors.json",
     owner: "agent + graph adapter",
     tools: ["anchor_gate.py", "GitNexus", "git show"],
-    whyItExists: "A design built on stale code is worse than no design. Anchors make freshness visible.",
-    recovery: "If anchors drift, re-read current code and update the plan before implementation resumes.",
+    whyItExists:
+      "A design built on stale code is worse than no design. Anchors make freshness visible.",
+    recovery:
+      "If anchors drift, re-read current code and update the plan before implementation resumes.",
   },
   {
     id: "implement",
     label: "External runtime implements",
     layer: "Build + gates",
     kind: "runtime",
-    description: "Claude Code, Codex, or Hermes edits externally while the harness watches events and artifacts.",
+    description:
+      "Claude Code, Codex, or Hermes edits externally while the harness watches events and artifacts.",
     artifact: "session/events.jsonl",
     owner: "coding-agent runtime",
     tools: ["Claude Code", "Codex", "Hermes", "local bridge"],
-    whyItExists: "The product is not an IDE. Code work stays in the agent tool; this app monitors the workflow boundary.",
-    recovery: "If events stop, the run becomes telemetry-stale and needs manual sync or connector repair.",
+    whyItExists:
+      "The product is not an IDE. Code work stays in the agent tool; this app monitors the workflow boundary.",
+    recovery:
+      "If events stop, the run becomes telemetry-stale and needs manual sync or connector repair.",
   },
   {
     id: "redzone-gate",
     label: "Red Zone gate",
     layer: "Build + gates",
     kind: "gate",
-    description: "Pause before production, deploy, auth, billing, secrets, provider config, destructive data, or risky writes.",
+    description:
+      "Pause before production, deploy, auth, billing, secrets, provider config, destructive data, or risky writes.",
     artifact: "approvals/redzone.json",
     owner: "human approver",
     tools: ["redzone_gate.py", "approval token", "adapter policy"],
-    whyItExists: "This is where the human stays in control. If no Red Zone applies, the node is skipped with a visible reason.",
-    recovery: "Record approval, narrow the action, or reroute to a read-only alternative.",
+    whyItExists:
+      "This is where the human stays in control. If no Red Zone applies, the node is skipped with a visible reason.",
+    recovery:
+      "Record approval, narrow the action, or reroute to a read-only alternative.",
   },
   {
     id: "qa-plan",
     label: "QA plan",
     layer: "Build + gates",
     kind: "gate",
-    description: "State normal QA, regression checks, evals, and environment-specific validation for the run.",
+    description:
+      "State normal QA, regression checks, evals, and environment-specific validation for the run.",
     artifact: "qa/qa-plan.md",
     owner: "QA gate",
     tools: ["lint", "typecheck", "test", "build", "evals"],
-    whyItExists: "QA scope should be intentional. Tests alone do not prove release safety.",
-    recovery: "Write the QA plan or explicitly explain why only lightweight validation is required.",
+    whyItExists:
+      "QA scope should be intentional. Tests alone do not prove release safety.",
+    recovery:
+      "Write the QA plan or explicitly explain why only lightweight validation is required.",
   },
   {
     id: "break-it-qa",
     label: "Let's break it QA",
     layer: "Build + gates",
     kind: "gate",
-    description: "Try edge cases, malformed input, auth boundaries, stale data, latency, retries, concurrency, and failure paths.",
+    description:
+      "Try edge cases, malformed input, auth boundaries, stale data, latency, retries, concurrency, and failure paths.",
     artifact: "qa/break-it-results.md",
     owner: "QA gate",
     tools: ["edge cases", "negative authz", "provider failures", "concurrency"],
-    whyItExists: "Shipping means the feature survives hostile/messy reality, not just the happy path.",
-    recovery: "Attach break-it results; if not needed, add a skip reason tied to task scope.",
+    whyItExists:
+      "Shipping means the feature survives hostile/messy reality, not just the happy path.",
+    recovery:
+      "Attach break-it results; if not needed, add a skip reason tied to task scope.",
   },
   {
     id: "proof-gate",
     label: "Proof gate",
     layer: "Build + gates",
     kind: "gate",
-    description: "Run validation commands and attach proof artifacts before done can pass.",
+    description:
+      "Run validation commands and attach proof artifacts before done can pass.",
     artifact: "proof/proof.json",
     owner: "harness gate",
     tools: ["proof_gate.py", "lint", "typecheck", "test", "build", "evals"],
-    whyItExists: "The model cannot just say tests passed. The run must have proof that can be re-verified.",
-    recovery: "Fix failing command, rerun proof, or mark the run blocked with exact failed command.",
+    whyItExists:
+      "The model cannot just say tests passed. The run must have proof that can be re-verified.",
+    recovery:
+      "Fix failing command, rerun proof, or mark the run blocked with exact failed command.",
   },
   {
     id: "review-gate",
     label: "Review gate",
     layer: "Build + gates",
     kind: "gate",
-    description: "Independent review checks spec compliance, quality, safety, and whether proof matches the claim.",
+    description:
+      "Independent review checks spec compliance, quality, safety, and whether proof matches the claim.",
     artifact: "review/review.json",
     owner: "reviewer agent + human",
     tools: ["review_gate.py", "diff review", "security checklist"],
-    whyItExists: "Coder should not be the only grader. Show that review happened or why it was skipped.",
-    recovery: "Route blockers back to implementation; minor issues become explicit follow-ups.",
+    whyItExists:
+      "Coder should not be the only grader. Show that review happened or why it was skipped.",
+    recovery:
+      "Route blockers back to implementation; minor issues become explicit follow-ups.",
   },
   {
     id: "staging-smoke",
     label: "Staging / live smoke",
     layer: "Ship + learn",
     kind: "gate",
-    description: "Prove behavior in an environment local tests cannot fully simulate.",
+    description:
+      "Prove behavior in an environment local tests cannot fully simulate.",
     artifact: "smoke/smoke_proof.json",
     owner: "harness + human",
-    tools: ["smoke_gate.py", "deploy_verify.py", "browser pass", "provider call"],
-    whyItExists: "Some failures only appear after deploy, provider, worker, browser, or integration wiring.",
-    recovery: "If not needed, require a skip reason. If failing, show failed smoke and block promotion.",
+    tools: [
+      "smoke_gate.py",
+      "deploy_verify.py",
+      "browser pass",
+      "provider call",
+    ],
+    whyItExists:
+      "Some failures only appear after deploy, provider, worker, browser, or integration wiring.",
+    recovery:
+      "If not needed, require a skip reason. If failing, show failed smoke and block promotion.",
   },
   {
     id: "self-heal",
     label: "Harness self-healing PR",
     layer: "Ship + learn",
     kind: "artifact",
-    description: "If the process/harness failed, write a self-heal report and propose/open a scoped PR to fix the adapter/docs/gates.",
+    description:
+      "If the process/harness failed, write a self-heal report and propose/open a scoped PR to fix the adapter/docs/gates.",
     artifact: "self_heal/self_heal_report.md + self_heal/pr.json",
     owner: "harness + maintainer",
     tools: ["finish_line_gate.py", "git diff", "GitHub PR"],
-    whyItExists: "The harness improves when it misses something. Process bugs should create process fixes.",
-    recovery: "Classify the gap, write the self-heal report, and link the PR or mark why it needs human approval.",
+    whyItExists:
+      "The harness improves when it misses something. Process bugs should create process fixes.",
+    recovery:
+      "Classify the gap, write the self-heal report, and link the PR or mark why it needs human approval.",
   },
   {
     id: "handoff",
     label: "Answer Contract handoff",
     layer: "Ship + learn",
     kind: "human",
-    description: "Return decision packet: bottom line, why, proof, fix/plan, your call, and skipped steps.",
+    description:
+      "Return decision packet: bottom line, why, proof, fix/plan, your call, and skipped steps.",
     artifact: "handoff/final.md",
     owner: "agent + operator",
     tools: ["Answer Contract", "Linear/GitHub note", "run summary"],
-    whyItExists: "The user sees conclusion and evidence, not the detective story.",
-    recovery: "If proof or decisions are missing, handoff remains draft and finish-line blocks completion.",
+    whyItExists:
+      "The user sees conclusion and evidence, not the detective story.",
+    recovery:
+      "If proof or decisions are missing, handoff remains draft and finish-line blocks completion.",
   },
   {
     id: "finish-line",
     label: "Finish-line check",
     layer: "Ship + learn",
     kind: "gate",
-    description: "Confirm all required nodes are done or explicitly skipped with reasons.",
+    description:
+      "Confirm all required nodes are done or explicitly skipped with reasons.",
     artifact: "finish/finish_line.json",
     owner: "harness gate",
     tools: ["finish_line_gate.py", "artifact ledger", "skip ledger"],
-    whyItExists: "This is the no-missed-node guarantee: pass, fail, pending, or skipped with reason.",
-    recovery: "Click the failed/missing node, repair it, or add a justified skip reason before calling done.",
+    whyItExists:
+      "This is the no-missed-node guarantee: pass, fail, pending, or skipped with reason.",
+    recovery:
+      "Click the failed/missing node, repair it, or add a justified skip reason before calling done.",
   },
 ];
 
 function stateMap(done: string[], extra: Record<string, NodeStatus>) {
-  return Object.fromEntries([...done.map((id) => [id, "done"] as const), ...Object.entries(extra)]);
+  return Object.fromEntries([
+    ...done.map((id) => [id, "done"] as const),
+    ...Object.entries(extra),
+  ]);
 }
 
-const baseDone = ["mode-boundary", "commission", "repo-scan", "adapter", "front-door", "run-start", "intake", "classify", "skill-selector"];
+const baseDone = [
+  "mode-boundary",
+  "commission",
+  "repo-scan",
+  "adapter",
+  "front-door",
+  "run-start",
+  "intake",
+  "classify",
+  "skill-selector",
+];
 
 export const scenarios: Scenario[] = [
   {
@@ -416,45 +554,103 @@ export const scenarios: Scenario[] = [
     label: "Demo: production-readiness merge",
     workType: "feature",
     mode: "Demo",
-    subtitle: "Bundled seed scenario showing SDLC as parent, system design, 13 production layers, cloud skip reason, break-it QA block, and self-heal path.",
+    subtitle:
+      "Bundled seed scenario showing SDLC as parent, system design, 13 production layers, cloud skip reason, break-it QA block, and self-heal path.",
     activeNodeId: "break-it-qa",
-    nodeStates: stateMap([...baseDone, "system-design", "production-readiness", "design-anchors", "implement"], {
-      "code-intelligence": "skipped",
-      "debug-skill": "skipped",
-      "grill-skill": "skipped",
-      "prd-skill": "done",
-      "refactor-skill": "skipped",
-      "cloud-platform": "skipped",
-      "iam-secrets-check": "skipped",
-      "observability-cost-rollback": "skipped",
-      "redzone-gate": "skipped",
-      "qa-plan": "done",
-      "break-it-qa": "blocked",
-      "proof-gate": "pending",
-      "review-gate": "pending",
-      "staging-smoke": "pending",
-      "self-heal": "warning",
-      handoff: "pending",
-      "finish-line": "pending",
-    }),
+    nodeStates: stateMap(
+      [
+        ...baseDone,
+        "system-design",
+        "production-readiness",
+        "design-anchors",
+        "implement",
+      ],
+      {
+        "code-intelligence": "skipped",
+        "debug-skill": "skipped",
+        "grill-skill": "skipped",
+        "prd-skill": "done",
+        "refactor-skill": "skipped",
+        "cloud-platform": "skipped",
+        "iam-secrets-check": "skipped",
+        "observability-cost-rollback": "skipped",
+        "redzone-gate": "skipped",
+        "qa-plan": "done",
+        "break-it-qa": "blocked",
+        "proof-gate": "pending",
+        "review-gate": "pending",
+        "staging-smoke": "pending",
+        "self-heal": "warning",
+        handoff: "pending",
+        "finish-line": "pending",
+      },
+    ),
     reasons: {
-      "code-intelligence": "Skipped because this run changes harness docs/model/UI copy, not code architecture claims. If code-path claims appear, GitNexus/code intelligence reopens.",
+      "code-intelligence":
+        "Skipped because this run changes harness docs/model/UI copy, not code architecture claims. If code-path claims appear, GitNexus/code intelligence reopens.",
       "debug-skill": "Skipped because this is not a reproduced bug.",
-      "grill-skill": "Skipped because requirements were already specified by the operator in conversation.",
-      "refactor-skill": "Skipped because this is product model expansion, not behavior-preserving code movement.",
-      "cloud-platform": "Skipped: no AWS/cloud resource, deploy, IAM, secret, network, or provider setting changed.",
-      "iam-secrets-check": "Skipped: no auth, role, RLS, token, key, or env-var change in this run.",
-      "observability-cost-rollback": "Skipped: no production deployment, runtime, spend, dashboard, or rollback surface changed.",
-      "redzone-gate": "Skipped: docs/UI/model update only; no push/deploy/provider/data mutation inside the run.",
-      "break-it-qa": "Failed: break-it QA artifact is missing. The update must prove UI copy does not imply fake telemetry and docs contain required lane families.",
-      "self-heal": "Needs approval: if this run exposes missing adapter defaults, open a self-heal PR against the harness pack.",
+      "grill-skill":
+        "Skipped because requirements were already specified by the operator in conversation.",
+      "refactor-skill":
+        "Skipped because this is product model expansion, not behavior-preserving code movement.",
+      "cloud-platform":
+        "Skipped: no AWS/cloud resource, deploy, IAM, secret, network, or provider setting changed.",
+      "iam-secrets-check":
+        "Skipped: no auth, role, RLS, token, key, or env-var change in this run.",
+      "observability-cost-rollback":
+        "Skipped: no production deployment, runtime, spend, dashboard, or rollback surface changed.",
+      "redzone-gate":
+        "Skipped: docs/UI/model update only; no push/deploy/provider/data mutation inside the run.",
+      "break-it-qa":
+        "Failed: break-it QA artifact is missing. The update must prove UI copy does not imply fake telemetry and docs contain required lane families.",
+      "self-heal":
+        "Needs approval: if this run exposes missing adapter defaults, open a self-heal PR against the harness pack.",
     },
     events: [
-      { at: "09:00", type: "run.mode_set", nodeId: "mode-boundary", message: "Mode set to Demo: bundled seed scenario, not live telemetry or historical replay.", status: "done", artifact: "run/mode.json" },
-      { at: "09:05", type: "artifact.written", nodeId: "system-design", message: "System design lane captured SDLC-as-parent taxonomy and ADR triggers.", status: "done", artifact: "design/system_design.md" },
-      { at: "09:09", type: "artifact.written", nodeId: "production-readiness", message: "Production Readiness Layer Pack added: frontend through DR/recovery.", status: "done", artifact: "production/layer-assessment.json" },
-      { at: "09:12", type: "node.skipped", nodeId: "cloud-platform", message: "Cloud/platform skipped with reason: no cloud/deploy/IAM/secret/network change.", status: "skipped", artifact: "cloud/skip.json" },
-      { at: "09:31", type: "node.failed", nodeId: "break-it-qa", message: "Break-it QA missing; finish-line cannot pass yet.", status: "blocked", artifact: "qa/break-it-results.md" },
+      {
+        at: "09:00",
+        type: "run.mode_set",
+        nodeId: "mode-boundary",
+        message:
+          "Mode set to Demo: bundled seed scenario, not live telemetry or historical replay.",
+        status: "done",
+        artifact: "run/mode.json",
+      },
+      {
+        at: "09:05",
+        type: "artifact.written",
+        nodeId: "system-design",
+        message:
+          "System design lane captured SDLC-as-parent taxonomy and ADR triggers.",
+        status: "done",
+        artifact: "design/system_design.md",
+      },
+      {
+        at: "09:09",
+        type: "artifact.written",
+        nodeId: "production-readiness",
+        message:
+          "Production Readiness Layer Pack added: frontend through DR/recovery.",
+        status: "done",
+        artifact: "production/layer-assessment.json",
+      },
+      {
+        at: "09:12",
+        type: "node.skipped",
+        nodeId: "cloud-platform",
+        message:
+          "Cloud/platform skipped with reason: no cloud/deploy/IAM/secret/network change.",
+        status: "skipped",
+        artifact: "cloud/skip.json",
+      },
+      {
+        at: "09:31",
+        type: "node.failed",
+        nodeId: "break-it-qa",
+        message: "Break-it QA missing; finish-line cannot pass yet.",
+        status: "blocked",
+        artifact: "qa/break-it-results.md",
+      },
     ],
   },
   {
@@ -462,34 +658,75 @@ export const scenarios: Scenario[] = [
     label: "Cloud/platform: Red Zone approval",
     workType: "cloud",
     mode: "Blueprint",
-    subtitle: "Shows AWS/cloud lane nodes: service map, IAM/secrets, observability/cost/rollback, and approval before mutation.",
+    subtitle:
+      "Shows AWS/cloud lane nodes: service map, IAM/secrets, observability/cost/rollback, and approval before mutation.",
     activeNodeId: "redzone-gate",
-    nodeStates: stateMap([...baseDone, "code-intelligence", "system-design", "production-readiness", "cloud-platform", "iam-secrets-check", "observability-cost-rollback", "design-anchors", "implement"], {
-      "debug-skill": "skipped",
-      "grill-skill": "skipped",
-      "prd-skill": "skipped",
-      "refactor-skill": "skipped",
-      "redzone-gate": "warning",
-      "qa-plan": "pending",
-      "break-it-qa": "pending",
-      "proof-gate": "pending",
-      "review-gate": "pending",
-      "staging-smoke": "pending",
-      "self-heal": "pending",
-      handoff: "pending",
-      "finish-line": "pending",
-    }),
+    nodeStates: stateMap(
+      [
+        ...baseDone,
+        "code-intelligence",
+        "system-design",
+        "production-readiness",
+        "cloud-platform",
+        "iam-secrets-check",
+        "observability-cost-rollback",
+        "design-anchors",
+        "implement",
+      ],
+      {
+        "debug-skill": "skipped",
+        "grill-skill": "skipped",
+        "prd-skill": "skipped",
+        "refactor-skill": "skipped",
+        "redzone-gate": "warning",
+        "qa-plan": "pending",
+        "break-it-qa": "pending",
+        "proof-gate": "pending",
+        "review-gate": "pending",
+        "staging-smoke": "pending",
+        "self-heal": "pending",
+        handoff: "pending",
+        "finish-line": "pending",
+      },
+    ),
     reasons: {
       "debug-skill": "Skipped because no bug symptom is being diagnosed.",
-      "grill-skill": "Skipped because cloud/platform checklist is the governing procedure for this run.",
-      "prd-skill": "Skipped because no product behavior spec is being introduced.",
-      "refactor-skill": "Skipped because no behavior-preserving code movement is in scope.",
-      "redzone-gate": "Needs approval: cloud/provider mutation could affect production, cost, IAM, secrets, or public traffic.",
+      "grill-skill":
+        "Skipped because cloud/platform checklist is the governing procedure for this run.",
+      "prd-skill":
+        "Skipped because no product behavior spec is being introduced.",
+      "refactor-skill":
+        "Skipped because no behavior-preserving code movement is in scope.",
+      "redzone-gate":
+        "Needs approval: cloud/provider mutation could affect production, cost, IAM, secrets, or public traffic.",
     },
     events: [
-      { at: "10:12", type: "artifact.written", nodeId: "cloud-platform", message: "AWS service map written with EC2/S3/Lambda/RDS/VPC/IAM questions.", status: "done", artifact: "cloud/service-map.json" },
-      { at: "10:18", type: "artifact.written", nodeId: "iam-secrets-check", message: "IAM/secrets node checks roles, env vars, OIDC, KMS, and service accounts.", status: "done", artifact: "security/iam-secrets-check.json" },
-      { at: "10:24", type: "approval.requested", nodeId: "redzone-gate", message: "Red Zone approval required before cloud mutation/deploy.", status: "warning", artifact: "approvals/redzone.json" },
+      {
+        at: "10:12",
+        type: "artifact.written",
+        nodeId: "cloud-platform",
+        message:
+          "AWS service map written with EC2/S3/Lambda/RDS/VPC/IAM questions.",
+        status: "done",
+        artifact: "cloud/service-map.json",
+      },
+      {
+        at: "10:18",
+        type: "artifact.written",
+        nodeId: "iam-secrets-check",
+        message:
+          "IAM/secrets node checks roles, env vars, OIDC, KMS, and service accounts.",
+        status: "done",
+        artifact: "security/iam-secrets-check.json",
+      },
+      {
+        at: "10:24",
+        type: "approval.requested",
+        nodeId: "redzone-gate",
+        message: "Red Zone approval required before cloud mutation/deploy.",
+        status: "warning",
+        artifact: "approvals/redzone.json",
+      },
     ],
   },
   {
@@ -497,53 +734,107 @@ export const scenarios: Scenario[] = [
     label: "Docs-only: Blueprint mode",
     workType: "docs",
     mode: "Blueprint",
-    subtitle: "Shows Blueprint mode and skip ledger for a docs-only run with no fake live-state claim.",
+    subtitle:
+      "Shows Blueprint mode and skip ledger for a docs-only run with no fake live-state claim.",
     activeNodeId: "handoff",
-    nodeStates: stateMap([...baseDone, "design-anchors", "implement", "qa-plan", "proof-gate", "review-gate"], {
-      "code-intelligence": "skipped",
-      "system-design": "skipped",
-      "debug-skill": "skipped",
-      "grill-skill": "skipped",
-      "prd-skill": "skipped",
-      "refactor-skill": "skipped",
-      "production-readiness": "skipped",
-      "cloud-platform": "skipped",
-      "iam-secrets-check": "skipped",
-      "observability-cost-rollback": "skipped",
-      "redzone-gate": "skipped",
-      "break-it-qa": "skipped",
-      "staging-smoke": "skipped",
-      "self-heal": "skipped",
-      handoff: "active",
-      "finish-line": "pending",
-    }),
+    nodeStates: stateMap(
+      [
+        ...baseDone,
+        "design-anchors",
+        "implement",
+        "qa-plan",
+        "proof-gate",
+        "review-gate",
+      ],
+      {
+        "code-intelligence": "skipped",
+        "system-design": "skipped",
+        "debug-skill": "skipped",
+        "grill-skill": "skipped",
+        "prd-skill": "skipped",
+        "refactor-skill": "skipped",
+        "production-readiness": "skipped",
+        "cloud-platform": "skipped",
+        "iam-secrets-check": "skipped",
+        "observability-cost-rollback": "skipped",
+        "redzone-gate": "skipped",
+        "break-it-qa": "skipped",
+        "staging-smoke": "skipped",
+        "self-heal": "skipped",
+        handoff: "active",
+        "finish-line": "pending",
+      },
+    ),
     reasons: {
-      "code-intelligence": "Skipped because this docs-only run makes no code-path or architecture claim.",
-      "system-design": "Skipped because no architecture decision or hard-to-reverse design change is being made.",
-      "production-readiness": "Skipped because no runtime/product behavior changes; no production layer is touched.",
-      "cloud-platform": "Skipped because there is no deploy, cloud resource, IAM, secret, network, or provider change.",
-      "iam-secrets-check": "Skipped because no auth, token, key, role, or data boundary changed.",
-      "observability-cost-rollback": "Skipped because no production behavior, telemetry, cost, or rollback surface changed.",
+      "code-intelligence":
+        "Skipped because this docs-only run makes no code-path or architecture claim.",
+      "system-design":
+        "Skipped because no architecture decision or hard-to-reverse design change is being made.",
+      "production-readiness":
+        "Skipped because no runtime/product behavior changes; no production layer is touched.",
+      "cloud-platform":
+        "Skipped because there is no deploy, cloud resource, IAM, secret, network, or provider change.",
+      "iam-secrets-check":
+        "Skipped because no auth, token, key, role, or data boundary changed.",
+      "observability-cost-rollback":
+        "Skipped because no production behavior, telemetry, cost, or rollback surface changed.",
       "redzone-gate": "Skipped because this is local docs work only.",
-      "break-it-qa": "Skipped because no app behavior changed; proof is docs link/readback instead.",
+      "break-it-qa":
+        "Skipped because no app behavior changed; proof is docs link/readback instead.",
       "staging-smoke": "Skipped because no deployed runtime behavior changed.",
-      "self-heal": "Skipped because no harness/process gap was detected in this run.",
-      handoff: "Active: final answer must list skipped nodes and why so the operator can audit the path.",
+      "self-heal":
+        "Skipped because no harness/process gap was detected in this run.",
+      handoff:
+        "Active: final answer must list skipped nodes and why so the operator can audit the path.",
     },
     events: [
-      { at: "15:02", type: "run.mode_set", nodeId: "mode-boundary", message: "Blueprint mode: static topology explanation only.", status: "done", artifact: "run/mode.json" },
-      { at: "15:05", type: "node.skipped", nodeId: "code-intelligence", message: "GitNexus/code-intelligence skipped: no code or architecture claim in scope.", status: "skipped" },
-      { at: "15:17", type: "gate.passed", nodeId: "proof-gate", message: "Docs build/typecheck passed; proof object present.", status: "done", artifact: "proof/proof.json" },
-      { at: "15:19", type: "node.skipped", nodeId: "staging-smoke", message: "Staging smoke skipped: no deployed behavior changed.", status: "skipped", artifact: "smoke/skip.json" },
+      {
+        at: "15:02",
+        type: "run.mode_set",
+        nodeId: "mode-boundary",
+        message: "Blueprint mode: static topology explanation only.",
+        status: "done",
+        artifact: "run/mode.json",
+      },
+      {
+        at: "15:05",
+        type: "node.skipped",
+        nodeId: "code-intelligence",
+        message:
+          "GitNexus/code-intelligence skipped: no code or architecture claim in scope.",
+        status: "skipped",
+      },
+      {
+        at: "15:17",
+        type: "gate.passed",
+        nodeId: "proof-gate",
+        message: "Docs build/typecheck passed; proof object present.",
+        status: "done",
+        artifact: "proof/proof.json",
+      },
+      {
+        at: "15:19",
+        type: "node.skipped",
+        nodeId: "staging-smoke",
+        message: "Staging smoke skipped: no deployed behavior changed.",
+        status: "skipped",
+        artifact: "smoke/skip.json",
+      },
     ],
   },
 ];
 
-export function getScenarioNodeStatus(scenario: Scenario, nodeId: string): NodeStatus {
+export function getScenarioNodeStatus(
+  scenario: Scenario,
+  nodeId: string,
+): NodeStatus {
   return scenario.nodeStates[nodeId] ?? "pending";
 }
 
-export function getScenarioNodeReason(scenario: Scenario, node: HarnessNode): string {
+export function getScenarioNodeReason(
+  scenario: Scenario,
+  node: HarnessNode,
+): string {
   return scenario.reasons[node.id] ?? node.whyItExists;
 }
 

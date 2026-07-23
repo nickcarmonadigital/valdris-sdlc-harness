@@ -7,19 +7,89 @@
   "hashAlgorithm": "SHA-256",
   "copyrightPolicy": "The repository stores hashes and audit metadata, not copies of the supplied PDFs or bulk extracted text.",
   "files": [
-    {"file": "1317.pdf", "pages": 51, "bytes": 9970096, "sha256": "76cb2eb6ce4789380ed45f2dbb9009f92a363bb2b60a16bfd25d71694438b691"},
-    {"file": "Layer-1-Frontend-Foundations-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 84959, "sha256": "90a329c7c9b605a7cc72ebbf7353b4606520811fe96cbc18192c3a408463f132"},
-    {"file": "Layer-2-APIs-Backend-Logic-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 87709, "sha256": "c84f5e5743253a5fa9f95b931b9ad22367fd7757000a8f0e61e5a5a130c94084"},
-    {"file": "Layer-3-Database-Storage-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 86973, "sha256": "f8a4b34df752833982ab0ccd16f21987c32f74321c89fe1ba61539a3b2d4972a"},
-    {"file": "Layer-4-Auth-Permissions-Tier-3-Enterprise-Kit.pdf", "pages": 6, "bytes": 89022, "sha256": "d46f51f4d22671e57d5422df45382036cae09f0ca7e900f9831f0ac00ebd30b5"},
-    {"file": "Layer-5-Hosting-Deployment-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 86972, "sha256": "fc63da69e1cab223286ade599db2f287f8fdf0ad1942c6b67dfab6f4318a3b2b"},
-    {"file": "Layer-6-Cloud-Compute-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 87650, "sha256": "1da0a9e1ab49e7dd19559cc2f92f09ca012195f7a594fc35943442110f3e1957"},
-    {"file": "Layer-7-CI-CD-Version-Control-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 88025, "sha256": "97fdb99584dd9fe38fb83887edf584264278f78504283659589a1143bca2d62e"},
-    {"file": "Layer-8-Security-RLS-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 88499, "sha256": "8f7e3a198a7458718ce3f60d0bb55ace211a45174a7e0275e7bb5b4944f67084"},
-    {"file": "Layer-9-Rate-Limiting-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 87777, "sha256": "6fe54a9ee7e4fa40a95bd6caa93ec513016668698410a041662cac9db4bdf2c8"},
-    {"file": "Layer-10-Caching-CDN-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 89731, "sha256": "e7938e13ea2de7ed697901ef688dfb16ed1c13141701ed0218efbaf173b29c05"},
-    {"file": "Layer-11-Load-Balancing-Scaling-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 87900, "sha256": "25aef9d4628da75ce1831c4893ce0863d1ae24e6e947be065de48143cc941ad2"},
-    {"file": "Layer-12-Error-Tracking-Logs-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 88285, "sha256": "0f030f4e4bbf0ec437ac05f7f1ad11d07c0c26d0321a0c8dc693250429675ce1"},
-    {"file": "Layer-13-Availability-Recovery-Tier-3-Enterprise-Kit.pdf", "pages": 5, "bytes": 88423, "sha256": "79de9db7f50d88e5e36cf2ec6b7d9021da3d61c4a4fbebb6ef30fdeba32845e3"}
+    {
+      "file": "1317.pdf",
+      "pages": 51,
+      "bytes": 9970096,
+      "sha256": "76cb2eb6ce4789380ed45f2dbb9009f92a363bb2b60a16bfd25d71694438b691"
+    },
+    {
+      "file": "Layer-1-Frontend-Foundations-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 84959,
+      "sha256": "90a329c7c9b605a7cc72ebbf7353b4606520811fe96cbc18192c3a408463f132"
+    },
+    {
+      "file": "Layer-2-APIs-Backend-Logic-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 87709,
+      "sha256": "c84f5e5743253a5fa9f95b931b9ad22367fd7757000a8f0e61e5a5a130c94084"
+    },
+    {
+      "file": "Layer-3-Database-Storage-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 86973,
+      "sha256": "f8a4b34df752833982ab0ccd16f21987c32f74321c89fe1ba61539a3b2d4972a"
+    },
+    {
+      "file": "Layer-4-Auth-Permissions-Tier-3-Enterprise-Kit.pdf",
+      "pages": 6,
+      "bytes": 89022,
+      "sha256": "d46f51f4d22671e57d5422df45382036cae09f0ca7e900f9831f0ac00ebd30b5"
+    },
+    {
+      "file": "Layer-5-Hosting-Deployment-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 86972,
+      "sha256": "fc63da69e1cab223286ade599db2f287f8fdf0ad1942c6b67dfab6f4318a3b2b"
+    },
+    {
+      "file": "Layer-6-Cloud-Compute-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 87650,
+      "sha256": "1da0a9e1ab49e7dd19559cc2f92f09ca012195f7a594fc35943442110f3e1957"
+    },
+    {
+      "file": "Layer-7-CI-CD-Version-Control-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 88025,
+      "sha256": "97fdb99584dd9fe38fb83887edf584264278f78504283659589a1143bca2d62e"
+    },
+    {
+      "file": "Layer-8-Security-RLS-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 88499,
+      "sha256": "8f7e3a198a7458718ce3f60d0bb55ace211a45174a7e0275e7bb5b4944f67084"
+    },
+    {
+      "file": "Layer-9-Rate-Limiting-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 87777,
+      "sha256": "6fe54a9ee7e4fa40a95bd6caa93ec513016668698410a041662cac9db4bdf2c8"
+    },
+    {
+      "file": "Layer-10-Caching-CDN-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 89731,
+      "sha256": "e7938e13ea2de7ed697901ef688dfb16ed1c13141701ed0218efbaf173b29c05"
+    },
+    {
+      "file": "Layer-11-Load-Balancing-Scaling-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 87900,
+      "sha256": "25aef9d4628da75ce1831c4893ce0863d1ae24e6e947be065de48143cc941ad2"
+    },
+    {
+      "file": "Layer-12-Error-Tracking-Logs-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 88285,
+      "sha256": "0f030f4e4bbf0ec437ac05f7f1ad11d07c0c26d0321a0c8dc693250429675ce1"
+    },
+    {
+      "file": "Layer-13-Availability-Recovery-Tier-3-Enterprise-Kit.pdf",
+      "pages": 5,
+      "bytes": 88423,
+      "sha256": "79de9db7f50d88e5e36cf2ec6b7d9021da3d61c4a4fbebb6ef30fdeba32845e3"
+    }
   ]
 }

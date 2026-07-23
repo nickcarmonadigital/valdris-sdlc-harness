@@ -17,10 +17,13 @@ Read:
 9. `docs/CLAUDE_CODE_CONNECTOR.md`
 10. `knowledge/playbooks/clean-room-assurance-import.md`
 11. `docs/import/PRIVATE_WORK_HARNESS_IMPORT_DECISION.md`
+12. `docs/V09_AUTHORITATIVE_ASSURANCE.md`
 
 ## Non-negotiable product boundary
 
 Do not turn this into a browser IDE. The product is a commissioning/control-plane layer that connects to Claude Code, Codex, Hermes, and other coding-agent runtimes.
+
+For semantic or authoritative agent work, bind the typed requirement, tools/calls, durable memory heads, conditional model-judge calibration, runtime-driver/implementation, economics, declared interop, dependency-provenance, and trace-v2 artifacts documented in `docs/V09_AUTHORITATIVE_ASSURANCE.md`. Provider runtimes perform implementation; Layer 0 governs their goal, evidence, approvals, and stop conditions. Do not create Layer 14.
 
 ## Build discipline
 
@@ -42,6 +45,8 @@ npm run schema:compat:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:enterprise-ai
+npm run verify:v09-assurance
+npm run verify:run-packet-trust
 npm run verify:work-harness-import
 npm run verify:commissioned-portability
 npm run verify:harness

@@ -13,8 +13,8 @@ The connector runtime is the boundary between Codex/Claude/Hermes-style external
 
 # Related Playbooks
 
-* [Engineering Task Routing](/playbooks/engineering-task-routing.md)
-* [Proof-First Harness](/concepts/proof-first-harness.md)
+- [Engineering Task Routing](/playbooks/engineering-task-routing.md)
+- [Proof-First Harness](/concepts/proof-first-harness.md)
 
 # Credential Boundary
 
@@ -26,8 +26,8 @@ Artifact claims are content-bound runtime state: the bridge seals each claimed S
 
 # Authoritative Repo Files
 
-* `docs/CONNECTOR_EVENT_CONTRACT.md`
-* `docs/CODEX_CONNECTOR.md`
-* `docs/CLAUDE_CODE_CONNECTOR.md`
-* `scripts/uash-emit-event.mjs`
-* `scripts/claude-code-bridge.mjs`
+- `docs/CONNECTOR_EVENT_CONTRACT.md`
+- `docs/CODEX_CONNECTOR.md`
+- `docs/CLAUDE_CODE_CONNECTOR.md`
+- `scripts/uash-emit-event.mjs`
+- `scripts/claude-code-bridge.mjs`

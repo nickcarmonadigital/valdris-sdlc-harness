@@ -113,6 +113,21 @@ jobs:
       - name: Run-packet trust verifier
         run: npm run verify:run-packet-trust
 
+      - name: Semantic and authoritative assurance verifier
+        run: npm run verify:v09-assurance
+
+      - name: Attested executor identity and cleanup verifier
+        run: npm run verify:attested-executor
+
+      - name: Authoritative release/tag gate verifier
+        run: npm run verify:authoritative-release
+
+      - name: Protected pre-tag release workflow verifier
+        run: npm run verify:authoritative-release-workflow
+
+      - name: Current release eligibility gate
+        run: npm run release:gate:authoritative
+
       - name: Commissioned nested-pack portability verifier
         run: npm run verify:commissioned-portability
 
@@ -189,6 +204,18 @@ jobs:
 
       - name: Commissioned nested-pack portability verifier
         run: npm run verify:commissioned-portability
+
+      - name: Semantic and authoritative assurance verifier
+        run: npm run verify:v09-assurance
+
+      - name: Attested executor identity and cleanup verifier
+        run: npm run verify:attested-executor
+
+      - name: Authoritative release/tag gate verifier
+        run: npm run verify:authoritative-release
+
+      - name: Protected pre-tag release workflow verifier
+        run: npm run verify:authoritative-release-workflow
 
       - name: Full harness and generated skill-pack verifier
         run: npm run verify:harness

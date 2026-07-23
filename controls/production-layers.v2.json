@@ -9,13 +9,36 @@
       "dependencies": [],
       "conditionalDependencies": ["backend-api-logic", "auth-permissions-rls"],
       "capabilities": [
-        {"id": "frontend-experience", "title": "User Experience & Accessibility", "description": "Deliver accessible, correct, and resilient user-facing journeys across expected states."},
-        {"id": "frontend-performance", "title": "Frontend Performance", "description": "Keep client behavior within commissioned performance budgets."}
+        {
+          "id": "frontend-experience",
+          "title": "User Experience & Accessibility",
+          "description": "Deliver accessible, correct, and resilient user-facing journeys across expected states."
+        },
+        {
+          "id": "frontend-performance",
+          "title": "Frontend Performance",
+          "description": "Keep client behavior within commissioned performance budgets."
+        }
       ],
       "controls": [
-        {"id": "FE-ACCESSIBILITY-001", "capability": "frontend-experience", "requirement": "Accessibility behavior is tested against the commissioned standard.", "proofPolicy": {"types": ["command"]}},
-        {"id": "FE-BEHAVIOR-001", "capability": "frontend-experience", "requirement": "Critical user journeys and negative states have automated evidence.", "proofPolicy": {"types": ["command"]}},
-        {"id": "FE-PERFORMANCE-001", "capability": "frontend-performance", "requirement": "Client performance is measured against a workload-specific budget.", "proofPolicy": {"types": ["metric"]}}
+        {
+          "id": "FE-ACCESSIBILITY-001",
+          "capability": "frontend-experience",
+          "requirement": "Accessibility behavior is tested against the commissioned standard.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "FE-BEHAVIOR-001",
+          "capability": "frontend-experience",
+          "requirement": "Critical user journeys and negative states have automated evidence.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "FE-PERFORMANCE-001",
+          "capability": "frontend-performance",
+          "requirement": "Client performance is measured against a workload-specific budget.",
+          "proofPolicy": { "types": ["metric"] }
+        }
       ]
     },
     {
@@ -24,14 +47,41 @@
       "dependencies": ["error-tracking-logs-observability"],
       "conditionalDependencies": ["auth-permissions-rls"],
       "capabilities": [
-        {"id": "service-contracts", "title": "Service Contracts", "description": "Keep APIs and events explicit, versioned, and compatible."},
-        {"id": "failure-resilience", "title": "Failure Resilience", "description": "Make dependency, timeout, retry, and idempotency behavior safe and testable."},
-        {"id": "request-observability", "title": "Request Observability", "description": "Preserve correlation and diagnostic context across request boundaries."}
+        {
+          "id": "service-contracts",
+          "title": "Service Contracts",
+          "description": "Keep APIs and events explicit, versioned, and compatible."
+        },
+        {
+          "id": "failure-resilience",
+          "title": "Failure Resilience",
+          "description": "Make dependency, timeout, retry, and idempotency behavior safe and testable."
+        },
+        {
+          "id": "request-observability",
+          "title": "Request Observability",
+          "description": "Preserve correlation and diagnostic context across request boundaries."
+        }
       ],
       "controls": [
-        {"id": "API-CONTRACT-001", "capability": "service-contracts", "requirement": "API and event contracts are versioned and compatibility-tested.", "proofPolicy": {"types": ["command"]}},
-        {"id": "API-FAILURE-001", "capability": "failure-resilience", "requirement": "Timeout, retry, idempotency, and dependency-failure paths are proven.", "proofPolicy": {"types": ["command"]}},
-        {"id": "API-TRACE-001", "capability": "request-observability", "requirement": "Requests carry end-to-end correlation and observable failure context.", "proofPolicy": {"types": ["artifact", "provider-report"]}}
+        {
+          "id": "API-CONTRACT-001",
+          "capability": "service-contracts",
+          "requirement": "API and event contracts are versioned and compatibility-tested.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "API-FAILURE-001",
+          "capability": "failure-resilience",
+          "requirement": "Timeout, retry, idempotency, and dependency-failure paths are proven.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "API-TRACE-001",
+          "capability": "request-observability",
+          "requirement": "Requests carry end-to-end correlation and observable failure context.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        }
       ]
     },
     {
@@ -40,14 +90,41 @@
       "dependencies": ["security"],
       "conditionalDependencies": ["auth-permissions-rls"],
       "capabilities": [
-        {"id": "schema-evolution", "title": "Schema Evolution", "description": "Change schemas and data through reversible, compatibility-aware migrations."},
-        {"id": "data-integrity-governance", "title": "Data Integrity & Governance", "description": "Protect integrity, isolation, retention, and deletion invariants."},
-        {"id": "data-recovery", "title": "Data Recovery", "description": "Restore authoritative data within commissioned recovery objectives."}
+        {
+          "id": "schema-evolution",
+          "title": "Schema Evolution",
+          "description": "Change schemas and data through reversible, compatibility-aware migrations."
+        },
+        {
+          "id": "data-integrity-governance",
+          "title": "Data Integrity & Governance",
+          "description": "Protect integrity, isolation, retention, and deletion invariants."
+        },
+        {
+          "id": "data-recovery",
+          "title": "Data Recovery",
+          "description": "Restore authoritative data within commissioned recovery objectives."
+        }
       ],
       "controls": [
-        {"id": "DATA-MIGRATION-001", "capability": "schema-evolution", "requirement": "Schema and data changes have forward, backward, and rollback evidence.", "proofPolicy": {"types": ["command"]}},
-        {"id": "DATA-INTEGRITY-001", "capability": "data-integrity-governance", "requirement": "Constraints, isolation, retention, and deletion behavior are verified.", "proofPolicy": {"types": ["command"]}},
-        {"id": "DATA-RECOVERY-001", "capability": "data-recovery", "requirement": "Backups are restored and measured against commissioned RPO and RTO.", "proofPolicy": {"types": ["command"]}}
+        {
+          "id": "DATA-MIGRATION-001",
+          "capability": "schema-evolution",
+          "requirement": "Schema and data changes have forward, backward, and rollback evidence.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "DATA-INTEGRITY-001",
+          "capability": "data-integrity-governance",
+          "requirement": "Constraints, isolation, retention, and deletion behavior are verified.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "DATA-RECOVERY-001",
+          "capability": "data-recovery",
+          "requirement": "Backups are restored and measured against commissioned RPO and RTO.",
+          "proofPolicy": { "types": ["command"] }
+        }
       ]
     },
     {
@@ -56,30 +133,87 @@
       "dependencies": ["security"],
       "conditionalDependencies": [],
       "capabilities": [
-        {"id": "authorization-enforcement", "title": "Authorization Enforcement", "description": "Enforce authorization at every protected server-side boundary."},
-        {"id": "tenant-isolation", "title": "Tenant Isolation", "description": "Prevent cross-tenant reads, writes, and side-channel disclosure."},
-        {"id": "identity-lifecycle", "title": "Identity Lifecycle", "description": "Govern sessions, credentials, identities, and deprovisioning end to end."}
+        {
+          "id": "authorization-enforcement",
+          "title": "Authorization Enforcement",
+          "description": "Enforce authorization at every protected server-side boundary."
+        },
+        {
+          "id": "tenant-isolation",
+          "title": "Tenant Isolation",
+          "description": "Prevent cross-tenant reads, writes, and side-channel disclosure."
+        },
+        {
+          "id": "identity-lifecycle",
+          "title": "Identity Lifecycle",
+          "description": "Govern sessions, credentials, identities, and deprovisioning end to end."
+        }
       ],
       "controls": [
-        {"id": "AUTH-AUTHZ-001", "capability": "authorization-enforcement", "requirement": "Every protected operation enforces server-side authorization.", "proofPolicy": {"types": ["command"]}},
-        {"id": "AUTH-TENANT-001", "capability": "tenant-isolation", "requirement": "Cross-tenant read and write attempts fail at every relevant boundary.", "proofPolicy": {"types": ["command"]}},
-        {"id": "AUTH-LIFECYCLE-001", "capability": "identity-lifecycle", "requirement": "Sessions, identities, keys, and deprovisioning have tested lifecycles.", "proofPolicy": {"types": ["command"]}}
+        {
+          "id": "AUTH-AUTHZ-001",
+          "capability": "authorization-enforcement",
+          "requirement": "Every protected operation enforces server-side authorization.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "AUTH-TENANT-001",
+          "capability": "tenant-isolation",
+          "requirement": "Cross-tenant read and write attempts fail at every relevant boundary.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "AUTH-LIFECYCLE-001",
+          "capability": "identity-lifecycle",
+          "requirement": "Sessions, identities, keys, and deprovisioning have tested lifecycles.",
+          "proofPolicy": { "types": ["command"] }
+        }
       ]
     },
     {
       "layer": "hosting-deployment",
       "title": "Hosting & Deployment",
-      "dependencies": ["cicd-version-control", "error-tracking-logs-observability"],
+      "dependencies": [
+        "cicd-version-control",
+        "error-tracking-logs-observability"
+      ],
       "conditionalDependencies": ["cloud-compute", "availability-recovery-dr"],
       "capabilities": [
-        {"id": "deployment-promotion", "title": "Deployment Promotion", "description": "Promote builds through attributable, staged, and approval-aware paths."},
-        {"id": "deployment-health", "title": "Deployment Health", "description": "Measure health and smoke behavior in the target environment."},
-        {"id": "deployment-rollback", "title": "Deployment Rollback", "description": "Restore service safely when explicit rollback triggers fire."}
+        {
+          "id": "deployment-promotion",
+          "title": "Deployment Promotion",
+          "description": "Promote builds through attributable, staged, and approval-aware paths."
+        },
+        {
+          "id": "deployment-health",
+          "title": "Deployment Health",
+          "description": "Measure health and smoke behavior in the target environment."
+        },
+        {
+          "id": "deployment-rollback",
+          "title": "Deployment Rollback",
+          "description": "Restore service safely when explicit rollback triggers fire."
+        }
       ],
       "controls": [
-        {"id": "DEPLOY-PROMOTION-001", "capability": "deployment-promotion", "requirement": "Production promotion is staged, attributable, and approval-aware.", "proofPolicy": {"types": ["artifact", "provider-report"]}},
-        {"id": "DEPLOY-HEALTH-001", "capability": "deployment-health", "requirement": "Deploy health and smoke behavior are measured in the target environment.", "proofPolicy": {"types": ["metric"]}},
-        {"id": "DEPLOY-ROLLBACK-001", "capability": "deployment-rollback", "requirement": "Rollback is tested against explicit triggers and time objectives.", "proofPolicy": {"types": ["command"]}}
+        {
+          "id": "DEPLOY-PROMOTION-001",
+          "capability": "deployment-promotion",
+          "requirement": "Production promotion is staged, attributable, and approval-aware.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        },
+        {
+          "id": "DEPLOY-HEALTH-001",
+          "capability": "deployment-health",
+          "requirement": "Deploy health and smoke behavior are measured in the target environment.",
+          "proofPolicy": { "types": ["metric"] }
+        },
+        {
+          "id": "DEPLOY-ROLLBACK-001",
+          "capability": "deployment-rollback",
+          "requirement": "Rollback is tested against explicit triggers and time objectives.",
+          "proofPolicy": { "types": ["command"] }
+        }
       ]
     },
     {
@@ -88,14 +222,41 @@
       "dependencies": ["security", "error-tracking-logs-observability"],
       "conditionalDependencies": [],
       "capabilities": [
-        {"id": "infrastructure-as-code", "title": "Infrastructure as Code", "description": "Keep cloud topology reproducible, reviewable, and drift-aware."},
-        {"id": "cloud-boundaries", "title": "Cloud Boundaries", "description": "Apply least privilege across IAM, network, region, and secret boundaries."},
-        {"id": "cloud-cost-governance", "title": "Cloud Cost Governance", "description": "Make ownership, budgets, forecasts, and anomaly limits explicit."}
+        {
+          "id": "infrastructure-as-code",
+          "title": "Infrastructure as Code",
+          "description": "Keep cloud topology reproducible, reviewable, and drift-aware."
+        },
+        {
+          "id": "cloud-boundaries",
+          "title": "Cloud Boundaries",
+          "description": "Apply least privilege across IAM, network, region, and secret boundaries."
+        },
+        {
+          "id": "cloud-cost-governance",
+          "title": "Cloud Cost Governance",
+          "description": "Make ownership, budgets, forecasts, and anomaly limits explicit."
+        }
       ],
       "controls": [
-        {"id": "CLOUD-IAC-001", "capability": "infrastructure-as-code", "requirement": "Cloud topology is reviewable, reproducible, and drift-detected.", "proofPolicy": {"types": ["artifact", "provider-report"]}},
-        {"id": "CLOUD-BOUNDARY-001", "capability": "cloud-boundaries", "requirement": "IAM, network, region, and secret boundaries are least-privilege.", "proofPolicy": {"types": ["artifact", "provider-report"]}},
-        {"id": "CLOUD-COST-001", "capability": "cloud-cost-governance", "requirement": "Ownership, budgets, forecasts, and anomaly thresholds are explicit.", "proofPolicy": {"types": ["metric"]}}
+        {
+          "id": "CLOUD-IAC-001",
+          "capability": "infrastructure-as-code",
+          "requirement": "Cloud topology is reviewable, reproducible, and drift-detected.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        },
+        {
+          "id": "CLOUD-BOUNDARY-001",
+          "capability": "cloud-boundaries",
+          "requirement": "IAM, network, region, and secret boundaries are least-privilege.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        },
+        {
+          "id": "CLOUD-COST-001",
+          "capability": "cloud-cost-governance",
+          "requirement": "Ownership, budgets, forecasts, and anomaly thresholds are explicit.",
+          "proofPolicy": { "types": ["metric"] }
+        }
       ]
     },
     {
@@ -104,14 +265,41 @@
       "dependencies": ["security"],
       "conditionalDependencies": [],
       "capabilities": [
-        {"id": "quality-gates", "title": "Quality Gates", "description": "Block unverified changes with attributable checks and governed overrides."},
-        {"id": "software-supply-chain", "title": "Software Supply Chain", "description": "Scan and govern dependencies, source, secrets, and infrastructure inputs."},
-        {"id": "release-provenance", "title": "Release Provenance", "description": "Bind release artifacts to source, build, and approval identity."}
+        {
+          "id": "quality-gates",
+          "title": "Quality Gates",
+          "description": "Block unverified changes with attributable checks and governed overrides."
+        },
+        {
+          "id": "software-supply-chain",
+          "title": "Software Supply Chain",
+          "description": "Scan and govern dependencies, source, secrets, and infrastructure inputs."
+        },
+        {
+          "id": "release-provenance",
+          "title": "Release Provenance",
+          "description": "Bind release artifacts to source, build, and approval identity."
+        }
       ],
       "controls": [
-        {"id": "CI-GATES-001", "capability": "quality-gates", "requirement": "Required checks block unverified changes and overrides are auditable.", "proofPolicy": {"types": ["command"]}},
-        {"id": "CI-SUPPLYCHAIN-001", "capability": "software-supply-chain", "requirement": "Dependencies, secrets, code, and infrastructure are scanned.", "proofPolicy": {"types": ["command"]}},
-        {"id": "CI-PROVENANCE-001", "capability": "release-provenance", "requirement": "Release artifacts are attributable to source, build, and approval identity.", "proofPolicy": {"types": ["artifact", "provider-report"]}}
+        {
+          "id": "CI-GATES-001",
+          "capability": "quality-gates",
+          "requirement": "Required checks block unverified changes and overrides are auditable.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "CI-SUPPLYCHAIN-001",
+          "capability": "software-supply-chain",
+          "requirement": "Dependencies, secrets, code, and infrastructure are scanned.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "CI-PROVENANCE-001",
+          "capability": "release-provenance",
+          "requirement": "Release artifacts are attributable to source, build, and approval identity.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        }
       ]
     },
     {
@@ -120,14 +308,41 @@
       "dependencies": [],
       "conditionalDependencies": [],
       "capabilities": [
-        {"id": "threat-management", "title": "Threat Management", "description": "Maintain current assets, boundaries, threats, and mitigations."},
-        {"id": "secret-management", "title": "Secret Management", "description": "Keep secrets out of source and under governed storage and rotation."},
-        {"id": "vulnerability-management", "title": "Vulnerability Management", "description": "Find, triage, and remediate vulnerabilities within policy."}
+        {
+          "id": "threat-management",
+          "title": "Threat Management",
+          "description": "Maintain current assets, boundaries, threats, and mitigations."
+        },
+        {
+          "id": "secret-management",
+          "title": "Secret Management",
+          "description": "Keep secrets out of source and under governed storage and rotation."
+        },
+        {
+          "id": "vulnerability-management",
+          "title": "Vulnerability Management",
+          "description": "Find, triage, and remediate vulnerabilities within policy."
+        }
       ],
       "controls": [
-        {"id": "SEC-THREAT-001", "capability": "threat-management", "requirement": "Assets, trust boundaries, threats, and mitigations are current.", "proofPolicy": {"types": ["artifact", "provider-report"]}},
-        {"id": "SEC-SECRETS-001", "capability": "secret-management", "requirement": "Secrets are absent from source and use governed storage and rotation.", "proofPolicy": {"types": ["command"]}},
-        {"id": "SEC-VULNERABILITY-001", "capability": "vulnerability-management", "requirement": "Known vulnerabilities are scanned, triaged, and remediated by SLA.", "proofPolicy": {"types": ["command"]}}
+        {
+          "id": "SEC-THREAT-001",
+          "capability": "threat-management",
+          "requirement": "Assets, trust boundaries, threats, and mitigations are current.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        },
+        {
+          "id": "SEC-SECRETS-001",
+          "capability": "secret-management",
+          "requirement": "Secrets are absent from source and use governed storage and rotation.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "SEC-VULNERABILITY-001",
+          "capability": "vulnerability-management",
+          "requirement": "Known vulnerabilities are scanned, triaged, and remediated by SLA.",
+          "proofPolicy": { "types": ["command"] }
+        }
       ]
     },
     {
@@ -136,14 +351,41 @@
       "dependencies": ["error-tracking-logs-observability"],
       "conditionalDependencies": ["backend-api-logic"],
       "capabilities": [
-        {"id": "rate-policy", "title": "Rate Policy", "description": "Define limits by actor, tenant, endpoint, provider, and cost class."},
-        {"id": "overload-resilience", "title": "Overload Resilience", "description": "Prevent retry storms and unsafe overload propagation."},
-        {"id": "usage-metering", "title": "Usage Metering", "description": "Reconcile usage and billing meters to authoritative records."}
+        {
+          "id": "rate-policy",
+          "title": "Rate Policy",
+          "description": "Define limits by actor, tenant, endpoint, provider, and cost class."
+        },
+        {
+          "id": "overload-resilience",
+          "title": "Overload Resilience",
+          "description": "Prevent retry storms and unsafe overload propagation."
+        },
+        {
+          "id": "usage-metering",
+          "title": "Usage Metering",
+          "description": "Reconcile usage and billing meters to authoritative records."
+        }
       ],
       "controls": [
-        {"id": "RATE-POLICY-001", "capability": "rate-policy", "requirement": "Limits are explicit by actor, tenant, endpoint, provider, and cost class.", "proofPolicy": {"types": ["artifact", "provider-report"]}},
-        {"id": "RATE-FAILURE-001", "capability": "overload-resilience", "requirement": "Backoff, circuit breaking, and overload behavior avoid retry storms.", "proofPolicy": {"types": ["command"]}},
-        {"id": "RATE-METERING-001", "capability": "usage-metering", "requirement": "Usage and billing meters reconcile to authoritative records.", "proofPolicy": {"types": ["metric"]}}
+        {
+          "id": "RATE-POLICY-001",
+          "capability": "rate-policy",
+          "requirement": "Limits are explicit by actor, tenant, endpoint, provider, and cost class.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        },
+        {
+          "id": "RATE-FAILURE-001",
+          "capability": "overload-resilience",
+          "requirement": "Backoff, circuit breaking, and overload behavior avoid retry storms.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "RATE-METERING-001",
+          "capability": "usage-metering",
+          "requirement": "Usage and billing meters reconcile to authoritative records.",
+          "proofPolicy": { "types": ["metric"] }
+        }
       ]
     },
     {
@@ -152,14 +394,41 @@
       "dependencies": ["security", "error-tracking-logs-observability"],
       "conditionalDependencies": ["database-storage"],
       "capabilities": [
-        {"id": "cache-key-design", "title": "Cache Key Design", "description": "Include identity, permission, version, and variation boundaries in cache identity."},
-        {"id": "cache-lifecycle", "title": "Cache Lifecycle", "description": "Control freshness, invalidation, purge, and propagation behavior."},
-        {"id": "cache-isolation", "title": "Cache Isolation", "description": "Prevent personal and tenant data from crossing cache boundaries."}
+        {
+          "id": "cache-key-design",
+          "title": "Cache Key Design",
+          "description": "Include identity, permission, version, and variation boundaries in cache identity."
+        },
+        {
+          "id": "cache-lifecycle",
+          "title": "Cache Lifecycle",
+          "description": "Control freshness, invalidation, purge, and propagation behavior."
+        },
+        {
+          "id": "cache-isolation",
+          "title": "Cache Isolation",
+          "description": "Prevent personal and tenant data from crossing cache boundaries."
+        }
       ],
       "controls": [
-        {"id": "CACHE-KEY-001", "capability": "cache-key-design", "requirement": "Cache keys include every identity, permission, version, and variation boundary.", "proofPolicy": {"types": ["command"]}},
-        {"id": "CACHE-INVALIDATION-001", "capability": "cache-lifecycle", "requirement": "Invalidation, freshness, and purge propagation are tested.", "proofPolicy": {"types": ["command"]}},
-        {"id": "CACHE-ISOLATION-001", "capability": "cache-isolation", "requirement": "Personal or tenant data cannot cross cache boundaries.", "proofPolicy": {"types": ["command"]}}
+        {
+          "id": "CACHE-KEY-001",
+          "capability": "cache-key-design",
+          "requirement": "Cache keys include every identity, permission, version, and variation boundary.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "CACHE-INVALIDATION-001",
+          "capability": "cache-lifecycle",
+          "requirement": "Invalidation, freshness, and purge propagation are tested.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "CACHE-ISOLATION-001",
+          "capability": "cache-isolation",
+          "requirement": "Personal or tenant data cannot cross cache boundaries.",
+          "proofPolicy": { "types": ["command"] }
+        }
       ]
     },
     {
@@ -168,14 +437,41 @@
       "dependencies": ["error-tracking-logs-observability"],
       "conditionalDependencies": ["cloud-compute"],
       "capabilities": [
-        {"id": "capacity-planning", "title": "Capacity Planning", "description": "Test capacity and cost against representative workload models."},
-        {"id": "progressive-delivery", "title": "Progressive Delivery", "description": "Limit rollout blast radius with canary, abort, and rollback controls."},
-        {"id": "traffic-failover", "title": "Traffic Failover", "description": "Exercise routing and scaling failures without unsafe propagation."}
+        {
+          "id": "capacity-planning",
+          "title": "Capacity Planning",
+          "description": "Test capacity and cost against representative workload models."
+        },
+        {
+          "id": "progressive-delivery",
+          "title": "Progressive Delivery",
+          "description": "Limit rollout blast radius with canary, abort, and rollback controls."
+        },
+        {
+          "id": "traffic-failover",
+          "title": "Traffic Failover",
+          "description": "Exercise routing and scaling failures without unsafe propagation."
+        }
       ],
       "controls": [
-        {"id": "SCALE-CAPACITY-001", "capability": "capacity-planning", "requirement": "Capacity and cost are tested against representative workload models.", "proofPolicy": {"types": ["metric"]}},
-        {"id": "SCALE-PROGRESSIVE-001", "capability": "progressive-delivery", "requirement": "Canary or progressive delivery has abort and rollback criteria.", "proofPolicy": {"types": ["command"]}},
-        {"id": "SCALE-FAILOVER-001", "capability": "traffic-failover", "requirement": "Routing and scaling failure modes are exercised without unsafe blast radius.", "proofPolicy": {"types": ["command"]}}
+        {
+          "id": "SCALE-CAPACITY-001",
+          "capability": "capacity-planning",
+          "requirement": "Capacity and cost are tested against representative workload models.",
+          "proofPolicy": { "types": ["metric"] }
+        },
+        {
+          "id": "SCALE-PROGRESSIVE-001",
+          "capability": "progressive-delivery",
+          "requirement": "Canary or progressive delivery has abort and rollback criteria.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "SCALE-FAILOVER-001",
+          "capability": "traffic-failover",
+          "requirement": "Routing and scaling failure modes are exercised without unsafe blast radius.",
+          "proofPolicy": { "types": ["command"] }
+        }
       ]
     },
     {
@@ -184,14 +480,41 @@
       "dependencies": ["security"],
       "conditionalDependencies": [],
       "capabilities": [
-        {"id": "telemetry-correlation", "title": "Telemetry Correlation", "description": "Correlate logs, metrics, and traces across critical flows."},
-        {"id": "service-level-management", "title": "Service-Level Management", "description": "Operate owned SLIs, SLOs, alerts, windows, and error budgets."},
-        {"id": "telemetry-data-protection", "title": "Telemetry Data Protection", "description": "Exclude sensitive data while preserving audit integrity."}
+        {
+          "id": "telemetry-correlation",
+          "title": "Telemetry Correlation",
+          "description": "Correlate logs, metrics, and traces across critical flows."
+        },
+        {
+          "id": "service-level-management",
+          "title": "Service-Level Management",
+          "description": "Operate owned SLIs, SLOs, alerts, windows, and error budgets."
+        },
+        {
+          "id": "telemetry-data-protection",
+          "title": "Telemetry Data Protection",
+          "description": "Exclude sensitive data while preserving audit integrity."
+        }
       ],
       "controls": [
-        {"id": "OBS-TELEMETRY-001", "capability": "telemetry-correlation", "requirement": "Critical flows have correlated logs, metrics, and traces.", "proofPolicy": {"types": ["artifact", "provider-report"]}},
-        {"id": "OBS-SLO-001", "capability": "service-level-management", "requirement": "SLIs, SLOs, windows, alerts, and error budgets have named owners.", "proofPolicy": {"types": ["metric"]}},
-        {"id": "OBS-REDACTION-001", "capability": "telemetry-data-protection", "requirement": "Telemetry excludes secrets and sensitive data and preserves audit integrity.", "proofPolicy": {"types": ["artifact", "provider-report"]}}
+        {
+          "id": "OBS-TELEMETRY-001",
+          "capability": "telemetry-correlation",
+          "requirement": "Critical flows have correlated logs, metrics, and traces.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        },
+        {
+          "id": "OBS-SLO-001",
+          "capability": "service-level-management",
+          "requirement": "SLIs, SLOs, windows, alerts, and error budgets have named owners.",
+          "proofPolicy": { "types": ["metric"] }
+        },
+        {
+          "id": "OBS-REDACTION-001",
+          "capability": "telemetry-data-protection",
+          "requirement": "Telemetry excludes secrets and sensitive data and preserves audit integrity.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        }
       ]
     },
     {
@@ -200,14 +523,41 @@
       "dependencies": ["error-tracking-logs-observability"],
       "conditionalDependencies": ["database-storage", "cloud-compute"],
       "capabilities": [
-        {"id": "recovery-objectives", "title": "Recovery Objectives", "description": "Define workload-specific availability, RTO, and RPO targets."},
-        {"id": "recovery-execution", "title": "Recovery Execution", "description": "Exercise restore, rollback, and failover against measured objectives."},
-        {"id": "incident-operations", "title": "Incident Operations", "description": "Test incident roles, communication, evidence, and corrective action."}
+        {
+          "id": "recovery-objectives",
+          "title": "Recovery Objectives",
+          "description": "Define workload-specific availability, RTO, and RPO targets."
+        },
+        {
+          "id": "recovery-execution",
+          "title": "Recovery Execution",
+          "description": "Exercise restore, rollback, and failover against measured objectives."
+        },
+        {
+          "id": "incident-operations",
+          "title": "Incident Operations",
+          "description": "Test incident roles, communication, evidence, and corrective action."
+        }
       ],
       "controls": [
-        {"id": "DR-OBJECTIVES-001", "capability": "recovery-objectives", "requirement": "Availability, RTO, and RPO are workload-specific and windowed.", "proofPolicy": {"types": ["metric"]}},
-        {"id": "DR-RESTORE-001", "capability": "recovery-execution", "requirement": "Restore, rollback, and failover are exercised and measured.", "proofPolicy": {"types": ["command"]}},
-        {"id": "DR-INCIDENT-001", "capability": "incident-operations", "requirement": "Incident roles, communication, evidence, and corrective actions are tested.", "proofPolicy": {"types": ["artifact", "provider-report"]}}
+        {
+          "id": "DR-OBJECTIVES-001",
+          "capability": "recovery-objectives",
+          "requirement": "Availability, RTO, and RPO are workload-specific and windowed.",
+          "proofPolicy": { "types": ["metric"] }
+        },
+        {
+          "id": "DR-RESTORE-001",
+          "capability": "recovery-execution",
+          "requirement": "Restore, rollback, and failover are exercised and measured.",
+          "proofPolicy": { "types": ["command"] }
+        },
+        {
+          "id": "DR-INCIDENT-001",
+          "capability": "incident-operations",
+          "requirement": "Incident roles, communication, evidence, and corrective actions are tested.",
+          "proofPolicy": { "types": ["artifact", "provider-report"] }
+        }
       ]
     }
   ]

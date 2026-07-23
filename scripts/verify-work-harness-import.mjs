@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -215,7 +221,11 @@ for (const verifier of focusedVerifiers) {
 }
 
 const packageJson = readJson("package.json");
-record("release version is 0.8.0", packageJson.version === "0.8.0", `got ${packageJson.version}`);
+record(
+  "release version is 0.9.0-rc.1",
+  packageJson.version === "0.9.0-rc.1",
+  `got ${packageJson.version}`,
+);
 const requiredPackageScripts = [
   "dependency:audit",
   "provenance:gate",
@@ -236,7 +246,12 @@ const requiredPackageScripts = [
   "verify:work-harness-import",
   "verify:clean-room-convergence",
 ];
-for (const name of requiredPackageScripts) record(`package script ${name}`, Boolean(packageJson.scripts?.[name]), "missing package script");
+for (const name of requiredPackageScripts)
+  record(
+    `package script ${name}`,
+    Boolean(packageJson.scripts?.[name]),
+    "missing package script",
+  );
 record(
   "dependency audit package script is pinned",
   packageJson.scripts?.["dependency:audit"] === "npm audit --audit-level=high",
@@ -247,7 +262,11 @@ const workflow = read(".github/workflows/ci.yml");
 const restrictedAttestationWorkflow = read(
   ".github/workflows/restricted-residue-attestation.yml",
 );
-record("CI covers Linux, Windows, and macOS portability", includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]), "missing Linux/Windows/macOS coverage");
+record(
+  "CI covers Linux, Windows, and macOS portability",
+  includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]),
+  "missing Linux/Windows/macOS coverage",
+);
 record(
   "CI uses supported commit-pinned core actions",
   workflowUsesCommissionedActions(workflow, [
@@ -318,10 +337,26 @@ record(
 );
 record(
   "CI runs clean-room gates",
-  includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "privacy:release", "verify:release-privacy", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import", "verify:clean-room-convergence"]),
+  includesEvery(workflow, [
+    "provenance:gate",
+    "neutrality:gate",
+    "privacy:gate",
+    "privacy:release",
+    "verify:release-privacy",
+    "schema:compat:gate",
+    "verify:proof-security",
+    "verify:run-packet-trust",
+    "verify:commissioned-portability",
+    "verify:work-harness-import",
+    "verify:clean-room-convergence",
+  ]),
   "one or more clean-room gates are absent from CI",
 );
-record("CI scans secrets", /gitleaks\/gitleaks-action@/.test(workflow), "gitleaks action is not configured");
+record(
+  "CI scans secrets",
+  /gitleaks\/gitleaks-action@/.test(workflow),
+  "gitleaks action is not configured",
+);
 record(
   "CI rejects high-severity dependency advisories",
   workflowJobRunSteps(workflow, "dependency-audit").includes(
@@ -406,12 +441,27 @@ for (const proofDocument of [
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
 for (const relativePath of requiredControls) {
-  record(`catalog integrity covers ${relativePath}`, catalogGate.includes(relativePath), "new canonical catalog is not integrity locked");
+  record(
+    `catalog integrity covers ${relativePath}`,
+    catalogGate.includes(relativePath),
+    "new canonical catalog is not integrity locked",
+  );
 }
 
 const registry = readJson("skills/registry.json");
-for (const gate of ["provenance", "neutrality", "privacy", "schema-compat", "run-packet", "review"]) {
-  record(`skill registry gate policy ${gate}`, JSON.stringify(registry.gatePolicy ?? {}).includes(gate), "gate is not routed by the skill registry");
+for (const gate of [
+  "provenance",
+  "neutrality",
+  "privacy",
+  "schema-compat",
+  "run-packet",
+  "review",
+]) {
+  record(
+    `skill registry gate policy ${gate}`,
+    JSON.stringify(registry.gatePolicy ?? {}).includes(gate),
+    "gate is not routed by the skill registry",
+  );
 }
 const proofSkill = read("skills/valdris-proof-handoff/SKILL.md");
 record(
@@ -427,13 +477,18 @@ record(
   "knowledge index has no clean-room assurance playbook",
 );
 
-const tempRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-clean-room-import-")));
+const tempRoot = realpathSync(
+  mkdtempSync(path.join(os.tmpdir(), "valdris-clean-room-import-")),
+);
 const generated = path.join(tempRoot, ".valdris-harness");
 try {
   const commission = runNode("scripts/commission-harness.mjs", [
-    "--repo", tempRoot,
-    "--project-name", "Neutral Example",
-    "--out", generated,
+    "--repo",
+    tempRoot,
+    "--project-name",
+    "Neutral Example",
+    "--out",
+    generated,
     "--yes",
   ]);
   record(
@@ -443,26 +498,65 @@ try {
   );
   if (commission.status === 0) {
     for (const scriptName of requiredScripts) {
-      record(`commissioned script ${scriptName}`, existsSync(path.join(generated, "scripts", scriptName)), "script not copied into commissioned pack");
+      record(
+        `commissioned script ${scriptName}`,
+        existsSync(path.join(generated, "scripts", scriptName)),
+        "script not copied into commissioned pack",
+      );
     }
     for (const relativePath of requiredControls) {
-      record(`commissioned control ${relativePath}`, existsSync(path.join(generated, relativePath)), "control not copied into commissioned pack");
+      record(
+        `commissioned control ${relativePath}`,
+        existsSync(path.join(generated, relativePath)),
+        "control not copied into commissioned pack",
+      );
     }
-    const generatedPackage = JSON.parse(readFileSync(path.join(generated, "package.json"), "utf8"));
-    for (const name of ["provenance:gate", "neutrality:gate", "privacy:gate", "restricted-residue:gate", "skills:retire-local", "schema:compat:gate", "run:packet:gate"]) {
-      record(`commissioned package script ${name}`, Boolean(generatedPackage.scripts?.[name]), "generated pack omits gate script");
+    const generatedPackage = JSON.parse(
+      readFileSync(path.join(generated, "package.json"), "utf8"),
+    );
+    for (const name of [
+      "provenance:gate",
+      "neutrality:gate",
+      "privacy:gate",
+      "restricted-residue:gate",
+      "skills:retire-local",
+      "schema:compat:gate",
+      "run:packet:gate",
+    ]) {
+      record(
+        `commissioned package script ${name}`,
+        Boolean(generatedPackage.scripts?.[name]),
+        "generated pack omits gate script",
+      );
     }
-    const generatedWorkflow = readFileSync(path.join(generated, ".github", "workflows", "valdris-assurance.yml"), "utf8");
+    const generatedWorkflow = readFileSync(
+      path.join(generated, ".github", "workflows", "valdris-assurance.yml"),
+      "utf8",
+    );
     record(
       "commissioned workflow runs clean-room gates",
-      includesEvery(generatedWorkflow, ["provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs"]),
+      includesEvery(generatedWorkflow, [
+        "provenance-gate.mjs",
+        "neutrality-gate.mjs",
+        "privacy-gate.mjs",
+        "schema-compat-gate.mjs",
+      ]),
       "generated CI omits clean-room gates",
     );
-    for (const gate of ["provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs"]) {
-      const result = spawnSync(process.execPath, [path.join(generated, "scripts", gate), "--repo", generated], {
-        cwd: generated,
-        encoding: "utf8",
-      });
+    for (const gate of [
+      "provenance-gate.mjs",
+      "neutrality-gate.mjs",
+      "privacy-gate.mjs",
+      "schema-compat-gate.mjs",
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        [path.join(generated, "scripts", gate), "--repo", generated],
+        {
+          cwd: generated,
+          encoding: "utf8",
+        },
+      );
       record(
         `commissioned ${gate} passes`,
         result.status === 0,

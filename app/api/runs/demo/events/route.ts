@@ -6,7 +6,13 @@ import { demoRunEvents, type RunEvent } from "../../../../../lib/run-events";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const eventFile = path.join(process.cwd(), "data", "runs", "demo", "events.jsonl");
+const eventFile = path.join(
+  process.cwd(),
+  "data",
+  "runs",
+  "demo",
+  "events.jsonl",
+);
 
 async function readLocalEvents(): Promise<RunEvent[]> {
   try {

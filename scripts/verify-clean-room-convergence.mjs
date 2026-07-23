@@ -111,7 +111,9 @@ function runGit(repo, args) {
   return result.stdout.trim();
 }
 
-const tempRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-convergence-")));
+const tempRoot = realpathSync(
+  mkdtempSync(path.join(os.tmpdir(), "valdris-convergence-")),
+);
 try {
   const catalog = JSON.parse(
     readFileSync(

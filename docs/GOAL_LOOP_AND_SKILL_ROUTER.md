@@ -6,16 +6,16 @@ Valdris turns a request into a durable goal, routes it through one primary workf
 
 The selectable catalog is intentionally small:
 
-| Primary skill | Use it for |
-|---|---|
-| `valdris-intake-route` | Ambiguous requests, initial audits, greenfield classification. |
-| `valdris-bug-rca` | Bugs, regressions, performance failures, incident diagnosis. |
-| `valdris-feature-delivery` | Features, integrations, and vertical full-stack delivery. |
-| `valdris-architecture-refactor` | Architecture, migrations, refactors, and technical debt. |
-| `valdris-security-audit` | Auth, permissions, privacy, security, and compliance reviews. |
-| `valdris-platform-release` | Cloud, CI/CD, deploy, SLO, rollback, backup, failover, incidents. |
-| `valdris-genai-assurance` | Models, prompts, agents, RAG, embeddings, tools, memory, evals. |
-| `valdris-proof-handoff` | Final verification, release readiness, and evidence-backed handoff. |
+| Primary skill                   | Use it for                                                          |
+| ------------------------------- | ------------------------------------------------------------------- |
+| `valdris-intake-route`          | Ambiguous requests, initial audits, greenfield classification.      |
+| `valdris-bug-rca`               | Bugs, regressions, performance failures, incident diagnosis.        |
+| `valdris-feature-delivery`      | Features, integrations, and vertical full-stack delivery.           |
+| `valdris-architecture-refactor` | Architecture, migrations, refactors, and technical debt.            |
+| `valdris-security-audit`        | Auth, permissions, privacy, security, and compliance reviews.       |
+| `valdris-platform-release`      | Cloud, CI/CD, deploy, SLO, rollback, backup, failover, incidents.   |
+| `valdris-genai-assurance`       | Models, prompts, agents, RAG, embeddings, tools, memory, evals.     |
+| `valdris-proof-handoff`         | Final verification, release readiness, and evidence-backed handoff. |
 
 Select exactly one primary skill. Add no more than four supporting skills, and only when their risk domain is present. The registry is machine-validated with `npm run skills:gate`.
 

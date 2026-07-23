@@ -6,13 +6,13 @@ A raw diagram with every file would turn into spaghetti. These maps keep the rep
 
 ## How to read the maps
 
-| Term | Meaning |
-|---|---|
-| **Lane** | Type of work routed through the harness: bug, feature, cloud, security, incident, QA, etc. |
-| **Stage** | Step inside the work: intake, route, design, implement, prove, handoff. |
-| **Gate** | Blocking verification check: proof, Red Zone, smoke, finish-line, self-heal. |
-| **Layer** | Production-readiness dimension: frontend, backend, DB, auth, cloud, observability, recovery, etc. |
-| **Artifact** | Evidence file proving the stage/gate happened. |
+| Term         | Meaning                                                                                           |
+| ------------ | ------------------------------------------------------------------------------------------------- |
+| **Lane**     | Type of work routed through the harness: bug, feature, cloud, security, incident, QA, etc.        |
+| **Stage**    | Step inside the work: intake, route, design, implement, prove, handoff.                           |
+| **Gate**     | Blocking verification check: proof, Red Zone, smoke, finish-line, self-heal.                      |
+| **Layer**    | Production-readiness dimension: frontend, backend, DB, auth, cloud, observability, recovery, etc. |
+| **Artifact** | Evidence file proving the stage/gate happened.                                                    |
 
 > Mode note: these are **Blueprint** diagrams. A real **Live Run** requires connector events from Claude Code, Codex, Hermes, MCP/API/CLI emitters, or watched artifacts.
 

@@ -7,10 +7,25 @@
     "maxSupporting": 4,
     "policy": "Select one primary skill per phase and the smallest supporting set. Classification and foundation are gates, not selectable skills. Ask for confirmation only when ambiguity changes scope, authority, architecture, or proof.",
     "phaseTransitions": ["intake-route", "delivery", "proof-handoff"],
-    "tieBreakOrder": ["explicit user outcome", "highest consequential risk", "artifact being changed", "narrowest matching primaryFor", "intake when scope remains ambiguous"]
+    "tieBreakOrder": [
+      "explicit user outcome",
+      "highest consequential risk",
+      "artifact being changed",
+      "narrowest matching primaryFor",
+      "intake when scope remains ambiguous"
+    ]
   },
   "gatePolicy": {
-    "always": ["goal", "skill-registry", "context", "provenance", "neutrality", "privacy", "schema-compat", "proof"],
+    "always": [
+      "goal",
+      "skill-registry",
+      "context",
+      "provenance",
+      "neutrality",
+      "privacy",
+      "schema-compat",
+      "proof"
+    ],
     "provenance": "The universal pack may copy only allowlisted public upstream material with an integrity-locked manifest. Restricted work-harness inputs contribute behavioral requirements only.",
     "neutrality": "Canonical assets and generated packs must remain project-neutral. Company, product, people, provider, branch, account, customer, incident, and private topology facts belong only in commissioned project adapters.",
     "privacy": "Before handoff, scan canonical and generated artifacts for private paths, identifiers, credentials, customer data, live incident material, and restricted-source residue.",
@@ -25,7 +40,8 @@
     "eval": "Required for AI/probabilistic behavior and any commissioned regression or quality threshold; otherwise record non-applicability in the route.",
     "trajectory": "Required for multi-checkpoint or agentic execution.",
     "smoke": "Required for deployed, provider, platform-native, or runtime behavior; otherwise record non-applicability.",
-    "run-packet": "Every completion claim must produce valdris.run-packet.v2 binding intake, route, goal, proof, the valdris.review.v2 role provenance, and any applicable RCA artifacts into one coherent immutable run packet.",
+    "run-packet": "Every new completion claim must produce valdris.run-packet.v3 binding intake, route, goal, assurance level, packet-commit catalog bytes, accepted pre-closure gate set, proof, valdris.review.v2 provenance, and applicable RCA and semantic/authoritative artifacts. Non-HEAD and v2 packets receive integrity-only structural inspection; full revalidation requires an isolated exact-commit checkout.",
+    "authoritative-assurance": "Semantic and authoritative claims derive tiers and applicability from immutable routing; require typed requirement-to-acceptance traceability, separate signed readiness and later implementation-start events, plan-bound eval/trajectory/smoke evidence, conditional calibrated model judges, tier-capable semantic adapters, typed tool/call receipts, durable memory heads, runtime-driver and implementation receipts, reconciled economics, complete declared MCP/A2A transcripts, dependency provenance, exact context enforcement, signed runtime conformance, full AI identity, Git-reconstructed review, and signed applicable promotion or learning receipts. Authoritative claims additionally require operator-pinned, field-complete model-routing, trajectory-bound trace, usage, memory-head, implementation-execution, proof-input-bound immutable-executor, and rollback-resistant bridge-head receipts.",
     "review": "Every completion requires an Ed25519-attested independent review artifact using valdris.review.v2 with exactly scout, implementer, verifier, and independentReviewer. The actorId, sessionId, and executionId values are each pairwise distinct across all four roles; an authorized independent reviewer from the committed project trust store signs the frozen evidence bundle and complete role roster.",
     "rca": "Bug, regression, incident, and self-heal work requires a typed root-cause artifact that binds reproduction, causal evidence, fix, and regression proof.",
     "domain-packs": "Activate commissioned domain catalogs such as mobile-iOS, multiplayer-realtime, commerce, or youth-safety."
@@ -35,9 +51,18 @@
       "name": "valdris-intake-route",
       "path": "skills/valdris-intake-route/SKILL.md",
       "primaryFor": ["intake", "ambiguous", "audit", "greenfield"],
-      "triggers": ["new issue", "new task", "classify", "route", "what workflow"],
+      "triggers": [
+        "new issue",
+        "new task",
+        "classify",
+        "route",
+        "what workflow"
+      ],
       "requiredGates": ["goal", "skill-registry", "classification"],
-      "conditionalGates": ["code-intelligence, foundation, and production for every non-docs audit or routed delivery request", "controlled assurance docs require the lightweight Foundation review path"],
+      "conditionalGates": [
+        "code-intelligence, foundation, and production for every non-docs audit or routed delivery request",
+        "controlled assurance docs require the lightweight Foundation review path"
+      ],
       "redZoneTriggers": []
     },
     {
@@ -45,60 +70,223 @@
       "path": "skills/valdris-bug-rca/SKILL.md",
       "primaryFor": ["bug", "regression", "performance", "incident-diagnosis"],
       "triggers": ["broken", "failing", "regression", "root cause", "why is"],
-      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
-      "conditionalGates": ["smoke when runtime behavior is claimed", "ai-assurance and eval when AI is involved"],
-      "redZoneTriggers": ["production-data-access", "production-telemetry-containing-customer-data", "incident-containment", "charge", "refund", "void", "financial-reconciliation", "payment-provider-configuration", "customer-communication"]
+      "requiredGates": [
+        "classification",
+        "foundation",
+        "code-intelligence",
+        "production",
+        "proof"
+      ],
+      "conditionalGates": [
+        "smoke when runtime behavior is claimed",
+        "ai-assurance and eval when AI is involved"
+      ],
+      "redZoneTriggers": [
+        "production-data-access",
+        "production-telemetry-containing-customer-data",
+        "incident-containment",
+        "charge",
+        "refund",
+        "void",
+        "financial-reconciliation",
+        "payment-provider-configuration",
+        "customer-communication"
+      ]
     },
     {
       "name": "valdris-feature-delivery",
       "path": "skills/valdris-feature-delivery/SKILL.md",
       "primaryFor": ["feature", "integration", "full-stack"],
       "triggers": ["build", "add", "implement", "feature", "integration"],
-      "requiredGates": ["goal", "classification", "foundation", "code-intelligence", "production", "proof"],
+      "requiredGates": [
+        "goal",
+        "classification",
+        "foundation",
+        "code-intelligence",
+        "production",
+        "proof"
+      ],
       "redZoneTriggers": ["production-deploy", "customer-data", "billing"]
     },
     {
       "name": "valdris-architecture-refactor",
       "path": "skills/valdris-architecture-refactor/SKILL.md",
       "primaryFor": ["architecture", "refactor", "migration", "technical-debt"],
-      "triggers": ["architecture", "redesign", "refactor", "migrate", "module boundaries"],
-      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
+      "triggers": [
+        "architecture",
+        "redesign",
+        "refactor",
+        "migrate",
+        "module boundaries"
+      ],
+      "requiredGates": [
+        "classification",
+        "foundation",
+        "code-intelligence",
+        "production",
+        "proof"
+      ],
       "redZoneTriggers": ["breaking-contract", "production-migration"]
     },
     {
       "name": "valdris-security-audit",
       "path": "skills/valdris-security-audit/SKILL.md",
-      "primaryFor": ["security", "privacy", "auth", "permissions", "compliance"],
-      "triggers": ["security", "vulnerability", "auth", "RLS", "tenant", "secret", "prompt injection"],
-      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
+      "primaryFor": [
+        "security",
+        "privacy",
+        "auth",
+        "permissions",
+        "compliance"
+      ],
+      "triggers": [
+        "security",
+        "vulnerability",
+        "auth",
+        "RLS",
+        "tenant",
+        "secret",
+        "prompt injection"
+      ],
+      "requiredGates": [
+        "classification",
+        "foundation",
+        "code-intelligence",
+        "production",
+        "proof"
+      ],
       "conditionalGates": ["ai-assurance and eval when AI is involved"],
-      "redZoneTriggers": ["iam", "rls", "credential-rotation", "destructive-security-test", "customer-data"]
+      "redZoneTriggers": [
+        "iam",
+        "rls",
+        "credential-rotation",
+        "destructive-security-test",
+        "customer-data"
+      ]
     },
     {
       "name": "valdris-platform-release",
       "path": "skills/valdris-platform-release/SKILL.md",
-      "primaryFor": ["cloud", "deployment", "release", "reliability", "incident"],
-      "triggers": ["deploy", "cloud", "CI", "rollback", "backup", "failover", "SLO", "incident"],
-      "requiredGates": ["classification", "foundation", "code-intelligence", "production", "proof"],
-      "conditionalGates": ["smoke for deployed, provider-integration, platform-native, or runtime behavior", "domain pack for platform-native distribution or specialized runtime"],
-      "redZoneTriggers": ["production-deploy", "testflight-upload", "app-store-promotion", "dns", "traffic", "secrets", "cloud-resource", "failover", "chaos", "charge", "refund", "void", "financial-reconciliation", "payment-provider-configuration", "customer-communication"]
+      "primaryFor": [
+        "cloud",
+        "deployment",
+        "release",
+        "reliability",
+        "incident"
+      ],
+      "triggers": [
+        "deploy",
+        "cloud",
+        "CI",
+        "rollback",
+        "backup",
+        "failover",
+        "SLO",
+        "incident"
+      ],
+      "requiredGates": [
+        "classification",
+        "foundation",
+        "code-intelligence",
+        "production",
+        "proof"
+      ],
+      "conditionalGates": [
+        "smoke for deployed, provider-integration, platform-native, or runtime behavior",
+        "domain pack for platform-native distribution or specialized runtime"
+      ],
+      "redZoneTriggers": [
+        "production-deploy",
+        "testflight-upload",
+        "app-store-promotion",
+        "dns",
+        "traffic",
+        "secrets",
+        "cloud-resource",
+        "failover",
+        "chaos",
+        "charge",
+        "refund",
+        "void",
+        "financial-reconciliation",
+        "payment-provider-configuration",
+        "customer-communication"
+      ]
     },
     {
       "name": "valdris-genai-assurance",
       "path": "skills/valdris-genai-assurance/SKILL.md",
       "primaryFor": ["ai-product", "agent", "rag", "model", "prompt", "eval"],
-      "triggers": ["AI", "LLM", "agent", "RAG", "model", "prompt", "embedding", "eval"],
-      "requiredGates": ["classification", "foundation", "code-intelligence", "ai-assurance", "eval", "trajectory", "production", "proof"],
-      "conditionalGates": ["RAG, tool, and memory controls only when each feature is active", "youth-safety domain pack for child or teen audiences"],
-      "redZoneTriggers": ["consequential-tool", "model-provider-change", "sensitive-ai-data", "production-agent-promotion"]
+      "triggers": [
+        "AI",
+        "LLM",
+        "agent",
+        "RAG",
+        "model",
+        "prompt",
+        "embedding",
+        "eval"
+      ],
+      "requiredGates": [
+        "classification",
+        "foundation",
+        "code-intelligence",
+        "ai-assurance",
+        "eval",
+        "trajectory",
+        "production",
+        "proof"
+      ],
+      "conditionalGates": [
+        "RAG, tool, and memory controls only when each feature is active",
+        "model-judge calibration only when an evaluator is a model",
+        "typed runtime driver, tool calls, memory heads, economics, and MCP/A2A transcripts when those capabilities are active",
+        "youth-safety domain pack for child or teen audiences"
+      ],
+      "redZoneTriggers": [
+        "consequential-tool",
+        "model-provider-change",
+        "sensitive-ai-data",
+        "production-agent-promotion"
+      ]
     },
     {
       "name": "valdris-proof-handoff",
       "path": "skills/valdris-proof-handoff/SKILL.md",
       "primaryFor": ["review", "finish", "handoff", "release-readiness"],
-      "triggers": ["done", "verify", "review", "handoff", "release ready", "close issue"],
-      "requiredGates": ["goal", "context", "skill-registry", "provenance", "neutrality", "privacy", "schema-compat", "run-packet", "review", "proof"],
-      "conditionalGates": ["classification when required by the route", "code-intelligence for every non-docs route", "foundation when required by workload classification or route", "production for production impact", "ai-assurance and eval for AI impact", "trajectory for multi-checkpoint or agentic execution", "smoke for deployed, provider-integration, platform-native, or runtime claims", "commissioned domain packs", "rca for bug, regression, incident, or self-heal routes", "restricted-residue for clean-room convergence or migration when an external restricted-values manifest is commissioned"],
+      "triggers": [
+        "done",
+        "verify",
+        "review",
+        "handoff",
+        "release ready",
+        "close issue"
+      ],
+      "requiredGates": [
+        "goal",
+        "context",
+        "skill-registry",
+        "provenance",
+        "neutrality",
+        "privacy",
+        "schema-compat",
+        "run-packet",
+        "review",
+        "proof"
+      ],
+      "conditionalGates": [
+        "classification when required by the route",
+        "code-intelligence for every non-docs route",
+        "foundation when required by workload classification or route",
+        "production for production impact",
+        "ai-assurance and eval for AI impact",
+        "trajectory for multi-checkpoint or agentic execution",
+        "smoke for deployed, provider-integration, platform-native, or runtime claims",
+        "authoritative-assurance for semantic or authoritative claims",
+        "requirements, runtime driver, dependency provenance, economics, interop, and trace-v2 operating contracts when applicable",
+        "commissioned domain packs",
+        "rca for bug, regression, incident, or self-heal routes",
+        "restricted-residue for clean-room convergence or migration when an external restricted-values manifest is commissioned"
+      ],
       "redZoneTriggers": ["approval-override", "accept-residual-risk"]
     }
   ]

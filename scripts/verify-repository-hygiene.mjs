@@ -53,6 +53,18 @@ try {
   assertRepositoryFormatting(fixture);
 
   writeFileSync(
+    path.join(fixture, "untracked.mjs"),
+    "export const untracked={formatted:false};\n",
+    "utf8",
+  );
+  rejects(
+    () => assertRepositoryFormatting(fixture),
+    "unformatted untracked source was accepted",
+  );
+  assertRepositoryFormatting(fixture, { write: true });
+  assertRepositoryFormatting(fixture);
+
+  writeFileSync(
     path.join(fixture, "proof.txt"),
     "trailing whitespace   \n",
     "utf8",
@@ -113,5 +125,5 @@ try {
 }
 
 console.log(
-  JSON.stringify({ ok: true, gate: "repository-hygiene", cases: 9 }, null, 2),
+  JSON.stringify({ ok: true, gate: "repository-hygiene", cases: 10 }, null, 2),
 );

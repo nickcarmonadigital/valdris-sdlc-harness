@@ -19,7 +19,8 @@ export const demoHarnessSteps: HarnessStep[] = [
   {
     id: "orient",
     label: "Orient",
-    description: "Source-of-truth, branch model, GitNexus freshness, lane route.",
+    description:
+      "Source-of-truth, branch model, GitNexus freshness, lane route.",
     artifact: "run/orient.json",
     state: "complete",
   },
@@ -40,14 +41,16 @@ export const demoHarnessSteps: HarnessStep[] = [
   {
     id: "implement",
     label: "Implement",
-    description: "Connector launches Claude Code/Codex/Hermes in an isolated worktree.",
+    description:
+      "Connector launches Claude Code/Codex/Hermes in an isolated worktree.",
     artifact: "session/events.jsonl",
     state: "queued",
   },
   {
     id: "prove",
     label: "Prove",
-    description: "Required gate files must exist before the run can be called done.",
+    description:
+      "Required gate files must exist before the run can be called done.",
     artifact: "proof/proof.json",
     state: "blocked",
   },

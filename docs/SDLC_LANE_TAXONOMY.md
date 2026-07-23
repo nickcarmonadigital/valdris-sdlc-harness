@@ -132,12 +132,12 @@ If the process failed, write `self_heal/self_heal_report.md` and open or propose
 
 ## Terminology calibration
 
-| Term | Meaning |
-|---|---|
-| SDLC | Full lifecycle backbone for engineering work |
-| System design | Requirements, constraints, tradeoffs, scale, data, failure, security |
-| Architecture | Current/proposed structure of the system |
-| Production architecture | How the system actually runs and survives in live/cloud environments |
-| Platform engineering | Infra, CI/CD, secrets, reliability, observability, cost, and developer platform work |
+| Term                        | Meaning                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| SDLC                        | Full lifecycle backbone for engineering work                                         |
+| System design               | Requirements, constraints, tradeoffs, scale, data, failure, security                 |
+| Architecture                | Current/proposed structure of the system                                             |
+| Production architecture     | How the system actually runs and survives in live/cloud environments                 |
+| Platform engineering        | Infra, CI/CD, secrets, reliability, observability, cost, and developer platform work |
 | Production readiness layers | Checklist of frontend/backend/data/auth/cloud/ops/recovery surfaces touched by a run |
-| Harness self-healing | A process gap creates a scoped artifact/PR to improve the harness itself |
+| Harness self-healing        | A process gap creates a scoped artifact/PR to improve the harness itself             |

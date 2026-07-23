@@ -62,6 +62,8 @@ Keep universal:
 - OKF-style agent knowledge vault
 - provenance, neutrality, privacy, and schema-compatibility gates
 - Git/worktree- and application-source-bound portable proof, same-command/pre-post/path-bound RCA, Ed25519-attested full-evidence review, and native-validator-bound run-packet contracts
+- structural/semantic/authoritative claim separation, pre-implementation readiness, AI/runtime identity, external authority receipts, and run-packet v3 catalog snapshots
+- typed requirement traceability, registered tool/call evidence, durable memory heads, conditional model-judge calibration, runtime-driver/implementation receipts, reconciled economics, dependency provenance, complete declared MCP/A2A transcripts, and trace-v2 trajectory/decision binding
 
 Move into generated adapters:
 
@@ -96,6 +98,8 @@ npm run schema:compat:gate
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:enterprise-ai
+npm run verify:v09-assurance
+npm run verify:run-packet-trust
 npm run verify:work-harness-import
 npm run verify:clean-room-convergence
 npm run verify:commissioned-portability
@@ -107,6 +111,8 @@ npm run worktree:check
 ```
 
 The commissioned-portability verifier creates a temporary Git target, generates and commits `.valdris-harness`, retains an iOS-like binary product asset outside the clean-room scope, and executes the generated route, proof, signed-review, and run-packet path.
+
+New packets use `valdris.run-packet.v3`. Semantic and authoritative claims must pass `authoritative-assurance-gate.mjs`; genuine packets emitted by the pinned pre-v3 runtime remain structural evidence only. The default authority trust store is empty, so the harness cannot certify itself. Never tag `v0.9.0` without a real commissioned provider-backed authoritative run.
 
 ## Answer style
 

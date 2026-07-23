@@ -170,13 +170,9 @@
     "foundationCatalog": "controls/foundation-layer.v1.json",
     "productionCatalog": "controls/production-layers.v2.json",
     "aiCatalog": "controls/genai-assurance.v1.json",
-    "domainCatalogs": [
-      "controls/domain-packs/saas.v1.json"
-    ],
+    "domainCatalogs": ["controls/domain-packs/saas.v1.json"],
     "executionPolicy": "controls/assurance-execution-policy.v1.json",
-    "capabilityPacks": [
-      "controls/capability-packs/async-workflows.v1.json"
-    ]
+    "capabilityPacks": ["controls/capability-packs/async-workflows.v1.json"]
   },
   "domainMapping": [
     {
@@ -338,131 +334,88 @@
   "mappings": [
     {
       "sourceControlId": "L01.FRONTEND.STATES.001",
-      "targetControlIds": [
-        "FE-BEHAVIOR-001"
-      ],
+      "targetControlIds": ["FE-BEHAVIOR-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L01.ACCESSIBILITY.BASELINE.001",
-      "targetControlIds": [
-        "FE-ACCESSIBILITY-001"
-      ],
+      "targetControlIds": ["FE-ACCESSIBILITY-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L01.PERFORMANCE.BUDGET.001",
-      "targetControlIds": [
-        "FE-PERFORMANCE-001"
-      ],
+      "targetControlIds": ["FE-PERFORMANCE-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L02.API.CONTRACT.001",
-      "targetControlIds": [
-        "API-CONTRACT-001"
-      ],
+      "targetControlIds": ["API-CONTRACT-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L02.LOGIC.INVARIANTS.001",
-      "targetControlIds": [
-        "FND-DOMAIN-001",
-        "API-FAILURE-001"
-      ],
+      "targetControlIds": ["FND-DOMAIN-001", "API-FAILURE-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L02.ASYNC.IDEMPOTENCY.001",
-      "targetControlIds": [
-        "API-FAILURE-001",
-        "DATA-INTEGRITY-001"
-      ],
+      "targetControlIds": ["API-FAILURE-001", "DATA-INTEGRITY-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L03.DATA.INTEGRITY.001",
-      "targetControlIds": [
-        "DATA-INTEGRITY-001"
-      ],
+      "targetControlIds": ["DATA-INTEGRITY-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L03.DATA.MIGRATION.001",
-      "targetControlIds": [
-        "DATA-MIGRATION-001"
-      ],
+      "targetControlIds": ["DATA-MIGRATION-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L03.DATA.LIFECYCLE.001",
-      "targetControlIds": [
-        "FND-DATA-001",
-        "DATA-INTEGRITY-001"
-      ],
+      "targetControlIds": ["FND-DATA-001", "DATA-INTEGRITY-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L04.AUTHN.SESSION.001",
-      "targetControlIds": [
-        "AUTH-AUTHZ-001",
-        "AUTH-LIFECYCLE-001"
-      ],
+      "targetControlIds": ["AUTH-AUTHZ-001", "AUTH-LIFECYCLE-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L04.AUTHZ.NEGATIVE.001",
-      "targetControlIds": [
-        "AUTH-AUTHZ-001",
-        "AUTH-TENANT-001"
-      ],
+      "targetControlIds": ["AUTH-AUTHZ-001", "AUTH-TENANT-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L04.IDENTITY.SERVICE.001",
-      "targetControlIds": [
-        "AUTH-LIFECYCLE-001",
-        "CLOUD-BOUNDARY-001"
-      ],
+      "targetControlIds": ["AUTH-LIFECYCLE-001", "CLOUD-BOUNDARY-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L05.DEPLOY.TOPOLOGY.001",
-      "targetControlIds": [
-        "DEPLOY-PROMOTION-001",
-        "CLOUD-IAC-001"
-      ],
+      "targetControlIds": ["DEPLOY-PROMOTION-001", "CLOUD-IAC-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L05.DEPLOY.HEALTH.001",
-      "targetControlIds": [
-        "DEPLOY-HEALTH-001"
-      ],
+      "targetControlIds": ["DEPLOY-HEALTH-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L05.DEPLOY.ROLLBACK.001",
-      "targetControlIds": [
-        "DEPLOY-ROLLBACK-001",
-        "DR-RESTORE-001"
-      ],
+      "targetControlIds": ["DEPLOY-ROLLBACK-001", "DR-RESTORE-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L06.COMPUTE.PROCESS.001",
-      "targetControlIds": [
-        "CLOUD-IAC-001"
-      ],
+      "targetControlIds": ["CLOUD-IAC-001"],
       "relationship": "contributes-to",
       "targetExtension": "The UASH target additionally governs reproducibility and drift detection beyond process inventory."
     },
     {
       "sourceControlId": "L06.COMPUTE.RESOURCE.001",
-      "targetControlIds": [
-        "CLOUD-COST-001",
-        "SCALE-CAPACITY-001"
-      ],
+      "targetControlIds": ["CLOUD-COST-001", "SCALE-CAPACITY-001"],
       "relationship": "distributed"
     },
     {
@@ -476,47 +429,32 @@
     },
     {
       "sourceControlId": "L07.CI.REQUIRED.001",
-      "targetControlIds": [
-        "CI-GATES-001"
-      ],
+      "targetControlIds": ["CI-GATES-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L07.QUALITY.STRATEGY.001",
-      "targetControlIds": [
-        "FND-TEST-001",
-        "CI-GATES-001"
-      ],
+      "targetControlIds": ["FND-TEST-001", "CI-GATES-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L07.ARTIFACT.PROVENANCE.001",
-      "targetControlIds": [
-        "CI-PROVENANCE-001"
-      ],
+      "targetControlIds": ["CI-PROVENANCE-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L08.SECURITY.THREAT.001",
-      "targetControlIds": [
-        "SEC-THREAT-001"
-      ],
+      "targetControlIds": ["SEC-THREAT-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L08.SECURITY.SECRETS.001",
-      "targetControlIds": [
-        "SEC-SECRETS-001",
-        "CI-SUPPLYCHAIN-001"
-      ],
+      "targetControlIds": ["SEC-SECRETS-001", "CI-SUPPLYCHAIN-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L08.SECURITY.DEPENDENCIES.001",
-      "targetControlIds": [
-        "SEC-VULNERABILITY-001",
-        "CI-SUPPLYCHAIN-001"
-      ],
+      "targetControlIds": ["SEC-VULNERABILITY-001", "CI-SUPPLYCHAIN-001"],
       "relationship": "distributed"
     },
     {
@@ -530,16 +468,12 @@
     },
     {
       "sourceControlId": "L09.LIMIT.REQUEST.001",
-      "targetControlIds": [
-        "RATE-POLICY-001"
-      ],
+      "targetControlIds": ["RATE-POLICY-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L09.LIMIT.BACKPRESSURE.001",
-      "targetControlIds": [
-        "RATE-FAILURE-001"
-      ],
+      "targetControlIds": ["RATE-FAILURE-001"],
       "relationship": "equivalent"
     },
     {
@@ -553,86 +487,58 @@
     },
     {
       "sourceControlId": "L10.CACHE.POLICY.001",
-      "targetControlIds": [
-        "CACHE-KEY-001"
-      ],
+      "targetControlIds": ["CACHE-KEY-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L10.CACHE.INVALIDATION.001",
-      "targetControlIds": [
-        "CACHE-INVALIDATION-001"
-      ],
+      "targetControlIds": ["CACHE-INVALIDATION-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L10.CACHE.ISOLATION.001",
-      "targetControlIds": [
-        "CACHE-ISOLATION-001"
-      ],
+      "targetControlIds": ["CACHE-ISOLATION-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L11.SCALE.CAPACITY.001",
-      "targetControlIds": [
-        "SCALE-CAPACITY-001"
-      ],
+      "targetControlIds": ["SCALE-CAPACITY-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "L11.SCALE.AUTOSCALING.001",
-      "targetControlIds": [
-        "SCALE-PROGRESSIVE-001",
-        "SCALE-FAILOVER-001"
-      ],
+      "targetControlIds": ["SCALE-PROGRESSIVE-001", "SCALE-FAILOVER-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L11.SCALE.DEPENDENCY.001",
-      "targetControlIds": [
-        "SCALE-FAILOVER-001",
-        "RATE-FAILURE-001"
-      ],
+      "targetControlIds": ["SCALE-FAILOVER-001", "RATE-FAILURE-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L12.OBS.LOGS.001",
-      "targetControlIds": [
-        "OBS-TELEMETRY-001",
-        "OBS-REDACTION-001"
-      ],
+      "targetControlIds": ["OBS-TELEMETRY-001", "OBS-REDACTION-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L12.OBS.ALERTS.001",
-      "targetControlIds": [
-        "OBS-SLO-001"
-      ],
+      "targetControlIds": ["OBS-SLO-001"],
       "relationship": "contributes-to",
       "targetExtension": "The UASH target additionally governs service indicators, objectives, windows, error budgets, and ownership."
     },
     {
       "sourceControlId": "L12.OBS.SLO.001",
-      "targetControlIds": [
-        "OBS-SLO-001",
-        "DR-OBJECTIVES-001"
-      ],
+      "targetControlIds": ["OBS-SLO-001", "DR-OBJECTIVES-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L12.OBS.TRACES.001",
-      "targetControlIds": [
-        "API-TRACE-001",
-        "OBS-TELEMETRY-001"
-      ],
+      "targetControlIds": ["API-TRACE-001", "OBS-TELEMETRY-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L13.RECOVERY.MONITORING.001",
-      "targetControlIds": [
-        "DEPLOY-HEALTH-001",
-        "DR-OBJECTIVES-001"
-      ],
+      "targetControlIds": ["DEPLOY-HEALTH-001", "DR-OBJECTIVES-001"],
       "relationship": "distributed"
     },
     {
@@ -646,159 +552,109 @@
     },
     {
       "sourceControlId": "L13.RECOVERY.RESTORE.001",
-      "targetControlIds": [
-        "DATA-RECOVERY-001",
-        "DR-RESTORE-001"
-      ],
+      "targetControlIds": ["DATA-RECOVERY-001", "DR-RESTORE-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "L13.RECOVERY.INCIDENT.001",
-      "targetControlIds": [
-        "DR-INCIDENT-001"
-      ],
+      "targetControlIds": ["DR-INCIDENT-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "AI.CONTEXT.BOUNDARY.001",
-      "targetControlIds": [
-        "FND-BOUNDARY-001",
-        "AI-INVENTORY-001"
-      ],
+      "targetControlIds": ["FND-BOUNDARY-001", "AI-INVENTORY-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "AI.EVAL.REGRESSION.001",
-      "targetControlIds": [
-        "AI-EVAL-001"
-      ],
+      "targetControlIds": ["AI-EVAL-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "AI.TOOLS.AUTHZ.001",
-      "targetControlIds": [
-        "AI-TOOLS-001"
-      ],
+      "targetControlIds": ["AI-TOOLS-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "AI.RAG.GROUNDING.001",
-      "targetControlIds": [
-        "AI-RAG-001"
-      ],
+      "targetControlIds": ["AI-RAG-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "AI.SECURITY.INJECTION.001",
-      "targetControlIds": [
-        "AI-SAFETY-001"
-      ],
+      "targetControlIds": ["AI-SAFETY-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "AI.BUDGET.USAGE.001",
-      "targetControlIds": [
-        "AI-COST-001",
-        "AI-OBS-001"
-      ],
+      "targetControlIds": ["AI-COST-001", "AI-OBS-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "AI.RECOVERY.PROVIDER.001",
-      "targetControlIds": [
-        "AI-LIFECYCLE-001"
-      ],
+      "targetControlIds": ["AI-LIFECYCLE-001"],
       "relationship": "contributes-to",
       "targetExtension": "The UASH target additionally governs regression evaluation, canaries, rollback, and incident response across AI changes."
     },
     {
       "sourceControlId": "SAAS.UI.DASHBOARD.001",
-      "targetControlIds": [
-        "FE-BEHAVIOR-001",
-        "SAAS-TENANT-001"
-      ],
+      "targetControlIds": ["FE-BEHAVIOR-001", "SAAS-TENANT-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "SAAS.API.WEBHOOK.001",
-      "targetControlIds": [
-        "API-FAILURE-001",
-        "SAAS-AUDIT-001"
-      ],
+      "targetControlIds": ["API-FAILURE-001", "SAAS-AUDIT-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "SAAS.DATA.TENANCY.001",
-      "targetControlIds": [
-        "AUTH-TENANT-001",
-        "SAAS-TENANT-001"
-      ],
+      "targetControlIds": ["AUTH-TENANT-001", "SAAS-TENANT-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "SAAS.AUTH.TEAMS.001",
-      "targetControlIds": [
-        "SAAS-ROLES-001"
-      ],
+      "targetControlIds": ["SAAS-ROLES-001"],
       "relationship": "equivalent"
     },
     {
       "sourceControlId": "SAAS.DEPLOY.TENANT.001",
-      "targetControlIds": [
-        "SAAS-LIFECYCLE-001"
-      ],
+      "targetControlIds": ["SAAS-LIFECYCLE-001"],
       "relationship": "contributes-to",
       "targetExtension": "The UASH target additionally governs provisioning, onboarding, suspension, export, retention, deletion, restoration, and offboarding."
     },
     {
       "sourceControlId": "SAAS.USAGE.METERING.001",
-      "targetControlIds": [
-        "SAAS-ENTITLEMENTS-001",
-        "SAAS-METERING-001"
-      ],
+      "targetControlIds": ["SAAS-ENTITLEMENTS-001", "SAAS-METERING-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "SAAS.OBS.TENANT.001",
-      "targetControlIds": [
-        "OBS-TELEMETRY-001",
-        "SAAS-AUDIT-001"
-      ],
+      "targetControlIds": ["OBS-TELEMETRY-001", "SAAS-AUDIT-001"],
       "relationship": "distributed"
     },
     {
       "sourceControlId": "CAP.ASYNC.STATE.001",
-      "targetControlIds": [
-        "ASYNC-STATE-001"
-      ],
+      "targetControlIds": ["ASYNC-STATE-001"],
       "relationship": "capability-overlay"
     },
     {
       "sourceControlId": "CAP.ASYNC.HANDOFF.001",
-      "targetControlIds": [
-        "ASYNC-HANDOFF-001"
-      ],
+      "targetControlIds": ["ASYNC-HANDOFF-001"],
       "relationship": "capability-overlay"
     },
     {
       "sourceControlId": "CAP.ASYNC.REPLAY.001",
-      "targetControlIds": [
-        "ASYNC-REPLAY-001"
-      ],
+      "targetControlIds": ["ASYNC-REPLAY-001"],
       "relationship": "capability-overlay"
     },
     {
       "sourceControlId": "CAP.ASYNC.OBSERVABILITY.001",
-      "targetControlIds": [
-        "ASYNC-OBSERVABILITY-001"
-      ],
+      "targetControlIds": ["ASYNC-OBSERVABILITY-001"],
       "relationship": "capability-overlay"
     },
     {
       "sourceControlId": "CAP.ASYNC.VERSIONING.001",
-      "targetControlIds": [
-        "ASYNC-VERSIONING-001"
-      ],
+      "targetControlIds": ["ASYNC-VERSIONING-001"],
       "relationship": "capability-overlay"
     }
   ]

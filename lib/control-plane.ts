@@ -1,8 +1,18 @@
 export type AgentRuntime = "claude-code" | "codex" | "hermes";
-export type RunStatus = "queued" | "running" | "blocked" | "approval" | "complete";
+export type RunStatus =
+  "queued" | "running" | "blocked" | "approval" | "complete";
 export type RiskLevel = "low" | "medium" | "red-zone";
 export type RunMode = "blueprint" | "live" | "replay" | "demo";
-export type EventSource = "static-blueprint" | "browser-local" | "bridge" | "mcp" | "api" | "watched-artifact" | "local-jsonl" | "database" | "run-packet";
+export type EventSource =
+  | "static-blueprint"
+  | "browser-local"
+  | "bridge"
+  | "mcp"
+  | "api"
+  | "watched-artifact"
+  | "local-jsonl"
+  | "database"
+  | "run-packet";
 
 export type AppEventType =
   | "run.created"
@@ -22,8 +32,16 @@ export type AppEventType =
   | "self_heal.pr_opened"
   | "self_heal.pr_proposed";
 
-export type AppEventStatus = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval" | "passed";
-export type NodeTerminalState = "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
+export type AppEventStatus =
+  | "ok"
+  | "warn"
+  | "blocked"
+  | "skipped"
+  | "failed"
+  | "needs_approval"
+  | "passed";
+export type NodeTerminalState =
+  "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
 
 export type AppEvent = {
   id: string;
@@ -70,7 +88,12 @@ export type RunArtifact = {
       passedLayers?: number;
       skippedLayers?: number;
       blockingLayers?: string[];
-      layers?: Array<{ layer: string; status: string; reason?: string; evidence?: string }>;
+      layers?: Array<{
+        layer: string;
+        status: string;
+        reason?: string;
+        evidence?: string;
+      }>;
       problems?: string[];
     };
   };
@@ -127,7 +150,10 @@ export const productionLayers = [
   { id: "rate-limiting", label: "Rate Limiting" },
   { id: "caching-cdn", label: "Caching/CDN" },
   { id: "load-balancing-scaling", label: "Load Balancing/Scaling" },
-  { id: "error-tracking-logs-observability", label: "Error Tracking/Logs/Observability" },
+  {
+    id: "error-tracking-logs-observability",
+    label: "Error Tracking/Logs/Observability",
+  },
   { id: "availability-recovery-dr", label: "Availability/Recovery/DR" },
 ] as const;
 
@@ -136,7 +162,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "intake",
     label: "Intake",
     lane: "trigger",
-    description: "Capture ask, repo, runtime, risk, environment, and work type.",
+    description:
+      "Capture ask, repo, runtime, risk, environment, and work type.",
     requiredArtifact: "run/intake.json",
     x: 4,
     y: 8,
@@ -145,7 +172,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "route",
     label: "Route",
     lane: "harness",
-    description: "Choose lane family, source of truth, gate set, and run packet.",
+    description:
+      "Choose lane family, source of truth, gate set, and run packet.",
     requiredArtifact: "run/route.json",
     x: 18,
     y: 8,
@@ -154,7 +182,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "code-intelligence",
     label: "GitNexus",
     lane: "graph",
-    description: "Build or refresh GitNexus-backed code intelligence before codebase, architecture, refactor, or debugging claims.",
+    description:
+      "Build or refresh GitNexus-backed code intelligence before codebase, architecture, refactor, or debugging claims.",
     requiredArtifact: "graph/graph.json",
     x: 32,
     y: 8,
@@ -163,7 +192,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "design-anchors",
     label: "Code Anchors",
     lane: "graph",
-    description: "Pin current code files/symbols and blast radius so the agent reasons from real repo structure.",
+    description:
+      "Pin current code files/symbols and blast radius so the agent reasons from real repo structure.",
     requiredArtifact: "design/anchors.json",
     x: 46,
     y: 8,
@@ -172,7 +202,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "system-design",
     label: "System Design",
     lane: "design",
-    description: "Capture requirements, constraints, API/data/failure tradeoffs, and ADR needs.",
+    description:
+      "Capture requirements, constraints, API/data/failure tradeoffs, and ADR needs.",
     requiredArtifact: "design/system_design.md",
     x: 60,
     y: 8,
@@ -181,7 +212,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "production-readiness",
     label: "Production Layers",
     lane: "production",
-    description: "Classify the 13 production-readiness layers as required or skipped with reasons.",
+    description:
+      "Classify the 13 production-readiness layers as required or skipped with reasons.",
     requiredArtifact: "production/layer-assessment.json",
     x: 76,
     y: 8,
@@ -190,7 +222,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "cloud-platform",
     label: "Cloud / Platform",
     lane: "platform",
-    description: "Service map, IAM/secrets, networking, IaC/deploy, observability, cost, rollback.",
+    description:
+      "Service map, IAM/secrets, networking, IaC/deploy, observability, cost, rollback.",
     requiredArtifact: "cloud/service-map.json",
     x: 76,
     y: 43,
@@ -199,7 +232,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "implement",
     label: "Implement",
     lane: "runtime",
-    description: "Claude Code/Codex/Hermes works in its own runtime while emitting events.",
+    description:
+      "Claude Code/Codex/Hermes works in its own runtime while emitting events.",
     requiredArtifact: "session/events.jsonl",
     x: 60,
     y: 43,
@@ -208,7 +242,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "redzone",
     label: "Red Zone",
     lane: "control",
-    description: "Pause for high-risk deploy, provider, auth, data, billing, or destructive actions.",
+    description:
+      "Pause for high-risk deploy, provider, auth, data, billing, or destructive actions.",
     requiredArtifact: "approvals/redzone.json",
     x: 46,
     y: 43,
@@ -217,7 +252,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "qa-break-it",
     label: "Break-it QA",
     lane: "qa",
-    description: "Try edge cases, malformed input, auth boundaries, provider failures, concurrency.",
+    description:
+      "Try edge cases, malformed input, auth boundaries, provider failures, concurrency.",
     requiredArtifact: "qa/break-it-results.md",
     x: 32,
     y: 43,
@@ -226,7 +262,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "prove",
     label: "Proof Gate",
     lane: "validation",
-    description: "Run validation commands and attach proof before done can pass.",
+    description:
+      "Run validation commands and attach proof before done can pass.",
     requiredArtifact: "proof/proof.json",
     x: 18,
     y: 43,
@@ -235,7 +272,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "live-smoke",
     label: "Live Smoke",
     lane: "release",
-    description: "Prove changed route/API/job/provider/voice path in target environment when required.",
+    description:
+      "Prove changed route/API/job/provider/voice path in target environment when required.",
     requiredArtifact: "smoke/smoke_proof.json",
     x: 4,
     y: 43,
@@ -244,7 +282,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "self-heal",
     label: "Self-Heal",
     lane: "learn",
-    description: "If the harness/process failed, create a self-heal artifact and PR path.",
+    description:
+      "If the harness/process failed, create a self-heal artifact and PR path.",
     requiredArtifact: "self_heal/self_heal_report.md",
     x: 4,
     y: 70,
@@ -253,7 +292,8 @@ export const workflowNodes: WorkflowNode[] = [
     id: "handoff",
     label: "Handoff",
     lane: "ship",
-    description: "Answer Contract, evidence packet, skipped nodes, risks, and next decision.",
+    description:
+      "Answer Contract, evidence packet, skipped nodes, risks, and next decision.",
     requiredArtifact: "handoff/final.md",
     x: 22,
     y: 70,
@@ -313,7 +353,10 @@ export const demoRuns: AppRun[] = [
         "session/events.jsonl",
       ].includes(artifact.path),
       skipped: artifact.path === "cloud/service-map.json",
-      skipReason: artifact.path === "cloud/service-map.json" ? "No cloud resource, secret, IAM, network, deploy, or provider setting changed in this docs/model run." : undefined,
+      skipReason:
+        artifact.path === "cloud/service-map.json"
+          ? "No cloud resource, secret, IAM, network, deploy, or provider setting changed in this docs/model run."
+          : undefined,
     })),
     events: [
       {
@@ -335,7 +378,8 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "route",
         artifact: "run/route.json",
-        message: "Mode is Demo: bundled seed data, not live telemetry or historical replay.",
+        message:
+          "Mode is Demo: bundled seed data, not live telemetry or historical replay.",
         status: "ok",
         runMode: "demo",
         eventSource: "browser-local",
@@ -347,7 +391,8 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "code-intelligence",
         artifact: "graph/graph.json",
-        message: "GitNexus/code-intelligence scan pinned current repo topology before SDLC model changes.",
+        message:
+          "GitNexus/code-intelligence scan pinned current repo topology before SDLC model changes.",
         status: "ok",
       },
       {
@@ -357,7 +402,8 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "design-anchors",
         artifact: "design/anchors.json",
-        message: "Code anchors captured the files/symbols used for design and blast-radius claims.",
+        message:
+          "Code anchors captured the files/symbols used for design and blast-radius claims.",
         status: "ok",
       },
       {
@@ -367,7 +413,8 @@ export const demoRuns: AppRun[] = [
         actor: "claude-code",
         nodeId: "system-design",
         artifact: "design/system_design.md",
-        message: "System design lane captured SDLC-as-parent taxonomy and ADR trigger rules.",
+        message:
+          "System design lane captured SDLC-as-parent taxonomy and ADR trigger rules.",
         status: "ok",
       },
       {
@@ -377,7 +424,8 @@ export const demoRuns: AppRun[] = [
         actor: "claude-code",
         nodeId: "production-readiness",
         artifact: "production/layer-assessment.json",
-        message: "Production Readiness Layer Pack classified frontend/backend/data/auth/cloud/ops/recovery surfaces.",
+        message:
+          "Production Readiness Layer Pack classified frontend/backend/data/auth/cloud/ops/recovery surfaces.",
         status: "ok",
       },
       {
@@ -389,7 +437,8 @@ export const demoRuns: AppRun[] = [
         artifact: "cloud/skip.json",
         message: "Cloud/platform node skipped with explicit reason.",
         status: "skipped",
-        skipReason: "No deploy, cloud resource, secret, IAM, network, or provider setting changed.",
+        skipReason:
+          "No deploy, cloud resource, secret, IAM, network, or provider setting changed.",
         nodeState: "skipped",
       },
       {
@@ -401,8 +450,10 @@ export const demoRuns: AppRun[] = [
         artifact: "qa/break-it-results.md",
         message: "Break-it QA artifact missing; finish-line remains blocked.",
         status: "failed",
-        failureReason: "qa/break-it-results.md has not been written for the update run.",
-        recoveryPath: "Run break-it checklist against docs/UI copy, attach results, then rerun finish-line.",
+        failureReason:
+          "qa/break-it-results.md has not been written for the update run.",
+        recoveryPath:
+          "Run break-it checklist against docs/UI copy, attach results, then rerun finish-line.",
         nodeState: "failed",
       },
     ],
@@ -425,7 +476,16 @@ export const demoRuns: AppRun[] = [
     approvals: [],
     artifacts: baseArtifacts.map((artifact) => ({
       ...artifact,
-      present: ["run/intake.json", "run/route.json", "graph/graph.json", "design/anchors.json", "design/system_design.md", "production/layer-assessment.json", "cloud/service-map.json", "session/events.jsonl"].includes(artifact.path),
+      present: [
+        "run/intake.json",
+        "run/route.json",
+        "graph/graph.json",
+        "design/anchors.json",
+        "design/system_design.md",
+        "production/layer-assessment.json",
+        "cloud/service-map.json",
+        "session/events.jsonl",
+      ].includes(artifact.path),
     })),
     events: [
       {
@@ -447,7 +507,8 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "code-intelligence",
         artifact: "graph/graph.json",
-        message: "GitNexus/code-intelligence scan required before cloud/platform architecture claims.",
+        message:
+          "GitNexus/code-intelligence scan required before cloud/platform architecture claims.",
         status: "ok",
       },
       {
@@ -457,7 +518,8 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "design-anchors",
         artifact: "design/anchors.json",
-        message: "Anchors pin cloud/platform files and blast-radius assumptions before approval.",
+        message:
+          "Anchors pin cloud/platform files and blast-radius assumptions before approval.",
         status: "ok",
       },
       {
@@ -467,7 +529,8 @@ export const demoRuns: AppRun[] = [
         actor: "codex",
         nodeId: "cloud-platform",
         artifact: "cloud/service-map.json",
-        message: "AWS service map node lists IAM/secrets, networking, deploy, observability, cost, and rollback checks.",
+        message:
+          "AWS service map node lists IAM/secrets, networking, deploy, observability, cost, and rollback checks.",
         status: "ok",
       },
       {
@@ -477,7 +540,8 @@ export const demoRuns: AppRun[] = [
         actor: "harness",
         nodeId: "redzone",
         artifact: "approvals/redzone.json",
-        message: "Red Zone approval required before production deploy or cloud mutation.",
+        message:
+          "Red Zone approval required before production deploy or cloud mutation.",
         status: "needs_approval",
         approvalOwner: "primary human/operator",
         approvalScope: "cloud resource mutation / deploy",
@@ -497,7 +561,10 @@ export function nextNodeId(currentNodeId: string): string | undefined {
 }
 
 export function artifactForNode(nodeId: string): string {
-  return workflowNodes.find((node) => node.id === nodeId)?.requiredArtifact ?? "run/unknown.json";
+  return (
+    workflowNodes.find((node) => node.id === nodeId)?.requiredArtifact ??
+    "run/unknown.json"
+  );
 }
 
 export function nodeIdForArtifact(path: string): string | undefined {
@@ -505,34 +572,64 @@ export function nodeIdForArtifact(path: string): string | undefined {
 }
 
 export function labelForAgent(agent: AgentRuntime): string {
-  return agent === "claude-code" ? "Claude Code" : agent === "codex" ? "Codex" : "Hermes";
+  return agent === "claude-code"
+    ? "Claude Code"
+    : agent === "codex"
+      ? "Codex"
+      : "Hermes";
 }
 
 export function hasGrantedApproval(run: AppRun, scope: string): boolean {
   return run.approvals.some((approval) =>
-    typeof approval === "string" ? approval === scope : approval.scope === scope && approval.status === "granted",
+    typeof approval === "string"
+      ? approval === scope
+      : approval.scope === scope && approval.status === "granted",
   );
 }
 
-export function addGrantedApproval(run: AppRun, scope: string, owner = "human"): Array<string | ApprovalRecord> {
+export function addGrantedApproval(
+  run: AppRun,
+  scope: string,
+  owner = "human",
+): Array<string | ApprovalRecord> {
   if (hasGrantedApproval(run, scope)) return run.approvals;
-  return [...run.approvals, { scope, owner, status: "granted", updatedAt: new Date().toISOString() }];
+  return [
+    ...run.approvals,
+    { scope, owner, status: "granted", updatedAt: new Date().toISOString() },
+  ];
 }
 
-export function computeNodeState(run: AppRun, nodeId: string): "waiting" | "active" | "passed" | "blocked" | "approval" | "skipped" | "failed" {
+export function computeNodeState(
+  run: AppRun,
+  nodeId: string,
+):
+  | "waiting"
+  | "active"
+  | "passed"
+  | "blocked"
+  | "approval"
+  | "skipped"
+  | "failed" {
   const artifact = artifactForNode(nodeId);
-  const item = run.artifacts.find((artifactItem) => artifactItem.path === artifact);
+  const item = run.artifacts.find(
+    (artifactItem) => artifactItem.path === artifact,
+  );
   if (item?.failed) return "failed";
   if (item?.skipped) return "skipped";
-  if (run.currentNodeId === nodeId && run.status === "blocked") return "blocked";
-  if (run.currentNodeId === nodeId && run.status === "approval") return "approval";
-  if (run.currentNodeId === nodeId && run.status !== "complete") return "active";
+  if (run.currentNodeId === nodeId && run.status === "blocked")
+    return "blocked";
+  if (run.currentNodeId === nodeId && run.status === "approval")
+    return "approval";
+  if (run.currentNodeId === nodeId && run.status !== "complete")
+    return "active";
   if (item?.present) return "passed";
   return "waiting";
 }
 
 export function missingArtifacts(run: AppRun): RunArtifact[] {
-  return run.artifacts.filter((artifact) => artifact.required && !artifact.present && !artifact.skipped);
+  return run.artifacts.filter(
+    (artifact) => artifact.required && !artifact.present && !artifact.skipped,
+  );
 }
 
 export function createEvent(
@@ -547,7 +644,10 @@ export function createEvent(
   return {
     id: `${run.id}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
     type,
-    at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    at: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
     actor: extra.actor ?? run.agent,
     nodeId,
     artifact,

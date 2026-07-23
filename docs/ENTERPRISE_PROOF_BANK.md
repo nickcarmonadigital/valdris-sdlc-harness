@@ -8,19 +8,19 @@ This document turns the PDF / test-day pattern into a durable Valdris rule: ever
 
 ## Proof dimensions
 
-| Dimension | What good looks like | Typical artifact |
-|---|---|---|
-| Functional correctness | Acceptance criteria are exercised end-to-end, including negative paths. | `proof/proof.json`, test output, screenshots/logs |
-| Scale / concurrency | Capacity model or load test matches the user/product bar. | `proof/load.json`, `performance/capacity.md` |
-| Reliability / recovery | Retries, rollback, backup/restore, queues/DLQs, and recovery owner are clear. | `reliability/recovery.md`, `rollback/plan.md` |
-| Security | AuthN/authZ, secrets, tenant/data boundaries, dependency risk, and Red Zone actions are checked. | `security/review.md`, `approvals/redzone.json` |
-| Data integrity | Migrations, schema changes, consistency, rollback, and corruption risks are covered. | `data/migration-proof.md`, `data/integrity.json` |
-| Observability | Logs, metrics, traces, run/request IDs, dashboards, and alerts exist or are explicitly skipped. | `observability/proof.md`, provider links |
-| Cost / FinOps | Provider spend, scaling costs, expensive retries, and budget exceptions are visible. | `cost/ledger.json`, `handoff/final.md` |
-| Performance | Latency/FPS/throughput/cache budgets are checked for the target surface. | `performance/results.json` |
-| Domain-specific proof | The product type has its own acceptance gates, not generic proof. | domain pack artifact |
-| Live smoke | Target environment/provider/runtime behavior is actually exercised when relevant. | `smoke/smoke_proof.json` |
-| Operator handoff | Human can see what changed, proof, risk, rollback, and next decision. | `handoff/final.md` |
+| Dimension              | What good looks like                                                                             | Typical artifact                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+| Functional correctness | Acceptance criteria are exercised end-to-end, including negative paths.                          | `proof/proof.json`, test output, screenshots/logs |
+| Scale / concurrency    | Capacity model or load test matches the user/product bar.                                        | `proof/load.json`, `performance/capacity.md`      |
+| Reliability / recovery | Retries, rollback, backup/restore, queues/DLQs, and recovery owner are clear.                    | `reliability/recovery.md`, `rollback/plan.md`     |
+| Security               | AuthN/authZ, secrets, tenant/data boundaries, dependency risk, and Red Zone actions are checked. | `security/review.md`, `approvals/redzone.json`    |
+| Data integrity         | Migrations, schema changes, consistency, rollback, and corruption risks are covered.             | `data/migration-proof.md`, `data/integrity.json`  |
+| Observability          | Logs, metrics, traces, run/request IDs, dashboards, and alerts exist or are explicitly skipped.  | `observability/proof.md`, provider links          |
+| Cost / FinOps          | Provider spend, scaling costs, expensive retries, and budget exceptions are visible.             | `cost/ledger.json`, `handoff/final.md`            |
+| Performance            | Latency/FPS/throughput/cache budgets are checked for the target surface.                         | `performance/results.json`                        |
+| Domain-specific proof  | The product type has its own acceptance gates, not generic proof.                                | domain pack artifact                              |
+| Live smoke             | Target environment/provider/runtime behavior is actually exercised when relevant.                | `smoke/smoke_proof.json`                          |
+| Operator handoff       | Human can see what changed, proof, risk, rollback, and next decision.                            | `handoff/final.md`                                |
 
 ## Domain packs
 
@@ -109,12 +109,12 @@ Require evidence for:
 
 Use the repo-wide four-status model:
 
-| Status | Meaning |
-|---|---|
-| Built | Code/gate/UI/model exists and was verified. |
-| Partial | Artifact slot/docs/policy exists but enforcement is incomplete. |
-| Policy/docs only | Written down, but not executable. |
-| Missing | Not present. |
+| Status           | Meaning                                                         |
+| ---------------- | --------------------------------------------------------------- |
+| Built            | Code/gate/UI/model exists and was verified.                     |
+| Partial          | Artifact slot/docs/policy exists but enforcement is incomplete. |
+| Policy/docs only | Written down, but not executable.                               |
+| Missing          | Not present.                                                    |
 
 Never mark “docs only” as built.
 

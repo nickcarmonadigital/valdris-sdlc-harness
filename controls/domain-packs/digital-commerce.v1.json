@@ -3,11 +3,29 @@
   "id": "digital-commerce",
   "version": "1.0.0",
   "controls": [
-    {"id": "COM-AUTHORITY-001", "requirement": "The provider and server-side ledger are authoritative; the client cannot mint purchases, currency, inventory, or entitlements."},
-    {"id": "COM-IDEMPOTENCY-001", "requirement": "One logical purchase produces at most one charge and one entitlement across concurrency, retries, and duplicate notifications."},
-    {"id": "COM-LIFECYCLE-001", "requirement": "Pending, success, cancellation, renewal, expiration, refund, revocation, restore, and family/account transfer behavior is tested."},
-    {"id": "COM-RECONCILE-001", "requirement": "Provider events and the internal ledger reconcile with durable discrepancy handling and human-owned financial actions."},
-    {"id": "COM-FRAUD-001", "requirement": "Receipt/transaction verification, replay resistance, fraud signals, rate limits, authorization, and audit trails are proven."},
-    {"id": "COM-REDZONE-001", "requirement": "Product configuration, real billing, charges, refunds, voids, grants, reconciliation, and customer communication require scoped human approval."}
+    {
+      "id": "COM-AUTHORITY-001",
+      "requirement": "The provider and server-side ledger are authoritative; the client cannot mint purchases, currency, inventory, or entitlements."
+    },
+    {
+      "id": "COM-IDEMPOTENCY-001",
+      "requirement": "One logical purchase produces at most one charge and one entitlement across concurrency, retries, and duplicate notifications."
+    },
+    {
+      "id": "COM-LIFECYCLE-001",
+      "requirement": "Pending, success, cancellation, renewal, expiration, refund, revocation, restore, and family/account transfer behavior is tested."
+    },
+    {
+      "id": "COM-RECONCILE-001",
+      "requirement": "Provider events and the internal ledger reconcile with durable discrepancy handling and human-owned financial actions."
+    },
+    {
+      "id": "COM-FRAUD-001",
+      "requirement": "Receipt/transaction verification, replay resistance, fraud signals, rate limits, authorization, and audit trails are proven."
+    },
+    {
+      "id": "COM-REDZONE-001",
+      "requirement": "Product configuration, real billing, charges, refunds, voids, grants, reconciliation, and customer communication require scoped human approval."
+    }
   ]
 }

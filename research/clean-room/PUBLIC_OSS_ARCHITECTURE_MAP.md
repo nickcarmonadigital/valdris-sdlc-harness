@@ -4,19 +4,19 @@ This map derives architecture from public/open-source sources only. It is not a 
 
 ## Core public architecture primitives
 
-| Primitive | Source evidence | Clean-room object |
-|---|---|---|
-| Agent configuration | `agentcontrolplane` Agent CRD, 12-factor agents | `agents` table/config |
-| Model/provider config | `agentcontrolplane` LLM CRD | `llm_configs` / BYOK provider adapters |
-| Tool servers | ACP `MCPServer`, 12-factor tools | `tool_servers`, `tools`, MCP registry |
-| Human contact/approval | ACP `ContactChannel`, 12-factor human-as-tool | `human_approvals`, `contact_channels` |
-| Task | ACP `Task`, HumanLayer homepage tasks | `tasks` |
-| Tool call | ACP `ToolCall`, 12-factor structured outputs | `tool_calls` with status/result/error |
-| Session | HumanLayer homepage sessions, SDK examples | `sessions`, `session_events` |
-| Artifact | HumanLayer homepage artifacts, ACE/RPI docs | `artifacts`, `artifact_versions` |
-| Workflow/stage | QRSPI/RPI, AI-that-works phase examples | `workflows`, `stages`, `stage_outputs` |
-| Worktree/runner | homepage worktrees/daemon, rpi template | `workspaces`, `worktrees`, `runners` |
-| Proof/gate | uploaded harness gates/prompt library | `proofs`, `gate_runs`, artifact validators |
+| Primitive              | Source evidence                                 | Clean-room object                          |
+| ---------------------- | ----------------------------------------------- | ------------------------------------------ |
+| Agent configuration    | `agentcontrolplane` Agent CRD, 12-factor agents | `agents` table/config                      |
+| Model/provider config  | `agentcontrolplane` LLM CRD                     | `llm_configs` / BYOK provider adapters     |
+| Tool servers           | ACP `MCPServer`, 12-factor tools                | `tool_servers`, `tools`, MCP registry      |
+| Human contact/approval | ACP `ContactChannel`, 12-factor human-as-tool   | `human_approvals`, `contact_channels`      |
+| Task                   | ACP `Task`, HumanLayer homepage tasks           | `tasks`                                    |
+| Tool call              | ACP `ToolCall`, 12-factor structured outputs    | `tool_calls` with status/result/error      |
+| Session                | HumanLayer homepage sessions, SDK examples      | `sessions`, `session_events`               |
+| Artifact               | HumanLayer homepage artifacts, ACE/RPI docs     | `artifacts`, `artifact_versions`           |
+| Workflow/stage         | QRSPI/RPI, AI-that-works phase examples         | `workflows`, `stages`, `stage_outputs`     |
+| Worktree/runner        | homepage worktrees/daemon, rpi template         | `workspaces`, `worktrees`, `runners`       |
+| Proof/gate             | uploaded harness gates/prompt library           | `proofs`, `gate_runs`, artifact validators |
 
 ## Recommended clean-room architecture
 

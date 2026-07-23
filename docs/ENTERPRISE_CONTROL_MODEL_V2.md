@@ -22,13 +22,13 @@ The arrows describe an assurance map, not a fixed build order. `dependencies` fo
 
 Passing controls use one or more of these evidence types:
 
-| Type | What the gate proves |
-|---|---|
-| `artifact` | Real non-symlink path exists inside the repo; enterprise/regulated evidence matches SHA-256, run, commit, and environment. |
-| `command` | Named command exited zero and its captured output file matches the recorded SHA-256 digest. |
-| `metric` | Observed numeric value satisfies a declared operator and target over a named window/source. |
-| `approval` | A named human granted a scoped approval; an agent cannot self-approve. |
-| `provider-report` | HTTPS provider result passed at a recorded time and is digest-bound. |
+| Type              | What the gate proves                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `artifact`        | Real non-symlink path exists inside the repo; enterprise/regulated evidence matches SHA-256, run, commit, and environment. |
+| `command`         | Named command exited zero and its captured output file matches the recorded SHA-256 digest.                                |
+| `metric`          | Observed numeric value satisfies a declared operator and target over a named window/source.                                |
+| `approval`        | A named human granted a scoped approval; an agent cannot self-approve.                                                     |
+| `provider-report` | HTTPS provider result passed at a recorded time and is digest-bound.                                                       |
 
 Evidence is subject-bound by control ID, run ID, profile, commit, environment, producer/version, trust tier, and a profile-specific freshness window. The aggregate gate binds the packet to current wall-clock time and Git HEAD when the target is a Git worktree. A URL, filename, command string, or `exitCode: 0` alone is not enterprise proof.
 

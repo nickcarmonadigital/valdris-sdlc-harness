@@ -1,4 +1,9 @@
-import { bridgeProxyError, bridgeProxyProblemResponse, bridgeProxyRequestProblem, proxyBridge } from "../../../../lib/bridge-proxy";
+import {
+  bridgeProxyError,
+  bridgeProxyProblemResponse,
+  bridgeProxyRequestProblem,
+  proxyBridge,
+} from "../../../../lib/bridge-proxy";
 
 export async function GET(request: Request) {
   const problem = bridgeProxyRequestProblem(request);

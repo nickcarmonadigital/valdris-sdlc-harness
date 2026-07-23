@@ -4,11 +4,11 @@ The harness must never imply fake telemetry.
 
 ## Mode contract
 
-| Mode | Meaning | Allowed data source | UI rule |
-|---|---|---|---|
-| Blueprint | Explains topology, lane taxonomy, nodes, and proof rules | static docs/schema/demo topology | No claim that an agent actually ran |
-| Live Run | Shows current run state from real connector events | MCP/local daemon/CLI emitter/API/watched artifacts | Nodes light up only from real events/artifacts |
-| Replay | Shows historical run packets/events/artifacts | database or durable JSONL event store | Clearly label run ID, event source, timestamps |
+| Mode      | Meaning                                                  | Allowed data source                                | UI rule                                        |
+| --------- | -------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------- |
+| Blueprint | Explains topology, lane taxonomy, nodes, and proof rules | static docs/schema/demo topology                   | No claim that an agent actually ran            |
+| Live Run  | Shows current run state from real connector events       | MCP/local daemon/CLI emitter/API/watched artifacts | Nodes light up only from real events/artifacts |
+| Replay    | Shows historical run packets/events/artifacts            | database or durable JSONL event store              | Clearly label run ID, event source, timestamps |
 
 ## Data-source contract
 

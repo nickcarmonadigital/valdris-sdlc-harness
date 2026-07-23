@@ -13,10 +13,10 @@ The agent vault is a small, navigable knowledge bundle over the repo. It gives C
 
 # Conventions
 
-* `index.md` files provide progressive disclosure.
-* `log.md` files record chronological knowledge changes.
-* Concept files use YAML frontmatter with `type`, `title`, `description`, `resource`, `tags`, and `timestamp`.
-* Links are bundle-relative when they point inside `knowledge/`.
+- `index.md` files provide progressive disclosure.
+- `log.md` files record chronological knowledge changes.
+- Concept files use YAML frontmatter with `type`, `title`, `description`, `resource`, `tags`, and `timestamp`.
+- Links are bundle-relative when they point inside `knowledge/`.
 
 # Maintenance
 

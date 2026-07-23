@@ -17,32 +17,32 @@ agent runtime
 
 ## Presentation modes
 
-| Mode | Meaning | Event source |
-|---|---|---|
-| `blueprint` | Static topology/lane explanation | `static-blueprint` |
-| `live` | Current real run telemetry | `bridge`, `mcp`, `api`, `watched-artifact`, `browser-local` |
-| `replay` | Historical event playback | `local-jsonl`, `database`, `run-packet` |
+| Mode        | Meaning                          | Event source                                                |
+| ----------- | -------------------------------- | ----------------------------------------------------------- |
+| `blueprint` | Static topology/lane explanation | `static-blueprint`                                          |
+| `live`      | Current real run telemetry       | `bridge`, `mcp`, `api`, `watched-artifact`, `browser-local` |
+| `replay`    | Historical event playback        | `local-jsonl`, `database`, `run-packet`                     |
 
 ## Core event types
 
-| Event | Meaning |
-|---|---|
-| `run.created` | Human/task created a run packet |
-| `run.mode_set` | Run declares blueprint/live/replay source |
-| `agent.connected` | Runtime connector attached to the run |
-| `node.entered` | Agent or harness entered a workflow node |
-| `node.skipped` | Node was intentionally skipped with reason |
-| `node.failed` | Node failed with failure reason and recovery path |
-| `gate.fired` | Mechanical gate started or evaluated |
-| `artifact.written` | Required run artifact exists and should be verified |
-| `approval.requested` | Human approval/Red Zone pause |
-| `approval.granted` | Human approved scoped Red Zone action |
-| `approval.denied` | Human denied scoped Red Zone action |
-| `run.blocked` | Completion is blocked by missing proof, failed gate, or approval |
-| `run.completed` | Required artifacts passed and answer contract can be produced |
-| `self_heal.detected` | Finish-line found a harness/process gap |
-| `self_heal.pr_opened` | A scoped PR was opened to fix the harness pack |
-| `self_heal.pr_proposed` | A scoped PR/patch artifact was proposed to fix the harness pack |
+| Event                   | Meaning                                                          |
+| ----------------------- | ---------------------------------------------------------------- |
+| `run.created`           | Human/task created a run packet                                  |
+| `run.mode_set`          | Run declares blueprint/live/replay source                        |
+| `agent.connected`       | Runtime connector attached to the run                            |
+| `node.entered`          | Agent or harness entered a workflow node                         |
+| `node.skipped`          | Node was intentionally skipped with reason                       |
+| `node.failed`           | Node failed with failure reason and recovery path                |
+| `gate.fired`            | Mechanical gate started or evaluated                             |
+| `artifact.written`      | Required run artifact exists and should be verified              |
+| `approval.requested`    | Human approval/Red Zone pause                                    |
+| `approval.granted`      | Human approved scoped Red Zone action                            |
+| `approval.denied`       | Human denied scoped Red Zone action                              |
+| `run.blocked`           | Completion is blocked by missing proof, failed gate, or approval |
+| `run.completed`         | Required artifacts passed and answer contract can be produced    |
+| `self_heal.detected`    | Finish-line found a harness/process gap                          |
+| `self_heal.pr_opened`   | A scoped PR was opened to fix the harness pack                   |
+| `self_heal.pr_proposed` | A scoped PR/patch artifact was proposed to fix the harness pack  |
 
 ## Strict event schema
 
@@ -60,9 +60,18 @@ type EventSource =
   | "database"
   | "run-packet"
   | "browser-local";
-type NodeState = "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
-type Actor = "claude-code" | "codex" | "hermes" | "human" | "harness" | "system";
-type Status = "ok" | "warn" | "blocked" | "skipped" | "failed" | "needs_approval" | "passed";
+type NodeState =
+  "passed" | "active" | "failed" | "skipped" | "pending" | "needs_approval";
+type Actor =
+  "claude-code" | "codex" | "hermes" | "human" | "harness" | "system";
+type Status =
+  | "ok"
+  | "warn"
+  | "blocked"
+  | "skipped"
+  | "failed"
+  | "needs_approval"
+  | "passed";
 
 type NodeId =
   | "intake"
@@ -81,16 +90,16 @@ type NodeId =
   | "handoff";
 
 type RunEvent = {
-  id?: string;              // generated if omitted
-  type: string;             // must be one of the core event types above
-  ts?: string;              // generated if omitted
+  id?: string; // generated if omitted
+  type: string; // must be one of the core event types above
+  ts?: string; // generated if omitted
   actor: Actor;
   runMode: RunMode;
   eventSource: EventSource;
   nodeId: NodeId;
   nodeState?: NodeState;
   artifact?: string;
-  artifactRoot?: string;    // required on the run for artifact.written verification
+  artifactRoot?: string; // required on the run for artifact.written verification
   message: string;
   status: Status;
   skipReason?: string;
@@ -116,10 +125,10 @@ Cloud/platform expansion nodes are documented lane-detail concepts, but the curr
 
 The bridge requires three strong, distinct process credentials and fails closed at startup if any is missing, contains fewer than 32 bytes, or reuses another role's value:
 
-| Credential | Request surface | Least-privilege holder |
-|---|---|---|
-| `UASH_BRIDGE_INTEGRITY_KEY` | No request header. It keys HMAC-SHA-256 authentication for `run-config.json`, derived `run.json`, and the run-ID-bound `events.jsonl` chain. | Bridge process only; never agents, browsers, or UI processes. |
-| `UASH_BRIDGE_ACCESS_TOKEN` | `x-uash-bridge-token` on ordinary `GET`/`POST` run API requests. | Bridge process, ordinary agent/API clients, and the server-side UI proxy. Never browser JavaScript. |
+| Credential                  | Request surface                                                                                                                                     | Least-privilege holder                                                                                                                                   |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UASH_BRIDGE_INTEGRITY_KEY` | No request header. It keys HMAC-SHA-256 authentication for `run-config.json`, derived `run.json`, and the run-ID-bound `events.jsonl` chain.        | Bridge process only; never agents, browsers, or UI processes.                                                                                            |
+| `UASH_BRIDGE_ACCESS_TOKEN`  | `x-uash-bridge-token` on ordinary `GET`/`POST` run API requests.                                                                                    | Bridge process, ordinary agent/API clients, and the server-side UI proxy. Never browser JavaScript.                                                      |
 | `UASH_HUMAN_APPROVAL_TOKEN` | `x-uash-human-token`, additionally required for `approval.granted` and `approval.denied`. The operator-shell emitter reads it from its environment. | Bridge process and human operator approval shell only; never ordinary agents or the UI proxy. Never pass it through process arguments or request bodies. |
 
 Generate at least 32 random bytes for each credential; do not reuse one value across roles. A human grant/deny request needs both the ordinary access header and the human header. Possession of the access token alone cannot self-approve, and possession of the human token alone does not authorize an API write. Raw credentials are never persisted or returned by the run API. Unauthenticated `GET /health` is liveness-only (`ok`, service, contract version, and bounded listen mode); absolute data/repository paths, node inventories, port, and credential-state details are returned only when `x-uash-bridge-token` is valid. The same-origin UI routes hold the access token server-side and proxy to the loopback bridge; no bridge credential belongs in `NEXT_PUBLIC_*` or a client bundle. Finish-line child validators run with all three credential variables removed from their environment.
@@ -149,7 +158,7 @@ Rules:
 - `artifact.written` requires an actual regular file under the run `artifactRoot`; symlink/path escapes are rejected. The bridge records a SHA-256 claim inside the HMAC event journal, uses that sealed claim during snapshot-lag replay, and re-resolves, re-hashes, and revalidates every required artifact before and after the finish-line gate sequence. Portable v0.8 privacy scanning covers the bounded packet inputs, every declared gate artifact, universal enterprise evidence, waivers, conditional RCA, review, final packet, and required bridge artifacts—not only the UI node list. Completed-run reads repeat the artifact, privacy, runtime, approval, and finish-line closure; deletion, persistent byte drift, or privacy drift quarantines the record rather than returning stale `complete` state. For `prove`, the configured proof artifact must validate as passing `uash.proof.v1` with zero-exit command evidence. For `production-readiness`, `production/layer-assessment.json` must validate all 13 canonical layers; newly commissioned runs use control-level `uash.production-readiness.v2`, while legacy v1 history remains readable.
 - Unchanged completed-run reads use a digest-bound cache keyed by the authenticated journal head, current commissioned runtime and loader identity, trust policy, closure status, and current artifact digests. Authenticated `GET /health` exposes aggregate cache execution/hit counts for operator verification; those counters never affect the trust decision.
 - A nested commissioned pack supplies `adapterPath` on the first event (CLI: `--adapter-path .valdris-harness/project-adapter.json`). First-event artifact-root/adapter configuration is authenticated and persisted before journal append, including uncommissioned roots, so a crash cannot leave a valid event attached to an unbound configuration. The adapter must resolve inside `artifactRoot`, `UASH_REPO_ROOT`, or an explicitly configured `UASH_ADAPTER_ROOTS` entry; symlink and arbitrary-path escapes are rejected.
-- When the adapter sets `finishLineAssurance.required`, `run.completed` executes the aggregate enterprise/AI gate against the run artifact root, binds route and goal IDs to the bridge run ID, and correlates active waivers with token-gated approval events. A v0.8 adapter also sets `packetRequired`, which makes the bridge enforce typed RCA whenever the validated route requires it or an RCA artifact exists, then `valdris.review.v2` and `valdris.run-packet.v2`. The signed review declares exactly `scout`, `implementer`, `verifier`, and `independentReviewer`; `actorId`, `sessionId`, and `executionId` are each pairwise distinct across all four roles. Scout evidence binds the route, implementer and verifier evidence bind portable proof, and the authorized Ed25519 independent reviewer signs the frozen pre-review evidence bundle, artifact inventory, and complete role roster. The final packet binds that role provenance and inventory, while the bridge privacy closure follows packet supporting artifacts and transitive evidence references before allowing completion.
+- When the adapter sets `finishLineAssurance.required`, `run.completed` executes the aggregate enterprise/AI gate against the run artifact root, binds route and goal IDs to the bridge run ID, and correlates active waivers with token-gated approval events. A packet-required adapter enforces typed RCA whenever the validated route requires it or an RCA artifact exists, then `valdris.review.v2` and new `valdris.run-packet.v3`. The signed review declares exactly `scout`, `implementer`, `verifier`, and `independentReviewer`; `actorId`, `sessionId`, and `executionId` are each pairwise distinct across all four roles. Scout evidence binds the route, implementer and verifier evidence bind portable proof, and the authorized Ed25519 independent reviewer signs the frozen pre-review evidence bundle, artifact inventory, and complete role roster. The v3 packet additionally binds assurance level and resolved catalogs; semantic or authoritative claims require the authoritative-assurance artifact. Historical v2 packets remain structural evidence only.
 - `run.completed` can only pass when all required nodes are verified-present or explicitly skipped with reasons.
 - If `self_heal.detected` is emitted, a later `self_heal.pr_opened` or `self_heal.pr_proposed` is required before completion, and that resolution must include a real pull request URL or a verified local `self_heal/pr.json` proposal artifact.
 - Once a run has an `artifactRoot`, later events may not change it.

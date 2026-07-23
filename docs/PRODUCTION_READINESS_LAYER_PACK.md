@@ -4,21 +4,21 @@ This pack turns “real full stack is more than frontend plus backend” into a 
 
 ## Thirteen layers
 
-| Layer | Enterprise question | Catalog controls |
-|---|---|---|
-| Frontend | Are critical client journeys accessible, correct, and within performance budgets? | accessibility, behavior, performance |
-| Backend/API logic | Are contracts compatible and timeout/retry/idempotency/failure paths observable? | contract, failure, trace |
-| Database/storage | Are migrations, integrity boundaries, retention, backup, and restore proven? | migration, integrity, recovery |
-| Auth/permissions/RLS | Does every operation enforce server-side and tenant-safe authorization across the identity lifecycle? | authz, tenant, lifecycle |
-| Hosting/deployment | Is promotion attributable, target-environment health measured, and rollback exercised? | promotion, health, rollback |
-| Cloud/compute | Is topology reproducible, least-privilege, drift-aware, regional, owned, and cost-bounded? | IaC, boundary, cost |
-| CI/CD/version control | Do required checks, supply-chain scans, provenance, and approvals protect the release? | gates, supply chain, provenance |
-| Security | Are current threats, secrets, vulnerabilities, and trust boundaries governed? | threat, secrets, vulnerability |
-| Rate limiting | Are limits, overload behavior, retry storms, and usage meters controlled? | policy, failure, metering |
-| Caching/CDN | Are identity-aware keys, invalidation, freshness, purge, and tenant isolation correct? | key, invalidation, isolation |
-| Load balancing/scaling | Are capacity, progressive delivery, abort, routing, and failure modes tested? | capacity, progressive, failover |
-| Error tracking/logs/observability | Are flows correlated, SLO-owned, alertable, and privacy-safe? | telemetry, SLO, redaction |
-| Availability/recovery/DR | Are workload-specific objectives, restore/failover, and incident roles exercised? | objectives, restore, incident |
+| Layer                             | Enterprise question                                                                                   | Catalog controls                     |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Frontend                          | Are critical client journeys accessible, correct, and within performance budgets?                     | accessibility, behavior, performance |
+| Backend/API logic                 | Are contracts compatible and timeout/retry/idempotency/failure paths observable?                      | contract, failure, trace             |
+| Database/storage                  | Are migrations, integrity boundaries, retention, backup, and restore proven?                          | migration, integrity, recovery       |
+| Auth/permissions/RLS              | Does every operation enforce server-side and tenant-safe authorization across the identity lifecycle? | authz, tenant, lifecycle             |
+| Hosting/deployment                | Is promotion attributable, target-environment health measured, and rollback exercised?                | promotion, health, rollback          |
+| Cloud/compute                     | Is topology reproducible, least-privilege, drift-aware, regional, owned, and cost-bounded?            | IaC, boundary, cost                  |
+| CI/CD/version control             | Do required checks, supply-chain scans, provenance, and approvals protect the release?                | gates, supply chain, provenance      |
+| Security                          | Are current threats, secrets, vulnerabilities, and trust boundaries governed?                         | threat, secrets, vulnerability       |
+| Rate limiting                     | Are limits, overload behavior, retry storms, and usage meters controlled?                             | policy, failure, metering            |
+| Caching/CDN                       | Are identity-aware keys, invalidation, freshness, purge, and tenant isolation correct?                | key, invalidation, isolation         |
+| Load balancing/scaling            | Are capacity, progressive delivery, abort, routing, and failure modes tested?                         | capacity, progressive, failover      |
+| Error tracking/logs/observability | Are flows correlated, SLO-owned, alertable, and privacy-safe?                                         | telemetry, SLO, redaction            |
+| Availability/recovery/DR          | Are workload-specific objectives, restore/failover, and incident roles exercised?                     | objectives, restore, incident        |
 
 The machine catalog is `controls/production-layers.v2.json`. Its dependency fields form an acyclic assurance prerequisite graph.
 

@@ -21,10 +21,10 @@ The thirteen production domains are the current shared assurance baseline, not a
 
 # Authoritative Repo Files
 
-* `README.md` for the product overview.
-* `AGENTS.md` and `CLAUDE.md` for runtime front doors.
-* `controls/workload-taxonomy.v1.json` and `scripts/workload-classification-gate.mjs` for bound workload classification.
-* `controls/foundation-layer.v1.json` and `scripts/foundation-gate.mjs` for Layer 0 assurance.
-* `scripts/commission-harness.mjs` for generated pack structure.
-* `scripts/verify-harness.mjs` for adversarial proof coverage.
-* `docs/HARNESS_REPO_MAP.md` for the deeper file-by-file map.
+- `README.md` for the product overview.
+- `AGENTS.md` and `CLAUDE.md` for runtime front doors.
+- `controls/workload-taxonomy.v1.json` and `scripts/workload-classification-gate.mjs` for bound workload classification.
+- `controls/foundation-layer.v1.json` and `scripts/foundation-gate.mjs` for Layer 0 assurance.
+- `scripts/commission-harness.mjs` for generated pack structure.
+- `scripts/verify-harness.mjs` for adversarial proof coverage.
+- `docs/HARNESS_REPO_MAP.md` for the deeper file-by-file map.

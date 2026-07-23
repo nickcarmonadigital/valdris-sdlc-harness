@@ -7,7 +7,9 @@ export const metadata: Metadata = {
     "A non-IDE visual flow monitor for Claude Code, Codex, Hermes, GitNexus/code intelligence, skill packs, workflow gates, artifacts, skip reasons, and run telemetry.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body>{children}</body>

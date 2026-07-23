@@ -40,7 +40,9 @@ const lanes = [
   "data-platform",
 ];
 
-const nodeById = Object.fromEntries(workflowNodes.map((node) => [node.id, node]));
+const nodeById = Object.fromEntries(
+  workflowNodes.map((node) => [node.id, node]),
+);
 
 function makeRunId() {
   return `LOCAL-EXEC-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -66,7 +68,9 @@ export function ControlPlaneApp() {
   const [showCreate, setShowCreate] = useState(false);
   const [copied, setCopied] = useState(false);
   const [promptCopied, setPromptCopied] = useState(false);
-  const [bridgeStatus, setBridgeStatus] = useState<"unknown" | "connected" | "offline">("unknown");
+  const [bridgeStatus, setBridgeStatus] = useState<
+    "unknown" | "connected" | "offline"
+  >("unknown");
   const [bridgeMessage, setBridgeMessage] = useState("Bridge not checked yet.");
   const [bridgePolling, setBridgePolling] = useState(false);
   const [form, setForm] = useState({
@@ -99,21 +103,32 @@ export function ControlPlaneApp() {
     return () => window.clearInterval(interval);
   }, [bridgePolling, selectedRunId]);
 
-  const selectedRun = useMemo(() => runs.find((run) => run.id === selectedRunId) ?? runs[0], [runs, selectedRunId]);
+  const selectedRun = useMemo(
+    () => runs.find((run) => run.id === selectedRunId) ?? runs[0],
+    [runs, selectedRunId],
+  );
   const missing = selectedRun ? missingArtifacts(selectedRun) : [];
   const stats = useMemo(
     () => ({
       total: runs.length,
-      running: runs.filter((run) => ["running", "approval"].includes(run.status)).length,
+      running: runs.filter((run) =>
+        ["running", "approval"].includes(run.status),
+      ).length,
       blocked: runs.filter((run) => run.status === "blocked").length,
-      artifacts: runs.reduce((sum, run) => sum + run.artifacts.filter((artifact) => artifact.present).length, 0),
+      artifacts: runs.reduce(
+        (sum, run) =>
+          sum + run.artifacts.filter((artifact) => artifact.present).length,
+        0,
+      ),
     }),
     [runs],
   );
 
   function updateSelected(mutator: (run: AppRun) => AppRun) {
     if (!selectedRun) return;
-    setRuns((current) => current.map((run) => (run.id === selectedRun.id ? mutator(run) : run)));
+    setRuns((current) =>
+      current.map((run) => (run.id === selectedRun.id ? mutator(run) : run)),
+    );
   }
 
   function createRun(event: FormEvent<HTMLFormElement>) {
@@ -136,12 +151,18 @@ export function ControlPlaneApp() {
       createdAt,
       updatedAt: createdAt,
       approvals: [],
-      artifacts: baseArtifacts.map((artifact) => ({ ...artifact, present: artifact.path === "run/intake.json" })),
+      artifacts: baseArtifacts.map((artifact) => ({
+        ...artifact,
+        present: artifact.path === "run/intake.json",
+      })),
       events: [
         {
           id: `${id}-created`,
           type: "run.created",
-          at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          at: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
           actor: "human",
           nodeId: "intake",
           artifact: "run/intake.json",
@@ -165,7 +186,10 @@ export function ControlPlaneApp() {
       }
 
       const artifact = artifactForNode(next);
-      const isRedZonePause = next === "redzone" && run.risk === "red-zone" && !hasGrantedApproval(run, "redzone");
+      const isRedZonePause =
+        next === "redzone" &&
+        run.risk === "red-zone" &&
+        !hasGrantedApproval(run, "redzone");
       const type = isRedZonePause
         ? "approval.requested"
         : next === "prove" || next === "redzone"
@@ -183,9 +207,17 @@ export function ControlPlaneApp() {
       return {
         ...run,
         currentNodeId: next,
-        status: isRedZonePause ? "approval" : next === "handoff" ? "running" : "running",
+        status: isRedZonePause
+          ? "approval"
+          : next === "handoff"
+            ? "running"
+            : "running",
         updatedAt: nowIso(),
-        artifacts: run.artifacts.map((item) => (item.path === artifact && next !== "prove" && next !== "handoff" ? { ...item, present: true } : item)),
+        artifacts: run.artifacts.map((item) =>
+          item.path === artifact && next !== "prove" && next !== "handoff"
+            ? { ...item, present: true }
+            : item,
+        ),
         events: [...run.events, createEvent(run, type, next, message, status)],
       };
     });
@@ -198,8 +230,18 @@ export function ControlPlaneApp() {
         ...run,
         status: run.status === "blocked" ? "running" : run.status,
         updatedAt: nowIso(),
-        artifacts: run.artifacts.map((item) => (item.path === artifact ? { ...item, present: true } : item)),
-        events: [...run.events, createEvent(run, "artifact.written", run.currentNodeId, `${artifact} written and observed by the app.`)],
+        artifacts: run.artifacts.map((item) =>
+          item.path === artifact ? { ...item, present: true } : item,
+        ),
+        events: [
+          ...run.events,
+          createEvent(
+            run,
+            "artifact.written",
+            run.currentNodeId,
+            `${artifact} written and observed by the app.`,
+          ),
+        ],
       };
     });
   }
@@ -210,8 +252,22 @@ export function ControlPlaneApp() {
       status: "running",
       approvals: addGrantedApproval(run, "redzone", "human"),
       updatedAt: nowIso(),
-      artifacts: run.artifacts.map((item) => (item.path === "approvals/redzone.json" ? { ...item, present: true } : item)),
-      events: [...run.events, createEvent(run, "approval.granted", "redzone", "Human approval granted for Red Zone stage.", "ok", { actor: "human", approvalOwner: "human", approvalScope: "redzone" })],
+      artifacts: run.artifacts.map((item) =>
+        item.path === "approvals/redzone.json"
+          ? { ...item, present: true }
+          : item,
+      ),
+      events: [
+        ...run.events,
+        createEvent(
+          run,
+          "approval.granted",
+          "redzone",
+          "Human approval granted for Red Zone stage.",
+          "ok",
+          { actor: "human", approvalOwner: "human", approvalScope: "redzone" },
+        ),
+      ],
     }));
   }
 
@@ -222,10 +278,21 @@ export function ControlPlaneApp() {
       return {
         ...run,
         updatedAt: nowIso(),
-        artifacts: run.artifacts.map((item) => (item.path === artifact ? { ...item, skipped: true, skipReason: reason, present: false } : item)),
+        artifacts: run.artifacts.map((item) =>
+          item.path === artifact
+            ? { ...item, skipped: true, skipReason: reason, present: false }
+            : item,
+        ),
         events: [
           ...run.events,
-          createEvent(run, "node.skipped", run.currentNodeId, reason, "skipped", { actor: "harness", skipReason: reason, nodeState: "skipped" }),
+          createEvent(
+            run,
+            "node.skipped",
+            run.currentNodeId,
+            reason,
+            "skipped",
+            { actor: "harness", skipReason: reason, nodeState: "skipped" },
+          ),
         ],
       };
     });
@@ -235,15 +302,32 @@ export function ControlPlaneApp() {
     updateSelected((run) => {
       const artifact = artifactForNode(run.currentNodeId);
       const failureReason = `${nodeById[run.currentNodeId]?.label ?? run.currentNodeId} failed or lacks required evidence.`;
-      const recoveryPath = "Attach the missing artifact/evidence, rerun the gate, or record an explicit skip reason if not relevant.";
+      const recoveryPath =
+        "Attach the missing artifact/evidence, rerun the gate, or record an explicit skip reason if not relevant.";
       return {
         ...run,
         status: "blocked",
         updatedAt: nowIso(),
-        artifacts: run.artifacts.map((item) => (item.path === artifact ? { ...item, failed: true, failureReason, recoveryPath } : item)),
+        artifacts: run.artifacts.map((item) =>
+          item.path === artifact
+            ? { ...item, failed: true, failureReason, recoveryPath }
+            : item,
+        ),
         events: [
           ...run.events,
-          createEvent(run, "node.failed", run.currentNodeId, failureReason, "failed", { actor: "harness", failureReason, recoveryPath, nodeState: "failed" }),
+          createEvent(
+            run,
+            "node.failed",
+            run.currentNodeId,
+            failureReason,
+            "failed",
+            {
+              actor: "harness",
+              failureReason,
+              recoveryPath,
+              nodeState: "failed",
+            },
+          ),
         ],
       };
     });
@@ -251,16 +335,31 @@ export function ControlPlaneApp() {
 
   function openSelfHealPr() {
     updateSelected((run) => {
-      const message = "Self-heal required: update the harness pack/docs/gates/adapter because this run exposed a process gap.";
+      const message =
+        "Self-heal required: update the harness pack/docs/gates/adapter because this run exposed a process gap.";
       return {
         ...run,
         currentNodeId: "self-heal",
         updatedAt: nowIso(),
-        artifacts: run.artifacts.map((item) => (item.path === "self_heal/self_heal_report.md" ? { ...item, present: true } : item)),
+        artifacts: run.artifacts.map((item) =>
+          item.path === "self_heal/self_heal_report.md"
+            ? { ...item, present: true }
+            : item,
+        ),
         events: [
           ...run.events,
-          createEvent(run, "self_heal.detected", "self-heal", message, "warn", { actor: "harness", artifact: "self_heal/self_heal_report.md" }),
-          createEvent(run, "self_heal.pr_opened", "self-heal", "Self-heal PR proposed/opened for the harness gap.", "ok", { actor: "harness", artifact: "self_heal/pr.json" }),
+          createEvent(run, "self_heal.detected", "self-heal", message, "warn", {
+            actor: "harness",
+            artifact: "self_heal/self_heal_report.md",
+          }),
+          createEvent(
+            run,
+            "self_heal.pr_opened",
+            "self-heal",
+            "Self-heal PR proposed/opened for the harness gap.",
+            "ok",
+            { actor: "harness", artifact: "self_heal/pr.json" },
+          ),
         ],
       };
     });
@@ -270,7 +369,8 @@ export function ControlPlaneApp() {
     updateSelected((run) => {
       const absent = missingArtifacts(run);
       if (absent.length) {
-        const blockedNode = nodeIdForArtifact(absent[0]?.path ?? "") ?? run.currentNodeId;
+        const blockedNode =
+          nodeIdForArtifact(absent[0]?.path ?? "") ?? run.currentNodeId;
         return {
           ...run,
           status: "blocked",
@@ -278,10 +378,18 @@ export function ControlPlaneApp() {
           updatedAt: nowIso(),
           events: [
             ...run.events,
-            createEvent(run, "run.blocked", blockedNode, `Cannot complete: missing ${absent.map((item) => item.path).join(", ")}.`, "blocked", {
-              actor: "harness",
-              recoveryPath: "Write the missing artifacts or skip irrelevant nodes with explicit reasons before finishing.",
-            }),
+            createEvent(
+              run,
+              "run.blocked",
+              blockedNode,
+              `Cannot complete: missing ${absent.map((item) => item.path).join(", ")}.`,
+              "blocked",
+              {
+                actor: "harness",
+                recoveryPath:
+                  "Write the missing artifacts or skip irrelevant nodes with explicit reasons before finishing.",
+              },
+            ),
           ],
         };
       }
@@ -291,7 +399,15 @@ export function ControlPlaneApp() {
         status: "complete",
         currentNodeId: "handoff",
         updatedAt: nowIso(),
-        events: [...run.events, createEvent(run, "run.completed", "handoff", "All required artifacts are present. Answer Contract can be produced.")],
+        events: [
+          ...run.events,
+          createEvent(
+            run,
+            "run.completed",
+            "handoff",
+            "All required artifacts are present. Answer Contract can be produced.",
+          ),
+        ],
       };
     });
   }
@@ -304,22 +420,34 @@ export function ControlPlaneApp() {
   function upsertRunFromBridge(run: AppRun) {
     setRuns((current) => {
       const exists = current.some((item) => item.id === run.id);
-      return exists ? current.map((item) => (item.id === run.id ? run : item)) : [run, ...current];
+      return exists
+        ? current.map((item) => (item.id === run.id ? run : item))
+        : [run, ...current];
     });
     setSelectedRunId(run.id);
   }
 
   async function checkBridge() {
     try {
-      const response = await fetch(`${BRIDGE_API_URL}/health`, { cache: "no-store", headers: BRIDGE_UI_HEADERS });
+      const response = await fetch(`${BRIDGE_API_URL}/health`, {
+        cache: "no-store",
+        headers: BRIDGE_UI_HEADERS,
+      });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const payload = (await response.json()) as { service?: string; dataDir?: string };
+      const payload = (await response.json()) as {
+        service?: string;
+        dataDir?: string;
+      };
       setBridgeStatus("connected");
-      setBridgeMessage(`${payload.service ?? "uash bridge"} online · ${payload.dataDir ?? BRIDGE_URL}`);
+      setBridgeMessage(
+        `${payload.service ?? "uash bridge"} online · ${payload.dataDir ?? BRIDGE_URL}`,
+      );
     } catch (error) {
       setBridgeStatus("offline");
       setBridgePolling(false);
-      setBridgeMessage(`Bridge offline at ${BRIDGE_URL}. Start it with npm run bridge:claude.`);
+      setBridgeMessage(
+        `Bridge offline at ${BRIDGE_URL}. Start it with npm run bridge:claude.`,
+      );
     }
   }
 
@@ -345,27 +473,40 @@ export function ControlPlaneApp() {
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setBridgeStatus("connected");
-      setBridgeMessage(`${selectedRun.id} synced to local bridge. Claude Code can now emit events into it.`);
+      setBridgeMessage(
+        `${selectedRun.id} synced to local bridge. Claude Code can now emit events into it.`,
+      );
     } catch {
       setBridgeStatus("offline");
       setBridgePolling(false);
-      setBridgeMessage(`Could not sync to ${BRIDGE_URL}. Run npm run bridge:claude on the Mac first.`);
+      setBridgeMessage(
+        `Could not sync to ${BRIDGE_URL}. Run npm run bridge:claude on the Mac first.`,
+      );
     }
   }
 
   async function pullSelectedFromBridge(showNotice = true) {
     if (!selectedRun) return;
     try {
-      const response = await fetch(`${BRIDGE_API_URL}/runs/${encodeURIComponent(selectedRun.id)}`, { cache: "no-store", headers: BRIDGE_UI_HEADERS });
+      const response = await fetch(
+        `${BRIDGE_API_URL}/runs/${encodeURIComponent(selectedRun.id)}`,
+        { cache: "no-store", headers: BRIDGE_UI_HEADERS },
+      );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const run = (await response.json()) as AppRun;
       upsertRunFromBridge(run);
       setBridgeStatus("connected");
-      if (showNotice) setBridgeMessage(`${run.id} pulled from local bridge with ${run.events.length} event(s).`);
+      if (showNotice)
+        setBridgeMessage(
+          `${run.id} pulled from local bridge with ${run.events.length} event(s).`,
+        );
     } catch {
       setBridgeStatus("offline");
       setBridgePolling(false);
-      if (showNotice) setBridgeMessage(`No local bridge run found for ${selectedRun.id}. Sync it first, then run Claude Code.`);
+      if (showNotice)
+        setBridgeMessage(
+          `No local bridge run found for ${selectedRun.id}. Sync it first, then run Claude Code.`,
+        );
     }
   }
 
@@ -389,15 +530,31 @@ export function ControlPlaneApp() {
   }
 
   const selectedNode = nodeById[selectedRun.currentNodeId];
-  const productionArtifact = selectedRun.artifacts.find((artifact) => artifact.path === "production/layer-assessment.json");
-  const productionAssessment = productionArtifact?.verification?.productionLayerAssessment;
+  const productionArtifact = selectedRun.artifacts.find(
+    (artifact) => artifact.path === "production/layer-assessment.json",
+  );
+  const productionAssessment =
+    productionArtifact?.verification?.productionLayerAssessment;
   const productionLayerRows = productionLayers.map((layer) => {
-    const verified = productionAssessment?.layers?.find((entry) => entry.layer === layer.id);
-    const status = verified?.status ?? (productionArtifact?.skipped ? "skipped" : productionArtifact?.present ? "unverified" : "missing");
+    const verified = productionAssessment?.layers?.find(
+      (entry) => entry.layer === layer.id,
+    );
+    const status =
+      verified?.status ??
+      (productionArtifact?.skipped
+        ? "skipped"
+        : productionArtifact?.present
+          ? "unverified"
+          : "missing");
     return {
       ...layer,
       status,
-      detail: verified?.evidence ?? verified?.reason ?? productionArtifact?.failureReason ?? productionArtifact?.skipReason ?? "Awaiting production/layer-assessment.json",
+      detail:
+        verified?.evidence ??
+        verified?.reason ??
+        productionArtifact?.failureReason ??
+        productionArtifact?.skipReason ??
+        "Awaiting production/layer-assessment.json",
     };
   });
   const productionLayerSummary = productionAssessment
@@ -417,12 +574,18 @@ export function ControlPlaneApp() {
           </div>
         </div>
 
-        <button className="newRunButton" onClick={() => setShowCreate(true)} type="button">
+        <button
+          className="newRunButton"
+          onClick={() => setShowCreate(true)}
+          type="button"
+        >
           + New run
         </button>
 
         <nav className="sideNav" aria-label="App sections">
-          <a className="active" href="#runs">Runs</a>
+          <a className="active" href="#runs">
+            Runs
+          </a>
           <a href="#board">Board</a>
           <a href="#artifacts">Artifacts</a>
           <a href="#connectors">Connectors</a>
@@ -431,10 +594,17 @@ export function ControlPlaneApp() {
         <section className="runList" id="runs">
           <div className="sidebarLabel">Run queue</div>
           {runs.map((run) => (
-            <button className={`runListItem ${run.id === selectedRun.id ? "selected" : ""}`} key={run.id} onClick={() => setSelectedRunId(run.id)} type="button">
+            <button
+              className={`runListItem ${run.id === selectedRun.id ? "selected" : ""}`}
+              key={run.id}
+              onClick={() => setSelectedRunId(run.id)}
+              type="button"
+            >
               <span>{run.id}</span>
               <strong>{run.title}</strong>
-              <small>{run.status} · {labelForAgent(run.agent)}</small>
+              <small>
+                {run.status} · {labelForAgent(run.agent)}
+              </small>
             </button>
           ))}
         </section>
@@ -443,23 +613,45 @@ export function ControlPlaneApp() {
       <section className="appMain">
         <header className="appHeader">
           <div>
-            <p className="eyebrow">Legit app mode · Blueprint / Live / Replay separated</p>
+            <p className="eyebrow">
+              Legit app mode · Blueprint / Live / Replay separated
+            </p>
             <h1>Agentic SDLC Control Plane</h1>
-            <p>Operate runs, connectors, gates, production layers, QA proof, self-healing, artifacts, approvals, and the workflow graph. This is the app surface — not a marketing page.</p>
+            <p>
+              Operate runs, connectors, gates, production layers, QA proof,
+              self-healing, artifacts, approvals, and the workflow graph. This
+              is the app surface — not a marketing page.
+            </p>
           </div>
           <div className="headerActions">
             <span className="modePill">No Supabase</span>
             <span className="modePill">{selectedRun.mode ?? "live"}</span>
-            <span className="modePill">{selectedRun.eventSource ?? "browser-local"}</span>
-            <a className="ghostButton" href="/docs">Docs</a>
+            <span className="modePill">
+              {selectedRun.eventSource ?? "browser-local"}
+            </span>
+            <a className="ghostButton" href="/docs">
+              Docs
+            </a>
           </div>
         </header>
 
         <section className="metricGrid" aria-label="Run metrics">
-          <article><span>Total runs</span><strong>{stats.total}</strong></article>
-          <article><span>Running</span><strong>{stats.running}</strong></article>
-          <article><span>Blocked</span><strong>{stats.blocked}</strong></article>
-          <article><span>Artifacts seen</span><strong>{stats.artifacts}</strong></article>
+          <article>
+            <span>Total runs</span>
+            <strong>{stats.total}</strong>
+          </article>
+          <article>
+            <span>Running</span>
+            <strong>{stats.running}</strong>
+          </article>
+          <article>
+            <span>Blocked</span>
+            <strong>{stats.blocked}</strong>
+          </article>
+          <article>
+            <span>Artifacts seen</span>
+            <strong>{stats.artifacts}</strong>
+          </article>
         </section>
 
         {showCreate ? (
@@ -471,24 +663,66 @@ export function ControlPlaneApp() {
             <form onSubmit={createRun}>
               <label>
                 Title
-                <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Fix billing webhook bug" />
+                <input
+                  value={form.title}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      title: event.target.value,
+                    }))
+                  }
+                  placeholder="Fix billing webhook bug"
+                />
               </label>
               <label>
                 Task
-                <textarea value={form.task} onChange={(event) => setForm((current) => ({ ...current, task: event.target.value }))} placeholder="Describe the actual work the agent should do" />
+                <textarea
+                  value={form.task}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      task: event.target.value,
+                    }))
+                  }
+                  placeholder="Describe the actual work the agent should do"
+                />
               </label>
               <div className="formGrid">
                 <label>
                   Repo
-                  <input value={form.repo} onChange={(event) => setForm((current) => ({ ...current, repo: event.target.value }))} />
+                  <input
+                    value={form.repo}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        repo: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
                 <label>
                   Branch
-                  <input value={form.branch} onChange={(event) => setForm((current) => ({ ...current, branch: event.target.value }))} />
+                  <input
+                    value={form.branch}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        branch: event.target.value,
+                      }))
+                    }
+                  />
                 </label>
                 <label>
                   Agent
-                  <select value={form.agent} onChange={(event) => setForm((current) => ({ ...current, agent: event.target.value as AgentRuntime }))}>
+                  <select
+                    value={form.agent}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        agent: event.target.value as AgentRuntime,
+                      }))
+                    }
+                  >
                     <option value="claude-code">Claude Code</option>
                     <option value="codex">Codex</option>
                     <option value="hermes">Hermes</option>
@@ -496,13 +730,33 @@ export function ControlPlaneApp() {
                 </label>
                 <label>
                   Lane
-                  <select value={form.lane} onChange={(event) => setForm((current) => ({ ...current, lane: event.target.value }))}>
-                    {lanes.map((lane) => <option key={lane} value={lane}>{lane}</option>)}
+                  <select
+                    value={form.lane}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        lane: event.target.value,
+                      }))
+                    }
+                  >
+                    {lanes.map((lane) => (
+                      <option key={lane} value={lane}>
+                        {lane}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label>
                   Risk
-                  <select value={form.risk} onChange={(event) => setForm((current) => ({ ...current, risk: event.target.value as RiskLevel }))}>
+                  <select
+                    value={form.risk}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        risk: event.target.value as RiskLevel,
+                      }))
+                    }
+                  >
                     <option value="low">low</option>
                     <option value="medium">medium</option>
                     <option value="red-zone">red-zone</option>
@@ -510,8 +764,16 @@ export function ControlPlaneApp() {
                 </label>
               </div>
               <div className="formActions">
-                <button className="primaryButton" type="submit">Create run</button>
-                <button className="ghostButton" onClick={() => setShowCreate(false)} type="button">Cancel</button>
+                <button className="primaryButton" type="submit">
+                  Create run
+                </button>
+                <button
+                  className="ghostButton"
+                  onClick={() => setShowCreate(false)}
+                  type="button"
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           </section>
@@ -529,19 +791,69 @@ export function ControlPlaneApp() {
             </div>
             <p className="taskText">{selectedRun.task}</p>
             <div className="detailRows">
-              <span>Repo <b>{selectedRun.repo}</b></span>
-              <span>Branch <b>{selectedRun.branch}</b></span>
-              <span>Lane <b>{selectedRun.lane}</b></span>
-              <span>Agent <b>{labelForAgent(selectedRun.agent)}</b></span>
+              <span>
+                Repo <b>{selectedRun.repo}</b>
+              </span>
+              <span>
+                Branch <b>{selectedRun.branch}</b>
+              </span>
+              <span>
+                Lane <b>{selectedRun.lane}</b>
+              </span>
+              <span>
+                Agent <b>{labelForAgent(selectedRun.agent)}</b>
+              </span>
             </div>
             <div className="actionBar">
-              <button className="primaryButton" onClick={advanceRun} type="button">Advance stage</button>
-              <button className="secondaryButton" onClick={writeCurrentArtifact} type="button">Write current artifact</button>
-              <button className="secondaryButton" onClick={skipCurrentNode} type="button">Skip with reason</button>
-              <button className="secondaryButton" onClick={approveRedZone} type="button">Approve Red Zone</button>
-              <button className="dangerButton" onClick={failCurrentNode} type="button">Fail node</button>
-              <button className="secondaryButton" onClick={openSelfHealPr} type="button">Self-heal PR</button>
-              <button className="dangerButton" onClick={finishRun} type="button">Finish-line check</button>
+              <button
+                className="primaryButton"
+                onClick={advanceRun}
+                type="button"
+              >
+                Advance stage
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={writeCurrentArtifact}
+                type="button"
+              >
+                Write current artifact
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={skipCurrentNode}
+                type="button"
+              >
+                Skip with reason
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={approveRedZone}
+                type="button"
+              >
+                Approve Red Zone
+              </button>
+              <button
+                className="dangerButton"
+                onClick={failCurrentNode}
+                type="button"
+              >
+                Fail node
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={openSelfHealPr}
+                type="button"
+              >
+                Self-heal PR
+              </button>
+              <button
+                className="dangerButton"
+                onClick={finishRun}
+                type="button"
+              >
+                Finish-line check
+              </button>
             </div>
           </article>
 
@@ -553,7 +865,11 @@ export function ControlPlaneApp() {
             <p>{selectedNode.description}</p>
             <code>{selectedNode.requiredArtifact}</code>
             <div className="missingBox">
-              <span>{missing.length ? "Missing required artifacts" : "All required artifacts present"}</span>
+              <span>
+                {missing.length
+                  ? "Missing required artifacts"
+                  : "All required artifacts present"}
+              </span>
               <strong>{missing.length}</strong>
             </div>
           </article>
@@ -563,7 +879,9 @@ export function ControlPlaneApp() {
           <div className="canvasHeader appCanvasHeader">
             <div>
               <span className="tinyLabel">Workflow board</span>
-              <strong>{selectedRun.id} · {selectedRun.lane}</strong>
+              <strong>
+                {selectedRun.id} · {selectedRun.lane}
+              </strong>
             </div>
             <div className="signalPills">
               <span>{labelForAgent(selectedRun.agent)}</span>
@@ -572,16 +890,30 @@ export function ControlPlaneApp() {
             </div>
           </div>
           <div className="workflowCanvas appCanvas">
-            <svg className="edgeLayer" viewBox="0 0 100 78" preserveAspectRatio="none" aria-hidden="true">
+            <svg
+              className="edgeLayer"
+              viewBox="0 0 100 78"
+              preserveAspectRatio="none"
+              aria-hidden="true"
+            >
               {workflowEdges.map(([from, to]) => {
                 const start = nodeById[from];
                 const end = nodeById[to];
                 const midX = (start.x + end.x) / 2;
-                return <path d={`M ${start.x + 8} ${start.y + 5} C ${midX} ${start.y + 5}, ${midX} ${end.y + 5}, ${end.x + 8} ${end.y + 5}`} key={`${from}-${to}`} />;
+                return (
+                  <path
+                    d={`M ${start.x + 8} ${start.y + 5} C ${midX} ${start.y + 5}, ${midX} ${end.y + 5}, ${end.x + 8} ${end.y + 5}`}
+                    key={`${from}-${to}`}
+                  />
+                );
               })}
             </svg>
             {workflowNodes.map((node) => (
-              <article className={`graphNode appGraphNode ${computeNodeState(selectedRun, node.id)}`} key={node.id} style={{ left: `${node.x}%`, top: `${node.y}%` }}>
+              <article
+                className={`graphNode appGraphNode ${computeNodeState(selectedRun, node.id)}`}
+                key={node.id}
+                style={{ left: `${node.x}%`, top: `${node.y}%` }}
+              >
                 <div className="graphNodeTop">
                   <span>{node.lane}</span>
                   <b>{computeNodeState(selectedRun, node.id)}</b>
@@ -591,8 +923,20 @@ export function ControlPlaneApp() {
                 <code>{node.requiredArtifact}</code>
               </article>
             ))}
-            <div className={`agentToken ${selectedRun.agent}`} style={{ left: `calc(${selectedNode.x}% + 32px)`, top: `calc(${selectedNode.y}% - 20px)` }}>
-              <span>{selectedRun.agent === "claude-code" ? "C" : selectedRun.agent === "codex" ? "X" : "H"}</span>
+            <div
+              className={`agentToken ${selectedRun.agent}`}
+              style={{
+                left: `calc(${selectedNode.x}% + 32px)`,
+                top: `calc(${selectedNode.y}% - 20px)`,
+              }}
+            >
+              <span>
+                {selectedRun.agent === "claude-code"
+                  ? "C"
+                  : selectedRun.agent === "codex"
+                    ? "X"
+                    : "H"}
+              </span>
             </div>
           </div>
         </section>
@@ -601,14 +945,35 @@ export function ControlPlaneApp() {
           <article className="artifactPanel" id="artifacts">
             <div className="panelHeader">
               <span className="tinyLabel">Gate artifacts</span>
-              <strong>{selectedRun.artifacts.filter((artifact) => artifact.present).length}/{selectedRun.artifacts.length}</strong>
+              <strong>
+                {
+                  selectedRun.artifacts.filter((artifact) => artifact.present)
+                    .length
+                }
+                /{selectedRun.artifacts.length}
+              </strong>
             </div>
             <div className="artifactRows">
               {selectedRun.artifacts.map((artifact) => (
-                <div className={`artifactRow ${artifact.failed ? "failed" : artifact.skipped ? "skipped" : artifact.present ? "present" : "missing"}`} key={artifact.path}>
-                  <span>{artifact.failed ? "!" : artifact.skipped ? "↷" : artifact.present ? "✓" : "×"}</span>
+                <div
+                  className={`artifactRow ${artifact.failed ? "failed" : artifact.skipped ? "skipped" : artifact.present ? "present" : "missing"}`}
+                  key={artifact.path}
+                >
+                  <span>
+                    {artifact.failed
+                      ? "!"
+                      : artifact.skipped
+                        ? "↷"
+                        : artifact.present
+                          ? "✓"
+                          : "×"}
+                  </span>
                   <code>{artifact.path}</code>
-                  <small>{artifact.failureReason ?? artifact.skipReason ?? artifact.label}</small>
+                  <small>
+                    {artifact.failureReason ??
+                      artifact.skipReason ??
+                      artifact.label}
+                  </small>
                 </div>
               ))}
             </div>
@@ -636,25 +1001,34 @@ export function ControlPlaneApp() {
               <strong>{selectedRun.events.length} events</strong>
             </div>
             <div className="eventList appEventList">
-              {selectedRun.events.slice().reverse().map((event) => (
-                <div className={`eventRow ${event.status}`} key={event.id}>
-                  <span>{event.at}</span>
-                  <div>
-                    <b>{event.type}</b>
-                    <p>{event.message}</p>
-                    {event.artifact ? <code>{event.artifact}</code> : null}
+              {selectedRun.events
+                .slice()
+                .reverse()
+                .map((event) => (
+                  <div className={`eventRow ${event.status}`} key={event.id}>
+                    <span>{event.at}</span>
+                    <div>
+                      <b>{event.type}</b>
+                      <p>{event.message}</p>
+                      {event.artifact ? <code>{event.artifact}</code> : null}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </article>
 
           <article className="connectorPanel" id="connectors">
             <div className="panelHeader">
               <span className="tinyLabel">Connector bridge</span>
-              <strong className={`bridgeState ${bridgeStatus}`}>{bridgeStatus}</strong>
+              <strong className={`bridgeState ${bridgeStatus}`}>
+                {bridgeStatus}
+              </strong>
             </div>
-            <p>Connect Claude Code through a tiny local bridge on your Mac. The Vercel app can talk to localhost from your browser, so no Supabase is needed for the first real connector loop.</p>
+            <p>
+              Connect Claude Code through a tiny local bridge on your Mac. The
+              Vercel app can talk to localhost from your browser, so no Supabase
+              is needed for the first real connector loop.
+            </p>
             <div className="bridgeMessage">{bridgeMessage}</div>
             <pre>{`# Terminal 1, on your machine
 # Set UASH_REVIEW_TRUST_SHA256 from operator-reviewed state, plus all bridge credentials.
@@ -664,13 +1038,51 @@ npm run bridge:claude
 UASH_BRIDGE_URL="${BRIDGE_URL}" node scripts/uash-emit-event.mjs ${selectedRun.id} node.entered system-design "entered system design" --artifact design/system_design.md --actor claude-code --artifact-root "$PWD"
 UASH_BRIDGE_URL="${BRIDGE_URL}" node scripts/uash-emit-event.mjs ${selectedRun.id} node.skipped cloud-platform "cloud skipped" --artifact cloud/skip.json --status skipped --skip-reason "No cloud change" --actor harness --artifact-root "$PWD"`}</pre>
             <div className="formActions">
-              <button className="secondaryButton" onClick={checkBridge} type="button">Check bridge</button>
-              <button className="secondaryButton" onClick={syncSelectedToBridge} type="button">Sync run to bridge</button>
-              <button className="secondaryButton" onClick={() => pullSelectedFromBridge()} type="button">Pull latest</button>
-              <button className="secondaryButton" onClick={() => setBridgePolling((value) => !value)} type="button">{bridgePolling ? "Stop polling" : "Poll bridge"}</button>
-              <button className="secondaryButton" onClick={copyClaudePrompt} type="button">{promptCopied ? "Prompt copied" : "Copy Claude prompt"}</button>
-              <button className="secondaryButton" onClick={copyExport} type="button">{copied ? "Copied" : "Copy run JSON"}</button>
-              <button className="ghostButton" onClick={resetDemo} type="button">Reset demo state</button>
+              <button
+                className="secondaryButton"
+                onClick={checkBridge}
+                type="button"
+              >
+                Check bridge
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={syncSelectedToBridge}
+                type="button"
+              >
+                Sync run to bridge
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={() => pullSelectedFromBridge()}
+                type="button"
+              >
+                Pull latest
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={() => setBridgePolling((value) => !value)}
+                type="button"
+              >
+                {bridgePolling ? "Stop polling" : "Poll bridge"}
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={copyClaudePrompt}
+                type="button"
+              >
+                {promptCopied ? "Prompt copied" : "Copy Claude prompt"}
+              </button>
+              <button
+                className="secondaryButton"
+                onClick={copyExport}
+                type="button"
+              >
+                {copied ? "Copied" : "Copy run JSON"}
+              </button>
+              <button className="ghostButton" onClick={resetDemo} type="button">
+                Reset demo state
+              </button>
             </div>
           </article>
         </section>

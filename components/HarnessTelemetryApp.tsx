@@ -57,19 +57,58 @@ function nodeKindLabel(node: HarnessNode) {
 
 export function HarnessTelemetryApp() {
   const [scenarioId, setScenarioId] = useState(scenarios[0].id);
-  const scenario = useMemo(() => scenarios.find((item) => item.id === scenarioId) ?? scenarios[0], [scenarioId]);
+  const scenario = useMemo(
+    () => scenarios.find((item) => item.id === scenarioId) ?? scenarios[0],
+    [scenarioId],
+  );
   const [selectedNodeId, setSelectedNodeId] = useState(scenario.activeNodeId);
 
-  const selectedNode = useMemo(() => harnessNodes.find((node) => node.id === selectedNodeId) ?? harnessNodes[0], [selectedNodeId]);
+  const selectedNode = useMemo(
+    () =>
+      harnessNodes.find((node) => node.id === selectedNodeId) ??
+      harnessNodes[0],
+    [selectedNodeId],
+  );
   const selectedStatus = getScenarioNodeStatus(scenario, selectedNode.id);
   const selectedReason = getScenarioNodeReason(scenario, selectedNode);
-  const productionStatus = getScenarioNodeStatus(scenario, "production-readiness");
-  const productionReason = getScenarioNodeReason(scenario, harnessNodes.find((node) => node.id === "production-readiness") ?? selectedNode);
-  const activeLayerIds = new Set(scenario.id === "v02-production-pack" ? ["frontend", "backend-api-logic", "cicd-version-control", "error-tracking-logs-observability"] : scenario.id === "v03-cloud-redzone" ? ["cloud-compute", "hosting-deployment", "security", "availability-recovery-dr"] : []);
+  const productionStatus = getScenarioNodeStatus(
+    scenario,
+    "production-readiness",
+  );
+  const productionReason = getScenarioNodeReason(
+    scenario,
+    harnessNodes.find((node) => node.id === "production-readiness") ??
+      selectedNode,
+  );
+  const activeLayerIds = new Set(
+    scenario.id === "v02-production-pack"
+      ? [
+          "frontend",
+          "backend-api-logic",
+          "cicd-version-control",
+          "error-tracking-logs-observability",
+        ]
+      : scenario.id === "v03-cloud-redzone"
+        ? [
+            "cloud-compute",
+            "hosting-deployment",
+            "security",
+            "availability-recovery-dr",
+          ]
+        : [],
+  );
 
   const metrics = useMemo(() => {
-    const counts: Record<NodeStatus, number> = { done: 0, active: 0, blocked: 0, skipped: 0, pending: 0, warning: 0 };
-    for (const node of harnessNodes) counts[getScenarioNodeStatus(scenario, node.id)] += 1;
+    const counts: Record<NodeStatus, number> = {
+      done: 0,
+      active: 0,
+      blocked: 0,
+      skipped: 0,
+      pending: 0,
+      warning: 0,
+    };
+    for (const node of harnessNodes)
+      counts[getScenarioNodeStatus(scenario, node.id)] += 1;
     return counts;
   }, [scenario]);
 
@@ -99,7 +138,9 @@ export function HarnessTelemetryApp() {
               onClick={() => switchScenario(item.id)}
               type="button"
             >
-              <span>{item.mode.toUpperCase()} · {item.workType.toUpperCase()}</span>
+              <span>
+                {item.mode.toUpperCase()} · {item.workType.toUpperCase()}
+              </span>
               <strong>{item.label}</strong>
               <small>{item.subtitle}</small>
             </button>
@@ -118,17 +159,29 @@ export function HarnessTelemetryApp() {
 
         <section className="sidebarNote">
           <p className="eyebrow">Core guarantee</p>
-          <p>Every node must end as passed, failed, pending, needs approval, or skipped with a visible reason. No fake live telemetry.</p>
+          <p>
+            Every node must end as passed, failed, pending, needs approval, or
+            skipped with a visible reason. No fake live telemetry.
+          </p>
         </section>
       </aside>
 
       <section className="telemetryMain">
         <header className="telemetryHero">
           <div>
-            <p className="eyebrow">N8N-style Flow Monitor · Blueprint / Demo / Live Run / Replay separated</p>
-            <h1>Trace the full Agentic SDLC: system design, production layers, cloud/platform, QA, proof, and self-healing.</h1>
+            <p className="eyebrow">
+              N8N-style Flow Monitor · Blueprint / Demo / Live Run / Replay
+              separated
+            </p>
+            <h1>
+              Trace the full Agentic SDLC: system design, production layers,
+              cloud/platform, QA, proof, and self-healing.
+            </h1>
             <p>
-              This visual layer shows the universal SDLC harness topology, bundled Demo seed scenarios, and real/historical run modes. Live Run only lights up from connector events; Blueprint is static; Replay is historical event data.
+              This visual layer shows the universal SDLC harness topology,
+              bundled Demo seed scenarios, and real/historical run modes. Live
+              Run only lights up from connector events; Blueprint is static;
+              Replay is historical event data.
             </p>
           </div>
           <div className="heroCallout">
@@ -139,18 +192,36 @@ export function HarnessTelemetryApp() {
         </header>
 
         <section className="telemetryMetrics" aria-label="Flow status metrics">
-          <article><span>Passed</span><strong>{metrics.done}</strong></article>
-          <article><span>Active</span><strong>{metrics.active}</strong></article>
-          <article><span>Failed</span><strong>{metrics.blocked}</strong></article>
-          <article><span>Skipped with reason</span><strong>{metrics.skipped}</strong></article>
-          <article><span>Pending</span><strong>{metrics.pending}</strong></article>
+          <article>
+            <span>Passed</span>
+            <strong>{metrics.done}</strong>
+          </article>
+          <article>
+            <span>Active</span>
+            <strong>{metrics.active}</strong>
+          </article>
+          <article>
+            <span>Failed</span>
+            <strong>{metrics.blocked}</strong>
+          </article>
+          <article>
+            <span>Skipped with reason</span>
+            <strong>{metrics.skipped}</strong>
+          </article>
+          <article>
+            <span>Pending</span>
+            <strong>{metrics.pending}</strong>
+          </article>
         </section>
 
         <section className="flowMonitor" aria-label="Harness workflow monitor">
           <div className="flowMonitorHeader">
             <div>
               <span className="tinyLabel">{scenario.mode} topology</span>
-              <strong>Commission → front door → route/design → production layers → gates → self-heal</strong>
+              <strong>
+                Commission → front door → route/design → production layers →
+                gates → self-heal
+              </strong>
             </div>
             <div className="signalPills">
               <span>Production layers visible</span>
@@ -177,12 +248,16 @@ export function HarnessTelemetryApp() {
                       >
                         <div className="nodeTopline">
                           <span>{nodeKindLabel(node)}</span>
-                          <b>{statusSymbols[status]} {statusLabels[status]}</b>
+                          <b>
+                            {statusSymbols[status]} {statusLabels[status]}
+                          </b>
                         </div>
                         <strong>{node.label}</strong>
                         <p>{node.description}</p>
                         <code>{node.artifact}</code>
-                        {(status === "skipped" || status === "blocked" || status === "warning") ? (
+                        {status === "skipped" ||
+                        status === "blocked" ||
+                        status === "warning" ? (
                           <small>{reason}</small>
                         ) : null}
                       </button>
@@ -201,17 +276,35 @@ export function HarnessTelemetryApp() {
                 <span className="tinyLabel">Selected node inspector</span>
                 <h2>{selectedNode.label}</h2>
               </div>
-              <span className={`statusChip ${selectedStatus}`}>{statusSymbols[selectedStatus]} {statusLabels[selectedStatus]}</span>
+              <span className={`statusChip ${selectedStatus}`}>
+                {statusSymbols[selectedStatus]} {statusLabels[selectedStatus]}
+              </span>
             </div>
             <p>{selectedNode.description}</p>
             <div className="inspectorGrid">
-              <span>Layer <b>{selectedNode.layer}</b></span>
-              <span>Owner <b>{selectedNode.owner}</b></span>
-              <span>Artifact <b>{selectedNode.artifact}</b></span>
-              <span>Kind <b>{nodeKindLabel(selectedNode)}</b></span>
+              <span>
+                Layer <b>{selectedNode.layer}</b>
+              </span>
+              <span>
+                Owner <b>{selectedNode.owner}</b>
+              </span>
+              <span>
+                Artifact <b>{selectedNode.artifact}</b>
+              </span>
+              <span>
+                Kind <b>{nodeKindLabel(selectedNode)}</b>
+              </span>
             </div>
             <div className="reasonBox">
-              <h3>{selectedStatus === "skipped" ? "Why skipped" : selectedStatus === "blocked" ? "Why failed" : selectedStatus === "warning" ? "Why approval is forecast" : "Why this node exists"}</h3>
+              <h3>
+                {selectedStatus === "skipped"
+                  ? "Why skipped"
+                  : selectedStatus === "blocked"
+                    ? "Why failed"
+                    : selectedStatus === "warning"
+                      ? "Why approval is forecast"
+                      : "Why this node exists"}
+              </h3>
               <p>{selectedReason}</p>
             </div>
             <div className="reasonBox recovery">
@@ -219,7 +312,9 @@ export function HarnessTelemetryApp() {
               <p>{selectedNode.recovery}</p>
             </div>
             <div className="toolPills">
-              {selectedNode.tools.map((tool) => <span key={tool}>{tool}</span>)}
+              {selectedNode.tools.map((tool) => (
+                <span key={tool}>{tool}</span>
+              ))}
             </div>
           </article>
 
@@ -229,16 +324,24 @@ export function HarnessTelemetryApp() {
               <strong>{scenario.events.length} events</strong>
             </div>
             <div className="eventList appEventList">
-              {scenario.events.slice().reverse().map((event) => (
-                <button className={`eventRow ${event.status}`} key={`${event.at}-${event.nodeId}-${event.type}`} onClick={() => setSelectedNodeId(event.nodeId)} type="button">
-                  <span>{event.at}</span>
-                  <div>
-                    <b>{event.type}</b>
-                    <p>{event.message}</p>
-                    {event.artifact ? <code>{event.artifact}</code> : null}
-                  </div>
-                </button>
-              ))}
+              {scenario.events
+                .slice()
+                .reverse()
+                .map((event) => (
+                  <button
+                    className={`eventRow ${event.status}`}
+                    key={`${event.at}-${event.nodeId}-${event.type}`}
+                    onClick={() => setSelectedNodeId(event.nodeId)}
+                    type="button"
+                  >
+                    <span>{event.at}</span>
+                    <div>
+                      <b>{event.type}</b>
+                      <p>{event.message}</p>
+                      {event.artifact ? <code>{event.artifact}</code> : null}
+                    </div>
+                  </button>
+                ))}
             </div>
           </article>
 
@@ -249,11 +352,20 @@ export function HarnessTelemetryApp() {
             </div>
             <div className="artifactRows">
               {harnessNodes
-                .filter((node) => ["skipped", "blocked", "warning"].includes(getScenarioNodeStatus(scenario, node.id)))
+                .filter((node) =>
+                  ["skipped", "blocked", "warning"].includes(
+                    getScenarioNodeStatus(scenario, node.id),
+                  ),
+                )
                 .map((node) => {
                   const status = getScenarioNodeStatus(scenario, node.id);
                   return (
-                    <button className={`ledgerRow ${status}`} key={node.id} onClick={() => setSelectedNodeId(node.id)} type="button">
+                    <button
+                      className={`ledgerRow ${status}`}
+                      key={node.id}
+                      onClick={() => setSelectedNodeId(node.id)}
+                      type="button"
+                    >
                       <span>{statusSymbols[status]}</span>
                       <div>
                         <b>{node.label}</b>
@@ -266,7 +378,10 @@ export function HarnessTelemetryApp() {
           </article>
         </section>
 
-        <section className="productionLayerMatrix" aria-label="13 production layer ledger">
+        <section
+          className="productionLayerMatrix"
+          aria-label="13 production layer ledger"
+        >
           <div className="panelHeader">
             <span className="tinyLabel">13 production layers</span>
             <strong>{statusLabels[productionStatus]}</strong>
@@ -274,12 +389,19 @@ export function HarnessTelemetryApp() {
           <div className="layerRows productionLayerRows">
             {productionLayers.map((layer) => {
               const active = activeLayerIds.has(layer.id);
-              const status = productionStatus === "skipped" ? "skipped" : active ? "passed" : "skipped";
+              const status =
+                productionStatus === "skipped"
+                  ? "skipped"
+                  : active
+                    ? "passed"
+                    : "skipped";
               return (
                 <div className={`layerRow ${status}`} key={layer.id}>
                   <span>{status}</span>
                   <b>{layer.label}</b>
-                  <small>{active ? layerProofById[layer.id] : productionReason}</small>
+                  <small>
+                    {active ? layerProofById[layer.id] : productionReason}
+                  </small>
                 </div>
               );
             })}
@@ -290,22 +412,36 @@ export function HarnessTelemetryApp() {
           <article>
             <span>1</span>
             <h3>Mode labels prevent fake telemetry</h3>
-            <p>Blueprint explains topology, Demo is bundled seed data, Live Run uses real connector events, and Replay plays durable run packets. The UI says which one you are seeing.</p>
+            <p>
+              Blueprint explains topology, Demo is bundled seed data, Live Run
+              uses real connector events, and Replay plays durable run packets.
+              The UI says which one you are seeing.
+            </p>
           </article>
           <article>
             <span>2</span>
             <h3>Production layers are first-class</h3>
-            <p>Frontend, backend, DB, auth, hosting, cloud, CI/CD, security, rate limits, cache, scaling, logs, and recovery are classified per run.</p>
+            <p>
+              Frontend, backend, DB, auth, hosting, cloud, CI/CD, security, rate
+              limits, cache, scaling, logs, and recovery are classified per run.
+            </p>
           </article>
           <article>
             <span>3</span>
             <h3>Cloud/platform is not just code</h3>
-            <p>AWS/Azure/GCP work requires service maps, IAM/secrets, networking, observability, cost risk, rollback, and live smoke proof.</p>
+            <p>
+              AWS/Azure/GCP work requires service maps, IAM/secrets, networking,
+              observability, cost risk, rollback, and live smoke proof.
+            </p>
           </article>
           <article>
             <span>4</span>
             <h3>Finish-line checks the ledger</h3>
-            <p>Done is only allowed when every required node is passed or intentionally skipped with a reason the operator can inspect; process gaps route to self-heal PRs.</p>
+            <p>
+              Done is only allowed when every required node is passed or
+              intentionally skipped with a reason the operator can inspect;
+              process gaps route to self-heal PRs.
+            </p>
           </article>
         </section>
       </section>

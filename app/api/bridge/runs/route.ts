@@ -1,10 +1,20 @@
-import { bridgeProxyError, bridgeProxyProblemResponse, bridgeProxyRequestProblem, proxyBridge, readBoundedBridgeProxyBody } from "../../../../lib/bridge-proxy";
+import {
+  bridgeProxyError,
+  bridgeProxyProblemResponse,
+  bridgeProxyRequestProblem,
+  proxyBridge,
+  readBoundedBridgeProxyBody,
+} from "../../../../lib/bridge-proxy";
 
 const LIST_QUERY_NAMES = new Set(["limit", "cursor"]);
 
 function listBridgePath(request: Request) {
   const searchParams = new URL(request.url).searchParams;
-  const unsupported = [...new Set([...searchParams.keys()].filter((name) => !LIST_QUERY_NAMES.has(name)))];
+  const unsupported = [
+    ...new Set(
+      [...searchParams.keys()].filter((name) => !LIST_QUERY_NAMES.has(name)),
+    ),
+  ];
   if (unsupported.length) return { ok: false as const, unsupported };
   const query = searchParams.toString();
   return { ok: true as const, path: `/runs${query ? `?${query}` : ""}` };
@@ -16,10 +26,19 @@ export async function GET(request: Request) {
   try {
     const target = listBridgePath(request);
     if (!target.ok) {
-      return Response.json({ ok: false, error: "invalid_query", problems: target.unsupported.map((name) => `unsupported query parameter: ${name}`) }, {
-        status: 400,
-        headers: { "cache-control": "no-store" },
-      });
+      return Response.json(
+        {
+          ok: false,
+          error: "invalid_query",
+          problems: target.unsupported.map(
+            (name) => `unsupported query parameter: ${name}`,
+          ),
+        },
+        {
+          status: 400,
+          headers: { "cache-control": "no-store" },
+        },
+      );
     }
     return await proxyBridge(target.path);
   } catch (error) {

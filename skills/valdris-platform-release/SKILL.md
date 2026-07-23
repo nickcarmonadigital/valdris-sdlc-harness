@@ -10,10 +10,11 @@ description: Plan and prove cloud, deployment, CI/CD, observability, scaling, in
 3. Produce a service and dependency map with owners, regions, data boundaries, and failure modes.
 4. Require reviewable IaC or configuration diffs; reject dashboard-only claims without exported evidence.
 5. Define workload-specific SLOs, error budgets, capacity assumptions, cost ceilings, rollback triggers, RTO, and RPO.
-6. Validate CI provenance, staged promotion, health checks, telemetry, alerts, rollback, and restore. Require smoke only when the route identifies deployed, provider-integration, platform-native, or runtime behavior.
+6. Validate CI provenance, staged promotion, health checks, telemetry, alerts, rollback, and restore. Require smoke only when the route identifies deployed, provider-integration, platform-native, or runtime behavior. A prototype-to-production move requires `uash.promotion-receipt.v1` with a distinct production build and semantic proof; prototype evidence cannot be relabeled as production evidence.
 7. Exercise failure or recovery only inside the approved blast radius.
 8. Classify all affected production assurance domains and hard dependencies; treat conditional dependencies as applicability questions, not automatic expansion.
-9. If the current host cannot run platform-native proof, keep that stopping condition open and route it to an approved runner; never substitute source inspection for a signed build, device test, provider smoke, restore, or failover result.
+9. For authoritative claims, execute proof in the commissioned immutable executor and advance the rollback-resistant bridge head with a provider-backed compare-and-swap receipt. The agent may not inherit ambient secrets, weaken network/resource policy, self-enroll a trust key, or accept a stale head.
+10. If the current host cannot run platform-native proof, keep that stopping condition open and route it to an approved runner; never substitute source inspection for a signed build, device test, provider smoke, restore, or failover result.
 
 Stop for human approval before production deploys, TestFlight/App Store uploads or promotions, traffic/DNS changes, secrets, IAM, data restore, failover, chaos tests, spend commitments, payment-provider changes, charges/refunds/voids/reconciliation, or customer communications.
 

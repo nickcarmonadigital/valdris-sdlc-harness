@@ -2,17 +2,50 @@
   "schema": "uash.workload-taxonomy-catalog.v1",
   "version": "1.0.0",
   "assuranceTiers": [
-    {"id": "T0", "rank": 0, "label": "Declared", "minimumTechnicalTrust": "automated-local", "externalAttestationRequired": false},
-    {"id": "T1", "rank": 1, "label": "Locally Verified", "minimumTechnicalTrust": "automated-local", "externalAttestationRequired": false},
-    {"id": "T2", "rank": 2, "label": "CI-Attested", "minimumTechnicalTrust": "ci-attested", "externalAttestationRequired": false},
-    {"id": "T3", "rank": 3, "label": "Externally Attested", "minimumTechnicalTrust": "ci-attested", "externalAttestationRequired": true}
+    {
+      "id": "T0",
+      "rank": 0,
+      "label": "Declared",
+      "minimumTechnicalTrust": "automated-local",
+      "externalAttestationRequired": false
+    },
+    {
+      "id": "T1",
+      "rank": 1,
+      "label": "Locally Verified",
+      "minimumTechnicalTrust": "automated-local",
+      "externalAttestationRequired": false
+    },
+    {
+      "id": "T2",
+      "rank": 2,
+      "label": "CI-Attested",
+      "minimumTechnicalTrust": "ci-attested",
+      "externalAttestationRequired": false
+    },
+    {
+      "id": "T3",
+      "rank": 3,
+      "label": "Externally Attested",
+      "minimumTechnicalTrust": "ci-attested",
+      "externalAttestationRequired": true
+    }
   ],
   "workloadProfiles": [
     {
       "id": "saas",
       "title": "SaaS / Multi-Tenant Application",
       "minimumTier": "T2",
-      "triggers": ["SaaS", "multi-tenant", "tenant", "customer organization", "organization account", "team workspace", "customer workspace", "B2B application"],
+      "triggers": [
+        "SaaS",
+        "multi-tenant",
+        "tenant",
+        "customer organization",
+        "organization account",
+        "team workspace",
+        "customer workspace",
+        "B2B application"
+      ],
       "domainPacks": ["saas"],
       "requiresAi": false
     },
@@ -20,7 +53,17 @@
       "id": "ai-agentic",
       "title": "AI / Agentic System",
       "minimumTier": "T2",
-      "triggers": ["AI", "LLM", "agent", "agentic", "RAG", "prompt", "model", "tool calling", "memory"],
+      "triggers": [
+        "AI",
+        "LLM",
+        "agent",
+        "agentic",
+        "RAG",
+        "prompt",
+        "model",
+        "tool calling",
+        "memory"
+      ],
       "domainPacks": [],
       "requiresAi": true
     },
@@ -28,7 +71,17 @@
       "id": "mobile",
       "title": "Mobile Application",
       "minimumTier": "T2",
-      "triggers": ["native mobile", "mobile app", "mobile application", "Android", "iOS", "iPhone", "iPad", "TestFlight", "App Store"],
+      "triggers": [
+        "native mobile",
+        "mobile app",
+        "mobile application",
+        "Android",
+        "iOS",
+        "iPhone",
+        "iPad",
+        "TestFlight",
+        "App Store"
+      ],
       "domainPacks": ["mobile-ios"],
       "requiresAi": false
     },
@@ -36,7 +89,44 @@
       "id": "regulated",
       "title": "Regulated or High-Impact Workload",
       "minimumTier": "T3",
-      "triggers": ["regulated", "compliance", "regulatory audit", "compliance audit", "healthcare", "financial services", "government", "high-impact", "safety-critical", "personal data", "PII", "PHI", "medical records", "health records", "patient records", "patient data", "clinical data", "protected health", "biometric", "credit decision", "credit application", "credit approval", "lending", "loan", "hiring decision", "insurance decision", "insurance quote", "underwriting", "housing decision", "education decision", "HIPAA", "PCI", "SOX", "GDPR", "FERPA", "COPPA"],
+      "triggers": [
+        "regulated",
+        "compliance",
+        "regulatory audit",
+        "compliance audit",
+        "healthcare",
+        "financial services",
+        "government",
+        "high-impact",
+        "safety-critical",
+        "personal data",
+        "PII",
+        "PHI",
+        "medical records",
+        "health records",
+        "patient records",
+        "patient data",
+        "clinical data",
+        "protected health",
+        "biometric",
+        "credit decision",
+        "credit application",
+        "credit approval",
+        "lending",
+        "loan",
+        "hiring decision",
+        "insurance decision",
+        "insurance quote",
+        "underwriting",
+        "housing decision",
+        "education decision",
+        "HIPAA",
+        "PCI",
+        "SOX",
+        "GDPR",
+        "FERPA",
+        "COPPA"
+      ],
       "domainPacks": [],
       "requiresAi": false
     },
@@ -44,7 +134,15 @@
       "id": "payments",
       "title": "Payments & Digital Commerce",
       "minimumTier": "T3",
-      "triggers": ["payment", "purchase", "billing", "subscription", "entitlement", "refund", "StoreKit"],
+      "triggers": [
+        "payment",
+        "purchase",
+        "billing",
+        "subscription",
+        "entitlement",
+        "refund",
+        "StoreKit"
+      ],
       "domainPacks": ["digital-commerce"],
       "requiresAi": false
     },
@@ -52,7 +150,14 @@
       "id": "realtime",
       "title": "Realtime & Multiplayer System",
       "minimumTier": "T2",
-      "triggers": ["realtime", "multiplayer", "matchmaking", "WebSocket", "authoritative state", "live collaboration"],
+      "triggers": [
+        "realtime",
+        "multiplayer",
+        "matchmaking",
+        "WebSocket",
+        "authoritative state",
+        "live collaboration"
+      ],
       "domainPacks": ["multiplayer-realtime"],
       "requiresAi": false
     }
@@ -61,78 +166,384 @@
     {
       "id": "async-workflow-orchestration",
       "title": "Async Workflow & Orchestration",
-      "triggers": ["async", "queue", "worker", "async workflow", "durable workflow", "workflow orchestration", "background job", "queued job", "scheduled job", "job queue", "orchestration", "event-driven", "webhook", "saga", "retry policy", "retry storm", "distributed retry", "Temporal", "n8n", "Trigger.dev", "Step Functions", "SQS", "SNS", "Kafka", "Pub/Sub", "message broker", "event bus", "scheduler", "cron", "background processing"],
-      "productionLayers": ["backend-api-logic", "database-storage", "rate-limiting", "error-tracking-logs-observability", "availability-recovery-dr"],
-      "controlIds": ["API-CONTRACT-001", "API-FAILURE-001", "API-TRACE-001", "DATA-INTEGRITY-001", "RATE-FAILURE-001", "OBS-TELEMETRY-001", "DR-INCIDENT-001"],
+      "triggers": [
+        "async",
+        "queue",
+        "worker",
+        "async workflow",
+        "durable workflow",
+        "workflow orchestration",
+        "background job",
+        "queued job",
+        "scheduled job",
+        "job queue",
+        "orchestration",
+        "event-driven",
+        "webhook",
+        "saga",
+        "retry policy",
+        "retry storm",
+        "distributed retry",
+        "Temporal",
+        "n8n",
+        "Trigger.dev",
+        "Step Functions",
+        "SQS",
+        "SNS",
+        "Kafka",
+        "Pub/Sub",
+        "message broker",
+        "event bus",
+        "scheduler",
+        "cron",
+        "background processing"
+      ],
+      "productionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "rate-limiting",
+        "error-tracking-logs-observability",
+        "availability-recovery-dr"
+      ],
+      "controlIds": [
+        "API-CONTRACT-001",
+        "API-FAILURE-001",
+        "API-TRACE-001",
+        "DATA-INTEGRITY-001",
+        "RATE-FAILURE-001",
+        "OBS-TELEMETRY-001",
+        "DR-INCIDENT-001"
+      ],
       "aiControlIds": []
     },
     {
       "id": "multi-tenant-isolation",
       "title": "Multi-Tenant Isolation",
-      "triggers": ["tenant", "multi-tenant", "customer organization", "organization account", "team workspace", "customer workspace", "RLS", "row-level security"],
-      "productionLayers": ["database-storage", "auth-permissions-rls", "security", "caching-cdn", "error-tracking-logs-observability"],
-      "controlIds": ["DATA-INTEGRITY-001", "AUTH-AUTHZ-001", "AUTH-TENANT-001", "SEC-THREAT-001", "CACHE-KEY-001", "CACHE-ISOLATION-001", "OBS-REDACTION-001"],
+      "triggers": [
+        "tenant",
+        "multi-tenant",
+        "customer organization",
+        "organization account",
+        "team workspace",
+        "customer workspace",
+        "RLS",
+        "row-level security"
+      ],
+      "productionLayers": [
+        "database-storage",
+        "auth-permissions-rls",
+        "security",
+        "caching-cdn",
+        "error-tracking-logs-observability"
+      ],
+      "controlIds": [
+        "DATA-INTEGRITY-001",
+        "AUTH-AUTHZ-001",
+        "AUTH-TENANT-001",
+        "SEC-THREAT-001",
+        "CACHE-KEY-001",
+        "CACHE-ISOLATION-001",
+        "OBS-REDACTION-001"
+      ],
       "aiControlIds": ["AI-DATA-001", "AI-RAG-001", "AI-MEMORY-001"]
     },
     {
       "id": "identity-access-governance",
       "title": "Identity & Access Governance",
-      "triggers": ["account", "identity", "auth", "authentication", "authorization", "login", "sign in", "sign-in", "OAuth", "OIDC", "SAML", "JWT", "session", "MFA", "passkey", "API key", "role", "permission", "RBAC", "SSO", "SCIM"],
-      "productionLayers": ["auth-permissions-rls", "security", "cicd-version-control"],
-      "controlIds": ["AUTH-AUTHZ-001", "AUTH-TENANT-001", "AUTH-LIFECYCLE-001", "SEC-THREAT-001", "SEC-SECRETS-001", "CI-PROVENANCE-001"],
+      "triggers": [
+        "account",
+        "identity",
+        "auth",
+        "authentication",
+        "authorization",
+        "login",
+        "sign in",
+        "sign-in",
+        "OAuth",
+        "OIDC",
+        "SAML",
+        "JWT",
+        "session",
+        "MFA",
+        "passkey",
+        "API key",
+        "role",
+        "permission",
+        "RBAC",
+        "SSO",
+        "SCIM"
+      ],
+      "productionLayers": [
+        "auth-permissions-rls",
+        "security",
+        "cicd-version-control"
+      ],
+      "controlIds": [
+        "AUTH-AUTHZ-001",
+        "AUTH-TENANT-001",
+        "AUTH-LIFECYCLE-001",
+        "SEC-THREAT-001",
+        "SEC-SECRETS-001",
+        "CI-PROVENANCE-001"
+      ],
       "aiControlIds": ["AI-TOOLS-001"]
     },
     {
       "id": "financial-transaction-integrity",
       "title": "Financial Transaction Integrity",
-      "triggers": ["payment", "purchase", "billing", "subscription", "entitlement", "refund", "ledger", "reconciliation"],
-      "productionLayers": ["backend-api-logic", "database-storage", "auth-permissions-rls", "rate-limiting", "error-tracking-logs-observability", "availability-recovery-dr"],
-      "controlIds": ["API-FAILURE-001", "DATA-INTEGRITY-001", "AUTH-AUTHZ-001", "RATE-POLICY-001", "RATE-METERING-001", "OBS-TELEMETRY-001", "DR-INCIDENT-001"],
+      "triggers": [
+        "payment",
+        "purchase",
+        "billing",
+        "subscription",
+        "entitlement",
+        "refund",
+        "ledger",
+        "reconciliation"
+      ],
+      "productionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "auth-permissions-rls",
+        "rate-limiting",
+        "error-tracking-logs-observability",
+        "availability-recovery-dr"
+      ],
+      "controlIds": [
+        "API-FAILURE-001",
+        "DATA-INTEGRITY-001",
+        "AUTH-AUTHZ-001",
+        "RATE-POLICY-001",
+        "RATE-METERING-001",
+        "OBS-TELEMETRY-001",
+        "DR-INCIDENT-001"
+      ],
       "aiControlIds": ["AI-TOOLS-001", "AI-COST-001"]
     },
     {
       "id": "privacy-data-governance",
       "title": "Privacy & Data Governance",
-      "triggers": ["personal data", "sensitive data", "privacy", "consent", "retention", "deletion", "residency", "PII", "PHI", "patient", "medical records", "health records", "clinical data", "financial data", "credentials", "biometric"],
-      "productionLayers": ["database-storage", "auth-permissions-rls", "security", "caching-cdn", "error-tracking-logs-observability"],
-      "controlIds": ["DATA-INTEGRITY-001", "AUTH-TENANT-001", "SEC-THREAT-001", "CACHE-ISOLATION-001", "OBS-REDACTION-001"],
-      "aiControlIds": ["AI-DATA-001", "AI-RAG-001", "AI-MEMORY-001", "AI-OBS-001"]
+      "triggers": [
+        "personal data",
+        "sensitive data",
+        "privacy",
+        "consent",
+        "retention",
+        "deletion",
+        "residency",
+        "PII",
+        "PHI",
+        "patient",
+        "medical records",
+        "health records",
+        "clinical data",
+        "financial data",
+        "credentials",
+        "biometric"
+      ],
+      "productionLayers": [
+        "database-storage",
+        "auth-permissions-rls",
+        "security",
+        "caching-cdn",
+        "error-tracking-logs-observability"
+      ],
+      "controlIds": [
+        "DATA-INTEGRITY-001",
+        "AUTH-TENANT-001",
+        "SEC-THREAT-001",
+        "CACHE-ISOLATION-001",
+        "OBS-REDACTION-001"
+      ],
+      "aiControlIds": [
+        "AI-DATA-001",
+        "AI-RAG-001",
+        "AI-MEMORY-001",
+        "AI-OBS-001"
+      ]
     },
     {
       "id": "regulated-decision-governance",
       "title": "Regulated & High-Impact Decision Governance",
-      "triggers": ["credit decision", "credit application", "credit approval", "lending", "loan", "hiring decision", "employment decision", "insurance decision", "insurance quote", "underwriting", "housing decision", "education decision", "medical decision", "clinical decision", "eligibility decision", "high-impact decision"],
-      "productionLayers": ["backend-api-logic", "database-storage", "auth-permissions-rls", "security", "error-tracking-logs-observability", "availability-recovery-dr"],
-      "controlIds": ["API-CONTRACT-001", "API-FAILURE-001", "DATA-INTEGRITY-001", "AUTH-AUTHZ-001", "SEC-THREAT-001", "OBS-TELEMETRY-001", "OBS-REDACTION-001", "DR-INCIDENT-001"],
-      "aiControlIds": ["AI-INVENTORY-001", "AI-EVAL-001", "AI-DATA-001", "AI-SAFETY-001", "AI-OBS-001", "AI-LIFECYCLE-001"]
+      "triggers": [
+        "credit decision",
+        "credit application",
+        "credit approval",
+        "lending",
+        "loan",
+        "hiring decision",
+        "employment decision",
+        "insurance decision",
+        "insurance quote",
+        "underwriting",
+        "housing decision",
+        "education decision",
+        "medical decision",
+        "clinical decision",
+        "eligibility decision",
+        "high-impact decision"
+      ],
+      "productionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "auth-permissions-rls",
+        "security",
+        "error-tracking-logs-observability",
+        "availability-recovery-dr"
+      ],
+      "controlIds": [
+        "API-CONTRACT-001",
+        "API-FAILURE-001",
+        "DATA-INTEGRITY-001",
+        "AUTH-AUTHZ-001",
+        "SEC-THREAT-001",
+        "OBS-TELEMETRY-001",
+        "OBS-REDACTION-001",
+        "DR-INCIDENT-001"
+      ],
+      "aiControlIds": [
+        "AI-INVENTORY-001",
+        "AI-EVAL-001",
+        "AI-DATA-001",
+        "AI-SAFETY-001",
+        "AI-OBS-001",
+        "AI-LIFECYCLE-001"
+      ]
     },
     {
       "id": "generative-ai-governance",
       "title": "Generative AI Governance",
-      "triggers": ["AI", "LLM", "model", "prompt", "RAG", "agent", "tool", "memory", "embedding"],
-      "productionLayers": ["backend-api-logic", "database-storage", "auth-permissions-rls", "security", "rate-limiting", "error-tracking-logs-observability", "availability-recovery-dr"],
-      "controlIds": ["API-CONTRACT-001", "API-FAILURE-001", "DATA-INTEGRITY-001", "AUTH-AUTHZ-001", "SEC-THREAT-001", "RATE-POLICY-001", "OBS-TELEMETRY-001", "DR-INCIDENT-001"],
-      "aiControlIds": ["AI-INVENTORY-001", "AI-EVAL-001", "AI-DATA-001", "AI-RAG-001", "AI-SAFETY-001", "AI-TOOLS-001", "AI-MEMORY-001", "AI-OBS-001", "AI-COST-001", "AI-LIFECYCLE-001"]
+      "triggers": [
+        "AI",
+        "LLM",
+        "model",
+        "prompt",
+        "RAG",
+        "agent",
+        "tool",
+        "memory",
+        "embedding"
+      ],
+      "productionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "auth-permissions-rls",
+        "security",
+        "rate-limiting",
+        "error-tracking-logs-observability",
+        "availability-recovery-dr"
+      ],
+      "controlIds": [
+        "API-CONTRACT-001",
+        "API-FAILURE-001",
+        "DATA-INTEGRITY-001",
+        "AUTH-AUTHZ-001",
+        "SEC-THREAT-001",
+        "RATE-POLICY-001",
+        "OBS-TELEMETRY-001",
+        "DR-INCIDENT-001"
+      ],
+      "aiControlIds": [
+        "AI-INVENTORY-001",
+        "AI-EVAL-001",
+        "AI-DATA-001",
+        "AI-RAG-001",
+        "AI-SAFETY-001",
+        "AI-TOOLS-001",
+        "AI-MEMORY-001",
+        "AI-OBS-001",
+        "AI-COST-001",
+        "AI-LIFECYCLE-001"
+      ]
     },
     {
       "id": "realtime-state-coordination",
       "title": "Realtime State & Collaboration",
-      "triggers": ["realtime", "live collaboration", "WebSocket", "authoritative state", "multiplayer", "matchmaking", "presence", "shared cursor", "collaborative editor"],
-      "productionLayers": ["backend-api-logic", "database-storage", "rate-limiting", "load-balancing-scaling", "error-tracking-logs-observability", "availability-recovery-dr"],
-      "controlIds": ["API-CONTRACT-001", "API-FAILURE-001", "API-TRACE-001", "DATA-INTEGRITY-001", "RATE-FAILURE-001", "SCALE-CAPACITY-001", "OBS-TELEMETRY-001", "DR-INCIDENT-001"],
+      "triggers": [
+        "realtime",
+        "live collaboration",
+        "WebSocket",
+        "authoritative state",
+        "multiplayer",
+        "matchmaking",
+        "presence",
+        "shared cursor",
+        "collaborative editor"
+      ],
+      "productionLayers": [
+        "backend-api-logic",
+        "database-storage",
+        "rate-limiting",
+        "load-balancing-scaling",
+        "error-tracking-logs-observability",
+        "availability-recovery-dr"
+      ],
+      "controlIds": [
+        "API-CONTRACT-001",
+        "API-FAILURE-001",
+        "API-TRACE-001",
+        "DATA-INTEGRITY-001",
+        "RATE-FAILURE-001",
+        "SCALE-CAPACITY-001",
+        "OBS-TELEMETRY-001",
+        "DR-INCIDENT-001"
+      ],
       "aiControlIds": []
     },
     {
       "id": "production-release-governance",
       "title": "Production Release Governance",
-      "triggers": ["deploy", "release", "ship", "publish", "promote", "production", "TestFlight", "App Store"],
-      "productionLayers": ["hosting-deployment", "cloud-compute", "cicd-version-control", "security", "load-balancing-scaling", "error-tracking-logs-observability", "availability-recovery-dr"],
-      "controlIds": ["DEPLOY-PROMOTION-001", "DEPLOY-HEALTH-001", "DEPLOY-ROLLBACK-001", "CLOUD-BOUNDARY-001", "CI-GATES-001", "CI-PROVENANCE-001", "SEC-VULNERABILITY-001", "SCALE-PROGRESSIVE-001", "OBS-SLO-001", "DR-RESTORE-001"],
+      "triggers": [
+        "deploy",
+        "release",
+        "ship",
+        "publish",
+        "promote",
+        "production",
+        "TestFlight",
+        "App Store"
+      ],
+      "productionLayers": [
+        "hosting-deployment",
+        "cloud-compute",
+        "cicd-version-control",
+        "security",
+        "load-balancing-scaling",
+        "error-tracking-logs-observability",
+        "availability-recovery-dr"
+      ],
+      "controlIds": [
+        "DEPLOY-PROMOTION-001",
+        "DEPLOY-HEALTH-001",
+        "DEPLOY-ROLLBACK-001",
+        "CLOUD-BOUNDARY-001",
+        "CI-GATES-001",
+        "CI-PROVENANCE-001",
+        "SEC-VULNERABILITY-001",
+        "SCALE-PROGRESSIVE-001",
+        "OBS-SLO-001",
+        "DR-RESTORE-001"
+      ],
       "aiControlIds": ["AI-LIFECYCLE-001"]
     }
   ],
   "proofAxis": {
-    "evidenceTypes": ["artifact", "command", "metric", "approval", "provider-report"],
-    "binding": ["subject", "runId", "profile", "commit", "environment", "producer", "trustTier", "timestamp"]
+    "evidenceTypes": [
+      "artifact",
+      "command",
+      "metric",
+      "approval",
+      "provider-report"
+    ],
+    "binding": [
+      "subject",
+      "runId",
+      "profile",
+      "commit",
+      "environment",
+      "producer",
+      "trustTier",
+      "timestamp"
+    ]
   }
 }
