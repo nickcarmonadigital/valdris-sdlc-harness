@@ -100,16 +100,21 @@ const stableVersionMismatchRoot = mkdtempSync(
   path.join(tmpdir(), "valdris-stable-release-version-mismatch-"),
 );
 try {
+  const validFilesystemIdentity = { dev: 7n, ino: 11n };
+  const sentinelFilesystemIdentities = [
+    [{ dev: 0n, ino: 11n }, validFilesystemIdentity],
+    [validFilesystemIdentity, { dev: 0n, ino: 11n }],
+    [{ dev: 7n, ino: 0n }, validFilesystemIdentity],
+    [validFilesystemIdentity, { dev: 7n, ino: 0n }],
+  ];
   if (
     !sameNonzeroFilesystemIdentity(
-      { dev: 7n, ino: 11n },
-      { dev: 7n, ino: 11n },
+      validFilesystemIdentity,
+      validFilesystemIdentity,
     ) ||
-    sameNonzeroFilesystemIdentity(
-      { dev: 0n, ino: 11n },
-      { dev: 0n, ino: 11n },
-    ) ||
-    sameNonzeroFilesystemIdentity({ dev: 7n, ino: 0n }, { dev: 7n, ino: 0n })
+    sentinelFilesystemIdentities.some(([leftStats, rightStats]) =>
+      sameNonzeroFilesystemIdentity(leftStats, rightStats),
+    )
   )
     throw new Error(
       "candidate filesystem identity did not require matching nonzero device and inode values",
