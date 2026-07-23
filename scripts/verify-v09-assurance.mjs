@@ -3403,7 +3403,7 @@ async function main() {
             })}\n`,
           ),
         ),
-        "operator root identity changed",
+        "identity changed",
       );
     } catch (error) {
       if (
