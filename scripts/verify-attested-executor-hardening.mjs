@@ -79,6 +79,51 @@ function expectFailure(label, operation, pattern) {
   throw new Error(`${label} unexpectedly passed`);
 }
 
+function destructiveCapsuleMutationProbeApplicable({
+  platform = process.platform,
+  geteuid = process.geteuid,
+  getuid = process.getuid,
+} = {}) {
+  // Effective UID 0 bypasses POSIX mode bits. Prefer geteuid because filesystem
+  // authorization follows it; getuid is only the compatibility fallback where
+  // an effective-identity API is unavailable. Mutating the live fixture as the
+  // superuser would destroy the capsule rather than test the commissioned
+  // workload boundary, which is separately bound by the authority-separation
+  // receipt. Keep the mode-bit adversary active for every non-root principal.
+  const effectiveUid =
+    typeof geteuid === "function"
+      ? geteuid()
+      : typeof getuid === "function"
+        ? getuid()
+        : undefined;
+  return !(platform !== "win32" && effectiveUid === 0);
+}
+
+assert(
+  !destructiveCapsuleMutationProbeApplicable({
+    platform: "linux",
+    geteuid: () => 0,
+    getuid: () => 1_000,
+  }) &&
+    destructiveCapsuleMutationProbeApplicable({
+      platform: "linux",
+      geteuid: () => 1_000,
+      getuid: () => 0,
+    }) &&
+    !destructiveCapsuleMutationProbeApplicable({
+      platform: "linux",
+      geteuid: undefined,
+      getuid: () => 0,
+    }) &&
+    destructiveCapsuleMutationProbeApplicable({
+      platform: "linux",
+      geteuid: undefined,
+      getuid: () => 1_000,
+    }) &&
+    destructiveCapsuleMutationProbeApplicable({ platform: "win32" }),
+  "runtime capsule mutation probe privilege routing is invalid",
+);
+
 function finalFixtureFailure(primaryFailure, cleanupFailure) {
   if (primaryFailure && cleanupFailure)
     return new AggregateError(
@@ -655,8 +700,14 @@ try {
   );
   let launchedRuntimePath;
   let sourceRestoredBeforeReturn = false;
-  let capsuleWriteBlocked = false;
-  let capsuleRenameBlocked = false;
+  const capsuleMutationProbeApplicable =
+    destructiveCapsuleMutationProbeApplicable();
+  let capsuleWriteDisposition = capsuleMutationProbeApplicable
+    ? "pending"
+    : "skipped-privileged-posix";
+  let capsuleRenameDisposition = capsuleMutationProbeApplicable
+    ? "pending"
+    : "skipped-privileged-posix";
   let transientRuntimeResult;
   try {
     transientRuntimeResult = runCommissionedRuntimeCommand({
@@ -674,15 +725,19 @@ try {
         writeFileSync(transientRuntime, commissionedRuntimeBytes);
         sourceRestoredBeforeReturn =
           sha256(readFileSync(transientRuntime)) === transientRuntimeSha256;
-        try {
-          writeFileSync(command, "uncommissioned capsule\n");
-        } catch {
-          capsuleWriteBlocked = true;
-        }
-        try {
-          renameSync(command, `${command}.replacement`);
-        } catch {
-          capsuleRenameBlocked = true;
+        if (capsuleMutationProbeApplicable) {
+          try {
+            writeFileSync(command, "uncommissioned capsule\n");
+            capsuleWriteDisposition = "unexpectedly-allowed";
+          } catch {
+            capsuleWriteDisposition = "blocked";
+          }
+          try {
+            renameSync(command, `${command}.replacement`);
+            capsuleRenameDisposition = "unexpectedly-allowed";
+          } catch {
+            capsuleRenameDisposition = "blocked";
+          }
         }
         return runtimeResult(0, "trusted capsule output");
       },
@@ -696,8 +751,12 @@ try {
       launchedRuntimePath === runtimeCapsule.path &&
       launchedRuntimePath !== realpathSync.native(transientRuntime) &&
       sourceRestoredBeforeReturn &&
-      capsuleWriteBlocked &&
-      capsuleRenameBlocked &&
+      ["blocked", "skipped-privileged-posix"].includes(
+        capsuleWriteDisposition,
+      ) &&
+      ["blocked", "skipped-privileged-posix"].includes(
+        capsuleRenameDisposition,
+      ) &&
       sha256(readFileSync(transientRuntime)) === transientRuntimeSha256,
     "transient source replacement could substitute the protected runtime capsule",
   );
@@ -1070,6 +1129,11 @@ try {
     JSON.stringify(
       {
         ok: true,
+        runtimeCapsuleMutationProbe: {
+          applicable: capsuleMutationProbeApplicable,
+          writeDisposition: capsuleWriteDisposition,
+          renameDisposition: capsuleRenameDisposition,
+        },
         tests: {
           commissionedAbsoluteBinaries: true,
           equivalentCommissionedBinaryPathSpelling: true,
