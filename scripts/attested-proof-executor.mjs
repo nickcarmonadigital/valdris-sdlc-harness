@@ -918,7 +918,19 @@ export function stageCommissionedRuntimeExecutable({
       );
     throw error;
   }
-  let released = false;
+  const releaser = createRuntimeCapsuleReleaser({
+    validate() {
+      // Final validation is still operational work. Preserve the commissioned
+      // cleanup window so ACL restoration can run even when validation has
+      // exhausted the non-cleanup portion of the wall-clock budget.
+      assertProtected({ reserveCleanup: true });
+    },
+    cleanupSteps: [
+      () => capsuleProtection.release(),
+      () => chmodSync(capsule.path, 0o700),
+      () => chmodSync(capsuleRoot, 0o700),
+    ],
+  });
   return {
     ...capsule,
     sourcePath: source.path,
@@ -938,26 +950,55 @@ export function stageCommissionedRuntimeExecutable({
     capsuleAccess: isolationPolicy.hostAccess.capsuleAccess,
     assertProtected,
     release() {
+      releaser.release();
+    },
+  };
+}
+
+export function createRuntimeCapsuleReleaser({ validate, cleanupSteps }) {
+  if (typeof validate !== "function")
+    throw new Error("runtime capsule release validator is required");
+  if (
+    !Array.isArray(cleanupSteps) ||
+    cleanupSteps.length === 0 ||
+    cleanupSteps.some((step) => typeof step !== "function")
+  )
+    throw new Error("runtime capsule release cleanup steps are required");
+  let released = false;
+  let validationAttempted = false;
+  let validationFailure;
+  const cleanupComplete = cleanupSteps.map(() => false);
+  return {
+    release() {
       if (released) return;
-      released = true;
-      let releaseFailure;
-      try {
-        assertProtected({ reserveCleanup: false });
-      } catch (error) {
-        releaseFailure = error;
+      if (!validationAttempted) {
+        validationAttempted = true;
+        try {
+          validate();
+        } catch (error) {
+          validationFailure = error;
+        }
       }
-      try {
-        capsuleProtection.release();
-      } catch (error) {
-        releaseFailure ||= error;
+      const cleanupFailures = [];
+      for (const [index, step] of cleanupSteps.entries()) {
+        if (cleanupComplete[index]) continue;
+        try {
+          step();
+          cleanupComplete[index] = true;
+        } catch (error) {
+          cleanupFailures.push(error);
+        }
       }
-      try {
-        chmodSync(capsule.path, 0o700);
-        chmodSync(capsuleRoot, 0o700);
-      } catch (error) {
-        releaseFailure ||= error;
-      }
-      if (releaseFailure) throw releaseFailure;
+      if (cleanupComplete.every(Boolean)) released = true;
+      const failures = [validationFailure, ...cleanupFailures].filter(Boolean);
+      if (failures.length === 1) throw failures[0];
+      if (failures.length > 1)
+        throw new AggregateError(
+          failures,
+          `runtime capsule release failed: ${failures
+            .map((error) => error.message)
+            .join("; ")}`,
+        );
     },
   };
 }

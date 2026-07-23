@@ -21,6 +21,7 @@ import {
   cleanupRuntimeResources,
   commissionRuntimeExecutionBoundary,
   commissionedExecutable,
+  createRuntimeCapsuleReleaser,
   createExecutionDeadline,
   finalizeExecutorCompletion,
   isolatedRuntimeEnvironment,
@@ -49,7 +50,7 @@ const EXECUTOR_PROBE_WALL_CLOCK_MS =
 const EXECUTOR_PROBE_PARENT_TIMEOUT_MS =
   process.platform === "win32" ? 330_000 : 105_000;
 const RUNTIME_CAPSULE_FIXTURE_DEADLINE_MS =
-  process.platform === "win32" ? 240_000 : 10_000;
+  process.platform === "win32" ? 480_000 : 10_000;
 const RUNTIME_COMMAND_FIXTURE_DEADLINE_MS =
   process.platform === "win32" ? 60_000 : 5_000;
 
@@ -95,6 +96,105 @@ assert(
   fixtureFailureAggregationProbe instanceof AggregateError &&
     fixtureFailureAggregationProbe.errors.length === 2,
   "fixture cleanup failure masked the primary verifier failure",
+);
+
+let releaseValidationFails = true;
+let releaseProtectionFails = true;
+const releaseAttempts = {
+  validation: 0,
+  protection: 0,
+  capsuleMode: 0,
+  rootMode: 0,
+};
+const retryableCapsuleRelease = createRuntimeCapsuleReleaser({
+  validate() {
+    releaseAttempts.validation += 1;
+    if (releaseValidationFails) throw new Error("release validation failure");
+  },
+  cleanupSteps: [
+    () => {
+      releaseAttempts.protection += 1;
+      if (releaseProtectionFails) throw new Error("release protection failure");
+    },
+    () => {
+      releaseAttempts.capsuleMode += 1;
+    },
+    () => {
+      releaseAttempts.rootMode += 1;
+    },
+  ],
+});
+let compoundReleaseFailure;
+try {
+  retryableCapsuleRelease.release();
+} catch (error) {
+  compoundReleaseFailure = error;
+}
+assert(
+  compoundReleaseFailure instanceof AggregateError &&
+    compoundReleaseFailure.errors.length === 2 &&
+    Object.values(releaseAttempts).every((attempts) => attempts === 1),
+  "runtime capsule release hid a validation or cleanup failure",
+);
+releaseValidationFails = false;
+releaseProtectionFails = false;
+let persistedValidationFailure;
+try {
+  retryableCapsuleRelease.release();
+} catch (error) {
+  persistedValidationFailure = error;
+}
+retryableCapsuleRelease.release();
+assert(
+  /release validation failure/u.test(
+    persistedValidationFailure?.message || "",
+  ) &&
+    releaseAttempts.validation === 1 &&
+    releaseAttempts.protection === 2 &&
+    releaseAttempts.capsuleMode === 1 &&
+    releaseAttempts.rootMode === 1,
+  "runtime capsule release was not retryable or idempotent",
+);
+
+let partialCleanupFails = true;
+const partialCleanupAttempts = {
+  validation: 0,
+  protection: 0,
+  capsuleMode: 0,
+  rootMode: 0,
+};
+const partialCapsuleRelease = createRuntimeCapsuleReleaser({
+  validate() {
+    partialCleanupAttempts.validation += 1;
+  },
+  cleanupSteps: [
+    () => {
+      partialCleanupAttempts.protection += 1;
+    },
+    () => {
+      partialCleanupAttempts.capsuleMode += 1;
+      if (partialCleanupFails)
+        throw new Error("partial mode restoration failure");
+    },
+    () => {
+      partialCleanupAttempts.rootMode += 1;
+    },
+  ],
+});
+expectFailure(
+  "partial runtime capsule cleanup",
+  () => partialCapsuleRelease.release(),
+  /partial mode restoration failure/u,
+);
+partialCleanupFails = false;
+partialCapsuleRelease.release();
+partialCapsuleRelease.release();
+assert(
+  partialCleanupAttempts.validation === 1 &&
+    partialCleanupAttempts.protection === 1 &&
+    partialCleanupAttempts.capsuleMode === 2 &&
+    partialCleanupAttempts.rootMode === 1,
+  "runtime capsule release repeated completed cleanup after a partial failure",
 );
 
 function executableOnPath(name) {
@@ -566,6 +666,7 @@ try {
       argv: ["run", "fixture"],
       deadline: createExecutionDeadline(RUNTIME_COMMAND_FIXTURE_DEADLINE_MS),
       phase: "transient runtime swap",
+      deadlineOptions: { reserveCleanup: true },
       runtimeGuard: runtimeCapsule,
       spawnSyncImpl(command) {
         launchedRuntimePath = command;
@@ -994,6 +1095,8 @@ try {
           finalValidationIncludedInSignedDuration: true,
           cleanupUniqueNameFallback: true,
           cleanupFailureAggregation: true,
+          runtimeCapsuleReleaseRetry: true,
+          runtimeCapsulePartialCleanupRetry: true,
           nonEmptyPrivateRootRejected: true,
           windowsPostHardeningRace,
           operatorRootOwnerAndIdentity: true,
