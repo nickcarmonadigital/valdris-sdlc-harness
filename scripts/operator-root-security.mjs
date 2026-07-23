@@ -12,6 +12,7 @@ import { canonicalJson, sha256 } from "./proof-runner.mjs";
 
 const SHA256 = /^[a-f0-9]{64}$/i;
 const WINDOWS_REPARSE_POINT = 0x400;
+const WINDOWS_ACL_COMMAND_TIMEOUT_MS = 60_000;
 const WINDOWS_WRITE_RIGHTS =
   0x00000002n | // WriteData / CreateFiles
   0x00000004n | // AppendData / CreateDirectories
@@ -99,10 +100,7 @@ $target = $env:VALDRIS_OPERATOR_ROOT_TARGET
 $item = Get-Item -LiteralPath $target -Force
 $acl = Get-Acl -LiteralPath $target
 $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-$ownerSid = $acl.Owner
-try {
-  $ownerSid = (New-Object Security.Principal.NTAccount($acl.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value
-} catch {}
+$ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
 $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier]) | ForEach-Object {
   [PSCustomObject]@{
     sid = $_.IdentityReference.Value
@@ -140,7 +138,7 @@ $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentif
       shell: false,
       windowsHide: true,
       maxBuffer: 1_048_576,
-      timeout: 15_000,
+      timeout: WINDOWS_ACL_COMMAND_TIMEOUT_MS,
     },
   );
   if (result.error || result.status !== 0)
@@ -311,10 +309,7 @@ $ErrorActionPreference = 'Stop'
 $target = $env:VALDRIS_OPERATOR_ROOT_TARGET
 $current = [Security.Principal.WindowsIdentity]::GetCurrent().User
 $acl = Get-Acl -LiteralPath $target
-$ownerSid = $acl.Owner
-try {
-  $ownerSid = (New-Object Security.Principal.NTAccount($acl.Owner)).Translate([Security.Principal.SecurityIdentifier]).Value
-} catch {}
+$ownerSid = $acl.GetOwner([Security.Principal.SecurityIdentifier]).Value
 if ($ownerSid -ne $current.Value) { throw "private directory is not owned by current SID" }
 $acl.SetAccessRuleProtection($true, $false)
 foreach ($sid in @($current, [Security.Principal.SecurityIdentifier]'S-1-5-18', [Security.Principal.SecurityIdentifier]'S-1-5-32-544')) {
@@ -344,7 +339,7 @@ Set-Acl -LiteralPath $target -AclObject $acl
       shell: false,
       windowsHide: true,
       maxBuffer: 1_048_576,
-      timeout: 15_000,
+      timeout: WINDOWS_ACL_COMMAND_TIMEOUT_MS,
     },
   );
   if (result.error || result.status !== 0)
