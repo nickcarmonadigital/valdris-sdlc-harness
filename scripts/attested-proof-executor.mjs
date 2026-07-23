@@ -34,6 +34,7 @@ const WINDOWS_DEVICE_NAMES = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i;
 const CONTAINER_UID = 65_534;
 const CONTAINER_GID = 65_534;
 const MAX_SPAWN_TIMEOUT_MS = 2_147_483_647;
+const RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS = 10_000;
 
 function canonicalExistingPath(target) {
   return realpathSync.native(path.resolve(target));
@@ -452,6 +453,331 @@ function assertCommissionedExecutableUnchanged(label, commissioned) {
     throw new Error(`${label} binary changed during attested execution`);
 }
 
+function windowsRuntimeCapsuleProtection(
+  capsulePath,
+  capsuleRoot,
+  currentSid,
+  environment,
+  deadline,
+) {
+  const windowsRoot = environment.SystemRoot || environment.WINDIR;
+  if (!windowsRoot)
+    throw new Error(
+      "SystemRoot is required to protect a Windows runtime capsule",
+    );
+  const powershell = path.join(
+    windowsRoot,
+    "System32",
+    "WindowsPowerShell",
+    "v1.0",
+    "powershell.exe",
+  );
+  if (!existsSync(powershell))
+    throw new Error(
+      "Windows PowerShell is required to protect the runtime capsule",
+    );
+  const icacls = path.join(windowsRoot, "System32", "icacls.exe");
+  if (!existsSync(icacls))
+    throw new Error("icacls is required to protect the runtime capsule");
+  if (!/^S-1-[0-9-]+$/iu.test(currentSid || ""))
+    throw new Error("current Windows SID is required for capsule protection");
+  const script = String.raw`
+$ErrorActionPreference = 'Stop'
+$capsule = $env:VALDRIS_RUNTIME_CAPSULE
+$root = $env:VALDRIS_RUNTIME_CAPSULE_ROOT
+$current = [Security.Principal.WindowsIdentity]::GetCurrent().User
+$rootAcl = Get-Acl -LiteralPath $root
+$fileAcl = Get-Acl -LiteralPath $capsule
+[PSCustomObject]@{
+  currentSid = $current.Value
+  rootOwnerSid = $rootAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+  rootSddl = $rootAcl.Sddl
+  fileOwnerSid = $fileAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
+  fileSddl = $fileAcl.Sddl
+} | ConvertTo-Json -Compress
+`;
+  const invoke = ({ reserveCleanup = true } = {}) => {
+    const phase = "Windows runtime capsule ACL inspection";
+    const options = {
+      encoding: "utf8",
+      env: {
+        SystemRoot: environment.SystemRoot,
+        WINDIR: environment.WINDIR,
+        VALDRIS_RUNTIME_CAPSULE: capsulePath,
+        VALDRIS_RUNTIME_CAPSULE_ROOT: capsuleRoot,
+      },
+      maxBuffer: 1_048_576,
+      shell: false,
+      windowsHide: true,
+    };
+    const result = deadline
+      ? spawnWithinDeadline(
+          powershell,
+          [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+          ],
+          options,
+          deadline,
+          phase,
+          {
+            reserveCleanup,
+            maxTimeoutMs: RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS,
+          },
+        )
+      : spawnSync(
+          powershell,
+          [
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+          ],
+          { ...options, timeout: RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS },
+        );
+    if (result.error || result.status !== 0)
+      throw new Error(
+        `failed to inspect Windows runtime capsule ACL: ${
+          result.error?.message || result.stderr || result.stdout
+        }`,
+      );
+    let inspected;
+    try {
+      inspected = JSON.parse(result.stdout);
+    } catch {
+      throw new Error(
+        "Windows runtime capsule ACL inspection returned malformed JSON",
+      );
+    }
+    const currentSid = String(inspected?.currentSid || "").toUpperCase();
+    if (
+      !currentSid ||
+      String(inspected?.rootOwnerSid || "").toUpperCase() !== currentSid ||
+      String(inspected?.fileOwnerSid || "").toUpperCase() !== currentSid ||
+      typeof inspected?.rootSddl !== "string" ||
+      typeof inspected?.fileSddl !== "string"
+    )
+      throw new Error("Windows runtime capsule ACL inspection is incomplete");
+    return {
+      currentSid,
+      rootOwnerSid: currentSid,
+      rootSddl: inspected.rootSddl,
+      fileOwnerSid: currentSid,
+      fileSddl: inspected.fileSddl,
+    };
+  };
+  const runIcacls = (target, grant, { deadlineAware = true } = {}) => {
+    const phase = "Windows runtime capsule ACL update";
+    const argv = [
+      target,
+      "/inheritance:r",
+      "/grant:r",
+      `*${currentSid}:${grant}`,
+    ];
+    const options = {
+      encoding: "utf8",
+      env: { SystemRoot: environment.SystemRoot, WINDIR: environment.WINDIR },
+      maxBuffer: 1_048_576,
+      shell: false,
+      windowsHide: true,
+    };
+    const result =
+      deadline && deadlineAware
+        ? spawnWithinDeadline(icacls, argv, options, deadline, phase, {
+            reserveCleanup: true,
+            maxTimeoutMs: RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS,
+          })
+        : spawnSync(icacls, argv, {
+            ...options,
+            timeout: RUNTIME_CAPSULE_SECURITY_TIMEOUT_MS,
+          });
+    if (result.error || result.status !== 0)
+      throw new Error(
+        `failed to update Windows runtime capsule ACL: ${
+          result.error?.message || result.stderr || result.stdout
+        }`,
+      );
+  };
+  const restore = () => {
+    const failures = [];
+    for (const [target, grant] of [
+      [capsulePath, "(F)"],
+      [capsuleRoot, "(OI)(CI)(F)"],
+    ]) {
+      try {
+        runIcacls(target, grant, { deadlineAware: false });
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length)
+      throw new AggregateError(
+        failures,
+        `failed to release Windows runtime capsule ACL: ${failures
+          .map((error) => error.message)
+          .join("; ")}`,
+      );
+  };
+  let protectedAcl;
+  try {
+    runIcacls(capsulePath, "(RX)");
+    runIcacls(capsuleRoot, "(OI)(CI)(RX)");
+    protectedAcl = invoke();
+  } catch (error) {
+    try {
+      restore();
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        `Windows runtime capsule protection failed: ${error.message}; cleanup failed: ${cleanupError.message}`,
+      );
+    }
+    throw error;
+  }
+  const protectedAclSha256 = sha256(canonicalJson(protectedAcl));
+  let released = false;
+  return {
+    protectedAclSha256,
+    assertProtected(options) {
+      if (released)
+        throw new Error("Windows runtime capsule ACL protection is released");
+      const current = invoke(options);
+      if (sha256(canonicalJson(current)) !== protectedAclSha256)
+        throw new Error("Windows runtime capsule ACL changed during execution");
+    },
+    release() {
+      if (released) return;
+      restore();
+      released = true;
+    },
+  };
+}
+
+export function stageCommissionedRuntimeExecutable({
+  runtimeCli,
+  runtimeCliSha256,
+  privateRoot,
+  deadline,
+  platform = process.platform,
+  environment = process.env,
+}) {
+  deadline?.assert("runtime capsule staging", { reserveCleanup: true });
+  const source = commissionedExecutable(
+    "runtime CLI",
+    runtimeCli,
+    runtimeCliSha256,
+  );
+  const privateRootIdentity = assertOperatorRootSecurity(privateRoot, {
+    platform,
+    environment,
+  });
+  const capsuleRoot = path.join(privateRootIdentity.path, "runtime-capsule");
+  mkdirSync(capsuleRoot, { mode: 0o700 });
+  hardenNewPrivateDirectory(capsuleRoot, { platform, environment });
+  const sourceBytes = readFileSync(source.path);
+  if (sha256(sourceBytes) !== source.sha256)
+    throw new Error("runtime CLI changed while staging the execution capsule");
+  const capsulePath = path.join(
+    capsuleRoot,
+    platform === "win32" ? "runtime.exe" : "runtime",
+  );
+  writeFileSync(capsulePath, sourceBytes, {
+    flag: "wx",
+    mode: 0o500,
+  });
+  chmodSync(capsulePath, 0o500);
+  const capsule = commissionedExecutable(
+    "runtime execution capsule",
+    capsulePath,
+    source.sha256,
+  );
+  const capsuleProtection =
+    platform === "win32"
+      ? windowsRuntimeCapsuleProtection(
+          capsule.path,
+          capsuleRoot,
+          privateRootIdentity.identity.owner.id,
+          environment,
+          deadline,
+        )
+      : { assertProtected() {}, release() {} };
+  if (platform !== "win32") chmodSync(capsuleRoot, 0o500);
+  const capsuleRootIdentity = assertOperatorRootSecurity(capsuleRoot, {
+    platform,
+    environment,
+  });
+  const assertProtected = (options) => {
+    capsuleProtection.assertProtected(options);
+    assertOperatorRootUnchanged(capsuleRoot, capsuleRootIdentity, {
+      platform,
+      environment,
+    });
+    const capsuleMode = lstatSync(capsule.path).mode & 0o777;
+    if ((capsuleMode & 0o222) !== 0)
+      throw new Error("runtime execution capsule regained write authority");
+    assertCommissionedExecutableUnchanged("runtime execution capsule", capsule);
+  };
+  try {
+    assertProtected({ reserveCleanup: true });
+    deadline?.assert("runtime capsule staging", { reserveCleanup: true });
+  } catch (error) {
+    let cleanupFailure;
+    try {
+      capsuleProtection.release();
+      chmodSync(capsule.path, 0o700);
+      chmodSync(capsuleRoot, 0o700);
+    } catch (cleanupError) {
+      cleanupFailure = cleanupError;
+    }
+    if (cleanupFailure)
+      throw new AggregateError(
+        [error, cleanupFailure],
+        `runtime capsule staging failed: ${error.message}; cleanup failed: ${cleanupFailure.message}`,
+      );
+    throw error;
+  }
+  let released = false;
+  return {
+    ...capsule,
+    sourcePath: source.path,
+    sourcePathSha256: source.pathSha256,
+    rootPathSha256: capsuleRootIdentity.pathSha256,
+    rootIdentitySha256: capsuleRootIdentity.identitySha256,
+    mode: "hardened-private-capsule",
+    assertProtected,
+    release() {
+      if (released) return;
+      released = true;
+      let releaseFailure;
+      try {
+        assertProtected({ reserveCleanup: false });
+      } catch (error) {
+        releaseFailure = error;
+      }
+      try {
+        capsuleProtection.release();
+      } catch (error) {
+        releaseFailure ||= error;
+      }
+      try {
+        chmodSync(capsule.path, 0o700);
+        chmodSync(capsuleRoot, 0o700);
+      } catch (error) {
+        releaseFailure ||= error;
+      }
+      if (releaseFailure) throw releaseFailure;
+    },
+  };
+}
+
 const AMBIENT_RUNTIME_ENDPOINT_VARIABLES = [
   "DOCKER_HOST",
   "DOCKER_CONTEXT",
@@ -468,6 +794,7 @@ export function runCommissionedRuntimeCommand({
   deadline,
   phase,
   deadlineOptions = {},
+  runtimeGuard,
   spawnSyncImpl = spawnSync,
 }) {
   if (!environment || typeof environment !== "object")
@@ -477,6 +804,10 @@ export function runCommissionedRuntimeCommand({
       throw new Error(`isolated runtime environment retained ${name}`);
   if (!Array.isArray(argv) || argv.some((entry) => typeof entry !== "string"))
     throw new Error("runtime argv must be a string array");
+  const guardDeadlineOptions = {
+    reserveCleanup: deadlineOptions.reserveCleanup === true,
+  };
+  runtimeGuard?.assertProtected(guardDeadlineOptions);
   const commissioned = commissionedExecutable(
     "runtime CLI",
     runtimeCli,
@@ -508,7 +839,14 @@ export function runCommissionedRuntimeCommand({
   } catch (error) {
     executionFailure = error;
   }
-  assertCommissionedExecutableUnchanged("runtime CLI", commissioned);
+  let integrityFailure;
+  try {
+    assertCommissionedExecutableUnchanged("runtime CLI", commissioned);
+    runtimeGuard?.assertProtected(guardDeadlineOptions);
+  } catch (error) {
+    integrityFailure = error;
+  }
+  if (integrityFailure) throw integrityFailure;
   if (executionFailure) throw executionFailure;
   return result;
 }
@@ -550,6 +888,7 @@ function runtimeInfoWithinDeadline(
   runtimeKind,
   runtimeCli,
   runtimeCliSha256,
+  runtimeGuard,
   argv,
   environment,
   deadline,
@@ -569,6 +908,7 @@ function runtimeInfoWithinDeadline(
       },
       deadline,
       phase: label,
+      runtimeGuard,
     });
   } catch (error) {
     if (
@@ -596,7 +936,20 @@ function runtimeInfoWithinDeadline(
 function parseRuntimeJson(result, label) {
   if (result.error || result.status !== 0)
     throw new Error(
-      `${label} failed: ${result.error?.message || result.stderr || result.stdout}`,
+      `${label} failed: ${
+        result.error
+          ? [
+              result.error.message,
+              result.error.code ? `code=${result.error.code}` : null,
+              Number.isInteger(result.error.errno)
+                ? `errno=${result.error.errno}`
+                : null,
+              result.error.syscall ? `syscall=${result.error.syscall}` : null,
+            ]
+              .filter(Boolean)
+              .join("; ")
+          : result.stderr || result.stdout
+      }`,
     );
   try {
     return JSON.parse(result.stdout);
@@ -611,6 +964,7 @@ export function probeRuntimeDaemonIdentity(
   runtimeCliSha256,
   environment,
   deadline,
+  runtimeGuard,
 ) {
   if (!["docker", "podman"].includes(runtimeKind))
     throw new Error("runtime kind must be docker or podman");
@@ -621,6 +975,7 @@ export function probeRuntimeDaemonIdentity(
         runtimeKind,
         runtimeCli,
         runtimeCliSha256,
+        runtimeGuard,
         ["info", "--format", "{{json .}}"],
         environment,
         deadline,
@@ -650,6 +1005,7 @@ export function probeRuntimeDaemonIdentity(
         runtimeKind,
         runtimeCli,
         runtimeCliSha256,
+        runtimeGuard,
         ["info", "--format", "json"],
         environment,
         deadline,
@@ -1004,6 +1360,7 @@ function isRuntimeNotFound(result) {
 export function cleanupRuntimeResources({
   runtimeCli,
   runtimeCliSha256,
+  runtimeGuard,
   environment,
   deadline,
   cidFile,
@@ -1027,6 +1384,7 @@ export function cleanupRuntimeResources({
         },
         deadline,
         phase,
+        runtimeGuard,
       });
     } catch (error) {
       problems.push(`${phase}: ${error.message}`);
@@ -1452,6 +1810,7 @@ function main(argv) {
       flag: "wx",
       mode: 0o600,
     });
+  let runtimeCapsule;
   let gitIsolationCleaned = false;
   const cleanupGitIsolation = () => {
     if (gitIsolationCleaned) return;
@@ -1460,6 +1819,11 @@ function main(argv) {
       deadline.assert("isolated Git cleanup");
     } catch (error) {
       cleanupProblem = error;
+    }
+    try {
+      runtimeCapsule?.release();
+    } catch (error) {
+      cleanupProblem ||= error;
     }
     try {
       rmSync(gitIsolationRoot, { recursive: true, force: true });
@@ -1476,6 +1840,14 @@ function main(argv) {
   };
   let operationFailure;
   try {
+    const executionRuntime = args.dryRun
+      ? runtimeCli
+      : (runtimeCapsule = stageCommissionedRuntimeExecutable({
+          runtimeCli: runtimeCli.path,
+          runtimeCliSha256: runtimeCli.sha256,
+          privateRoot: gitIsolationRoot,
+          deadline,
+        }));
     const before = sourceState(
       gitCli.path,
       repoRoot,
@@ -1506,10 +1878,11 @@ function main(argv) {
       : {
           ...probeRuntimeDaemonIdentity(
             args.runtime,
-            runtimeCli.path,
-            runtimeCli.sha256,
+            executionRuntime.path,
+            executionRuntime.sha256,
             cleanEnvironment,
             deadline,
+            executionRuntime,
           ),
           verified: true,
         };
@@ -1570,12 +1943,19 @@ function main(argv) {
         kind: args.runtime,
         endpoint: "local-default",
         cli: runtimeCli,
+        executionMode: args.dryRun
+          ? "planned-hardened-private-capsule"
+          : executionRuntime.mode,
+        executionPathSha256: args.dryRun ? null : executionRuntime.pathSha256,
+        executionRootIdentitySha256: args.dryRun
+          ? null
+          : executionRuntime.rootIdentitySha256,
         daemonIdentitySha256: daemon.identitySha256,
         daemonIdentityVerified: daemon.verified,
       },
       git: gitCli,
       argv: [
-        runtimeCli.path,
+        executionRuntime.path,
         ...runtimeArguments("<content-addressed-execution-image>"),
       ],
       source: {
@@ -1673,8 +2053,8 @@ function main(argv) {
         isolatedGlobalConfig,
       });
       const imported = runCommissionedRuntimeCommand({
-        runtimeCli: runtimeCli.path,
-        runtimeCliSha256: runtimeCli.sha256,
+        runtimeCli: executionRuntime.path,
+        runtimeCliSha256: executionRuntime.sha256,
         environment: cleanEnvironment,
         argv: ["import", "-", sourceTag],
         options: {
@@ -1687,6 +2067,7 @@ function main(argv) {
         deadline,
         phase: "source image import",
         deadlineOptions: { reserveCleanup: true },
+        runtimeGuard: executionRuntime,
       });
       if (imported.error || imported.status !== 0)
         throw new Error(
@@ -1698,8 +2079,8 @@ function main(argv) {
         { flag: "wx", mode: 0o600 },
       );
       const built = runCommissionedRuntimeCommand({
-        runtimeCli: runtimeCli.path,
-        runtimeCliSha256: runtimeCli.sha256,
+        runtimeCli: executionRuntime.path,
+        runtimeCliSha256: executionRuntime.sha256,
         environment: cleanEnvironment,
         argv: [
           "build",
@@ -1719,14 +2100,15 @@ function main(argv) {
         deadline,
         phase: "execution image build",
         deadlineOptions: { reserveCleanup: true },
+        runtimeGuard: executionRuntime,
       });
       if (built.error || built.status !== 0)
         throw new Error(
           `failed to build immutable execution image: ${built.error?.message || built.stderr || built.stdout}`,
         );
       const inspected = runCommissionedRuntimeCommand({
-        runtimeCli: runtimeCli.path,
-        runtimeCliSha256: runtimeCli.sha256,
+        runtimeCli: executionRuntime.path,
+        runtimeCliSha256: executionRuntime.sha256,
         environment: cleanEnvironment,
         argv: ["image", "inspect", "--format={{.Id}}", executionTag],
         options: {
@@ -1737,6 +2119,7 @@ function main(argv) {
         deadline,
         phase: "execution image inspection",
         deadlineOptions: { reserveCleanup: true },
+        runtimeGuard: executionRuntime,
       });
       const executionImageId = String(inspected.stdout || "").trim();
       if (
@@ -1750,8 +2133,8 @@ function main(argv) {
       executionImageSha256 = executionImageId.slice(7).toLowerCase();
       const invocation = runtimeArguments(executionImageId);
       const result = runCommissionedRuntimeCommand({
-        runtimeCli: runtimeCli.path,
-        runtimeCliSha256: runtimeCli.sha256,
+        runtimeCli: executionRuntime.path,
+        runtimeCliSha256: executionRuntime.sha256,
         environment: cleanEnvironment,
         argv: invocation,
         options: {
@@ -1764,6 +2147,7 @@ function main(argv) {
         deadline,
         phase: "container execution",
         deadlineOptions: { reserveCleanup: true },
+        runtimeGuard: executionRuntime,
       });
       if (result.error)
         throw new Error(`executor failed: ${result.error.message}`);
@@ -1807,13 +2191,17 @@ function main(argv) {
       assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
       assertOperatorRootUnchanged(outputRoot, executionOutputBoundary);
       assertCommissionedExecutableUnchanged("Git CLI", gitCli);
-      assertCommissionedExecutableUnchanged("runtime CLI", runtimeCli);
+      assertCommissionedExecutableUnchanged(
+        "runtime execution capsule",
+        executionRuntime,
+      );
       const finalDaemon = probeRuntimeDaemonIdentity(
         args.runtime,
-        runtimeCli.path,
-        runtimeCli.sha256,
+        executionRuntime.path,
+        executionRuntime.sha256,
         cleanEnvironment,
         deadline,
+        executionRuntime,
       );
       if (finalDaemon.identitySha256 !== daemon.identitySha256)
         throw new Error(
@@ -1833,8 +2221,9 @@ function main(argv) {
       primaryFailure = error;
     } finally {
       const cleanupProblems = cleanupRuntimeResources({
-        runtimeCli: runtimeCli.path,
-        runtimeCliSha256: runtimeCli.sha256,
+        runtimeCli: executionRuntime.path,
+        runtimeCliSha256: executionRuntime.sha256,
+        runtimeGuard: executionRuntime,
         environment: cleanEnvironment,
         deadline,
         cidFile,
@@ -1930,6 +2319,10 @@ function main(argv) {
             executionImageSha256: receiptFields.executionImageSha256,
             runtimeKind: args.runtime,
             runtimeCliSha256: runtimeCli.sha256,
+            runtimeExecutionMode: executionRuntime.mode,
+            runtimeExecutionPathSha256: executionRuntime.pathSha256,
+            runtimeExecutionRootIdentitySha256:
+              executionRuntime.rootIdentitySha256,
             gitCliSha256: gitCli.sha256,
             daemonIdentitySha256: daemon.identitySha256,
           }),
@@ -1964,6 +2357,11 @@ function main(argv) {
         runtimeCliPath: runtimeCli.path,
         runtimeCliPathSha256: runtimeCli.pathSha256,
         runtimeCliSha256: runtimeCli.sha256,
+        runtimeExecutionMode: executionRuntime.mode,
+        runtimeExecutionPathSha256: executionRuntime.pathSha256,
+        runtimeExecutionSha256: executionRuntime.sha256,
+        runtimeExecutionRootPathSha256: executionRuntime.rootPathSha256,
+        runtimeExecutionRootIdentitySha256: executionRuntime.rootIdentitySha256,
         gitCliPath: gitCli.path,
         gitCliPathSha256: gitCli.pathSha256,
         gitCliSha256: gitCli.sha256,

@@ -42,7 +42,7 @@ export const CANONICAL_CATALOG_SHA256 = Object.freeze({
   "controls/clean-room-behaviors.v1.json":
     "d27dd758d131d7bef1b40f09db0692e1b1cb8a4716e2aa8ae76b623ea28090fb",
   "controls/authoritative-assurance.v1.json":
-    "23e0a770adaf0e7b35da37c480a122eff460c09a705f370e2e19975283bd0848",
+    "5eb81ffc8d35086e678a100d49a3dfc7786abf4fbe9ce050bae64d5087291bee",
 });
 
 function semanticSha256(filePath) {

@@ -131,9 +131,14 @@ export function evaluateAuthoritativeRelease({
     executor?.sourceSnapshotMode !==
       "git-raw-object-tree-content-addressed-oci-layer" ||
     executor?.runtimeEndpoint !== "local-default" ||
+    executor?.runtimeExecutionMode !== "hardened-private-capsule" ||
     !executor?.sourceSnapshotManifestSha256 ||
     !executor?.daemonIdentitySha256 ||
     !executor?.runtimeCliSha256 ||
+    !executor?.runtimeExecutionPathSha256 ||
+    executor?.runtimeExecutionSha256 !== executor?.runtimeCliSha256 ||
+    !executor?.runtimeExecutionRootPathSha256 ||
+    !executor?.runtimeExecutionRootIdentitySha256 ||
     !executor?.gitCliSha256 ||
     !executor?.outputRootIdentitySha256
   )

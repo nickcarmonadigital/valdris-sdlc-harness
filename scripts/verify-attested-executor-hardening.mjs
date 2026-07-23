@@ -8,6 +8,7 @@ import {
   mkdirSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -26,6 +27,7 @@ import {
   referenceExecutorRuntimeCompatibility,
   runCommissionedRuntimeCommand,
   runtimeProbeFailureMayBeSkipped,
+  stageCommissionedRuntimeExecutable,
 } from "./attested-proof-executor.mjs";
 import {
   assertOperatorRootSecurity,
@@ -414,35 +416,97 @@ try {
   const commissionedRuntimeBytes = Buffer.from("commissioned runtime\n");
   writeFileSync(transientRuntime, commissionedRuntimeBytes);
   const transientRuntimeSha256 = sha256(commissionedRuntimeBytes);
-  let transientSwapFailure;
-  let transientOutputAccepted = false;
+  const capsuleParent = path.join(root, "runtime-capsule-parent");
+  mkdirSync(capsuleParent);
+  hardenNewPrivateDirectory(capsuleParent);
+  const runtimeCapsule = stageCommissionedRuntimeExecutable({
+    runtimeCli: transientRuntime,
+    runtimeCliSha256: transientRuntimeSha256,
+    privateRoot: capsuleParent,
+    deadline: createExecutionDeadline(10_000),
+  });
+  let launchedRuntimePath;
+  let sourceRestoredBeforeReturn = false;
+  let capsuleWriteBlocked = false;
+  let capsuleRenameBlocked = false;
+  let transientRuntimeResult;
   try {
-    runCommissionedRuntimeCommand({
-      runtimeCli: transientRuntime,
-      runtimeCliSha256: transientRuntimeSha256,
+    transientRuntimeResult = runCommissionedRuntimeCommand({
+      runtimeCli: runtimeCapsule.path,
+      runtimeCliSha256: runtimeCapsule.sha256,
       environment: isolated,
       argv: ["run", "fixture"],
       deadline: createExecutionDeadline(5_000),
       phase: "transient runtime swap",
-      spawnSyncImpl() {
+      runtimeGuard: runtimeCapsule,
+      spawnSyncImpl(command) {
+        launchedRuntimePath = command;
         writeFileSync(transientRuntime, "uncommissioned runtime\n");
-        return runtimeResult(0, "untrusted output");
+        writeFileSync(transientRuntime, commissionedRuntimeBytes);
+        sourceRestoredBeforeReturn =
+          sha256(readFileSync(transientRuntime)) === transientRuntimeSha256;
+        try {
+          writeFileSync(command, "uncommissioned capsule\n");
+        } catch {
+          capsuleWriteBlocked = true;
+        }
+        try {
+          renameSync(command, `${command}.replacement`);
+        } catch {
+          capsuleRenameBlocked = true;
+        }
+        return runtimeResult(0, "trusted capsule output");
       },
     });
-    transientOutputAccepted = true;
-  } catch (error) {
-    transientSwapFailure = error;
   } finally {
-    writeFileSync(transientRuntime, commissionedRuntimeBytes);
+    runtimeCapsule.release();
   }
   assert(
-    !transientOutputAccepted &&
-      /runtime CLI binary changed during attested execution/u.test(
-        transientSwapFailure?.message || "",
-      ) &&
+    transientRuntimeResult.status === 0 &&
+      transientRuntimeResult.stdout === "trusted capsule output" &&
+      launchedRuntimePath === runtimeCapsule.path &&
+      launchedRuntimePath !== realpathSync.native(transientRuntime) &&
+      sourceRestoredBeforeReturn &&
+      capsuleWriteBlocked &&
+      capsuleRenameBlocked &&
       sha256(readFileSync(transientRuntime)) === transientRuntimeSha256,
-    "transient runtime replacement was not rejected before output acceptance",
+    "transient source replacement could substitute the protected runtime capsule",
   );
+  let windowsProtectedCapsuleLaunch = "not-applicable";
+  if (process.platform === "win32") {
+    const executableCapsuleParent = path.join(
+      root,
+      "executable-runtime-capsule-parent",
+    );
+    mkdirSync(executableCapsuleParent);
+    hardenNewPrivateDirectory(executableCapsuleParent);
+    const executableCapsule = stageCommissionedRuntimeExecutable({
+      runtimeCli: process.execPath,
+      runtimeCliSha256: sha256(readFileSync(process.execPath)),
+      privateRoot: executableCapsuleParent,
+      deadline: createExecutionDeadline(30_000),
+    });
+    try {
+      const launched = runCommissionedRuntimeCommand({
+        runtimeCli: executableCapsule.path,
+        runtimeCliSha256: executableCapsule.sha256,
+        environment: isolated,
+        argv: ["--version"],
+        deadline: createExecutionDeadline(30_000),
+        phase: "Windows protected capsule launch",
+        runtimeGuard: executableCapsule,
+      });
+      assert(
+        launched.status === 0 && /^v\d+/u.test(launched.stdout.trim()),
+        `Windows protected runtime capsule did not launch: ${
+          launched.error?.message || launched.stderr || launched.stdout
+        }`,
+      );
+      windowsProtectedCapsuleLaunch = true;
+    } finally {
+      executableCapsule.release();
+    }
+  }
   const executorLifecycleSource = readFileSync(
     fileURLToPath(new URL("./attested-proof-executor.mjs", import.meta.url)),
     "utf8",
@@ -788,7 +852,8 @@ try {
           malformedDaemonIdentityFailsClosed: true,
           poisonedPathAndContexts: true,
           poisonedRuntimeEndpointSelectors: true,
-          transientRuntimeBinarySwapRejected: true,
+          transientRuntimeBinarySwapIsolatedByCapsule: true,
+          windowsProtectedCapsuleLaunch,
           rawGitObjectTree: true,
           equivalentWorktreePathSpelling: true,
           aliasedOutputInsideSourceRejected: true,

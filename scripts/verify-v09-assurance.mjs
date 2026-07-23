@@ -1279,6 +1279,7 @@ function buildFixture(
       containerIdentity: "cidfile-and-unique-name",
       runtimeKind: "docker",
       runtimeEndpoint: "local-default",
+      runtimeExecutionMode: "hardened-private-capsule",
       runtimeCliPath: "/opt/valdris/bin/docker",
       runtimeCliPathSha256: sha256("/opt/valdris/bin/docker"),
       runtimeCliSha256: D("commissioned-docker-binary"),
@@ -2259,9 +2260,16 @@ function buildFixture(
       containerIdentity: acceptancePolicy.proofExecutor.containerIdentity,
       runtimeKind: acceptancePolicy.proofExecutor.runtimeKind,
       runtimeEndpoint: acceptancePolicy.proofExecutor.runtimeEndpoint,
+      runtimeExecutionMode: acceptancePolicy.proofExecutor.runtimeExecutionMode,
       runtimeCliPath: acceptancePolicy.proofExecutor.runtimeCliPath,
       runtimeCliPathSha256: acceptancePolicy.proofExecutor.runtimeCliPathSha256,
       runtimeCliSha256: acceptancePolicy.proofExecutor.runtimeCliSha256,
+      runtimeExecutionPathSha256: D("runtime-execution-capsule-path"),
+      runtimeExecutionSha256: acceptancePolicy.proofExecutor.runtimeCliSha256,
+      runtimeExecutionRootPathSha256: D("runtime-execution-capsule-root-path"),
+      runtimeExecutionRootIdentitySha256: D(
+        "runtime-execution-capsule-root-identity",
+      ),
       gitCliPath: acceptancePolicy.proofExecutor.gitCliPath,
       gitCliPathSha256: acceptancePolicy.proofExecutor.gitCliPathSha256,
       gitCliSha256: acceptancePolicy.proofExecutor.gitCliSha256,
@@ -6188,6 +6196,53 @@ async function main() {
         "substituted a commissioned command",
       ],
       [
+        "executor runtime capsule mode downgrade",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.runtimeExecutionMode = "path-pre-post";
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "does not bind raw source manifest",
+      ],
+      [
+        "executor runtime capsule path omission",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          delete runtime.executorReceipt.runtimeExecutionPathSha256;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "does not bind raw source manifest",
+      ],
+      [
+        "executor runtime capsule content substitution",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          runtime.executorReceipt.runtimeExecutionSha256 = D(
+            "substituted-runtime-capsule",
+          );
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "does not bind raw source manifest",
+      ],
+      [
+        "executor runtime capsule root path omission",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          delete runtime.executorReceipt.runtimeExecutionRootPathSha256;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "does not bind raw source manifest",
+      ],
+      [
+        "executor runtime capsule root identity omission",
+        () => {
+          const runtime = clone(fixture.documents.runtime);
+          delete runtime.executorReceipt.runtimeExecutionRootIdentitySha256;
+          return validateRuntimeSessionDocument(runtime, options);
+        },
+        "does not bind raw source manifest",
+      ],
+      [
         "executor daemon identity substitution",
         () => {
           const runtime = clone(fixture.documents.runtime);
@@ -7465,6 +7520,15 @@ async function main() {
               dryRunPlan.limits.wallClockScope ||
             receipt.runtimeKind !== runtime ||
             receipt.runtimeCliSha256 !== runtimeProbe.runtimeCliSha256 ||
+            receipt.runtimeExecutionMode !== "hardened-private-capsule" ||
+            receipt.runtimeExecutionSha256 !== receipt.runtimeCliSha256 ||
+            !/^[a-f0-9]{64}$/u.test(receipt.runtimeExecutionPathSha256 || "") ||
+            !/^[a-f0-9]{64}$/u.test(
+              receipt.runtimeExecutionRootPathSha256 || "",
+            ) ||
+            !/^[a-f0-9]{64}$/u.test(
+              receipt.runtimeExecutionRootIdentitySha256 || "",
+            ) ||
             receipt.daemonIdentitySha256 !==
               runtimeProbe.daemonIdentitySha256 ||
             receipt.outputRootIdentitySha256 !==

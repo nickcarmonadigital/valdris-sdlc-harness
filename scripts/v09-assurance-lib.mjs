@@ -1419,6 +1419,7 @@ export function validateSemanticAssuranceDocument(document, options = {}) {
       proofExecutor.containerIdentity !== "cidfile-and-unique-name" ||
       !["docker", "podman"].includes(proofExecutor.runtimeKind) ||
       proofExecutor.runtimeEndpoint !== "local-default" ||
+      proofExecutor.runtimeExecutionMode !== "hardened-private-capsule" ||
       !portableAbsolutePath(proofExecutor.runtimeCliPath) ||
       proofExecutor.runtimeCliPathSha256 !==
         sha256(proofExecutor.runtimeCliPath || "") ||
@@ -1430,7 +1431,7 @@ export function validateSemanticAssuranceDocument(document, options = {}) {
       !digest(proofExecutor.daemonIdentitySha256))
   )
     problems.push(
-      "authoritative acceptance policy must commission absolute and exact Git/runtime binaries, local-default daemon identity, command, validator set, image, executor identity, raw-object source mode, stable output-root identity, and dual container identity",
+      "authoritative acceptance policy must commission absolute and exact Git/runtime binaries, hardened private runtime-capsule execution, local-default daemon identity, command, validator set, image, executor identity, raw-object source mode, stable output-root identity, and dual container identity",
     );
   if (
     options.level === "authoritative" &&
@@ -2626,17 +2627,22 @@ export function validateRuntimeSessionDocument(document, options = {}) {
       !safeIdentifier(executor?.executorId) ||
       !["docker", "podman"].includes(executor?.runtimeKind) ||
       executor?.runtimeEndpoint !== "local-default" ||
+      executor?.runtimeExecutionMode !== "hardened-private-capsule" ||
       !portableAbsolutePath(executor?.runtimeCliPath) ||
       executor?.runtimeCliPathSha256 !==
         sha256(executor?.runtimeCliPath || "") ||
       !digest(executor?.runtimeCliSha256) ||
+      !digest(executor?.runtimeExecutionPathSha256) ||
+      executor?.runtimeExecutionSha256 !== executor?.runtimeCliSha256 ||
+      !digest(executor?.runtimeExecutionRootPathSha256) ||
+      !digest(executor?.runtimeExecutionRootIdentitySha256) ||
       !portableAbsolutePath(executor?.gitCliPath) ||
       executor?.gitCliPathSha256 !== sha256(executor?.gitCliPath || "") ||
       !digest(executor?.gitCliSha256) ||
       !digest(executor?.daemonIdentitySha256)
     )
       problems.push(
-        "authoritative executor receipt does not bind raw source manifest, execution image, argv, executor, Git/runtime binaries, daemon, stable output root, input, and output identities",
+        "authoritative executor receipt does not bind raw source manifest, execution image, argv, executor, Git/runtime binaries, hardened runtime capsule, daemon, stable output root, input, and output identities",
       );
     if (
       !object(snapshotManifest) ||
@@ -2705,6 +2711,8 @@ export function validateRuntimeSessionDocument(document, options = {}) {
           commissionedExecutor.containerIdentity ||
         executor?.runtimeKind !== commissionedExecutor.runtimeKind ||
         executor?.runtimeEndpoint !== commissionedExecutor.runtimeEndpoint ||
+        executor?.runtimeExecutionMode !==
+          commissionedExecutor.runtimeExecutionMode ||
         executor?.runtimeCliPath !== commissionedExecutor.runtimeCliPath ||
         executor?.runtimeCliPathSha256 !==
           commissionedExecutor.runtimeCliPathSha256 ||
@@ -2716,7 +2724,7 @@ export function validateRuntimeSessionDocument(document, options = {}) {
           commissionedExecutor.daemonIdentitySha256)
     )
       problems.push(
-        "authoritative executor receipt substituted a commissioned command, validator, image, executor, raw source mode, output-root identity, Git/runtime binary, daemon, or container identity",
+        "authoritative executor receipt substituted a commissioned command, validator, image, executor, raw source mode, output-root identity, Git/runtime binary or capsule mode, daemon, or container identity",
       );
     if (
       !canonicalIso(executor?.startedAt) ||
