@@ -1,0 +1,59 @@
+# Windows executor worktree-root rejection
+
+## Symptom
+
+The hosted Windows `verify:v09-assurance` job completed its earlier assurance cases, then failed its executor dry-run baseline with:
+
+```text
+--repo must resolve to the Git top-level worktree
+```
+
+The same fixture passed on Ubuntu and macOS.
+
+## Deterministic reproduction
+
+Run:
+
+```bash
+npm run verify:attested-executor
+```
+
+The verifier invokes the real `attested-proof-executor.mjs` CLI with a case-equivalent Windows spelling of the same Git worktree. Before the fix it failed with the hosted error. The verifier also supplies a case-aliased output directory inside the source and requires the executor to reject it.
+
+## Root cause
+
+Windows `realpathSync()` preserved the casing supplied by its caller, while `git rev-parse --show-toplevel` returned the same directory using the filesystem's stored casing. The executor compared those path strings with `!==`, so two spellings of one filesystem object were treated as different worktrees.
+
+The same case-sensitive string and prefix comparisons were also used at the source/output boundary. A differently cased spelling could therefore misclassify an output path inside the repository as an external sibling.
+
+## First incorrect state transition
+
+The executor correctly resolved both paths to the same Windows directory, then incorrectly transitioned from `source preflight` to `rejected` because equality was evaluated on caller-preserved strings rather than native canonical paths.
+
+## Blast radius
+
+- Hosted or local Windows runs whose temp/root spelling differs from Git's spelling could be rejected.
+- Windows source/output boundary checks could misclassify case-aliased paths.
+- Operator-root and commissioned executable path digests could vary by caller-supplied casing even when the filesystem object was unchanged.
+- POSIX behavior was not affected because path casing is significant there.
+
+## Fix
+
+- Canonicalize existing paths with `realpathSync.native()` before identity, digest, and equality checks.
+- Derive future output paths from the native-canonical existing parent.
+- Evaluate source/output overlap with `path.relative()` after native canonicalization.
+- Preserve link/junction rejection and fail-closed output-root identity checks.
+- Run the executor hardening verifier as a two-minute CI preflight before the long semantic/authoritative suite.
+
+## Rejected hypotheses
+
+- Git resolved a nested or different worktree: disproved by the case-only local reproduction.
+- Repository-controlled hooks or filters changed the result: the isolated Git environment remained active and the focused repro needed no hooks.
+- A trailing separator caused the mismatch: the reproduction remained after normalized path resolution and varied only path casing.
+- The runtime identity repair regressed: the current-head host/boot/process preflight passed on the same Windows runner before this failure.
+
+## Proof
+
+- Red before fix: `verify:attested-executor` rejected the case-equivalent worktree with the exact hosted error.
+- Green after fix: the same CLI regression passes and the aliased inside-source output is rejected.
+- Required follow-up: full Windows `verify:v09-assurance`, `verify:harness`, runtime closure, privacy, code-intelligence, and clean-worktree gates must pass in CI before merge.

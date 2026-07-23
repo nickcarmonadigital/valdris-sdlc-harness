@@ -35,6 +35,28 @@ const CONTAINER_UID = 65_534;
 const CONTAINER_GID = 65_534;
 const MAX_SPAWN_TIMEOUT_MS = 2_147_483_647;
 
+function canonicalExistingPath(target) {
+  return realpathSync.native(path.resolve(target));
+}
+
+function canonicalFuturePath(target) {
+  const resolved = path.resolve(target);
+  return path.join(
+    canonicalExistingPath(path.dirname(resolved)),
+    path.basename(resolved),
+  );
+}
+
+function containsPath(root, candidate) {
+  const relative = path.relative(root, candidate);
+  return (
+    relative === "" ||
+    (relative !== ".." &&
+      !relative.startsWith(`..${path.sep}`) &&
+      !path.isAbsolute(relative))
+  );
+}
+
 function minimalEnvironment(names) {
   return Object.fromEntries(
     names
@@ -409,7 +431,7 @@ export function commissionedExecutable(label, configuredPath, expectedSha256) {
   const stats = lstatSync(configuredPath);
   if (!stats.isFile() && !stats.isSymbolicLink())
     throw new Error(`${label} path must identify a file`);
-  const realPath = realpathSync(configuredPath);
+  const realPath = canonicalExistingPath(configuredPath);
   const actualSha256 = sha256(readFileSync(realPath));
   if (actualSha256 !== expectedSha256.toLowerCase())
     throw new Error(`${label} binary does not match its commissioned SHA256`);
@@ -423,7 +445,7 @@ export function commissionedExecutable(label, configuredPath, expectedSha256) {
 function assertCommissionedExecutableUnchanged(label, commissioned) {
   if (
     !existsSync(commissioned.path) ||
-    realpathSync(commissioned.path) !== commissioned.path ||
+    canonicalExistingPath(commissioned.path) !== commissioned.path ||
     sha256(readFileSync(commissioned.path)) !== commissioned.sha256
   )
     throw new Error(`${label} binary changed during attested execution`);
@@ -982,6 +1004,11 @@ export function materializeVerifiedOutputEnvelope(
     args.assertOutputBoundary?.();
   };
   assertMaterializationDeadline();
+  const resolvedOutputRoot = path.resolve(outputRoot);
+  assertNoLinkComponents(resolvedOutputRoot);
+  const expectedOutputRoot = existsSync(resolvedOutputRoot)
+    ? canonicalExistingPath(resolvedOutputRoot)
+    : canonicalFuturePath(resolvedOutputRoot);
   let envelope;
   try {
     envelope = JSON.parse(raw);
@@ -1073,7 +1100,7 @@ export function materializeVerifiedOutputEnvelope(
     assertMaterializationDeadline();
     if (
       !existsSync(outputRoot) ||
-      realpathSync(outputRoot) !== path.resolve(outputRoot) ||
+      canonicalExistingPath(outputRoot) !== expectedOutputRoot ||
       readdirSync(outputRoot).length !== 0
     )
       throw new Error(
@@ -1082,7 +1109,7 @@ export function materializeVerifiedOutputEnvelope(
   } else mkdirSync(outputRoot, { recursive: false, mode: 0o700 });
   for (const file of files) {
     assertMaterializationDeadline();
-    if (realpathSync(outputRoot) !== path.resolve(outputRoot))
+    if (canonicalExistingPath(outputRoot) !== expectedOutputRoot)
       throw new Error("executor output root changed during materialization");
     const directory = path.resolve(outputRoot, file.field);
     mkdirSync(directory, { recursive: true });
@@ -1094,7 +1121,7 @@ export function materializeVerifiedOutputEnvelope(
       mode: 0o600,
     });
   }
-  if (realpathSync(outputRoot) !== path.resolve(outputRoot))
+  if (canonicalExistingPath(outputRoot) !== expectedOutputRoot)
     throw new Error("executor output root changed during materialization");
   writeFileSync(path.join(outputRoot, "result.json"), resultBytes, {
     flag: "wx",
@@ -1220,31 +1247,24 @@ function main() {
     throw new Error(
       "--command-identity-sha256 does not match the commissioned argv",
     );
-  const repoRoot = realpathSync(path.resolve(args.repo));
+  const repoRoot = canonicalExistingPath(args.repo);
   const outputRoot = path.resolve(args.outputDir || "");
-  if (
-    !args.outputDir ||
-    outputRoot === repoRoot ||
-    outputRoot.startsWith(`${repoRoot}${path.sep}`) ||
-    repoRoot.startsWith(`${outputRoot}${path.sep}`)
-  )
+  if (!args.outputDir)
     throw new Error(
       "--output-dir must be an isolated sibling of the source repository",
     );
   assertNoLinkComponents(path.dirname(outputRoot));
-  if (existsSync(outputRoot))
-    throw new Error("--output-dir must not already exist");
-  const canonicalOutputParent = realpathSync(path.dirname(outputRoot));
-  const futureOutputRoot = path.join(
-    canonicalOutputParent,
-    path.basename(outputRoot),
-  );
+  const outputRootExists = existsSync(outputRoot);
+  const futureOutputRoot = outputRootExists
+    ? canonicalExistingPath(outputRoot)
+    : canonicalFuturePath(outputRoot);
   if (
-    futureOutputRoot === repoRoot ||
-    futureOutputRoot.startsWith(`${repoRoot}${path.sep}`) ||
-    repoRoot.startsWith(`${futureOutputRoot}${path.sep}`)
+    containsPath(repoRoot, futureOutputRoot) ||
+    containsPath(futureOutputRoot, repoRoot)
   )
     throw new Error("--output-dir resolves across the source boundary");
+  if (outputRootExists) throw new Error("--output-dir must not already exist");
+  const canonicalOutputParent = path.dirname(futureOutputRoot);
   const gitIsolationRoot = mkdtempSync(
     path.join(tmpdir(), "valdris-git-isolation-"),
   );
@@ -1294,7 +1314,7 @@ function main() {
       isolatedHooksRoot,
       isolatedGlobalConfig,
     );
-    const gitTopLevel = realpathSync(
+    const gitTopLevel = canonicalExistingPath(
       git(
         gitCli.path,
         repoRoot,
@@ -1448,7 +1468,7 @@ function main() {
     );
     mkdirSync(outputRoot, { recursive: false, mode: 0o700 });
     assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
-    if (realpathSync(outputRoot) !== futureOutputRoot)
+    if (canonicalExistingPath(outputRoot) !== futureOutputRoot)
       throw new Error("--output-dir changed during exclusive creation");
     const executionOutputBoundary = assertOperatorRootSecurity(outputRoot);
     const buildRoot = mkdtempSync(
@@ -1600,7 +1620,7 @@ function main() {
         },
         before,
       );
-      const canonicalOutputRoot = realpathSync(outputRoot);
+      const canonicalOutputRoot = canonicalExistingPath(outputRoot);
       if (canonicalOutputRoot !== futureOutputRoot)
         throw new Error("--output-dir resolved across the output boundary");
       const inventory = outputInventory(outputRoot, outputRoot, deadline);
@@ -1784,7 +1804,7 @@ function main() {
         mutationResult: "source-frozen-immutable-image",
       });
       assertOperatorRootUnchanged(secureOutputRoot, secureOutputBoundary);
-      if (realpathSync(outputRoot) !== futureOutputRoot)
+      if (canonicalExistingPath(outputRoot) !== futureOutputRoot)
         throw new Error("executor output root changed before receipt commit");
       mkdirSync(path.dirname(receiptPath), { recursive: true });
       writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, {

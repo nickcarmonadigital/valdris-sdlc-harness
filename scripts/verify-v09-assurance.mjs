@@ -89,7 +89,7 @@ const SHA256 = /^[a-f0-9]{64}$/iu;
 const D = (value) => sha256(String(value));
 
 function canonicalTempDirectory(prefix) {
-  return realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
+  return realpathSync.native(mkdtempSync(path.join(tmpdir(), prefix)));
 }
 const LOCK_METADATA = (value = {}) => sha256(canonicalJson(value));
 const clone = (value) => structuredClone(value);
@@ -162,7 +162,7 @@ function executableOnPath(name) {
   );
   if (lookup.error || lookup.status !== 0)
     throw new Error(`required executable is unavailable: ${name}`);
-  return realpathSync(lookup.stdout.trim().split(/\r?\n/u)[0]);
+  return realpathSync.native(lookup.stdout.trim().split(/\r?\n/u)[0]);
 }
 
 function secureVerifierOperatorRoot(target) {
@@ -6388,7 +6388,7 @@ async function main() {
             rmSync(outside, { recursive: true, force: true });
           }
         },
-        "precreated output root is missing, aliased, or not empty",
+        "symbolic link or junction",
       ],
     ];
     for (const [label, run, expected] of cases)
@@ -7366,7 +7366,8 @@ async function main() {
               encoding: "utf8",
               env: {
                 ...process.env,
-                VALDRIS_EXECUTOR_OUTPUT_ROOT: realpathSync(executorParent),
+                VALDRIS_EXECUTOR_OUTPUT_ROOT:
+                  realpathSync.native(executorParent),
                 VALDRIS_EXECUTOR_OUTPUT_ROOT_PATH_SHA256:
                   executorParentIdentity.pathSha256,
                 VALDRIS_EXECUTOR_OUTPUT_ROOT_IDENTITY_SHA256:

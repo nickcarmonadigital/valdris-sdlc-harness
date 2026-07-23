@@ -11,6 +11,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   aggregateExecutionCleanupFailure,
   cleanupRuntimeResources,
@@ -49,7 +50,7 @@ function executableOnPath(name) {
   );
   if (lookup.error || lookup.status !== 0)
     throw new Error(`test prerequisite ${name} is unavailable`);
-  return realpathSync(lookup.stdout.trim().split(/\r?\n/u)[0]);
+  return realpathSync.native(lookup.stdout.trim().split(/\r?\n/u)[0]);
 }
 
 function git(gitCli, root, args, options = {}) {
@@ -148,7 +149,63 @@ function runtimeResult(status, output = "") {
   };
 }
 
-const root = realpathSync(
+function executorDryRun({ gitCliPath, gitCliSha256, repo, output }) {
+  const executor = fileURLToPath(
+    new URL("./attested-proof-executor.mjs", import.meta.url),
+  );
+  const result = spawnSync(
+    process.execPath,
+    [
+      executor,
+      "--repo",
+      repo,
+      "--run-id",
+      "EXECUTOR-WORKTREE-ROOT-CASE",
+      "--image",
+      `example.invalid/valdris@sha256:${"1".repeat(64)}`,
+      "--command-json",
+      '["true"]',
+      "--command-identity-sha256",
+      sha256(canonicalJson(["true"])),
+      "--validator-sha256",
+      "2".repeat(64),
+      "--semantic-proof-set-sha256",
+      "3".repeat(64),
+      "--proof-input-set-sha256",
+      "4".repeat(64),
+      "--accepted-gate-artifacts-sha256",
+      "5".repeat(64),
+      "--git-cli",
+      gitCliPath,
+      "--git-cli-sha256",
+      gitCliSha256,
+      "--runtime",
+      "docker",
+      "--runtime-cli",
+      process.execPath,
+      "--runtime-cli-sha256",
+      sha256(readFileSync(process.execPath)),
+      "--daemon-identity-sha256",
+      "6".repeat(64),
+      "--output-dir",
+      output,
+      "--dry-run",
+    ],
+    {
+      encoding: "utf8",
+      shell: false,
+      timeout: 30_000,
+      windowsHide: true,
+    },
+  );
+  if (result.error)
+    throw new Error(
+      `executor CLI regression probe failed: ${result.error.message}`,
+    );
+  return result;
+}
+
+const root = realpathSync.native(
   mkdtempSync(path.join(tmpdir(), "valdris-executor-hardening-")),
 );
 try {
@@ -162,6 +219,16 @@ try {
   assert(
     commissionedGit.path === gitCliPath,
     "absolute Git path was not retained",
+  );
+  const aliasedCommissionedGit = commissionedExecutable(
+    "Git CLI",
+    process.platform === "win32" ? gitCliPath.toUpperCase() : gitCliPath,
+    gitCliSha256,
+  );
+  assert(
+    aliasedCommissionedGit.path === commissionedGit.path &&
+      aliasedCommissionedGit.pathSha256 === commissionedGit.pathSha256,
+    "commissioned executable identity changed under an equivalent path spelling",
   );
   expectFailure(
     "relative Git binary",
@@ -263,6 +330,36 @@ try {
   assert(
     snapshot.manifestSha256 === sha256(canonicalJson(snapshot.manifest)),
     "raw Git tree manifest digest is not canonical",
+  );
+  const worktreeAlias =
+    process.platform === "win32" ? repo.toUpperCase() : repo;
+  const aliasedWorktree = executorDryRun({
+    gitCliPath,
+    gitCliSha256,
+    repo: worktreeAlias,
+    output: path.join(root, "case-aliased-worktree-output"),
+  });
+  assert(
+    aliasedWorktree.status === 0,
+    `executor rejected an equivalent worktree path spelling: ${
+      aliasedWorktree.stderr || aliasedWorktree.stdout
+    }`,
+  );
+  const insideSourceAlias = executorDryRun({
+    gitCliPath,
+    gitCliSha256,
+    repo,
+    output:
+      process.platform === "win32"
+        ? path.join(repo.toUpperCase(), "case-aliased-output")
+        : path.join(repo, "inside-source-output"),
+  });
+  assert(
+    insideSourceAlias.status !== 0 &&
+      /isolated sibling|source boundary/u.test(
+        insideSourceAlias.stderr || insideSourceAlias.stdout,
+      ),
+    "executor accepted an output directory inside the source through an aliased path spelling",
   );
   git(gitCliPath, repo, [
     "update-index",
@@ -408,9 +505,17 @@ try {
   else secureWindowsDirectory(operatorRoot);
   const operatorIdentity = assertOperatorRootSecurity(operatorRoot);
   assertOperatorRootUnchanged(operatorRoot, operatorIdentity);
+  const aliasedOperatorIdentity = assertOperatorRootSecurity(
+    process.platform === "win32" ? operatorRoot.toUpperCase() : operatorRoot,
+    {
+      expectedPathSha256: operatorIdentity.pathSha256,
+      expectedIdentitySha256: operatorIdentity.identitySha256,
+    },
+  );
   assert(
-    operatorIdentity.identity.owner.id,
-    "operator-root identity omitted current owner",
+    operatorIdentity.identity.owner.id &&
+      aliasedOperatorIdentity.path === operatorIdentity.path,
+    "operator-root owner or native path identity was unstable",
   );
 
   console.log(
@@ -419,8 +524,11 @@ try {
         ok: true,
         tests: {
           commissionedAbsoluteBinaries: true,
+          equivalentCommissionedBinaryPathSpelling: true,
           poisonedPathAndContexts: true,
           rawGitObjectTree: true,
+          equivalentWorktreePathSpelling: true,
+          aliasedOutputInsideSourceRejected: true,
           exportIgnoreAdversary: true,
           exportSubstAdversary: true,
           submoduleFailClosed: true,
@@ -429,6 +537,7 @@ try {
           nonEmptyPrivateRootRejected: true,
           windowsPostHardeningRace,
           operatorRootOwnerAndIdentity: true,
+          equivalentOperatorRootPathSpelling: true,
         },
       },
       null,

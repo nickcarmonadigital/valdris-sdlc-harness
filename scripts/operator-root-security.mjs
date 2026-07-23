@@ -40,7 +40,7 @@ function canonicalRealPath(target) {
   if (!target || !path.isAbsolute(target))
     throw new Error("operator root must be an absolute path");
   if (!existsSync(target)) throw new Error("operator root does not exist");
-  return realpathSync(path.resolve(target));
+  return realpathSync.native(path.resolve(target));
 }
 
 function inspectPosixRoot(realPath) {
@@ -91,7 +91,7 @@ function windowsPowerShellPath(environment) {
     throw new Error(
       "Windows PowerShell is unavailable for operator-root ACL inspection",
     );
-  return realpathSync(candidate);
+  return realpathSync.native(candidate);
 }
 
 function inspectWindowsAcl(realPath, { environment, spawnSyncImpl }) {
