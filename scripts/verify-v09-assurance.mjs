@@ -7015,12 +7015,8 @@ async function main() {
         throw error;
     }
 
-    const executorRepo = mkdtempSync(
-      path.join(tmpdir(), "valdris-executor-source-"),
-    );
-    const executorParent = mkdtempSync(
-      path.join(tmpdir(), "valdris-executor-output-"),
-    );
+    const executorRepo = canonicalTempDirectory("valdris-executor-source-");
+    const executorParent = canonicalTempDirectory("valdris-executor-output-");
     secureVerifierOperatorRoot(executorParent);
     const executorParentIdentity = assertOperatorRootSecurity(executorParent);
     try {
