@@ -4,7 +4,7 @@ Stable Valdris releases are created only by `.github/workflows/authoritative-rel
 
 Release candidates remain unchanged. Versions and tags containing a prerelease suffix, such as `0.9.0-rc.1` and `v0.9.0-rc.1`, are not authoritative and are rejected by the stable workflow.
 
-A stable tag must exactly equal `v` plus the candidate `package.json` version. A request for `v0.9.0` therefore fails against a `0.9.0-rc.1` checkout instead of releasing evidence from a different candidate version.
+A stable tag must exactly equal `v` plus the `package.json` version read from the candidate's resolved Git `HEAD`, never mutable worktree bytes. The local tag target, candidate `HEAD`, authoritative closure commit, executor `sourceCommit`, and applicable promotion commit must converge on that same commit; the bridge-head receipt must bind the same run and proof closure. A request for `v0.9.0` therefore fails against a committed `0.9.0-rc.1` candidate or evidence from another source revision.
 
 ## 1. Commission the authoritative evidence producer
 
@@ -88,7 +88,7 @@ Verify the ruleset with a negative test: an administrator and the ordinary workf
 
 From the default branch, dispatch **Authoritative Stable Release** with:
 
-- `stable_tag`: exact stable SemVer equal to `v` plus the candidate `package.json` version, such as `v0.9.0` for version `0.9.0`;
+- `stable_tag`: exact stable SemVer equal to `v` plus the committed candidate `package.json` version, such as `v0.9.0` for version `0.9.0`;
 - `trusted_run_id`: the successful commissioned producer run; and
 - `source_commit`: the lowercase commit SHA recorded by that run.
 
@@ -97,10 +97,10 @@ The workflow fails closed unless all of the following occur in order:
 1. protected environment and commissioned variables are present;
 2. the trusted validator commit is checked out exactly;
 3. the same-repository run and unique artifact metadata match workflow, branch, and source commit;
-4. the intended commit is reachable from the default branch;
+4. the intended commit is reachable from the default branch, and a credential-free local tag is resolved to that exact candidate `HEAD` for pre-release validation;
 5. downloaded `release-source.json`, authoritative closure commit, and `run-root/` match the GitHub provenance and intended release commit;
 6. `VALDRIS_AUTHORITY_TRUST_SHA256` validates the authoritative signatures;
-7. the stable authoritative gate proves the commissioned OCI executor and rollback-resistant provider execution;
+7. the stable authoritative gate proves candidate `HEAD`, local tag target, committed package version, closure, executor source, applicable promotion, and bridge-run convergence before accepting the commissioned OCI executor and rollback-resistant provider execution;
 8. the release token proves it is a GitHub App installation authorized for this repository;
 9. the stable tag does not already exist; and
 10. only then does the App create the tag and published release at the validated commit.

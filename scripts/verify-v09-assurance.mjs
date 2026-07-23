@@ -19,7 +19,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { canonicalJson, fileSha256, sha256 } from "./proof-runner.mjs";
 import { validateAuthoritativeAssurance } from "./authoritative-assurance-gate.mjs";
-import { evaluateAuthoritativeRelease } from "./authoritative-release-gate.mjs";
+import {
+  evaluateAuthoritativeRelease,
+  runReleaseGit,
+} from "./authoritative-release-gate.mjs";
 import { assessAssuranceReadiness } from "./assurance-readiness.mjs";
 import {
   createExecutionDeadline,
@@ -4557,6 +4560,19 @@ async function main() {
       writeJson(neutralReleaseRepository, "package.json", {
         version: "0.9.0",
       });
+      for (const args of [
+        ["init", "-q"],
+        ["config", "user.name", "Valdris Neutral Release Verifier"],
+        ["config", "user.email", "neutral-release@example.invalid"],
+        ["add", "package.json"],
+        ["commit", "-qm", "neutral release candidate"],
+        ["tag", "v0.9.0"],
+      ])
+        runReleaseGit(
+          neutralReleaseRepository,
+          args,
+          "neutral release verifier Git command",
+        );
       const neutralFixture = buildFixture(neutralHeadRoot, {
         headProvider: "neutral-ledger",
       });

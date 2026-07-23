@@ -13,7 +13,10 @@ import {
   validateTrustedReleaseMetadata,
   validateTrustedReleaseSource,
 } from "./authoritative-release-source-gate.mjs";
-import { evaluateAuthoritativeRelease } from "./authoritative-release-gate.mjs";
+import {
+  evaluateAuthoritativeRelease,
+  runReleaseGit,
+} from "./authoritative-release-gate.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW_PATH = path.join(
@@ -87,7 +90,15 @@ for (const [fragment, label] of [
   ['--run-root "$RUNNER_TEMP/authoritative-artifact/run-root"', "run root"],
   [
     '--repository-root "$GITHUB_WORKSPACE/candidate"',
-    "verified candidate package-version binding",
+    "verified candidate source-identity binding",
+  ],
+  [
+    'git -C "$GITHUB_WORKSPACE/candidate" tag -- "$RELEASE_TAG" "$SOURCE_COMMIT"',
+    "credential-free local stable-tag binding",
+  ],
+  [
+    'rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}"',
+    "local stable-tag commit verification",
   ],
   ["gh api --hostname github.com", "explicit provider hostname"],
   ["installation/repositories?per_page=100", "release App installation proof"],
@@ -152,6 +163,15 @@ try {
     path.join(candidateRoot, "package.json"),
     `${JSON.stringify({ version: "0.9.1" })}\n`,
   );
+  for (const args of [
+    ["init", "-q"],
+    ["config", "user.name", "Valdris Workflow Verifier"],
+    ["config", "user.email", "workflow@example.invalid"],
+    ["add", "package.json"],
+    ["commit", "-qm", "candidate version"],
+    ["tag", "v0.9.0"],
+  ])
+    runReleaseGit(candidateRoot, args, "workflow verifier Git command");
   const substitutedCandidateVersion = evaluateAuthoritativeRelease({
     tag: "v0.9.0",
     repositoryRoot: candidateRoot,

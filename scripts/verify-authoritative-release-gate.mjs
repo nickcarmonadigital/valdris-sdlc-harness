@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   evaluateAuthoritativeRelease,
+  readCandidatePackageAtCommit,
+  resolveCandidateGitIdentity,
+  runReleaseGit,
+  validateCandidateSourceBinding,
   validateStableHeadProviderReceipt,
 } from "./authoritative-release-gate.mjs";
 import { canonicalJson, sha256 } from "./proof-runner.mjs";
@@ -22,6 +26,30 @@ function run(args) {
     shell: false,
     windowsHide: true,
   });
+}
+
+function git(repositoryRoot, args) {
+  return runReleaseGit(repositoryRoot, args, "release verifier Git command");
+}
+
+function createCandidateRepository(repositoryRoot, version, label) {
+  writeFileSync(
+    path.join(repositoryRoot, "package.json"),
+    `${JSON.stringify({ version })}\n`,
+  );
+  writeFileSync(path.join(repositoryRoot, "candidate.txt"), `${label}-one\n`);
+  git(repositoryRoot, ["init", "-q"]);
+  git(repositoryRoot, ["config", "user.name", "Valdris Release Verifier"]);
+  git(repositoryRoot, ["config", "user.email", "release@example.invalid"]);
+  git(repositoryRoot, ["add", "."]);
+  git(repositoryRoot, ["commit", "-qm", `${label} one`]);
+  const firstCommit = git(repositoryRoot, ["rev-parse", "HEAD"]);
+  git(repositoryRoot, ["tag", "v0.9.0", firstCommit]);
+  writeFileSync(path.join(repositoryRoot, "candidate.txt"), `${label}-two\n`);
+  git(repositoryRoot, ["add", "candidate.txt"]);
+  git(repositoryRoot, ["commit", "-qm", `${label} two`]);
+  const secondCommit = git(repositoryRoot, ["rev-parse", "HEAD"]);
+  return { firstCommit, secondCommit };
 }
 
 const prerelease = run([]);
@@ -64,30 +92,51 @@ if (
     "programmatic stable authoritative release accepted no candidate checkout",
   );
 
-const stableVersionMismatch = run([
-  "--tag",
-  "v0.9.0",
-  "--repository-root",
-  ROOT,
-]);
-if (
-  stableVersionMismatch.status === 0 ||
-  !/does not match candidate package version/u.test(
-    stableVersionMismatch.stdout + stableVersionMismatch.stderr,
-  )
-)
-  throw new Error(
-    "stable authoritative release accepted a tag that does not match the candidate package version",
+const stableVersionMismatchRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-stable-release-version-mismatch-"),
+);
+try {
+  const mismatch = createCandidateRepository(
+    stableVersionMismatchRoot,
+    "0.9.1",
+    "version-mismatch",
   );
+  git(stableVersionMismatchRoot, [
+    "tag",
+    "-f",
+    "v0.9.0",
+    mismatch.secondCommit,
+  ]);
+  const stableVersionMismatch = run([
+    "--tag",
+    "v0.9.0",
+    "--repository-root",
+    stableVersionMismatchRoot,
+  ]);
+  if (
+    stableVersionMismatch.status === 0 ||
+    !/does not match candidate package version/u.test(
+      stableVersionMismatch.stdout + stableVersionMismatch.stderr,
+    )
+  )
+    throw new Error(
+      "stable authoritative release accepted a tag that does not match the candidate package version",
+    );
+} finally {
+  rmSync(stableVersionMismatchRoot, { recursive: true, force: true });
+}
 
 const stableCandidateRoot = mkdtempSync(
   path.join(tmpdir(), "valdris-stable-release-candidate-"),
 );
 try {
-  writeFileSync(
-    path.join(stableCandidateRoot, "package.json"),
-    `${JSON.stringify({ version: "0.9.0" })}\n`,
+  const candidate = createCandidateRepository(
+    stableCandidateRoot,
+    "0.9.0",
+    "missing-packet",
   );
+  git(stableCandidateRoot, ["tag", "-f", "v0.9.0", candidate.secondCommit]);
+  writeFileSync(path.join(stableCandidateRoot, "package.json"), "{malformed\n");
   const missingPacket = evaluateAuthoritativeRelease({
     tag: "v0.9.0",
     repositoryRoot: stableCandidateRoot,
@@ -103,6 +152,169 @@ try {
     );
 } finally {
   rmSync(stableCandidateRoot, { recursive: true, force: true });
+}
+
+const sourceBindingRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-stable-release-source-binding-"),
+);
+try {
+  const firstRepository = path.join(sourceBindingRoot, "first");
+  const secondRepository = path.join(sourceBindingRoot, "second");
+  mkdirSync(firstRepository);
+  mkdirSync(secondRepository);
+  const priorGitConfigCount = process.env.GIT_CONFIG_COUNT;
+  const priorGitConfigKey = process.env.GIT_CONFIG_KEY_0;
+  const priorGitConfigValue = process.env.GIT_CONFIG_VALUE_0;
+  process.env.GIT_CONFIG_COUNT = "1";
+  process.env.GIT_CONFIG_KEY_0 = "commit.gpgSign";
+  process.env.GIT_CONFIG_VALUE_0 = "true";
+  let first;
+  let second;
+  try {
+    first = createCandidateRepository(firstRepository, "0.9.0", "first");
+    second = createCandidateRepository(secondRepository, "0.9.0", "second");
+  } finally {
+    for (const [key, value] of [
+      ["GIT_CONFIG_COUNT", priorGitConfigCount],
+      ["GIT_CONFIG_KEY_0", priorGitConfigKey],
+      ["GIT_CONFIG_VALUE_0", priorGitConfigValue],
+    ])
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+  }
+
+  const tagMismatchIdentity = resolveCandidateGitIdentity({
+    repositoryRoot: firstRepository,
+    tag: "v0.9.0",
+  });
+  const tagMismatch = validateCandidateSourceBinding({
+    candidateHead: tagMismatchIdentity.headCommit,
+    tagCommit: tagMismatchIdentity.tagCommit,
+    executorSourceCommit: tagMismatchIdentity.headCommit,
+    closureCommit: tagMismatchIdentity.headCommit,
+    bridgeRunId: "run-one",
+    closureRunId: "run-one",
+  });
+  if (
+    tagMismatch.valid ||
+    !tagMismatch.problems.some((problem) =>
+      problem.includes("stable tag target does not match candidate Git HEAD"),
+    )
+  )
+    throw new Error(
+      "stable tag resolving to a different candidate commit was accepted",
+    );
+
+  git(firstRepository, ["tag", "-f", "v0.9.0", first.secondCommit]);
+  const alignedIdentity = resolveCandidateGitIdentity({
+    repositoryRoot: firstRepository,
+    tag: "v0.9.0",
+  });
+  writeFileSync(
+    path.join(firstRepository, "package.json"),
+    `${JSON.stringify({ version: "9.9.9" })}\n`,
+  );
+  if (readCandidatePackageAtCommit(alignedIdentity).version !== "0.9.0")
+    throw new Error(
+      "candidate version proof read mutable worktree package metadata",
+    );
+  git(secondRepository, ["tag", "-f", "v0.9.0", second.secondCommit]);
+  const substitutedIdentity = resolveCandidateGitIdentity({
+    repositoryRoot: secondRepository,
+    tag: "v0.9.0",
+  });
+  const substitutedCandidate = validateCandidateSourceBinding({
+    candidateHead: substitutedIdentity.headCommit,
+    tagCommit: substitutedIdentity.tagCommit,
+    executorSourceCommit: alignedIdentity.headCommit,
+    closureCommit: alignedIdentity.headCommit,
+    bridgeRunId: "run-one",
+    closureRunId: "run-one",
+  });
+  if (
+    substitutedCandidate.valid ||
+    !substitutedCandidate.problems.some((problem) =>
+      problem.includes(
+        "executor sourceCommit does not match candidate Git HEAD",
+      ),
+    )
+  )
+    throw new Error(
+      "same-version candidate checkout with a different Git HEAD was accepted",
+    );
+
+  const substitutedExecutor = validateCandidateSourceBinding({
+    candidateHead: alignedIdentity.headCommit,
+    tagCommit: alignedIdentity.tagCommit,
+    executorSourceCommit: first.firstCommit,
+    closureCommit: first.firstCommit,
+    promotionCommit: first.firstCommit,
+    bridgeRunId: "run-one",
+    closureRunId: "run-one",
+  });
+  if (
+    substitutedExecutor.valid ||
+    !substitutedExecutor.problems.some((problem) =>
+      problem.includes(
+        "executor sourceCommit does not match candidate Git HEAD",
+      ),
+    )
+  )
+    throw new Error(
+      "authoritative run from a different source commit was accepted for the candidate",
+    );
+
+  const alignedSource = validateCandidateSourceBinding({
+    candidateHead: alignedIdentity.headCommit,
+    tagCommit: alignedIdentity.tagCommit,
+    executorSourceCommit: alignedIdentity.headCommit,
+    closureCommit: alignedIdentity.headCommit,
+    promotionCommit: alignedIdentity.headCommit,
+    bridgeRunId: "run-one",
+    closureRunId: "run-one",
+  });
+  if (!alignedSource.valid)
+    throw new Error(
+      `aligned candidate source binding was rejected: ${alignedSource.problems.join(
+        "; ",
+      )}`,
+    );
+  const substitutedPromotion = validateCandidateSourceBinding({
+    candidateHead: alignedIdentity.headCommit,
+    tagCommit: alignedIdentity.tagCommit,
+    executorSourceCommit: alignedIdentity.headCommit,
+    closureCommit: alignedIdentity.headCommit,
+    promotionCommit: first.firstCommit,
+    bridgeRunId: "run-one",
+    closureRunId: "run-one",
+  });
+  if (
+    substitutedPromotion.valid ||
+    !substitutedPromotion.problems.some((problem) =>
+      problem.includes("promotion receipt commit"),
+    )
+  )
+    throw new Error(
+      "promotion receipt from another source commit was accepted",
+    );
+  const substitutedBridgeRun = validateCandidateSourceBinding({
+    candidateHead: alignedIdentity.headCommit,
+    tagCommit: alignedIdentity.tagCommit,
+    executorSourceCommit: alignedIdentity.headCommit,
+    closureCommit: alignedIdentity.headCommit,
+    promotionCommit: alignedIdentity.headCommit,
+    bridgeRunId: "run-two",
+    closureRunId: "run-one",
+  });
+  if (
+    substitutedBridgeRun.valid ||
+    !substitutedBridgeRun.problems.some((problem) =>
+      problem.includes("bridge-head receipt runId"),
+    )
+  )
+    throw new Error("bridge-head receipt from another run was accepted");
+} finally {
+  rmSync(sourceBindingRoot, { recursive: true, force: true });
 }
 
 const neutralProviderProof = {
@@ -149,6 +361,11 @@ console.log(
         stableTagRequiresRealOciAndProviderProof: true,
         unvalidatedProviderNeutralHeadRejected: true,
         explicitCandidateCheckoutRequired: true,
+        candidateHeadTagAndExecutedSourceMustMatch: true,
+        committedPackageVersionBoundToCandidateHead: true,
+        ambientGitSigningConfigurationIgnored: true,
+        promotionAndBridgeBindingsMustMatch: true,
+        sameVersionDifferentCandidateHeadRejected: true,
         stableTagVersionSubstitutionRejected: true,
         missingOrMismatchedProviderBindingsRejected: true,
       },

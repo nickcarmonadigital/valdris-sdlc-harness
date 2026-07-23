@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { lstatSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readJson } from "./control-gate-lib.mjs";
@@ -18,6 +19,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const SHA256 = /^[a-f0-9]{64}$/iu;
+const GIT_COMMIT = /^[a-f0-9]{40,64}$/u;
 
 function object(value) {
   return value && typeof value === "object" && !Array.isArray(value);
@@ -65,6 +67,130 @@ function stableRelease(tag) {
   return /^\d+\.\d+\.\d+$/u.test(String(tag).replace(/^v/u, ""));
 }
 
+function gitEnvironment() {
+  const environment = { ...process.env };
+  for (const key of Object.keys(environment))
+    if (key.toUpperCase().startsWith("GIT_")) delete environment[key];
+  return {
+    ...environment,
+    GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_OPTIONAL_LOCKS: "0",
+    GIT_TERMINAL_PROMPT: "0",
+  };
+}
+
+export function runReleaseGit(repositoryRoot, args, label) {
+  const result = spawnSync("git", ["-C", repositoryRoot, ...args], {
+    encoding: "utf8",
+    env: gitEnvironment(),
+    maxBuffer: 1024 * 1024,
+    shell: false,
+    timeout: 10_000,
+    windowsHide: true,
+  });
+  if (result.error || result.status !== 0)
+    throw new Error(
+      `${label} failed: ${String(
+        result.error?.message ||
+          result.stderr ||
+          result.stdout ||
+          "unknown error",
+      ).trim()}`,
+    );
+  return result.stdout.trim();
+}
+
+export function resolveCandidateGitHeadIdentity(repositoryRoot) {
+  const requestedRoot = path.resolve(repositoryRoot);
+  const stats = lstatSync(requestedRoot);
+  if (!stats.isDirectory() || stats.isSymbolicLink())
+    throw new Error("candidate repository root must be a real directory");
+  const canonicalRoot = realpathSync(requestedRoot);
+  const reportedRoot = realpathSync(
+    runReleaseGit(
+      canonicalRoot,
+      ["rev-parse", "--show-toplevel"],
+      "candidate root lookup",
+    ),
+  );
+  if (reportedRoot !== canonicalRoot)
+    throw new Error(
+      "candidate repository root must be the exact Git worktree root",
+    );
+  const headCommit = runReleaseGit(
+    canonicalRoot,
+    ["rev-parse", "--verify", "HEAD^{commit}"],
+    "candidate HEAD lookup",
+  ).toLowerCase();
+  if (!GIT_COMMIT.test(headCommit))
+    throw new Error("candidate HEAD did not resolve to a Git commit");
+  return { repositoryRoot: canonicalRoot, headCommit };
+}
+
+export function resolveCandidateGitIdentity({ repositoryRoot, tag }) {
+  const headIdentity = resolveCandidateGitHeadIdentity(repositoryRoot);
+  const tagCommit = runReleaseGit(
+    headIdentity.repositoryRoot,
+    ["rev-parse", "--verify", `refs/tags/${tag}^{commit}`],
+    "candidate stable-tag lookup",
+  ).toLowerCase();
+  if (!GIT_COMMIT.test(tagCommit))
+    throw new Error("candidate stable tag did not resolve to a Git commit");
+  return { ...headIdentity, tagCommit };
+}
+
+export function readCandidatePackageAtCommit(candidateIdentity) {
+  const packageBytes = runReleaseGit(
+    candidateIdentity.repositoryRoot,
+    ["show", `${candidateIdentity.headCommit}:package.json`],
+    "candidate committed package lookup",
+  );
+  const packageDocument = JSON.parse(packageBytes);
+  if (
+    !object(packageDocument) ||
+    typeof packageDocument.version !== "string" ||
+    packageDocument.version.length === 0
+  )
+    throw new Error("candidate committed package version is invalid");
+  return packageDocument;
+}
+
+export function validateCandidateSourceBinding({
+  candidateHead,
+  tagCommit,
+  executorSourceCommit,
+  closureCommit,
+  promotionCommit,
+  bridgeRunId,
+  closureRunId,
+}) {
+  const problems = [];
+  for (const [label, value] of [
+    ["candidate HEAD", candidateHead],
+    ["stable tag target", tagCommit],
+    ["executor sourceCommit", executorSourceCommit],
+    ["authoritative closure commit", closureCommit],
+  ])
+    if (!GIT_COMMIT.test(value || ""))
+      problems.push(`${label} is not a canonical Git commit`);
+  if (candidateHead !== tagCommit)
+    problems.push("stable tag target does not match candidate Git HEAD");
+  if (candidateHead !== executorSourceCommit)
+    problems.push("executor sourceCommit does not match candidate Git HEAD");
+  if (candidateHead !== closureCommit)
+    problems.push(
+      "authoritative closure commit does not match candidate Git HEAD",
+    );
+  if (promotionCommit && promotionCommit !== candidateHead)
+    problems.push("promotion receipt commit does not match candidate Git HEAD");
+  if (bridgeRunId !== closureRunId)
+    problems.push(
+      "bridge-head receipt runId does not match authoritative closure runId",
+    );
+  return { valid: problems.length === 0, problems };
+}
+
 export function evaluateAuthoritativeRelease({
   tag,
   runRoot,
@@ -72,10 +198,33 @@ export function evaluateAuthoritativeRelease({
   validationOptions = {},
 }) {
   const candidateRoot = repositoryRoot ? path.resolve(repositoryRoot) : ROOT;
-  const packageDocument = JSON.parse(
-    readFileSync(path.join(candidateRoot, "package.json"), "utf8"),
-  );
-  const requestedTag = tag || `v${packageDocument.version}`;
+  let requestedTag = tag;
+  let candidateIdentity;
+  let committedPackageDocument;
+  let committedPackageHeadCommit;
+  if (!requestedTag && repositoryRoot)
+    try {
+      const headIdentity = resolveCandidateGitHeadIdentity(candidateRoot);
+      committedPackageDocument = readCandidatePackageAtCommit(headIdentity);
+      committedPackageHeadCommit = headIdentity.headCommit;
+      requestedTag = `v${committedPackageDocument.version}`;
+    } catch (error) {
+      return {
+        ok: false,
+        tag: requestedTag,
+        releaseClass: "stable",
+        authoritativeEligible: false,
+        problems: [
+          `stable release candidate source identity is invalid: ${error.message}`,
+        ],
+      };
+    }
+  if (!requestedTag) {
+    const packageDocument = JSON.parse(
+      readFileSync(path.join(candidateRoot, "package.json"), "utf8"),
+    );
+    requestedTag = `v${packageDocument.version}`;
+  }
   if (!stableRelease(requestedTag))
     return {
       ok: true,
@@ -95,14 +244,39 @@ export function evaluateAuthoritativeRelease({
         "a stable release requires repositoryRoot for the exact verified candidate checkout",
       ],
     };
-  if (requestedTag !== `v${packageDocument.version}`)
+  try {
+    candidateIdentity = resolveCandidateGitIdentity({
+      repositoryRoot: candidateRoot,
+      tag: requestedTag,
+    });
+    if (
+      committedPackageHeadCommit &&
+      committedPackageHeadCommit !== candidateIdentity.headCommit
+    )
+      throw new Error(
+        "candidate Git HEAD changed while resolving committed package metadata",
+      );
+    committedPackageDocument ||=
+      readCandidatePackageAtCommit(candidateIdentity);
+  } catch (error) {
     return {
       ok: false,
       tag: requestedTag,
       releaseClass: "stable",
       authoritativeEligible: false,
       problems: [
-        `stable release tag ${requestedTag} does not match candidate package version v${packageDocument.version}`,
+        `stable release candidate source identity is invalid: ${error.message}`,
+      ],
+    };
+  }
+  if (requestedTag !== `v${committedPackageDocument.version}`)
+    return {
+      ok: false,
+      tag: requestedTag,
+      releaseClass: "stable",
+      authoritativeEligible: false,
+      problems: [
+        `stable release tag ${requestedTag} does not match candidate package version v${committedPackageDocument.version} from committed HEAD`,
       ],
     };
   if (!runRoot)
@@ -120,6 +294,7 @@ export function evaluateAuthoritativeRelease({
   let validation;
   let runtime;
   let semantic;
+  let promotion;
   try {
     closure = readJson(
       resolveArtifactPath(
@@ -143,6 +318,14 @@ export function evaluateAuthoritativeRelease({
         mustExist: true,
       }),
     );
+    if (closure.artifacts?.promotion)
+      promotion = readJson(
+        resolveArtifactPath(
+          canonicalRunRoot,
+          V09_CANONICAL_ARTIFACTS.promotion,
+          { mustExist: true },
+        ),
+      );
   } catch (error) {
     return {
       ok: false,
@@ -157,6 +340,17 @@ export function evaluateAuthoritativeRelease({
   const executor = runtime.executorReceipt;
   const head = runtime.bridgeHeadReceipt;
   const problems = [...validation.problems];
+  problems.push(
+    ...validateCandidateSourceBinding({
+      candidateHead: candidateIdentity.headCommit,
+      tagCommit: candidateIdentity.tagCommit,
+      executorSourceCommit: executor?.sourceCommit,
+      closureCommit: closure?.commit,
+      promotionCommit: promotion?.commit,
+      bridgeRunId: head?.runId,
+      closureRunId: closure?.runId,
+    }).problems,
+  );
   if (validation.level !== "authoritative")
     problems.push("release packet does not claim authoritative assurance");
   if (
@@ -188,6 +382,7 @@ export function evaluateAuthoritativeRelease({
     tag: requestedTag,
     releaseClass: "stable",
     authoritativeEligible: problems.length === 0,
+    sourceCommit: candidateIdentity?.headCommit,
     problems,
   };
 }
