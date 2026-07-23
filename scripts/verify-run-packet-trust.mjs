@@ -245,7 +245,9 @@ function expectFailure(result, label, expectedText) {
 
 function verifyGenuinePreV3PacketCompatibility() {
   // Historical CLIs compare argv[1] with import.meta.url lexically. Resolve the
-  // macOS /var -> /private/var alias before spawning them so their main guards run.
+  // macOS /var -> /private/var alias for both the outer worktree and every temp
+  // fixture created by the pinned verifier so its nested CLI main guards run.
+  const canonicalTempRoot = realpathSync(os.tmpdir());
   const worktreeParent = realpathSync(
     mkdtempSync(path.join(os.tmpdir(), "valdris-pre-v3-worktree-")),
   );
@@ -293,7 +295,13 @@ function verifyGenuinePreV3PacketCompatibility() {
       cwd: worktree,
       encoding: "utf8",
       windowsHide: true,
-      env: { ...process.env, VALDRIS_LEGACY_FIXTURE_OUT: fixture },
+      env: {
+        ...process.env,
+        TMPDIR: canonicalTempRoot,
+        TMP: canonicalTempRoot,
+        TEMP: canonicalTempRoot,
+        VALDRIS_LEGACY_FIXTURE_OUT: fixture,
+      },
       timeout: 120_000,
       maxBuffer: 64 * 1024 * 1024,
     });
