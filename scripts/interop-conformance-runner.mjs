@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   INTEROP_TESTS,
+  interopConformanceExpectation,
   validateInteropTranscriptDocument,
 } from "./operating-contracts-lib.mjs";
 import {
@@ -15,12 +16,6 @@ import {
   safeIdentifier,
   sha256,
 } from "./proof-runner.mjs";
-
-const REQUEST_SCHEMA = "valdris.interop-conformance-request.v1";
-const RESPONSE_SCHEMA = "valdris.interop-conformance-response.v1";
-const ASSERTION_SCHEMA = "valdris.interop-conformance-assertion.v1";
-const REQUEST_ENVELOPE_SCHEMA = "valdris.interop-envelope.request.v1";
-const RESPONSE_ENVELOPE_SCHEMA = "valdris.interop-envelope.response.v1";
 
 function parseArgs(argv) {
   const args = {
@@ -50,198 +45,6 @@ function parseArgs(argv) {
   return args;
 }
 
-function challenge(args, id, purpose) {
-  return sha256(
-    canonicalJson({
-      protocol: args.protocol,
-      version: args.version,
-      runId: args.runId,
-      identitySha256: args.identitySha256.toLowerCase(),
-      authRootSha256: args.authRootSha256.toLowerCase(),
-      id,
-      purpose,
-    }),
-  );
-}
-
-function testContract(id, args, capabilities) {
-  const capabilitySetSha256 = sha256(canonicalJson(capabilities));
-  switch (id) {
-    case "initialize":
-      return {
-        request: {
-          operation: "initialize",
-          clientIdentitySha256: challenge(args, id, "client-identity"),
-          supportedVersions: [args.version],
-          requestedCapabilities: capabilities,
-        },
-        expectedResult: {
-          initialized: true,
-          selectedVersion: args.version,
-          serverIdentitySha256: args.identitySha256.toLowerCase(),
-          authRootSha256: args.authRootSha256.toLowerCase(),
-          capabilitySetSha256,
-        },
-      };
-    case "version-negotiation": {
-      const unsupportedVersion = `${args.version}-unsupported`;
-      return {
-        request: {
-          operation: "negotiate-version",
-          offeredVersions: [unsupportedVersion, args.version],
-        },
-        expectedResult: {
-          negotiation: "compatible",
-          selectedVersion: args.version,
-          rejectedVersions: [unsupportedVersion],
-        },
-      };
-    }
-    case "auth-root-isolation": {
-      const rejectedRootSha256 = challenge(args, id, "unauthorized-auth-root");
-      return {
-        request: {
-          operation: "probe-auth-root",
-          authorizedRootSha256: args.authRootSha256.toLowerCase(),
-          candidateRootSha256: rejectedRootSha256,
-        },
-        expectedResult: {
-          isolation: "enforced",
-          allowedRootSha256: args.authRootSha256.toLowerCase(),
-          rejectedRootSha256,
-        },
-      };
-    }
-    case "capability-discovery": {
-      const unknownCapability = "valdris-unknown-capability";
-      return {
-        request: {
-          operation: "discover-capabilities",
-          requestedCapabilities: [...capabilities, unknownCapability],
-        },
-        expectedResult: {
-          advertisedCapabilities: capabilities,
-          unsupportedCapabilities: [unknownCapability],
-          capabilitySetSha256,
-        },
-      };
-    }
-    case "schema-negotiation": {
-      const unsupportedSchema = "valdris.interop-envelope.v0";
-      return {
-        request: {
-          operation: "negotiate-schema",
-          requestSchemas: [unsupportedSchema, REQUEST_ENVELOPE_SCHEMA],
-          responseSchemas: [unsupportedSchema, RESPONSE_ENVELOPE_SCHEMA],
-        },
-        expectedResult: {
-          negotiation: "compatible",
-          selectedRequestSchema: REQUEST_ENVELOPE_SCHEMA,
-          selectedResponseSchema: RESPONSE_ENVELOPE_SCHEMA,
-          rejectedSchemas: [unsupportedSchema],
-        },
-      };
-    }
-    case "event-correlation": {
-      const payloadSha256 = challenge(args, id, "event-payload");
-      const correlationId = challenge(args, id, "correlation");
-      return {
-        request: {
-          operation: "correlate-event",
-          event: {
-            correlationId,
-            payloadSha256,
-          },
-        },
-        expectedResult: {
-          correlationId,
-          eventSha256: sha256(canonicalJson({ correlationId, payloadSha256 })),
-          correlated: true,
-        },
-      };
-    }
-    case "timeout":
-      return {
-        request: {
-          operation: "deadline-probe",
-          deadlineMs: args.timeoutMs,
-          workloadSha256: challenge(args, id, "bounded-workload"),
-        },
-        expectedResult: {
-          deadlineMs: args.timeoutMs,
-          deadlineEnforced: true,
-          timedOut: false,
-          completedWithinDeadline: true,
-        },
-      };
-    case "cancellation": {
-      const cancellationTokenSha256 = challenge(args, id, "cancellation-token");
-      return {
-        request: {
-          operation: "cancel",
-          cancellationTokenSha256,
-          pendingOperationSha256: challenge(args, id, "pending-operation"),
-        },
-        expectedResult: {
-          cancellationTokenSha256,
-          cancelled: true,
-          mutationObserved: false,
-        },
-      };
-    }
-    case "unknown-tool-rejection": {
-      const toolName = `valdris.unknown.${challenge(args, id, "tool").slice(0, 16)}`;
-      return {
-        request: {
-          operation: "invoke-tool",
-          toolName,
-          argumentsSha256: challenge(args, id, "tool-arguments"),
-        },
-        expectedResult: {
-          decision: "rejected",
-          errorCode: "UNKNOWN_TOOL",
-          toolNameSha256: sha256(toolName),
-        },
-      };
-    }
-    case "replay-protection": {
-      const nonce = challenge(args, id, "replay-nonce");
-      return {
-        request: {
-          operation: "replay-probe",
-          nonce,
-          sequence: 1,
-          attempts: 2,
-        },
-        expectedResult: {
-          nonceSha256: sha256(nonce),
-          firstDecision: "accepted",
-          replayDecision: "rejected",
-          errorCode: "REPLAY_DETECTED",
-        },
-      };
-    }
-    default:
-      throw new Error(`unsupported interop conformance test: ${id}`);
-  }
-}
-
-function buildRequest(id, args, capabilities) {
-  const contract = testContract(id, args, capabilities);
-  const request = {
-    schema: REQUEST_SCHEMA,
-    protocol: args.protocol,
-    version: args.version,
-    id,
-    correlationId: challenge(args, id, "request-correlation"),
-    identitySha256: args.identitySha256.toLowerCase(),
-    authRootSha256: args.authRootSha256.toLowerCase(),
-    capabilities,
-    test: contract.request,
-  };
-  return { request, expectedResult: contract.expectedResult };
-}
-
 function assertResponse(id, response, request, expectedResult) {
   if (!response || typeof response !== "object" || Array.isArray(response))
     throw new Error(`interop test ${id} response must be a JSON object`);
@@ -263,7 +66,7 @@ function assertResponse(id, response, request, expectedResult) {
       `interop test ${id} response must use the exact typed response fields`,
     );
   if (
-    response.schema !== RESPONSE_SCHEMA ||
+    response.schema !== "valdris.interop-conformance-response.v1" ||
     response.id !== id ||
     response.status !== "passed" ||
     response.protocol !== request.protocol ||
@@ -334,7 +137,11 @@ function main() {
       .map((name) => [name, process.env[name]]),
   );
   const tests = INTEROP_TESTS.map((id) => {
-    const { request, expectedResult } = buildRequest(id, args, capabilities);
+    const expectation = interopConformanceExpectation(id, {
+      ...args,
+      capabilities,
+    });
+    const { request, expectedResult } = expectation;
     const startedAt = new Date().toISOString();
     const started = Date.now();
     const result = spawnSync(command[0], command.slice(1), {
@@ -367,17 +174,9 @@ function main() {
     return {
       id,
       status: "passed",
-      requestSha256: sha256(canonicalJson(request)),
+      requestSha256: expectation.requestSha256,
       responseSha256: sha256(canonicalJson(response)),
-      assertionSha256: sha256(
-        canonicalJson({
-          schema: ASSERTION_SCHEMA,
-          id,
-          requestSchema: REQUEST_SCHEMA,
-          responseSchema: RESPONSE_SCHEMA,
-          expectedResult,
-        }),
-      ),
+      assertionSha256: expectation.assertionSha256,
       startedAt,
       finishedAt,
     };
@@ -393,14 +192,20 @@ function main() {
     version: args.version,
     identitySha256: args.identitySha256.toLowerCase(),
     authRootSha256: args.authRootSha256.toLowerCase(),
+    capabilities,
     capabilitySetSha256: sha256(canonicalJson(capabilities)),
+    timeoutMs: args.timeoutMs,
     tests,
   };
   const validation = validateInteropTranscriptDocument(transcript, {
     protocol: args.protocol,
     version: args.version,
     identitySha256: args.identitySha256.toLowerCase(),
+    authRootSha256: args.authRootSha256.toLowerCase(),
+    capabilities,
     capabilitySetSha256: sha256(canonicalJson(capabilities)),
+    timeoutMs: args.timeoutMs,
+    allowPendingExecutionReceipt: true,
   });
   if (!validation.valid)
     throw new Error(
@@ -417,7 +222,16 @@ function main() {
     mode: 0o600,
   });
   console.log(
-    JSON.stringify({ ok: true, output, tests: tests.length }, null, 2),
+    JSON.stringify(
+      {
+        ok: true,
+        output,
+        tests: tests.length,
+        attestationRequired: true,
+      },
+      null,
+      2,
+    ),
   );
 }
 

@@ -51,9 +51,15 @@ import {
   validateGithubProtectionPolicy,
 } from "./github-bridge-head.mjs";
 import {
+  INTEROP_EXECUTION_RECEIPT_SCHEMA,
+  INTEROP_TESTS,
   aiEconomicsUsageSha256,
+  interopConformanceExpectation,
+  interopTestDigestSetSha256,
+  interopTranscriptEvidenceSha256,
   validateRuntimeDriverStateDocument,
 } from "./operating-contracts-lib.mjs";
+import { validateOperatingContract } from "./operating-contract-gate.mjs";
 import { historicalValidationRuntimeProblems } from "./run-packet-gate.mjs";
 import {
   nextRuntimeDriverState,
@@ -580,6 +586,7 @@ function buildFixture(
     "valdris.trace-receipt.v2",
     "valdris.usage-receipt.v1",
     "valdris.runtime-conformance-receipt.v1",
+    INTEROP_EXECUTION_RECEIPT_SCHEMA,
     "valdris.memory-head-receipt.v1",
     "uash.tool-approval-receipt.v1",
     "valdris.implementation-execution-receipt.v1",
@@ -1734,35 +1741,94 @@ function buildFixture(
     "runtime/economics.json",
     economicsLedger,
   );
-  const interopTests = [
-    "initialize",
-    "version-negotiation",
-    "auth-root-isolation",
-    "capability-discovery",
-    "schema-negotiation",
-    "event-correlation",
-    "timeout",
-    "cancellation",
-    "unknown-tool-rejection",
-    "replay-protection",
-  ];
-  const interopTranscript = {
-    ...subject("valdris.interop-transcript.v1"),
+  const interopOptions = {
     protocol: "mcp",
     version: "2029-01",
+    runId: RUN_ID,
     identitySha256: D("mcp-identity"),
     authRootSha256: D("mcp-auth-root"),
-    capabilitySetSha256: sha256(canonicalJson(["tools"])),
-    tests: interopTests.map((id, index) => ({
-      id,
-      status: "passed",
-      requestSha256: D(`interop-request-${id}`),
-      responseSha256: D(`interop-response-${id}`),
-      assertionSha256: D(`interop-assertion-${id}`),
-      startedAt: `2030-01-01T11:${String(index).padStart(2, "0")}:00.000Z`,
-      finishedAt: `2030-01-01T11:${String(index).padStart(2, "0")}:01.000Z`,
-    })),
+    capabilities: ["tools"],
+    timeoutMs: 3_000,
   };
+  const interopAdapterCommandSha256 = D("mcp-adapter-command");
+  const interopAdapterSourceSha256 = D("mcp-adapter-source");
+  const interopRunnerSha256 = fileSha256(
+    path.join(ROOT, "scripts", "interop-conformance-runner.mjs"),
+  );
+  const interopExecutorPrincipal = {
+    type: "service",
+    id: "mcp-interop-executor",
+    keyId: "mcp-interop-executor-key",
+  };
+  const interopAuthorityPrincipal = {
+    type: "service",
+    id: "release-operator",
+    keyId: "operator-key",
+  };
+  const interopExecutorIdentitySha256 = sha256(
+    canonicalJson(interopExecutorPrincipal),
+  );
+  const interopTranscript = {
+    ...subject("valdris.interop-transcript.v1"),
+    protocol: interopOptions.protocol,
+    version: interopOptions.version,
+    identitySha256: interopOptions.identitySha256,
+    authRootSha256: interopOptions.authRootSha256,
+    capabilities: interopOptions.capabilities,
+    capabilitySetSha256: sha256(canonicalJson(interopOptions.capabilities)),
+    timeoutMs: interopOptions.timeoutMs,
+    tests: INTEROP_TESTS.map((id, index) => {
+      const expectation = interopConformanceExpectation(id, interopOptions);
+      return {
+        id,
+        status: "passed",
+        requestSha256: expectation.requestSha256,
+        responseSha256: expectation.responseSha256,
+        assertionSha256: expectation.assertionSha256,
+        startedAt: `2030-01-01T11:${String(index).padStart(2, "0")}:00.000Z`,
+        finishedAt: `2030-01-01T11:${String(index).padStart(2, "0")}:01.000Z`,
+      };
+    }),
+  };
+  interopTranscript.executionReceipt = receipt(
+    INTEROP_EXECUTION_RECEIPT_SCHEMA,
+    "interop-mcp-execution",
+    {
+      runId: RUN_ID,
+      commit: COMMIT,
+      environment: ENVIRONMENT,
+      protocol: interopOptions.protocol,
+      version: interopOptions.version,
+      identitySha256: interopOptions.identitySha256,
+      authRootSha256: interopOptions.authRootSha256,
+      capabilitySetSha256: interopTranscript.capabilitySetSha256,
+      timeoutMs: interopOptions.timeoutMs,
+      adapterCommandSha256: interopAdapterCommandSha256,
+      adapterSourceSha256: interopAdapterSourceSha256,
+      runnerSha256: interopRunnerSha256,
+      executorIdentitySha256: interopExecutorIdentitySha256,
+      executorPrincipal: interopExecutorPrincipal,
+      authorityPrincipal: interopAuthorityPrincipal,
+      transcriptEvidenceSha256:
+        interopTranscriptEvidenceSha256(interopTranscript),
+      requestSetSha256: interopTestDigestSetSha256(
+        interopTranscript,
+        "requestSha256",
+      ),
+      responseSetSha256: interopTestDigestSetSha256(
+        interopTranscript,
+        "responseSha256",
+      ),
+      assertionSetSha256: interopTestDigestSetSha256(
+        interopTranscript,
+        "assertionSha256",
+      ),
+      startedAt: "2030-01-01T11:00:00.000Z",
+      finishedAt: "2030-01-01T11:10:00.000Z",
+      exitCode: 0,
+      inheritAmbientSecrets: false,
+    },
+  );
   const interopPath = writeJson(
     root,
     "runtime/interop/mcp.json",
@@ -1949,6 +2015,14 @@ function buildFixture(
         version: "2029-01",
         capabilities: ["tools"],
         identitySha256: D("mcp-identity"),
+        authRootSha256: D("mcp-auth-root"),
+        timeoutMs: interopOptions.timeoutMs,
+        adapterCommandSha256: interopAdapterCommandSha256,
+        adapterSourceSha256: interopAdapterSourceSha256,
+        runnerSha256: interopRunnerSha256,
+        executorIdentitySha256: interopExecutorIdentitySha256,
+        executorPrincipal: interopExecutorPrincipal,
+        authorityPrincipal: interopAuthorityPrincipal,
         transcript: {
           path: "runtime/interop/mcp.json",
           sha256: fileSha256(interopPath),
@@ -2562,6 +2636,17 @@ async function main() {
     expectValid(
       "runtime baseline",
       validateRuntimeSessionDocument(fixture.documents.runtime, options),
+    );
+    expectValid(
+      "attested interop operating contract",
+      validateOperatingContract(
+        path.join(root, "runtime", "interop", "mcp.json"),
+        {
+          repoRoot: root,
+          now: NOW,
+          requiredTrustSha256: fixture.trustPin,
+        },
+      ),
     );
     const aliasedAuthorityTrustStore = clone(fixture.trustStore);
     aliasedAuthorityTrustStore.keys[1].publicKeyPem =
@@ -4626,6 +4711,107 @@ async function main() {
       rmSync(neutralReleaseRepository, { recursive: true, force: true });
     }
 
+    const rebindInteropTranscriptEvidence = (transcript) => {
+      const expectationOptions = {
+        protocol: transcript.protocol,
+        version: transcript.version,
+        runId: transcript.runId,
+        identitySha256: transcript.identitySha256,
+        authRootSha256: transcript.authRootSha256,
+        capabilities: transcript.capabilities,
+        timeoutMs: transcript.timeoutMs,
+      };
+      transcript.capabilitySetSha256 = sha256(
+        canonicalJson(transcript.capabilities),
+      );
+      transcript.tests = transcript.tests.map((test) => {
+        const expectation = interopConformanceExpectation(
+          test.id,
+          expectationOptions,
+        );
+        return {
+          ...test,
+          requestSha256: expectation.requestSha256,
+          responseSha256: expectation.responseSha256,
+          assertionSha256: expectation.assertionSha256,
+        };
+      });
+      const execution = transcript.executionReceipt;
+      Object.assign(execution, {
+        protocol: transcript.protocol,
+        version: transcript.version,
+        identitySha256: transcript.identitySha256,
+        authRootSha256: transcript.authRootSha256,
+        capabilitySetSha256: transcript.capabilitySetSha256,
+        timeoutMs: transcript.timeoutMs,
+        transcriptEvidenceSha256: interopTranscriptEvidenceSha256(transcript),
+        requestSetSha256: interopTestDigestSetSha256(
+          transcript,
+          "requestSha256",
+        ),
+        responseSetSha256: interopTestDigestSetSha256(
+          transcript,
+          "responseSha256",
+        ),
+        assertionSetSha256: interopTestDigestSetSha256(
+          transcript,
+          "assertionSha256",
+        ),
+      });
+      execution.attestation.payloadSha256 = sha256(
+        canonicalJson(authorityAttestationPayload(execution)),
+      );
+    };
+    const resignInteropExecutionReceipt = (transcript, overrides = {}) => {
+      const current = transcript.executionReceipt;
+      const { schema, eventId, actor, attestation, ...binding } = current;
+      const authorityPrincipal =
+        overrides.authorityPrincipal || current.authorityPrincipal;
+      transcript.executionReceipt = fixture.receipt(schema, eventId, {
+        ...binding,
+        ...overrides,
+        _signedAt: attestation.signedAt,
+        _keyId: authorityPrincipal.keyId,
+        _actorId: authorityPrincipal.id,
+        _actorType: authorityPrincipal.type,
+      });
+    };
+    const validateMutatedInteropTranscript = (
+      mutateTranscript,
+      mutateRuntime = () => {},
+    ) => {
+      const transcriptPath = path.join(root, "runtime", "interop", "mcp.json");
+      const original = readFileSync(transcriptPath, "utf8");
+      try {
+        const transcript = JSON.parse(original);
+        mutateTranscript(transcript);
+        writeJson(root, "runtime/interop/mcp.json", transcript);
+        const runtime = clone(fixture.documents.runtime);
+        runtime.interop[0].transcript.sha256 = fileSha256(transcriptPath);
+        mutateRuntime(runtime, transcript);
+        runtime.sessionIdentitySha256 = runtimeSessionIdentity(runtime);
+        return validateRuntimeSessionDocument(runtime, options);
+      } finally {
+        writeFileSync(transcriptPath, original);
+      }
+    };
+    const validateMutatedInteropOperatingContract = (mutateTranscript) => {
+      const transcriptPath = path.join(root, "runtime", "interop", "mcp.json");
+      const original = readFileSync(transcriptPath, "utf8");
+      try {
+        const transcript = JSON.parse(original);
+        mutateTranscript(transcript);
+        writeJson(root, "runtime/interop/mcp.json", transcript);
+        return validateOperatingContract(transcriptPath, {
+          repoRoot: root,
+          now: NOW,
+          requiredTrustSha256: fixture.trustPin,
+        });
+      } finally {
+        writeFileSync(transcriptPath, original);
+      }
+    };
+
     const cases = [
       [
         "control removal",
@@ -5793,6 +5979,94 @@ async function main() {
           }
         },
         "missing replay-protection",
+      ],
+      [
+        "fabricated interop request binding",
+        () =>
+          validateMutatedInteropTranscript((transcript) => {
+            transcript.tests[0].requestSha256 = D("fabricated-request");
+          }),
+        "requestSha256 does not match the commissioned conformance challenge",
+      ],
+      [
+        "fabricated interop response binding",
+        () =>
+          validateMutatedInteropTranscript((transcript) => {
+            transcript.tests[0].responseSha256 = D("fabricated-response");
+          }),
+        "responseSha256 does not match the commissioned conformance challenge",
+      ],
+      [
+        "fabricated interop assertion binding",
+        () =>
+          validateMutatedInteropTranscript((transcript) => {
+            transcript.tests[0].assertionSha256 = D("fabricated-assertion");
+          }),
+        "assertionSha256 does not match the commissioned conformance challenge",
+      ],
+      [
+        "coordinated interop auth-root substitution",
+        () =>
+          validateMutatedInteropTranscript((transcript) => {
+            transcript.authRootSha256 = D("substituted-interop-auth-root");
+            rebindInteropTranscriptEvidence(transcript);
+          }),
+        "auth root does not match runtime declaration",
+      ],
+      [
+        "coordinated interop timeout substitution",
+        () =>
+          validateMutatedInteropTranscript((transcript) => {
+            transcript.timeoutMs += 1;
+            rebindInteropTranscriptEvidence(transcript);
+          }),
+        "timeout does not match runtime declaration",
+      ],
+      [
+        "self-authored interop execution attestation",
+        () =>
+          validateMutatedInteropTranscript(
+            (transcript) => {
+              transcript.authRootSha256 = D("attacker-interop-auth-root");
+              rebindInteropTranscriptEvidence(transcript);
+            },
+            (runtime, transcript) => {
+              runtime.interop[0].authRootSha256 = transcript.authRootSha256;
+            },
+          ),
+        "interop transcript 1 execution receipt: authority receipt signature is invalid",
+      ],
+      [
+        "valid-signature same-principal interop attestation",
+        () =>
+          validateMutatedInteropTranscript(
+            (transcript) => {
+              const samePrincipal = {
+                ...transcript.executionReceipt.authorityPrincipal,
+              };
+              resignInteropExecutionReceipt(transcript, {
+                executorPrincipal: samePrincipal,
+                executorIdentitySha256: sha256(canonicalJson(samePrincipal)),
+              });
+            },
+            (runtime, transcript) => {
+              runtime.interop[0].executorPrincipal =
+                transcript.executionReceipt.executorPrincipal;
+              runtime.interop[0].executorIdentitySha256 =
+                transcript.executionReceipt.executorIdentitySha256;
+            },
+          ),
+        "authority principal must be distinct from the executor principal",
+      ],
+      [
+        "standalone interop untrusted runner",
+        () =>
+          validateMutatedInteropOperatingContract((transcript) => {
+            resignInteropExecutionReceipt(transcript, {
+              runnerSha256: D("untrusted-interop-runner"),
+            });
+          }),
+        "does not bind the trusted conformance runner",
       ],
       [
         "review coverage omission",
@@ -7524,6 +7798,132 @@ async function main() {
           }`,
         );
     }
+
+    const hostileJournalFile = "runtime/durability-hostile-journal.json";
+    const hostileJournalLease = "durability-hostile-journal-lease";
+    const hostileInitial = seedRuntimeState(
+      hostileJournalFile,
+      hostileJournalLease,
+    );
+    const hostileFault = spawnSync(
+      process.execPath,
+      runtimeDriverWriteArgs(
+        hostileJournalFile,
+        hostileJournalLease,
+        hostileInitial.currentHeadSha256,
+      ),
+      {
+        cwd: root,
+        encoding: "utf8",
+        windowsHide: true,
+        env: {
+          ...process.env,
+          VALDRIS_RUNTIME_DRIVER_TEST_MODE: "1",
+          VALDRIS_RUNTIME_DRIVER_TEST_FAULT_PHASE: "after-journal-fsync",
+        },
+      },
+    );
+    if (hostileFault.status === 0)
+      throw new Error(
+        "runtime-driver hostile-journal fixture did not leave a pending journal",
+      );
+    const hostileJournalPath = path.join(root, `${hostileJournalFile}.journal`);
+    const hostileJournal = JSON.parse(
+      readFileSync(hostileJournalPath, "utf8").trim(),
+    );
+    const hostileToken = D("hostile-journal-fencing-token");
+    const protectedSibling = path.join(
+      root,
+      "runtime",
+      `${path.basename(hostileJournalFile)}.${hostileToken}.tmp`,
+    );
+    writeFileSync(protectedSibling, "must-survive-hostile-recovery\n", "utf8");
+    hostileJournal.fencingToken = hostileToken;
+    hostileJournal.temporaryName = path.basename(protectedSibling);
+    writeFileSync(
+      hostileJournalPath,
+      `${JSON.stringify(hostileJournal)}\n`,
+      "utf8",
+    );
+    const hostileRecovery = spawnSync(
+      process.execPath,
+      runtimeDriverWriteArgs(
+        hostileJournalFile,
+        hostileJournalLease,
+        hostileInitial.currentHeadSha256,
+      ),
+      { cwd: root, encoding: "utf8", windowsHide: true },
+    );
+    if (hostileRecovery.status !== 0)
+      throw new Error(
+        `runtime-driver rejected a recoverable legacy journal:\n${hostileRecovery.stderr}`,
+      );
+    if (
+      !existsSync(protectedSibling) ||
+      readFileSync(protectedSibling, "utf8") !==
+        "must-survive-hostile-recovery\n"
+    )
+      throw new Error(
+        "runtime-driver hostile journal deleted or changed an unrelated sibling",
+      );
+
+    const reservedTemporaryFile = "runtime/durability-reserved-temporary.json";
+    const reservedTemporaryLease = "durability-reserved-temporary-lease";
+    const reservedTemporaryInitial = seedRuntimeState(
+      reservedTemporaryFile,
+      reservedTemporaryLease,
+    );
+    const reservedTemporaryFault = spawnSync(
+      process.execPath,
+      runtimeDriverWriteArgs(
+        reservedTemporaryFile,
+        reservedTemporaryLease,
+        reservedTemporaryInitial.currentHeadSha256,
+      ),
+      {
+        cwd: root,
+        encoding: "utf8",
+        windowsHide: true,
+        env: {
+          ...process.env,
+          VALDRIS_RUNTIME_DRIVER_TEST_MODE: "1",
+          VALDRIS_RUNTIME_DRIVER_TEST_FAULT_PHASE: "after-temp-fsync",
+        },
+      },
+    );
+    if (reservedTemporaryFault.status === 0)
+      throw new Error(
+        "runtime-driver reserved-temporary fixture did not leave a pending journal",
+      );
+    const reservedTemporaryPath = path.join(
+      root,
+      `${reservedTemporaryFile}.runtime-driver.tmp`,
+    );
+    if (!existsSync(reservedTemporaryPath))
+      throw new Error(
+        "runtime-driver crash fixture did not leave reserved temporary state",
+      );
+    const reservedJournalPath = path.join(
+      root,
+      `${reservedTemporaryFile}.journal`,
+    );
+    const reservedRecovery = spawnSync(
+      process.execPath,
+      runtimeDriverWriteArgs(
+        reservedTemporaryFile,
+        reservedTemporaryLease,
+        reservedTemporaryInitial.currentHeadSha256,
+      ),
+      { cwd: root, encoding: "utf8", windowsHide: true },
+    );
+    if (reservedRecovery.status !== 0 || existsSync(reservedTemporaryPath))
+      throw new Error(
+        `runtime-driver did not remove reserved crash state during recovery:\n${reservedRecovery.stderr}`,
+      );
+    if (existsSync(reservedJournalPath))
+      throw new Error(
+        "runtime-driver did not remove the recovered durability journal",
+      );
 
     const committedFaultFile = "runtime/durability-committed-fault.json";
     const committedFaultLease = "durability-committed-fault-lease";

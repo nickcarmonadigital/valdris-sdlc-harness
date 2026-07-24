@@ -11,6 +11,7 @@ import {
 import {
   AI_ECONOMICS_LEDGER_SCHEMA,
   DECISION_EVIDENCE_SCHEMA,
+  INTEROP_EXECUTION_RECEIPT_SCHEMA,
   INTEROP_TRANSCRIPT_SCHEMA,
   MODEL_JUDGE_CALIBRATION_SCHEMA,
   REQUIREMENTS_CONTRACT_SCHEMA,
@@ -24,6 +25,10 @@ import {
   validateRuntimeDriverDocument,
   validateToolRegistryDocument,
 } from "./operating-contracts-lib.mjs";
+import {
+  AUTHORITY_TRUST_SHA256_ENV,
+  validateAuthorityReceipt,
+} from "./v09-assurance-lib.mjs";
 import {
   assertCanonicalRepoRelativePath,
   fileSha256,
@@ -57,9 +62,44 @@ export function validateOperatingContract(filePath, options = {}) {
       });
     else if (document.schema === AI_ECONOMICS_LEDGER_SCHEMA)
       result = validateAiEconomicsLedgerDocument(document);
-    else if (document.schema === INTEROP_TRANSCRIPT_SCHEMA)
+    else if (document.schema === INTEROP_TRANSCRIPT_SCHEMA) {
       result = validateInteropTranscriptDocument(document);
-    else if (document.schema === RUNTIME_DRIVER_SCHEMA) {
+      const trustStorePath = existsSync(
+        path.join(repoRoot, "controls", "authority-trust.v1.json"),
+      )
+        ? "controls/authority-trust.v1.json"
+        : ".valdris-harness/controls/authority-trust.v1.json";
+      const trustStore = readJson(
+        resolveArtifactPath(repoRoot, trustStorePath, { mustExist: true }),
+      );
+      const receipt = validateAuthorityReceipt(
+        document.executionReceipt,
+        INTEROP_EXECUTION_RECEIPT_SCHEMA,
+        {
+          trustStore,
+          requiredTrustSha256:
+            options.requiredTrustSha256 ||
+            process.env[AUTHORITY_TRUST_SHA256_ENV],
+          now: options.now,
+        },
+      );
+      result.problems.push(
+        ...receipt.problems.map(
+          (problem) => `interop execution receipt: ${problem}`,
+        ),
+      );
+      const trustedRunnerSha256 = fileSha256(
+        path.join(
+          path.dirname(fileURLToPath(import.meta.url)),
+          "interop-conformance-runner.mjs",
+        ),
+      );
+      if (document.executionReceipt?.runnerSha256 !== trustedRunnerSha256)
+        result.problems.push(
+          "interop execution receipt does not bind the trusted conformance runner",
+        );
+      result.valid = result.problems.length === 0;
+    } else if (document.schema === RUNTIME_DRIVER_SCHEMA) {
       const goalSha256 = fileSha256(
         resolveArtifactPath(repoRoot, "goal/goal.json", { mustExist: true }),
       );

@@ -623,6 +623,31 @@ function createValidPacketFixture(root) {
     readJson(path.join(repoRoot, "run", "route.json")).taskType === "docs-only",
     "fixture request did not produce a docs-only route",
   );
+  const routedInputs = {
+    intake: readJson(path.join(repoRoot, "run", "intake.json")),
+    classification: readJson(
+      path.join(repoRoot, "run", "workload-classification.json"),
+    ),
+    route: readJson(path.join(repoRoot, "run", "route.json")),
+  };
+  for (const assuranceLevel of ["semantic", "authoritative"]) {
+    const required = routeRequiredGates(
+      routedInputs.route,
+      routedInputs.intake,
+      routedInputs.classification,
+      { assuranceLevel },
+    );
+    for (const gate of [
+      "eval",
+      "trajectory",
+      "smoke",
+      "authoritative-assurance",
+    ])
+      assert(
+        required.includes(gate),
+        `${assuranceLevel} closure omitted required evidence gate ${gate}`,
+      );
+  }
 
   const goalPath = path.join(repoRoot, "goal", "goal.json");
   const goal = readJson(goalPath);
@@ -712,6 +737,52 @@ function createValidPacketFixture(root) {
   expectOk(proof, "portable proof fixture creation");
   const proofPath = path.join(repoRoot, "proof", "portable.json");
   const proofDigest = sha256(readFileSync(proofPath));
+  writeJson(path.join(repoRoot, "evals", "results.json"), {
+    schema: "synthetic.eval-results.v1",
+  });
+  writeJson(path.join(repoRoot, "smoke", "smoke_proof.json"), {
+    schema: "synthetic.smoke-proof.v1",
+  });
+  for (const assuranceLevel of ["semantic", "authoritative"]) {
+    const acceptedGateSet = run(
+      runtimeRoot,
+      "run-create.mjs",
+      [
+        "--repo",
+        repoRoot,
+        "--run-id",
+        runId,
+        "--commit",
+        goal.commit,
+        "--environment",
+        environment,
+        "--assurance-level",
+        assuranceLevel,
+        "--proof",
+        "proof/portable.json",
+        "--gate",
+        "eval=evals/results.json",
+        "--gate",
+        "trajectory=trajectory/trajectory.json",
+        "--gate",
+        "smoke=smoke/smoke_proof.json",
+        "--print-accepted-gate-set",
+      ],
+      repoRoot,
+    );
+    expectOk(
+      acceptedGateSet,
+      `${assuranceLevel} pre-closure gate-set creation for a docs-only route`,
+    );
+    assert(
+      /^[a-f0-9]{64}$/u.test(
+        JSON.parse(acceptedGateSet.stdout).acceptedGateArtifactsSha256 || "",
+      ),
+      `${assuranceLevel} docs-only pre-closure gate set was not digest-bound`,
+    );
+  }
+  rmSync(path.join(repoRoot, "evals"), { recursive: true, force: true });
+  rmSync(path.join(repoRoot, "smoke"), { recursive: true, force: true });
   const runtimeBindingResult = run(
     runtimeRoot,
     "run-packet-gate.mjs",

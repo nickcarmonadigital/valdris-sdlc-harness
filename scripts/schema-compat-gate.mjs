@@ -213,7 +213,7 @@ const EXPECTED_OVERLAY_SEMANTIC_SHA256 = Object.freeze({
   crosswalk: "41269ae1176199c79a7693438497b61bcaa4440d142ccdf4a32ea911ad2ed00e",
   asyncPack: "dbe9b82d84aa66be8285b057467b049bcba55a71a81b13cb54276d205dd87392",
   authoritative:
-    "c1b27aa1b5990eb17d3f5d8c83f16208689f6a048fe67115c857f7c13920b7b7",
+    "b0a123ec4e451dd0775cc6b152caeb72d2e321f9e4b39b85b12bb7075966c2b3",
 });
 
 function semanticSha256(document) {

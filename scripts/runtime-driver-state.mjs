@@ -43,6 +43,21 @@ const RUNTIME_DRIVER_LOCK_SCHEMA = "valdris.runtime-driver-lock.v2";
 const RUNTIME_DRIVER_JOURNAL_SCHEMA = "valdris.runtime-driver-journal.v1";
 const RUNTIME_DRIVER_JOURNAL_COMMIT_SCHEMA =
   "valdris.runtime-driver-journal-commit.v1";
+const RUNTIME_DRIVER_JOURNAL_FIELDS = new Set([
+  "schema",
+  "targetSha256",
+  "priorExists",
+  "priorDocumentSha256",
+  "priorDocumentBase64",
+  "nextDocumentSha256",
+  "nextDocumentBase64",
+  "nextHeadSha256",
+  "preparedAt",
+  "fencingToken",
+  "temporaryName",
+]);
+const RUNTIME_DRIVER_TEMPORARY_SUFFIX = ".runtime-driver.tmp";
+const RUNTIME_DRIVER_JOURNAL_PREPARING_SUFFIX = ".preparing";
 const RUNTIME_DRIVER_LOCK_TTL_MS = 15 * 60_000;
 const RUNTIME_DRIVER_HEARTBEAT_MS = 30_000;
 const TEST_MODE_ENV = "VALDRIS_RUNTIME_DRIVER_TEST_MODE";
@@ -671,6 +686,9 @@ function readRuntimeDriverJournal(journalPath, target) {
     !prepared ||
     typeof prepared !== "object" ||
     Array.isArray(prepared) ||
+    Object.keys(prepared).some(
+      (field) => !RUNTIME_DRIVER_JOURNAL_FIELDS.has(field),
+    ) ||
     prepared.schema !== RUNTIME_DRIVER_JOURNAL_SCHEMA ||
     prepared.targetSha256 !== sha256(path.resolve(target)) ||
     typeof prepared.priorExists !== "boolean" ||
@@ -679,9 +697,10 @@ function readRuntimeDriverJournal(journalPath, target) {
     !/^[a-f0-9]{64}$/u.test(prepared.nextHeadSha256 || "") ||
     !canonicalIso(prepared.preparedAt) ||
     !/^[a-f0-9]{64}$/u.test(prepared.fencingToken || "") ||
-    typeof prepared.temporaryName !== "string" ||
-    path.basename(prepared.temporaryName) !== prepared.temporaryName ||
-    prepared.temporaryName.length > 255
+    (prepared.temporaryName !== undefined &&
+      (typeof prepared.temporaryName !== "string" ||
+        path.basename(prepared.temporaryName) !== prepared.temporaryName ||
+        prepared.temporaryName.length > 255))
   )
     throw new Error("runtime-driver durability journal metadata is malformed");
   if (
@@ -779,17 +798,28 @@ function removeDurably(target) {
   fsyncDirectory(path.dirname(target));
 }
 
+function removeReservedRuntimeFile(target, label) {
+  if (!existsSync(target)) return;
+  if (!lstatSync(target).isFile())
+    throw new Error(
+      `runtime-driver ${label} is not a regular file; manual recovery is required`,
+    );
+  removeDurably(target);
+}
+
 function recoverRuntimeDriverJournal(journalPath, target) {
-  if (!existsSync(journalPath)) return null;
+  const temporary = `${target}${RUNTIME_DRIVER_TEMPORARY_SUFFIX}`;
+  const journalPreparing = `${journalPath}${RUNTIME_DRIVER_JOURNAL_PREPARING_SUFFIX}`;
+  if (!existsSync(journalPath)) {
+    removeReservedRuntimeFile(temporary, "temporary state");
+    removeReservedRuntimeFile(journalPreparing, "journal staging file");
+    return null;
+  }
   const journal = readRuntimeDriverJournal(journalPath, target);
   const targetBytes = existsSync(target) ? readFileSync(target) : null;
   const targetSha256 = targetBytes ? sha256(targetBytes) : EMPTY_HEAD;
   const priorSha256 = journal.prepared.priorDocumentSha256;
   const nextSha256 = journal.prepared.nextDocumentSha256;
-  const temporary = path.join(
-    path.dirname(target),
-    journal.prepared.temporaryName,
-  );
   if (journal.committed) {
     if (targetSha256 !== nextSha256) {
       let targetContainsCommittedHead = false;
@@ -836,23 +866,16 @@ function recoverRuntimeDriverJournal(journalPath, target) {
       removeDurably(target);
     }
   }
-  if (existsSync(temporary)) unlinkSync(temporary);
+  removeReservedRuntimeFile(temporary, "temporary state");
+  removeReservedRuntimeFile(journalPreparing, "journal staging file");
   removeDurably(journalPath);
   return journal.committed ? "forward" : "rollback";
 }
 
-function writePreparedJournal(
-  journalPath,
-  target,
-  priorBytes,
-  nextBytes,
-  next,
-  lock,
-  temporary,
-) {
+function writePreparedJournal(journalPath, priorBytes, nextBytes, next, lock) {
   const prepared = {
     schema: RUNTIME_DRIVER_JOURNAL_SCHEMA,
-    targetSha256: sha256(path.resolve(target)),
+    targetSha256: lock.targetSha256,
     priorExists: priorBytes !== null,
     priorDocumentSha256: priorBytes ? sha256(priorBytes) : EMPTY_HEAD,
     priorDocumentBase64: priorBytes
@@ -863,9 +886,8 @@ function writePreparedJournal(
     nextHeadSha256: next.currentHeadSha256,
     preparedAt: new Date().toISOString(),
     fencingToken: lock.fencingToken,
-    temporaryName: path.basename(temporary),
   };
-  const journalTemporary = `${journalPath}.${lock.fencingToken}.preparing`;
+  const journalTemporary = `${journalPath}${RUNTIME_DRIVER_JOURNAL_PREPARING_SUFFIX}`;
   let descriptor;
   try {
     descriptor = openSync(journalTemporary, "wx", 0o600);
@@ -917,16 +939,8 @@ function persistRuntimeDriverState(target, next, lock, heartbeat) {
     );
   const priorBytes = existsSync(target) ? readFileSync(target) : null;
   const nextBytes = Buffer.from(`${JSON.stringify(next, null, 2)}\n`);
-  const temporary = `${target}.${process.pid}.${lock.nonce}.tmp`;
-  writePreparedJournal(
-    journalPath,
-    target,
-    priorBytes,
-    nextBytes,
-    next,
-    lock,
-    temporary,
-  );
+  const temporary = `${target}${RUNTIME_DRIVER_TEMPORARY_SUFFIX}`;
+  writePreparedJournal(journalPath, priorBytes, nextBytes, next, lock);
   try {
     heartbeat.renew();
     durableReplaceBytes(target, nextBytes, temporary, {

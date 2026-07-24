@@ -49,6 +49,7 @@
     "aiEconomicsLedger": "uash.ai-economics-ledger.v1",
     "interopTranscript": "valdris.interop-transcript.v1",
     "interopConformanceRequest": "valdris.interop-conformance-request.v1",
+    "interopExecutionReceipt": "valdris.interop-execution-receipt.v1",
     "runtimeDriver": "valdris.runtime-driver.v1",
     "runtimeDriverState": "valdris.runtime-driver-state.v1",
     "implementationExecutionReceipt": "valdris.implementation-execution-receipt.v1",
@@ -254,6 +255,15 @@
       "version",
       "capabilities",
       "identity",
+      "authRoot",
+      "timeoutMs",
+      "adapterCommandIdentity",
+      "adapterSourceIdentity",
+      "runnerIdentity",
+      "executorIdentity",
+      "executorPrincipal",
+      "authorityPrincipal",
+      "attestedExecutionReceipt",
       "conformanceTranscript"
     ],
     "conformanceTests": [

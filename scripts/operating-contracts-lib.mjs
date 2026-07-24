@@ -16,6 +16,13 @@ export const MEMORY_HEAD_RECEIPT_SCHEMA = "valdris.memory-head-receipt.v1";
 export const MODEL_JUDGE_CALIBRATION_SCHEMA = "uash.model-judge-calibration.v1";
 export const AI_ECONOMICS_LEDGER_SCHEMA = "uash.ai-economics-ledger.v1";
 export const INTEROP_TRANSCRIPT_SCHEMA = "valdris.interop-transcript.v1";
+export const INTEROP_REQUEST_SCHEMA = "valdris.interop-conformance-request.v1";
+export const INTEROP_RESPONSE_SCHEMA =
+  "valdris.interop-conformance-response.v1";
+export const INTEROP_ASSERTION_SCHEMA =
+  "valdris.interop-conformance-assertion.v1";
+export const INTEROP_EXECUTION_RECEIPT_SCHEMA =
+  "valdris.interop-execution-receipt.v1";
 export const RUNTIME_DRIVER_SCHEMA = "valdris.runtime-driver.v1";
 export const RUNTIME_DRIVER_STATE_SCHEMA = "valdris.runtime-driver-state.v1";
 export const IMPLEMENTATION_EXECUTION_RECEIPT_SCHEMA =
@@ -80,6 +87,243 @@ export const INTEROP_TESTS = Object.freeze([
   "unknown-tool-rejection",
   "replay-protection",
 ]);
+
+function interopChallenge(options, id, purpose) {
+  return sha256(
+    canonicalJson({
+      protocol: options.protocol,
+      version: options.version,
+      runId: options.runId,
+      identitySha256: options.identitySha256.toLowerCase(),
+      authRootSha256: options.authRootSha256.toLowerCase(),
+      id,
+      purpose,
+    }),
+  );
+}
+
+function interopTestContract(id, options) {
+  const capabilitySetSha256 = sha256(canonicalJson(options.capabilities));
+  const challenge = (purpose) => interopChallenge(options, id, purpose);
+  switch (id) {
+    case "initialize":
+      return {
+        request: {
+          operation: "initialize",
+          clientIdentitySha256: challenge("client-identity"),
+          supportedVersions: [options.version],
+          requestedCapabilities: options.capabilities,
+        },
+        expectedResult: {
+          initialized: true,
+          selectedVersion: options.version,
+          serverIdentitySha256: options.identitySha256.toLowerCase(),
+          authRootSha256: options.authRootSha256.toLowerCase(),
+          capabilitySetSha256,
+        },
+      };
+    case "version-negotiation": {
+      const unsupportedVersion = `${options.version}-unsupported`;
+      return {
+        request: {
+          operation: "negotiate-version",
+          offeredVersions: [unsupportedVersion, options.version],
+        },
+        expectedResult: {
+          negotiation: "compatible",
+          selectedVersion: options.version,
+          rejectedVersions: [unsupportedVersion],
+        },
+      };
+    }
+    case "auth-root-isolation": {
+      const rejectedRootSha256 = challenge("unauthorized-auth-root");
+      return {
+        request: {
+          operation: "probe-auth-root",
+          authorizedRootSha256: options.authRootSha256.toLowerCase(),
+          candidateRootSha256: rejectedRootSha256,
+        },
+        expectedResult: {
+          isolation: "enforced",
+          allowedRootSha256: options.authRootSha256.toLowerCase(),
+          rejectedRootSha256,
+        },
+      };
+    }
+    case "capability-discovery": {
+      const unknownCapability = "valdris-unknown-capability";
+      return {
+        request: {
+          operation: "discover-capabilities",
+          requestedCapabilities: [...options.capabilities, unknownCapability],
+        },
+        expectedResult: {
+          advertisedCapabilities: options.capabilities,
+          unsupportedCapabilities: [unknownCapability],
+          capabilitySetSha256,
+        },
+      };
+    }
+    case "schema-negotiation": {
+      const unsupportedSchema = "valdris.interop-envelope.v0";
+      return {
+        request: {
+          operation: "negotiate-schema",
+          requestSchemas: [
+            unsupportedSchema,
+            "valdris.interop-envelope.request.v1",
+          ],
+          responseSchemas: [
+            unsupportedSchema,
+            "valdris.interop-envelope.response.v1",
+          ],
+        },
+        expectedResult: {
+          negotiation: "compatible",
+          selectedRequestSchema: "valdris.interop-envelope.request.v1",
+          selectedResponseSchema: "valdris.interop-envelope.response.v1",
+          rejectedSchemas: [unsupportedSchema],
+        },
+      };
+    }
+    case "event-correlation": {
+      const payloadSha256 = challenge("event-payload");
+      const correlationId = challenge("correlation");
+      return {
+        request: {
+          operation: "correlate-event",
+          event: { correlationId, payloadSha256 },
+        },
+        expectedResult: {
+          correlationId,
+          eventSha256: sha256(canonicalJson({ correlationId, payloadSha256 })),
+          correlated: true,
+        },
+      };
+    }
+    case "timeout":
+      return {
+        request: {
+          operation: "deadline-probe",
+          deadlineMs: options.timeoutMs,
+          workloadSha256: challenge("bounded-workload"),
+        },
+        expectedResult: {
+          deadlineMs: options.timeoutMs,
+          deadlineEnforced: true,
+          timedOut: false,
+          completedWithinDeadline: true,
+        },
+      };
+    case "cancellation": {
+      const cancellationTokenSha256 = challenge("cancellation-token");
+      return {
+        request: {
+          operation: "cancel",
+          cancellationTokenSha256,
+          pendingOperationSha256: challenge("pending-operation"),
+        },
+        expectedResult: {
+          cancellationTokenSha256,
+          cancelled: true,
+          mutationObserved: false,
+        },
+      };
+    }
+    case "unknown-tool-rejection": {
+      const toolName = `valdris.unknown.${challenge("tool").slice(0, 16)}`;
+      return {
+        request: {
+          operation: "invoke-tool",
+          toolName,
+          argumentsSha256: challenge("tool-arguments"),
+        },
+        expectedResult: {
+          decision: "rejected",
+          errorCode: "UNKNOWN_TOOL",
+          toolNameSha256: sha256(toolName),
+        },
+      };
+    }
+    case "replay-protection": {
+      const nonce = challenge("replay-nonce");
+      return {
+        request: {
+          operation: "replay-probe",
+          nonce,
+          sequence: 1,
+          attempts: 2,
+        },
+        expectedResult: {
+          nonceSha256: sha256(nonce),
+          firstDecision: "accepted",
+          replayDecision: "rejected",
+          errorCode: "REPLAY_DETECTED",
+        },
+      };
+    }
+    default:
+      throw new Error(`unsupported interop conformance test: ${id}`);
+  }
+}
+
+export function interopConformanceExpectation(id, options) {
+  const contract = interopTestContract(id, options);
+  const request = {
+    schema: INTEROP_REQUEST_SCHEMA,
+    protocol: options.protocol,
+    version: options.version,
+    id,
+    correlationId: interopChallenge(options, id, "request-correlation"),
+    identitySha256: options.identitySha256.toLowerCase(),
+    authRootSha256: options.authRootSha256.toLowerCase(),
+    capabilities: options.capabilities,
+    test: contract.request,
+  };
+  const requestSha256 = sha256(canonicalJson(request));
+  const response = {
+    schema: INTEROP_RESPONSE_SCHEMA,
+    id,
+    status: "passed",
+    protocol: options.protocol,
+    version: options.version,
+    correlationId: request.correlationId,
+    requestSha256,
+    result: contract.expectedResult,
+  };
+  const assertion = {
+    schema: INTEROP_ASSERTION_SCHEMA,
+    id,
+    requestSchema: INTEROP_REQUEST_SCHEMA,
+    responseSchema: INTEROP_RESPONSE_SCHEMA,
+    expectedResult: contract.expectedResult,
+  };
+  return {
+    request,
+    expectedResult: contract.expectedResult,
+    requestSha256,
+    responseSha256: sha256(canonicalJson(response)),
+    assertionSha256: sha256(canonicalJson(assertion)),
+  };
+}
+
+export function interopTranscriptEvidenceSha256(document) {
+  const evidence = structuredClone(document);
+  delete evidence.executionReceipt;
+  return sha256(canonicalJson(evidence));
+}
+
+export function interopTestDigestSetSha256(document, field) {
+  return sha256(
+    canonicalJson(
+      (document?.tests || []).map((test) => ({
+        id: test.id,
+        [field]: test[field],
+      })),
+    ),
+  );
+}
 
 function object(value) {
   return value && typeof value === "object" && !Array.isArray(value);
@@ -1259,6 +1503,29 @@ export function validateInteropTranscriptDocument(document, options = {}) {
   ])
     if (!digest(document[field]))
       problems.push(`interop transcript.${field} is invalid`);
+  const capabilitiesValid =
+    Array.isArray(document.capabilities) &&
+    document.capabilities.length > 0 &&
+    document.capabilities.every((entry) => safeIdentifier(entry)) &&
+    new Set(document.capabilities).size === document.capabilities.length;
+  if (!capabilitiesValid)
+    problems.push("interop transcript capabilities are invalid or duplicated");
+  else if (
+    document.capabilitySetSha256 !==
+    sha256(canonicalJson(document.capabilities))
+  )
+    problems.push("interop transcript capability set digest does not match");
+  if (!Number.isSafeInteger(document.timeoutMs) || document.timeoutMs < 1)
+    problems.push("interop transcript timeoutMs is invalid");
+  const expectationInputsValid =
+    ["mcp", "a2a"].includes(document.protocol) &&
+    nonEmpty(document.version) &&
+    safeIdentifier(document.runId) &&
+    digest(document.identitySha256) &&
+    digest(document.authRootSha256) &&
+    capabilitiesValid &&
+    Number.isSafeInteger(document.timeoutMs) &&
+    document.timeoutMs > 0;
   if (!Array.isArray(document.tests))
     problems.push("interop transcript.tests must be an array");
   const byId = new Map();
@@ -1267,9 +1534,11 @@ export function validateInteropTranscriptDocument(document, options = {}) {
       !object(test) ||
       !safeIdentifier(test.id) ||
       byId.has(test.id) ||
+      !INTEROP_TESTS.includes(test.id) ||
       test.status !== "passed" ||
       !digest(test.requestSha256) ||
       !digest(test.responseSha256) ||
+      !digest(test.assertionSha256) ||
       !canonicalIso(test.startedAt) ||
       !canonicalIso(test.finishedAt) ||
       Date.parse(test.finishedAt) < Date.parse(test.startedAt)
@@ -1277,10 +1546,133 @@ export function validateInteropTranscriptDocument(document, options = {}) {
       problems.push(
         `interop transcript.tests[${index}] is invalid or duplicated`,
       );
-    else byId.set(test.id, test);
+    else {
+      byId.set(test.id, test);
+      if (expectationInputsValid) {
+        const expectation = interopConformanceExpectation(test.id, {
+          protocol: document.protocol,
+          version: document.version,
+          runId: document.runId,
+          identitySha256: document.identitySha256,
+          authRootSha256: document.authRootSha256,
+          capabilities: document.capabilities,
+          timeoutMs: document.timeoutMs,
+        });
+        for (const field of [
+          "requestSha256",
+          "responseSha256",
+          "assertionSha256",
+        ])
+          if (test[field] !== expectation[field])
+            problems.push(
+              `interop transcript.tests[${index}].${field} does not match the commissioned conformance challenge`,
+            );
+      }
+    }
   }
   for (const id of INTEROP_TESTS)
     if (!byId.has(id)) problems.push(`interop transcript is missing ${id}`);
+  const execution = document.executionReceipt;
+  if (!object(execution)) {
+    if (options.allowPendingExecutionReceipt !== true)
+      problems.push(
+        "interop transcript requires an attested execution receipt",
+      );
+  } else {
+    if (execution.schema !== INTEROP_EXECUTION_RECEIPT_SCHEMA)
+      problems.push(
+        `interop execution receipt schema must be ${INTEROP_EXECUTION_RECEIPT_SCHEMA}`,
+      );
+    for (const field of [
+      "runId",
+      "commit",
+      "environment",
+      "protocol",
+      "version",
+      "identitySha256",
+      "authRootSha256",
+      "capabilitySetSha256",
+      "timeoutMs",
+    ])
+      if (execution[field] !== document[field])
+        problems.push(
+          `interop execution receipt ${field} does not match the transcript`,
+        );
+    for (const field of [
+      "adapterCommandSha256",
+      "adapterSourceSha256",
+      "runnerSha256",
+      "executorIdentitySha256",
+      "transcriptEvidenceSha256",
+      "requestSetSha256",
+      "responseSetSha256",
+      "assertionSetSha256",
+    ])
+      if (!digest(execution[field]))
+        problems.push(`interop execution receipt ${field} is invalid`);
+    const executorPrincipal = execution.executorPrincipal;
+    const authorityPrincipal = execution.authorityPrincipal;
+    if (
+      !object(executorPrincipal) ||
+      executorPrincipal.type !== "service" ||
+      !safeIdentifier(executorPrincipal.id) ||
+      !safeIdentifier(executorPrincipal.keyId) ||
+      execution.executorIdentitySha256 !==
+        sha256(canonicalJson(executorPrincipal))
+    )
+      problems.push(
+        "interop execution receipt executor principal is invalid or does not match its identity digest",
+      );
+    if (
+      !object(authorityPrincipal) ||
+      authorityPrincipal.type !== "service" ||
+      !safeIdentifier(authorityPrincipal.id) ||
+      !safeIdentifier(authorityPrincipal.keyId) ||
+      authorityPrincipal.id !== execution.actor?.id ||
+      authorityPrincipal.type !== execution.actor?.type ||
+      authorityPrincipal.keyId !== execution.attestation?.keyId
+    )
+      problems.push(
+        "interop execution receipt authority principal does not match its signer",
+      );
+    if (
+      object(executorPrincipal) &&
+      object(authorityPrincipal) &&
+      (executorPrincipal.id === authorityPrincipal.id ||
+        executorPrincipal.keyId === authorityPrincipal.keyId)
+    )
+      problems.push(
+        "interop execution receipt authority principal must be distinct from the executor principal",
+      );
+    if (
+      execution.transcriptEvidenceSha256 !==
+      interopTranscriptEvidenceSha256(document)
+    )
+      problems.push(
+        "interop execution receipt does not bind the transcript evidence",
+      );
+    for (const [field, receiptField] of [
+      ["requestSha256", "requestSetSha256"],
+      ["responseSha256", "responseSetSha256"],
+      ["assertionSha256", "assertionSetSha256"],
+    ])
+      if (
+        execution[receiptField] !== interopTestDigestSetSha256(document, field)
+      )
+        problems.push(
+          `interop execution receipt ${receiptField} does not bind the transcript tests`,
+        );
+    if (
+      !canonicalIso(execution.startedAt) ||
+      !canonicalIso(execution.finishedAt) ||
+      Date.parse(execution.finishedAt) < Date.parse(execution.startedAt) ||
+      execution.exitCode !== 0 ||
+      execution.inheritAmbientSecrets !== false
+    )
+      problems.push(
+        "interop execution receipt timing, exit status, or environment policy is invalid",
+      );
+  }
   if (options.protocol && document.protocol !== options.protocol)
     problems.push(
       "interop transcript protocol does not match runtime declaration",
@@ -1302,6 +1694,24 @@ export function validateInteropTranscriptDocument(document, options = {}) {
   )
     problems.push(
       "interop transcript capability set does not match runtime declaration",
+    );
+  if (
+    options.capabilities &&
+    canonicalJson(document.capabilities) !== canonicalJson(options.capabilities)
+  )
+    problems.push(
+      "interop transcript capabilities do not match runtime declaration",
+    );
+  if (
+    options.authRootSha256 &&
+    document.authRootSha256 !== options.authRootSha256
+  )
+    problems.push(
+      "interop transcript auth root does not match runtime declaration",
+    );
+  if (options.timeoutMs && document.timeoutMs !== options.timeoutMs)
+    problems.push(
+      "interop transcript timeout does not match runtime declaration",
     );
   return { valid: problems.length === 0, problems };
 }

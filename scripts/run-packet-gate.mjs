@@ -102,6 +102,11 @@ const CODE_INTELLIGENCE_SUPPORT_PATHS = Object.freeze([
   { kind: "graph-freshness", path: "graph/freshness.json" },
   { kind: "design-anchors", path: "design/anchors.json" },
 ]);
+const NON_STRUCTURAL_CLOSURE_GATES = Object.freeze([
+  "eval",
+  "trajectory",
+  "smoke",
+]);
 export const BRIDGE_FINISH_LINE_GATE_SCRIPTS = Object.freeze([
   "enterprise-ai-gate-all.mjs",
   "rca-gate.mjs",
@@ -1003,7 +1008,10 @@ export function routeRequiredGates(
   const assuranceLevel = options.assuranceLevel || "structural";
   if (!ASSURANCE_LEVELS.includes(assuranceLevel))
     throw new Error(`unknown assurance level: ${assuranceLevel}`);
-  if (assuranceLevel !== "structural") required.add("authoritative-assurance");
+  if (assuranceLevel !== "structural") {
+    for (const gate of NON_STRUCTURAL_CLOSURE_GATES) required.add(gate);
+    required.add("authoritative-assurance");
+  }
   return [...required].sort();
 }
 

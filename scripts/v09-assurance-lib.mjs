@@ -19,6 +19,7 @@ import {
   AI_ECONOMICS_LEDGER_SCHEMA,
   DEPENDENCY_PROVENANCE_SCHEMA,
   IMPLEMENTATION_EXECUTION_RECEIPT_SCHEMA,
+  INTEROP_EXECUTION_RECEIPT_SCHEMA,
   MEMORY_HEAD_RECEIPT_SCHEMA,
   REQUIREMENTS_CONTRACT_SCHEMA,
   RUNTIME_DRIVER_SCHEMA,
@@ -230,6 +231,7 @@ const RECEIPT_SCHEMAS = new Set([
   TRACE_RECEIPT_SCHEMA,
   "valdris.usage-receipt.v1",
   "valdris.runtime-conformance-receipt.v1",
+  INTEROP_EXECUTION_RECEIPT_SCHEMA,
   MEMORY_HEAD_RECEIPT_SCHEMA,
   "uash.tool-approval-receipt.v1",
   IMPLEMENTATION_EXECUTION_RECEIPT_SCHEMA,
@@ -3201,12 +3203,38 @@ export function validateRuntimeSessionDocument(document, options = {}) {
         `runtime session duplicates interop protocol ${entry.protocol}`,
       );
     else if (entry?.protocol) interopProtocols.add(entry.protocol);
+    const principalMappingValid =
+      object(entry?.executorPrincipal) &&
+      entry.executorPrincipal.type === "service" &&
+      safeIdentifier(entry.executorPrincipal.id) &&
+      safeIdentifier(entry.executorPrincipal.keyId) &&
+      entry.executorIdentitySha256 ===
+        sha256(canonicalJson(entry.executorPrincipal)) &&
+      object(entry?.authorityPrincipal) &&
+      entry.authorityPrincipal.type === "service" &&
+      safeIdentifier(entry.authorityPrincipal.id) &&
+      safeIdentifier(entry.authorityPrincipal.keyId) &&
+      entry.executorPrincipal.id !== entry.authorityPrincipal.id &&
+      entry.executorPrincipal.keyId !== entry.authorityPrincipal.keyId;
+    if (object(entry) && !principalMappingValid)
+      problems.push(
+        `runtime session interop ${index + 1} lacks a commissioned, distinct executor and authority principal mapping`,
+      );
     if (
       !object(entry) ||
       !options.policy?.interop?.protocols?.includes(entry.protocol) ||
       !nonEmpty(entry.version) ||
       !Array.isArray(entry.capabilities) ||
       !digest(entry.identitySha256) ||
+      !digest(entry.authRootSha256) ||
+      !Number.isSafeInteger(entry.timeoutMs) ||
+      entry.timeoutMs < 1 ||
+      !digest(entry.adapterCommandSha256) ||
+      !digest(entry.adapterSourceSha256) ||
+      !digest(entry.runnerSha256) ||
+      !digest(entry.executorIdentitySha256) ||
+      !object(entry.executorPrincipal) ||
+      !object(entry.authorityPrincipal) ||
       !object(entry.transcript) ||
       !digest(entry.transcript.sha256)
     )
@@ -3224,7 +3252,10 @@ export function validateRuntimeSessionDocument(document, options = {}) {
           protocol: entry.protocol,
           version: entry.version,
           identitySha256: entry.identitySha256,
+          authRootSha256: entry.authRootSha256,
+          capabilities: entry.capabilities,
           capabilitySetSha256: sha256(canonicalJson(entry.capabilities)),
+          timeoutMs: entry.timeoutMs,
         },
       );
       problems.push(
@@ -3232,13 +3263,63 @@ export function validateRuntimeSessionDocument(document, options = {}) {
           (problem) => `runtime session interop ${index + 1}: ${problem}`,
         ),
       );
-      if (result.document)
+      if (result.document) {
         sameSubject(
           result.document,
           document,
           `interop transcript ${index + 1}`,
           problems,
         );
+        const receipt = result.document.executionReceipt;
+        validateAttestedRuntimeReceipt(
+          receipt,
+          INTEROP_EXECUTION_RECEIPT_SCHEMA,
+          options,
+          `interop transcript ${index + 1} execution receipt`,
+          problems,
+        );
+        for (const field of [
+          "protocol",
+          "version",
+          "identitySha256",
+          "authRootSha256",
+          "timeoutMs",
+          "adapterCommandSha256",
+          "adapterSourceSha256",
+          "runnerSha256",
+          "executorIdentitySha256",
+        ])
+          if (receipt?.[field] !== entry[field])
+            problems.push(
+              `runtime session interop ${index + 1} ${field} does not match its attested execution receipt`,
+            );
+        for (const field of ["executorPrincipal", "authorityPrincipal"])
+          if (
+            !object(receipt?.[field]) ||
+            canonicalJson(receipt[field]) !== canonicalJson(entry[field])
+          )
+            problems.push(
+              `runtime session interop ${index + 1} ${field} does not match its attested execution receipt`,
+            );
+        if (
+          receipt?.runId !== document.runId ||
+          receipt?.commit !== document.commit ||
+          receipt?.environment !== document.environment
+        )
+          problems.push(
+            `runtime session interop ${index + 1} execution receipt does not match the session subject`,
+          );
+        const referenceRunnerSha256 = fileSha256(
+          path.join(RUNTIME_ROOT, "scripts", "interop-conformance-runner.mjs"),
+        );
+        if (
+          entry.runnerSha256 !== referenceRunnerSha256 ||
+          receipt?.runnerSha256 !== referenceRunnerSha256
+        )
+          problems.push(
+            `runtime session interop ${index + 1} does not bind the trusted conformance runner`,
+          );
+      }
     }
   }
   return { valid: problems.length === 0, problems };
