@@ -65,12 +65,12 @@ npm run bridge:claude
 
 Generate and retain three **different** values of at least 32 bytes each. Do not reuse one credential for multiple roles:
 
-| Credential | Holder | Purpose |
-|---|---|---|
-| `UASH_BRIDGE_INTEGRITY_KEY` | Bridge process only | HMAC-authenticates immutable run configuration, derived snapshots, and the event-journal chain. Never give it to an agent, browser, or UI process. |
-| `UASH_BRIDGE_ACCESS_TOKEN` | Bridge process, ordinary agent process, and server-side UI proxy | Authorizes ordinary `GET`/`POST` run API access through `x-uash-bridge-token`. The emitter reads it from the environment. Never expose it through `NEXT_PUBLIC_*` or browser JavaScript. |
-| `UASH_HUMAN_APPROVAL_TOKEN` | Bridge process and human operator approval shell only | Additionally authorizes `approval.granted` and `approval.denied` through `x-uash-human-token`. The emitter reads it from the operator-shell environment; never pass it through process arguments or request bodies, and never give it to an ordinary agent or UI process. |
-| `UASH_REVIEW_TRUST_SHA256` | Operator/protected CI, bridge, and finish-line validator processes | Nonsecret canonical-JSON SHA-256 pin for the reviewed review-trust store. Keep its authority outside the checkout; an agent-selected value is not an external trust root. |
+| Credential                  | Holder                                                             | Purpose                                                                                                                                                                                                                                                                   |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UASH_BRIDGE_INTEGRITY_KEY` | Bridge process only                                                | HMAC-authenticates immutable run configuration, derived snapshots, and the event-journal chain. Never give it to an agent, browser, or UI process.                                                                                                                        |
+| `UASH_BRIDGE_ACCESS_TOKEN`  | Bridge process, ordinary agent process, and server-side UI proxy   | Authorizes ordinary `GET`/`POST` run API access through `x-uash-bridge-token`. The emitter reads it from the environment. Never expose it through `NEXT_PUBLIC_*` or browser JavaScript.                                                                                  |
+| `UASH_HUMAN_APPROVAL_TOKEN` | Bridge process and human operator approval shell only              | Additionally authorizes `approval.granted` and `approval.denied` through `x-uash-human-token`. The emitter reads it from the operator-shell environment; never pass it through process arguments or request bodies, and never give it to an ordinary agent or UI process. |
+| `UASH_REVIEW_TRUST_SHA256`  | Operator/protected CI, bridge, and finish-line validator processes | Nonsecret canonical-JSON SHA-256 pin for the reviewed review-trust store. Keep its authority outside the checkout; an agent-selected value is not an external trust root.                                                                                                 |
 
 The bridge fails closed at startup unless all three contain at least 32 bytes and are **pairwise different**. A normal Claude Code shell receives only `UASH_BRIDGE_ACCESS_TOKEN`. A human approval shell needs both the access token and the human approval token because approval is still a bridge write. The server-side UI proxy receives only `UASH_BRIDGE_ACCESS_TOKEN` (and `UASH_BRIDGE_URL` when the default loopback URL is not used). Finish-line validator subprocesses receive none of the three bridge credentials.
 
@@ -125,7 +125,7 @@ bug (including regression), incident, or self-heal corrective work
 requires confirmed RCA + one command identity + failing pre-fix commit + passing post-fix commit
 ```
 
-The RCA and both proof phases must bind the same run and environment while naming distinct existing pre-fix and post-fix commits; both phases execute the same bound regression command, and the final packet binds the post-fix commit. Generate the canonical pre-review evidence digest with `run-create.mjs --print-evidence-bundle`. `review/review.json` uses `valdris.review.v2` and declares exactly `scout`, `implementer`, `verifier`, and `independentReviewer`; `actorId`, `sessionId`, and `executionId` are each pairwise distinct across all four roles. The authorized independent reviewer signs the frozen evidence bundle and complete role roster with Ed25519. When operating this harness repository directly, the runtime-derived trust store is `controls/review-trust.v1.json`. In a commissioned target, it is `.valdris-harness/controls/review-trust.v1.json`. The review gate accepts only the exact committed path derived from the same-worktree runtime pack. The final `valdris.run-packet.v2` binds the role provenance. A narrative RCA, collapsed role identity, self-declared reviewer trust, unsigned evidence change, external validation runtime, post-proof application mutation, or code fix without regression proof cannot close the run.
+The RCA and both proof phases must bind the same run and environment while naming distinct existing pre-fix and post-fix commits; both phases execute the same bound regression command, and the final packet binds the post-fix commit. Generate the canonical pre-review evidence digest with `run-create.mjs --print-evidence-bundle`. `review/review.json` uses `valdris.review.v2` and declares exactly `scout`, `implementer`, `verifier`, and `independentReviewer`; `actorId`, `sessionId`, and `executionId` are each pairwise distinct across all four roles. The authorized independent reviewer signs the frozen evidence bundle and complete role roster with Ed25519. When operating this harness repository directly, the runtime-derived trust store is `controls/review-trust.v1.json`. In a commissioned target, it is `.valdris-harness/controls/review-trust.v1.json`. The review gate accepts only the exact committed path derived from the same-worktree runtime pack. New `valdris.run-packet.v3` artifacts bind role provenance, assurance level, and resolved catalogs; v2 remains historical structural evidence only. A narrative RCA, collapsed role identity, self-declared reviewer trust, unsigned evidence change, external validation runtime, post-proof application mutation, or code fix without regression proof cannot close the run.
 
 ## App flow
 
@@ -273,13 +273,13 @@ intake → route → code-intelligence → design-anchors → system-design → 
 
 ## What we can and cannot observe
 
-| Can observe | Cannot honestly observe without Claude/tool cooperation |
-|---|---|
-| stage entered | Claude’s private hidden reasoning |
-| gate fired | every internal token/thought |
-| verified artifact written | uninstrumented UI-only actions |
-| approval requested/granted/denied | real runtime state unless emitted/watched |
-| run blocked/completed | arbitrary Mac process state without a connector |
+| Can observe                       | Cannot honestly observe without Claude/tool cooperation |
+| --------------------------------- | ------------------------------------------------------- |
+| stage entered                     | Claude’s private hidden reasoning                       |
+| gate fired                        | every internal token/thought                            |
+| verified artifact written         | uninstrumented UI-only actions                          |
+| approval requested/granted/denied | real runtime state unless emitted/watched               |
+| run blocked/completed             | arbitrary Mac process state without a connector         |
 
 So the clean implementation is **instrumented workflow telemetry**, not UI scraping.
 

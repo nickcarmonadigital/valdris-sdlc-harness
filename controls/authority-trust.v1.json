@@ -1,0 +1,5 @@
+{
+  "schema": "valdris.authority-trust.v1",
+  "description": "Project-owned Ed25519 public keys for authoritative approval, executor, bridge-head, routing, trace, usage, promotion, and learning receipts. The default empty store intentionally makes authoritative claims unavailable until commissioning.",
+  "keys": []
+}

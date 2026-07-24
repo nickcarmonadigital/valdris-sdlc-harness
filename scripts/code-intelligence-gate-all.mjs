@@ -7,11 +7,15 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 function run(script, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(SCRIPT_DIR, script), ...args], {
-      cwd: process.cwd(),
-      env: process.env,
-      stdio: "inherit",
-    });
+    const child = spawn(
+      process.execPath,
+      [path.join(SCRIPT_DIR, script), ...args],
+      {
+        cwd: process.cwd(),
+        env: process.env,
+        stdio: "inherit",
+      },
+    );
     child.on("error", reject);
     child.on("close", (code) => {
       if (code === 0) resolve();
@@ -29,7 +33,11 @@ function filterArgs(argv, allowedWithValue, allowedFlags = new Set()) {
       filtered.push(arg, argv[++i]);
     } else if (allowedFlags.has(arg)) {
       filtered.push(arg);
-    } else if (arg.startsWith("--") && i + 1 < argv.length && !argv[i + 1].startsWith("--")) {
+    } else if (
+      arg.startsWith("--") &&
+      i + 1 < argv.length &&
+      !argv[i + 1].startsWith("--")
+    ) {
       i += 1;
     }
   }
@@ -37,4 +45,7 @@ function filterArgs(argv, allowedWithValue, allowedFlags = new Set()) {
 }
 
 await run("code-intelligence-gate.mjs", args);
-await run("anchor-gate.mjs", filterArgs(args, new Set(["--repo", "--anchors"])));
+await run(
+  "anchor-gate.mjs",
+  filterArgs(args, new Set(["--repo", "--anchors"])),
+);

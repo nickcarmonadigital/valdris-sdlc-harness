@@ -32,8 +32,9 @@ intake → route → code-intelligence → design-anchors → system-design → 
 6. Use `node.failed` with `--failure-reason` and `--recovery-path` for failed nodes.
 7. Stop for Red Zone approval before production deploys, secrets/env changes, auth/billing/customer data, destructive ops, provider config, or cloud resource mutation.
 8. Write durable multi-checkpoint state to `goal/goal.json`; runtime-native goal state does not override Valdris gates.
-9. Activate AI and domain assurance when the route detects them. iOS, realtime multiplayer, digital commerce, and youth-AI packs live under `controls/domain-packs/`.
-10. Do not emit `run.completed` until the ordered v0.8 closure below validates the completed goal, all route-required assurance and conditional RCA, the frozen evidence bundle, the exact signed four-role review, and the final immutable run packet.
+9. Before implementation, bind `run/requirements-contract.json`. For semantic/authoritative agent work, also bind the typed tool registry and observed calls, durable memory heads, runtime driver/checkpoints and implementation receipt, conditional model-judge calibration, economics, declared MCP/A2A transcripts, dependency provenance, and trace-v2 trajectory/decision evidence. Use `operating-contract-gate.mjs` for individual documents and the authoritative closure for cross-bindings.
+10. Activate AI and domain assurance when the route detects them. iOS, realtime multiplayer, digital commerce, and youth-AI packs live under `controls/domain-packs/`.
+11. Do not emit `run.completed` until the ordered v0.8 closure below validates the completed goal, all route-required assurance and conditional RCA, the frozen evidence bundle, the exact signed four-role review, and the final immutable run packet.
 
 ## Event command
 
@@ -60,13 +61,13 @@ UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approva
 UASH_BRIDGE_URL="$BRIDGE_URL" node scripts/uash-emit-event.mjs "$RUN_ID" approval.granted redzone   "Human approved scoped Red Zone action"   --artifact approvals/redzone.json   --status ok   --actor human   --mode live   --source bridge   --approval-owner "primary operator"   --approval-scope "specific risky action"   --artifact-root "$PWD"
 ```
 
-## Ordered v0.8 completion closure
+## Ordered v0.9 completion closure
 
 1. Run `node scripts/goal-gate.mjs --repo .` without `--allow-active`, then `node scripts/enterprise-ai-gate-all.mjs --repo .`.
 2. For bug, regression, incident, or self-heal work—or whenever `rca/rca.json` exists—run `node scripts/rca-gate.mjs --repo .` and include `--rca rca/rca.json` in both packet-builder commands.
 3. Freeze the pre-review subject with `node scripts/run-create.mjs --repo . --run-id "$RUN_ID" --commit "$COMMIT" --environment "$ENVIRONMENT" --proof proof/portable.json --gate "<required-gate>=<artifact-path>" --print-evidence-bundle`, repeating `--gate` for every route-required gate.
 4. Obtain `review/review.json` as `valdris.review.v2` with exactly `scout`, `implementer`, `verifier`, and `independentReviewer`. Their `actorId`, `sessionId`, and `executionId` values must each be pairwise distinct across all four roles. An authorized independent reviewer signs the frozen evidence bundle and complete role roster with Ed25519 using an active key already present in the committed trust store. Run `node scripts/review-gate.mjs --repo .`.
-5. Create `valdris.run-packet.v2` by repeating the identical gate/RCA arguments and adding `--review review/review.json --output run/packet.json`; then run `node scripts/run-packet-gate.mjs --repo .`.
+5. For semantic or authoritative work, first run `run-create.mjs --print-accepted-gate-set` with every pre-closure gate and bind its digest into the executor and closure. Create `valdris.run-packet.v3` with `--assurance-level structural|semantic|authoritative`, repeating the identical gate/RCA arguments and adding `--review review/review.json --output run/packet.json`. Semantic or authoritative packets also include `--gate authoritative-assurance=assurance/authoritative.json`. Run `node scripts/run-packet-gate.mjs --repo .`. Non-HEAD and genuine pre-v3 packets receive integrity-only structural inspection; full revalidation requires an isolated exact-commit checkout.
 
 Any post-review input, runtime, gate, RCA, portable-proof, or application-source drift invalidates completion.
 

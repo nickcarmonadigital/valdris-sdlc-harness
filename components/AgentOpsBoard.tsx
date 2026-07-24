@@ -30,7 +30,9 @@ export function AgentOpsBoard() {
   useEffect(() => {
     const poll = async () => {
       try {
-        const response = await fetch("/api/runs/demo/events", { cache: "no-store" });
+        const response = await fetch("/api/runs/demo/events", {
+          cache: "no-store",
+        });
         if (!response.ok) return;
         const payload = (await response.json()) as { events?: RunEvent[] };
         if (payload.events?.length) {
@@ -53,19 +55,36 @@ export function AgentOpsBoard() {
     return () => window.clearInterval(ticker);
   }, [events.length]);
 
-  const visibleEvents = useMemo(() => events.slice(0, visibleCount), [events, visibleCount]);
-  const nodeStates = useMemo(() => reduceNodeStates(visibleEvents), [visibleEvents]);
-  const nodeById = useMemo(() => Object.fromEntries(workflowNodes.map((node) => [node.id, node])), []);
+  const visibleEvents = useMemo(
+    () => events.slice(0, visibleCount),
+    [events, visibleCount],
+  );
+  const nodeStates = useMemo(
+    () => reduceNodeStates(visibleEvents),
+    [visibleEvents],
+  );
+  const nodeById = useMemo(
+    () => Object.fromEntries(workflowNodes.map((node) => [node.id, node])),
+    [],
+  );
   const agents: AgentRuntime[] = ["claude-code", "codex", "hermes"];
   const artifacts = visibleEvents.filter((event) => event.artifact);
 
   return (
-    <section className="agentOpsSection" aria-label="Agent operations visualizer">
+    <section
+      className="agentOpsSection"
+      aria-label="Agent operations visualizer"
+    >
       <div className="sectionHeading">
         <p className="eyebrow">Miro / n8n style run board</p>
-        <h2>Watch coding agents move through the harness instead of building another IDE.</h2>
+        <h2>
+          Watch coding agents move through the harness instead of building
+          another IDE.
+        </h2>
         <p>
-          Claude Code, Codex, or Hermes keeps doing the code work in its own runtime. This board is the visual control plane: nodes, gate state, artifacts, and human pauses.
+          Claude Code, Codex, or Hermes keeps doing the code work in its own
+          runtime. This board is the visual control plane: nodes, gate state,
+          artifacts, and human pauses.
         </p>
       </div>
 
@@ -83,7 +102,12 @@ export function AgentOpsBoard() {
         </div>
 
         <div className="workflowCanvas">
-          <svg className="edgeLayer" viewBox="0 0 100 78" preserveAspectRatio="none" aria-hidden="true">
+          <svg
+            className="edgeLayer"
+            viewBox="0 0 100 78"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
             {workflowEdges.map(([from, to]) => {
               const start = nodeById[from];
               const end = nodeById[to];
@@ -98,7 +122,11 @@ export function AgentOpsBoard() {
           </svg>
 
           {workflowNodes.map((node) => (
-            <article className={`graphNode ${nodeStates[node.id]}`} key={node.id} style={{ left: `${node.x}%`, top: `${node.y}%` }}>
+            <article
+              className={`graphNode ${nodeStates[node.id]}`}
+              key={node.id}
+              style={{ left: `${node.x}%`, top: `${node.y}%` }}
+            >
               <div className="graphNodeTop">
                 <span>{node.lane}</span>
                 <b>{nodeStates[node.id]}</b>
@@ -116,7 +144,10 @@ export function AgentOpsBoard() {
               <div
                 className={`agentToken ${agent}`}
                 key={agent}
-                style={{ left: `calc(${node.x}% + ${20 + index * 24}px)`, top: `calc(${node.y}% - 18px)` }}
+                style={{
+                  left: `calc(${node.x}% + ${20 + index * 24}px)`,
+                  top: `calc(${node.y}% - 18px)`,
+                }}
                 title={actorLabels[agent]}
               >
                 <span>{actorMarks[agent]}</span>
@@ -130,11 +161,16 @@ export function AgentOpsBoard() {
         <article className="eventStream">
           <div className="panelHeader">
             <span className="tinyLabel">Live event stream</span>
-            <strong>{visibleEvents.length}/{events.length} events</strong>
+            <strong>
+              {visibleEvents.length}/{events.length} events
+            </strong>
           </div>
           <div className="eventList">
             {visibleEvents.slice(-6).map((event) => (
-              <div className={`eventRow ${event.status ?? "ok"}`} key={event.id}>
+              <div
+                className={`eventRow ${event.status ?? "ok"}`}
+                key={event.id}
+              >
                 <span>{event.ts}</span>
                 <div>
                   <b>{event.type}</b>
@@ -151,13 +187,19 @@ export function AgentOpsBoard() {
             <strong>No Supabase required for v0</strong>
           </div>
           <p>
-            On-prem connector writes JSONL events and gate artifacts to the run packet. Vercel can render the visual board; local installs can persist to filesystem.
+            On-prem connector writes JSONL events and gate artifacts to the run
+            packet. Vercel can render the visual board; local installs can
+            persist to filesystem.
           </p>
           <ul>
             {artifacts.slice(-5).map((event) => (
               <li key={`${event.id}-${event.artifact}`}>
                 <code>{event.artifact}</code>
-                <span>{event.status === "blocked" ? "missing / blocks done" : "observed"}</span>
+                <span>
+                  {event.status === "blocked"
+                    ? "missing / blocks done"
+                    : "observed"}
+                </span>
               </li>
             ))}
           </ul>

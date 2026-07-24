@@ -17,12 +17,14 @@ function escapeRegex(value) {
 
 function repoPathVariants(repo) {
   const resolved = path.resolve(repo);
-  return [...new Set([
-    path.toNamespacedPath(resolved),
-    resolved,
-    resolved.replaceAll("\\", "/"),
-    resolved.replaceAll("/", "\\"),
-  ])]
+  return [
+    ...new Set([
+      path.toNamespacedPath(resolved),
+      resolved,
+      resolved.replaceAll("\\", "/"),
+      resolved.replaceAll("/", "\\"),
+    ]),
+  ]
     .filter(Boolean)
     .sort((left, right) => right.length - left.length);
 }
@@ -33,13 +35,19 @@ export function sanitizeCodeIntelligenceEvidence(value, repo) {
   function sanitize(current) {
     if (typeof current === "string") {
       return variants.reduce(
-        (text, variant) => text.replace(new RegExp(escapeRegex(variant), caseInsensitive ? "gi" : "g"), REPO_ROOT_MARKER),
+        (text, variant) =>
+          text.replace(
+            new RegExp(escapeRegex(variant), caseInsensitive ? "gi" : "g"),
+            REPO_ROOT_MARKER,
+          ),
         current,
       );
     }
     if (Array.isArray(current)) return current.map(sanitize);
     if (current && typeof current === "object") {
-      return Object.fromEntries(Object.entries(current).map(([key, nested]) => [key, sanitize(nested)]));
+      return Object.fromEntries(
+        Object.entries(current).map(([key, nested]) => [key, sanitize(nested)]),
+      );
     }
     return current;
   }
@@ -75,21 +83,28 @@ function parseArgs(argv) {
     else if (arg === "--no-force") args.force = false;
     else if (arg === "--strict") args.strict = true;
     else if (arg === "--help" || arg === "-h") {
-      console.log(`GitNexus-backed code-intelligence scan\n\nUsage:\n  node scripts/code-intelligence-scan.mjs --repo .\n\nDefault behavior uses GitNexus in index-only mode, writes graph/gitnexus.json as evidence, then emits the stable harness artifacts graph/graph.json, graph/freshness.json, and design/anchors.json. If GitNexus is unavailable and --fallback local is set, the script falls back to the local static graph and records the fallback in stdout.\n\nOptions:\n  --provider <gitnexus|local>  Backend to run. Defaults to gitnexus.\n  --fallback <local|none>      Fallback if GitNexus fails. Defaults to local.\n  --strict                     Fail instead of falling back when GitNexus fails.\n  --name <alias>               GitNexus registry alias. Defaults to repo basename + current path hash.\n  --worker-timeout <seconds>   GitNexus worker timeout. Defaults to 60.\n  --no-force                   Do not pass --force to GitNexus analyze.\n  --graph <path>               Stable graph artifact path. Defaults to graph/graph.json.\n  --freshness <path>           Freshness artifact path. Defaults to graph/freshness.json.\n  --anchors <path>             Design anchors path. Defaults to design/anchors.json.\n  --evidence <path>            GitNexus evidence artifact path. Defaults to graph/gitnexus.json.\n`);
+      console.log(
+        `GitNexus-backed code-intelligence scan\n\nUsage:\n  node scripts/code-intelligence-scan.mjs --repo .\n\nDefault behavior uses GitNexus in index-only mode, writes graph/gitnexus.json as evidence, then emits the stable harness artifacts graph/graph.json, graph/freshness.json, and design/anchors.json. If GitNexus is unavailable and --fallback local is set, the script falls back to the local static graph and records the fallback in stdout.\n\nOptions:\n  --provider <gitnexus|local>  Backend to run. Defaults to gitnexus.\n  --fallback <local|none>      Fallback if GitNexus fails. Defaults to local.\n  --strict                     Fail instead of falling back when GitNexus fails.\n  --name <alias>               GitNexus registry alias. Defaults to repo basename + current path hash.\n  --worker-timeout <seconds>   GitNexus worker timeout. Defaults to 60.\n  --no-force                   Do not pass --force to GitNexus analyze.\n  --graph <path>               Stable graph artifact path. Defaults to graph/graph.json.\n  --freshness <path>           Freshness artifact path. Defaults to graph/freshness.json.\n  --anchors <path>             Design anchors path. Defaults to design/anchors.json.\n  --evidence <path>            GitNexus evidence artifact path. Defaults to graph/gitnexus.json.\n`,
+      );
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
 
-  if (!["gitnexus", "local"].includes(args.provider)) throw new Error(`Unsupported provider: ${args.provider}`);
-  if (!["local", "none"].includes(args.fallback)) throw new Error(`Unsupported fallback: ${args.fallback}`);
+  if (!["gitnexus", "local"].includes(args.provider))
+    throw new Error(`Unsupported provider: ${args.provider}`);
+  if (!["local", "none"].includes(args.fallback))
+    throw new Error(`Unsupported fallback: ${args.fallback}`);
   return args;
 }
 
 function isInside(root, candidate) {
   const relative = path.relative(root, candidate);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
 }
 
 function safeAlias(repo) {
@@ -101,12 +116,15 @@ function safeAlias(repo) {
 
 function truncate(text, limit = 12000) {
   const value = String(text || "");
-  return value.length > limit ? `${value.slice(0, limit)}\n...[truncated ${value.length - limit} chars]` : value;
+  return value.length > limit
+    ? `${value.slice(0, limit)}\n...[truncated ${value.length - limit} chars]`
+    : value;
 }
 
 function writeJsonInside(repo, relativePath, payload) {
   const target = path.resolve(repo, relativePath);
-  if (!isInside(repo, target)) throw new Error(`output path escapes repo: ${relativePath}`);
+  if (!isInside(repo, target))
+    throw new Error(`output path escapes repo: ${relativePath}`);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
@@ -114,11 +132,14 @@ function writeJsonInside(repo, relativePath, payload) {
 function quoteCmdArg(value) {
   const text = String(value);
   if (!/[ \t"&<>|^]/.test(text)) return text;
-  return `"${text.replace(/"/g, "\"\"")}"`;
+  return `"${text.replace(/"/g, '""')}"`;
 }
 
 function spawnCommandFor(command, commandArgs) {
-  if (process.platform === "win32" && ["npx", "npm", "pnpm", "yarn"].includes(command)) {
+  if (
+    process.platform === "win32" &&
+    ["npx", "npm", "pnpm", "yarn"].includes(command)
+  ) {
     const shellCommand = [command, ...commandArgs].map(quoteCmdArg).join(" ");
     return {
       command: process.env.ComSpec || "cmd.exe",
@@ -147,7 +168,8 @@ function run(command, commandArgs, options = {}) {
     spawnedCommand: spawnConfig.command,
     startedAt,
     durationMs: Date.now() - started,
-    exitCode: typeof result.status === "number" ? result.status : result.error ? 1 : 0,
+    exitCode:
+      typeof result.status === "number" ? result.status : result.error ? 1 : 0,
     stdout: truncate(result.stdout),
     stderr: truncate(result.stderr || result.error?.message || ""),
   };
@@ -157,12 +179,26 @@ function runGitNexus(repo, args) {
   const name = args.name || safeAlias(repo);
   const env = {
     ...process.env,
-    GITNEXUS_SKIP_OPTIONAL_GRAMMARS: process.env.GITNEXUS_SKIP_OPTIONAL_GRAMMARS || "1",
+    GITNEXUS_SKIP_OPTIONAL_GRAMMARS:
+      process.env.GITNEXUS_SKIP_OPTIONAL_GRAMMARS || "1",
   };
-  const analyzeArgs = ["-y", GITNEXUS_PACKAGE, "analyze", repo, "--index-only", "--name", name, "--worker-timeout", String(args.workerTimeout)];
+  const analyzeArgs = [
+    "-y",
+    GITNEXUS_PACKAGE,
+    "analyze",
+    repo,
+    "--index-only",
+    "--name",
+    name,
+    "--worker-timeout",
+    String(args.workerTimeout),
+  ];
   if (args.force) analyzeArgs.push("--force");
   const analyze = run("npx", analyzeArgs, { cwd: repo, env });
-  const status = analyze.exitCode === 0 ? run("npx", ["-y", GITNEXUS_PACKAGE, "status"], { cwd: repo, env }) : null;
+  const status =
+    analyze.exitCode === 0
+      ? run("npx", ["-y", GITNEXUS_PACKAGE, "status"], { cwd: repo, env })
+      : null;
   const evidence = {
     schema: "uash.gitnexus.evidence.v0.1",
     ok: analyze.exitCode === 0,
@@ -171,7 +207,8 @@ function runGitNexus(repo, args) {
     package: GITNEXUS_PACKAGE,
     sourceRepo: GITNEXUS_REPO,
     license: GITNEXUS_LICENSE,
-    licenseBoundary: "GitNexus is invoked as an external CLI in index-only mode; this repo does not vendor or redistribute GitNexus code.",
+    licenseBoundary:
+      "GitNexus is invoked as an external CLI in index-only mode; this repo does not vendor or redistribute GitNexus code.",
     repoRoot: repo,
     indexName: name,
     indexOnly: true,
@@ -186,8 +223,14 @@ function runGitNexus(repo, args) {
 }
 
 function runLocalGraph(repo, args, provider, evidence) {
-  const localScanScript = path.join(SCRIPT_DIR, "code-intelligence-local-scan.mjs");
-  if (!existsSync(localScanScript)) throw new Error(`Missing code-intelligence-local-scan.mjs next to ${fileURLToPath(import.meta.url)}`);
+  const localScanScript = path.join(
+    SCRIPT_DIR,
+    "code-intelligence-local-scan.mjs",
+  );
+  if (!existsSync(localScanScript))
+    throw new Error(
+      `Missing code-intelligence-local-scan.mjs next to ${fileURLToPath(import.meta.url)}`,
+    );
   const localScanArgs = [
     localScanScript,
     "--repo",
@@ -202,11 +245,21 @@ function runLocalGraph(repo, args, provider, evidence) {
     provider,
   ];
   if (evidence?.ok) {
-    localScanArgs.push("--backend-evidence", args.evidence, "--backend-index-name", evidence.indexName);
+    localScanArgs.push(
+      "--backend-evidence",
+      args.evidence,
+      "--backend-index-name",
+      evidence.indexName,
+    );
   }
-  const result = run(process.execPath, localScanArgs, { cwd: repo, env: process.env });
+  const result = run(process.execPath, localScanArgs, {
+    cwd: repo,
+    env: process.env,
+  });
   if (result.exitCode !== 0) {
-    throw new Error(`code-intelligence-scan failed\n${result.stdout}\n${result.stderr}`);
+    throw new Error(
+      `code-intelligence-scan failed\n${result.stdout}\n${result.stderr}`,
+    );
   }
   return result;
 }
@@ -223,31 +276,55 @@ function main() {
     if (evidence.ok) {
       providerUsed = "gitnexus";
     } else if (args.strict || args.fallback === "none") {
-      console.error(JSON.stringify({ ok: false, providerRequested: args.provider, providerUsed: null, evidence: args.evidence, problems: ["GitNexus indexing failed and fallback is disabled"], gitnexusExitCode: evidence.commands.analyze.exitCode }, null, 2));
+      console.error(
+        JSON.stringify(
+          {
+            ok: false,
+            providerRequested: args.provider,
+            providerUsed: null,
+            evidence: args.evidence,
+            problems: ["GitNexus indexing failed and fallback is disabled"],
+            gitnexusExitCode: evidence.commands.analyze.exitCode,
+          },
+          null,
+          2,
+        ),
+      );
       process.exit(1);
     } else {
-      warning = "GitNexus indexing failed; fell back to local static code graph. Do not claim GitNexus ran for this scan.";
+      warning =
+        "GitNexus indexing failed; fell back to local static code graph. Do not claim GitNexus ran for this scan.";
     }
   }
 
   const localGraph = runLocalGraph(repo, args, providerUsed, evidence);
 
-  console.log(JSON.stringify({
-    ok: true,
-    providerRequested: args.provider,
-    providerUsed,
-    fallback: warning,
-    graph: args.graph,
-    freshness: args.freshness,
-    anchors: args.anchors,
-    gitnexusEvidence: evidence ? args.evidence : null,
-    gitnexusOk: evidence ? evidence.ok : false,
-    localGraph: {
-      exitCode: localGraph.exitCode,
-      stdout: localGraph.stdout,
-      stderr: localGraph.stderr,
-    },
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        providerRequested: args.provider,
+        providerUsed,
+        fallback: warning,
+        graph: args.graph,
+        freshness: args.freshness,
+        anchors: args.anchors,
+        gitnexusEvidence: evidence ? args.evidence : null,
+        gitnexusOk: evidence ? evidence.ok : false,
+        localGraph: {
+          exitCode: localGraph.exitCode,
+          stdout: localGraph.stdout,
+          stderr: localGraph.stderr,
+        },
+      },
+      null,
+      2,
+    ),
+  );
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+)
+  main();

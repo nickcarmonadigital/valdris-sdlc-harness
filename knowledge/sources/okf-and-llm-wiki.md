@@ -11,11 +11,11 @@ timestamp: 2026-07-04T00:00:00Z
 
 The vault follows a small shared pattern:
 
-* Markdown files are readable by people and agents.
-* YAML frontmatter makes concept documents searchable and routable.
-* `index.md` supports progressive disclosure.
-* `log.md` preserves chronology.
-* Links turn the directory into a graph rather than only a tree.
+- Markdown files are readable by people and agents.
+- YAML frontmatter makes concept documents searchable and routable.
+- `index.md` supports progressive disclosure.
+- `log.md` preserves chronology.
+- Links turn the directory into a graph rather than only a tree.
 
 # Citations
 

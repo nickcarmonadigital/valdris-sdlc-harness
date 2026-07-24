@@ -26,10 +26,10 @@ node scripts/code-intelligence-scan.mjs --repo . --provider gitnexus --fallback 
 
 # Artifacts
 
-* `graph/gitnexus.json`
-* `graph/graph.json`
-* `graph/freshness.json`
-* `design/anchors.json`
+- `graph/gitnexus.json`
+- `graph/graph.json`
+- `graph/freshness.json`
+- `design/anchors.json`
 
 # Disclosure Rule
 

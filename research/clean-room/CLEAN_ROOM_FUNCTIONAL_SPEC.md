@@ -120,15 +120,15 @@ Artifacts are versioned, commentable, and injectable into agent context.
 
 Required gates by work type:
 
-| Work type | Required gates |
-|---|---|
-| Behavioral bug | preflight, evidence/RCA, proof |
-| Feature | grill/spec, ADR if hard-to-reverse, red baseline, proof |
-| AI/RAG change | proof + AI behavior/RAG eval + judge validation |
-| Deploy | deploy verify + smoke gate |
-| Provider config | redzone approval + rollback + verification |
-| Data change | dry run + approval + verification queries |
-| Incident | impact/evidence/mitigation/validation/RCA/postmortem |
+| Work type       | Required gates                                          |
+| --------------- | ------------------------------------------------------- |
+| Behavioral bug  | preflight, evidence/RCA, proof                          |
+| Feature         | grill/spec, ADR if hard-to-reverse, red baseline, proof |
+| AI/RAG change   | proof + AI behavior/RAG eval + judge validation         |
+| Deploy          | deploy verify + smoke gate                              |
+| Provider config | redzone approval + rollback + verification              |
+| Data change     | dry run + approval + verification queries               |
+| Incident        | impact/evidence/mitigation/validation/RCA/postmortem    |
 
 ### 9. Finish-Line Validator
 

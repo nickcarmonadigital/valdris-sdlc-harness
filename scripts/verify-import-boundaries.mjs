@@ -1,11 +1,22 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { REPO_ROOT_MARKER, sanitizeCodeIntelligenceEvidence } from "./code-intelligence-scan.mjs";
+import {
+  REPO_ROOT_MARKER,
+  sanitizeCodeIntelligenceEvidence,
+} from "./code-intelligence-scan.mjs";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -22,24 +33,32 @@ function writeBytes(root, relativePath, bytes) {
 }
 
 function runGate(script, repo, extraArgs = []) {
-  const result = spawnSync(process.execPath, [path.join(REPO, "scripts", script), "--repo", repo, ...extraArgs], {
-    cwd: REPO,
-    encoding: "utf8",
-    shell: false,
-    windowsHide: true,
-  });
+  const result = spawnSync(
+    process.execPath,
+    [path.join(REPO, "scripts", script), "--repo", repo, ...extraArgs],
+    {
+      cwd: REPO,
+      encoding: "utf8",
+      shell: false,
+      windowsHide: true,
+    },
+  );
   const text = `${result.stdout || ""}${result.stderr || ""}`.trim();
   let payload;
   try {
     payload = JSON.parse(text);
   } catch {
-    throw new Error(`${script} did not emit one JSON document (exit ${result.status}): ${text}`);
+    throw new Error(
+      `${script} did not emit one JSON document (exit ${result.status}): ${text}`,
+    );
   }
   return { ...result, payload, text };
 }
 
 function withRestrictedValues(config, fn) {
-  const directory = mkdtempSync(path.join(os.tmpdir(), "valdris-restricted-values-"));
+  const directory = mkdtempSync(
+    path.join(os.tmpdir(), "valdris-restricted-values-"),
+  );
   const file = path.join(directory, "restricted-values.json");
   writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`, "utf8");
   try {
@@ -50,8 +69,17 @@ function withRestrictedValues(config, fn) {
 }
 
 function cloneManifest(root) {
-  const source = path.join(REPO, "controls", "provenance", "thirteen-layers.upstream.v1.json");
-  write(root, "controls/provenance/thirteen-layers.upstream.v1.json", readFileSync(source, "utf8"));
+  const source = path.join(
+    REPO,
+    "controls",
+    "provenance",
+    "thirteen-layers.upstream.v1.json",
+  );
+  write(
+    root,
+    "controls/provenance/thirteen-layers.upstream.v1.json",
+    readFileSync(source, "utf8"),
+  );
 }
 
 function expectPass(result, gate) {
@@ -72,7 +100,11 @@ function expectRedactedFailure(result, gate, forbidden = []) {
     assert.equal(typeof finding.path, "string");
     assert.equal(Number.isInteger(finding.line), true);
   }
-  for (const value of forbidden) assert.equal(result.text.toLowerCase().includes(value.toLowerCase()), false);
+  for (const value of forbidden)
+    assert.equal(
+      result.text.toLowerCase().includes(value.toLowerCase()),
+      false,
+    );
 }
 
 const cases = [];
@@ -84,7 +116,10 @@ test("pinned MIT provenance manifest passes offline", (root) => {
   cloneManifest(root);
   const result = runGate("provenance-gate.mjs", root);
   expectPass(result, "import-provenance");
-  assert.equal(result.payload.source.commit, "77853d410438ce7a2909a94c2db41d258e3d04a0");
+  assert.equal(
+    result.payload.source.commit,
+    "77853d410438ce7a2909a94c2db41d258e3d04a0",
+  );
   assert.equal(result.payload.source.license, "MIT");
   assert.equal(result.payload.fileCount, 26);
   assert.equal(result.payload.networkRequired, false);
@@ -92,43 +127,76 @@ test("pinned MIT provenance manifest passes offline", (root) => {
 
 test("provenance rejects source drift", (root) => {
   cloneManifest(root);
-  const target = path.join(root, "controls/provenance/thirteen-layers.upstream.v1.json");
+  const target = path.join(
+    root,
+    "controls/provenance/thirteen-layers.upstream.v1.json",
+  );
   const manifest = JSON.parse(readFileSync(target, "utf8"));
   manifest.source.commit = "0000000000000000000000000000000000000000";
   writeFileSync(target, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   const result = runGate("provenance-gate.mjs", root);
   assert.equal(result.status, 1, result.text);
   assert.equal(result.payload.ok, false);
-  assert.ok(result.payload.findings.some((item) => item.code === "SOURCE_COMMIT_MISMATCH"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.code === "SOURCE_COMMIT_MISMATCH",
+    ),
+  );
 });
 
 test("provenance rejects unverifiable file records", (root) => {
   cloneManifest(root);
-  const target = path.join(root, "controls/provenance/thirteen-layers.upstream.v1.json");
+  const target = path.join(
+    root,
+    "controls/provenance/thirteen-layers.upstream.v1.json",
+  );
   const manifest = JSON.parse(readFileSync(target, "utf8"));
   manifest.files["../outside.json"] = "not-a-sha256";
   writeFileSync(target, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   const result = runGate("provenance-gate.mjs", root);
   assert.equal(result.status, 1, result.text);
-  assert.ok(result.payload.findings.some((item) => item.code === "UNSAFE_SOURCE_PATH"));
-  assert.ok(result.payload.findings.some((item) => item.code === "INVALID_SHA256"));
+  assert.ok(
+    result.payload.findings.some((item) => item.code === "UNSAFE_SOURCE_PATH"),
+  );
+  assert.ok(
+    result.payload.findings.some((item) => item.code === "INVALID_SHA256"),
+  );
 });
 
 test("provenance rejects prototype-inherited inventory names", (root) => {
   cloneManifest(root);
-  const target = path.join(root, "controls/provenance/thirteen-layers.upstream.v1.json");
+  const target = path.join(
+    root,
+    "controls/provenance/thirteen-layers.upstream.v1.json",
+  );
   const manifest = JSON.parse(readFileSync(target, "utf8"));
   manifest.files.constructor = "0".repeat(64);
   writeFileSync(target, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
   const result = runGate("provenance-gate.mjs", root);
   assert.equal(result.status, 1, result.text);
-  assert.ok(result.payload.findings.some((item) => item.code === "UNAPPROVED_SOURCE_FILE"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.code === "UNAPPROVED_SOURCE_FILE",
+    ),
+  );
 });
 
 test("neutral public surfaces pass", (root) => {
-  write(root, "README.md", "# Example harness\n\nProviders and branches are commissioned per project.\n");
-  write(root, "controls/example.json", '{"issueId":"${issue_id}","provider":"${provider}"}\n');
-  write(root, "docs/import/decision.md", "Restricted-source behavior is used only as behavioral input.\n");
+  write(
+    root,
+    "README.md",
+    "# Example harness\n\nProviders and branches are commissioned per project.\n",
+  );
+  write(
+    root,
+    "controls/example.json",
+    '{"issueId":"${issue_id}","provider":"${provider}"}\n',
+  );
+  write(
+    root,
+    "docs/import/decision.md",
+    "Restricted-source behavior is used only as behavioral input.\n",
+  );
   expectPass(runGate("neutrality-gate.mjs", root), "import-neutrality");
 });
 
@@ -137,34 +205,88 @@ test("runtime restricted values catch root residue without echoing it", (root) =
   const person = "Restricted Example Person";
   const prefix = "SYNTHX";
   const issue = `${prefix}-4821`;
-  write(root, "NOTICE.md", `${organization} approval belongs to ${person}; issue ${issue}.\n`);
-  withRestrictedValues({ values: [organization, person], issuePrefixes: [prefix] }, (file) => {
-    const result = runGate("neutrality-gate.mjs", root, ["--restricted-values", file]);
-    expectRedactedFailure(result, "import-neutrality", [organization, person, issue]);
-    assert.ok(result.payload.findings.some((item) => item.category === "restricted-value"));
-    assert.ok(result.payload.findings.some((item) => item.category === "restricted-issue-id"));
-    assert.ok(result.payload.findings.every((item) => item.path === "NOTICE.md"));
-  });
+  write(
+    root,
+    "NOTICE.md",
+    `${organization} approval belongs to ${person}; issue ${issue}.\n`,
+  );
+  withRestrictedValues(
+    { values: [organization, person], issuePrefixes: [prefix] },
+    (file) => {
+      const result = runGate("neutrality-gate.mjs", root, [
+        "--restricted-values",
+        file,
+      ]);
+      expectRedactedFailure(result, "import-neutrality", [
+        organization,
+        person,
+        issue,
+      ]);
+      assert.ok(
+        result.payload.findings.some(
+          (item) => item.category === "restricted-value",
+        ),
+      );
+      assert.ok(
+        result.payload.findings.some(
+          (item) => item.category === "restricted-issue-id",
+        ),
+      );
+      assert.ok(
+        result.payload.findings.every((item) => item.path === "NOTICE.md"),
+      );
+    },
+  );
 });
 
 test("commissioned mode permits commissioned identity", (root) => {
   const identity = "Commissioned Example Studio";
   const providerKey = [["data", "base"].join(""), "provider"].join("_");
-  write(root, "project-adapter.json", `${JSON.stringify({ project: { name: identity }, [providerKey]: "ExampleDB" })}\n`);
+  write(
+    root,
+    "project-adapter.json",
+    `${JSON.stringify({ project: { name: identity }, [providerKey]: "ExampleDB" })}\n`,
+  );
   write(root, "README.md", `# ${identity}\n`);
-  expectPass(runGate("neutrality-gate.mjs", root, ["--mode", "commissioned"]), "import-neutrality");
+  expectPass(
+    runGate("neutrality-gate.mjs", root, ["--mode", "commissioned"]),
+    "import-neutrality",
+  );
 });
 
 test("neutrality scans CI paths and rejects generic fixed topology and provider lanes", (root) => {
-  const branches = [["sta", "ging"].join(""), ["ma", "in"].join(""), ["prod", "uction"].join("")];
+  const branches = [
+    ["sta", "ging"].join(""),
+    ["ma", "in"].join(""),
+    ["prod", "uction"].join(""),
+  ];
   const topology = `${branches[0]} -> ${branches[1]} -> ${branches[2]}`;
   const providerLane = ["data", "acmedb"].join("-");
-  write(root, ".github/workflows/release.yml", `name: release\n# Promote ${topology} through ${providerLane}.\n`);
-  const result = runGate("neutrality-gate.mjs", root, ["--mode", "commissioned"]);
+  write(
+    root,
+    ".github/workflows/release.yml",
+    `name: release\n# Promote ${topology} through ${providerLane}.\n`,
+  );
+  const result = runGate("neutrality-gate.mjs", root, [
+    "--mode",
+    "commissioned",
+  ]);
   expectRedactedFailure(result, "import-neutrality", [topology, providerLane]);
-  assert.ok(result.payload.findings.some((item) => item.category === "fixed-branch-topology"));
-  assert.ok(result.payload.findings.some((item) => item.category === "fixed-provider-lane"));
-  assert.ok(result.payload.findings.every((item) => item.path === ".github/workflows/release.yml"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "fixed-branch-topology",
+    ),
+  );
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "fixed-provider-lane",
+    ),
+  );
+  assert.ok(
+    result.payload.findings.every(
+      (item) => item.path === ".github/workflows/release.yml",
+    ),
+  );
 });
 
 test("neutrality checks every provider-lane match on a line", (root) => {
@@ -173,85 +295,149 @@ test("neutrality checks every provider-lane match on a line", (root) => {
   write(root, "docs/lanes.md", `${genericLane} ${providerLane}\n`);
   const result = runGate("neutrality-gate.mjs", root);
   expectRedactedFailure(result, "import-neutrality", [providerLane]);
-  assert.ok(result.payload.findings.some((item) => item.category === "fixed-provider-lane" && item.path === "docs/lanes.md"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) =>
+        item.category === "fixed-provider-lane" &&
+        item.path === "docs/lanes.md",
+    ),
+  );
 });
 
 test("commissioned mode still enforces optional restricted-source values", (root) => {
   const restricted = "Synthetic Restricted Source";
-  write(root, "project-adapter.json", '{"project":{"name":"Commissioned Example Studio"}}\n');
+  write(
+    root,
+    "project-adapter.json",
+    '{"project":{"name":"Commissioned Example Studio"}}\n',
+  );
   write(root, "docs/source-note.md", `${restricted}\n`);
   withRestrictedValues({ values: [restricted], issuePrefixes: [] }, (file) => {
-    const result = runGate("neutrality-gate.mjs", root, ["--mode", "commissioned", "--restricted-values", file]);
+    const result = runGate("neutrality-gate.mjs", root, [
+      "--mode",
+      "commissioned",
+      "--restricted-values",
+      file,
+    ]);
     expectRedactedFailure(result, "import-neutrality", [restricted]);
   });
 });
 
 test("synthetic privacy fixtures pass", (root) => {
-  write(root, "examples/synthetic-run.json", '{"email":"operator@example.com","userId":"EXAMPLE-USER-001","token":"<redacted>"}\n');
+  write(
+    root,
+    "examples/synthetic-run.json",
+    '{"email":"operator@example.com","userId":"EXAMPLE-USER-001","token":"<redacted>"}\n',
+  );
   const windowsPlaceholder = ["C:", "Users", "<user>", "proof.json"].join("\\");
   const unixPlaceholder = ["", "Users", "<user>", "proof.json"].join("/");
-  write(root, "docs/import/privacy.md", `Use ${windowsPlaceholder} and ${unixPlaceholder} only as placeholders.\n`);
-  write(root, "examples/connections.env", "DATABASE_URL=postgres://<user>:<redacted>@db/app\nREDIS_URL=redis://:<placeholder>@cache/0\n");
+  write(
+    root,
+    "docs/import/privacy.md",
+    `Use ${windowsPlaceholder} and ${unixPlaceholder} only as placeholders.\n`,
+  );
+  write(
+    root,
+    "examples/connections.env",
+    "DATABASE_URL=postgres://<user>:<redacted>@db/app\nREDIS_URL=redis://:<placeholder>@cache/0\n",
+  );
   expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
 });
 
 test("generated stable graph does not persist its absolute repository root", (root) => {
   write(root, "src/index.js", "export const value = 1;\n");
-  const scan = spawnSync(process.execPath, [path.join(REPO, "scripts", "code-intelligence-local-scan.mjs"), "--repo", root], {
-    cwd: root,
-    encoding: "utf8",
-    shell: false,
-    windowsHide: true,
-  });
+  const scan = spawnSync(
+    process.execPath,
+    [
+      path.join(REPO, "scripts", "code-intelligence-local-scan.mjs"),
+      "--repo",
+      root,
+    ],
+    {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+      windowsHide: true,
+    },
+  );
   assert.equal(scan.status, 0, `${scan.stdout || ""}${scan.stderr || ""}`);
-  const graphText = readFileSync(path.join(root, "graph", "graph.json"), "utf8");
+  const graphText = readFileSync(
+    path.join(root, "graph", "graph.json"),
+    "utf8",
+  );
   assert.equal(JSON.parse(graphText).repoRoot, REPO_ROOT_MARKER);
 
-  const evidence = sanitizeCodeIntelligenceEvidence({
-    repoRoot: root,
-    commands: {
-      analyze: {
-        command: path.join(root, "tools", "npx"),
-        args: ["analyze", root],
-        spawnedCommand: path.join(root, "tools", "launcher"),
-        stdout: `Indexed ${root.replaceAll("\\", "/")}`,
-        stderr: `Diagnostic for ${root}`,
-      },
-      status: {
-        command: path.join(root, "tools", "npx"),
-        args: ["status", root.replaceAll("\\", "/")],
-        spawnedCommand: path.join(root, "tools", "launcher"),
-        stdout: `Repository: ${root}`,
-        stderr: `Status diagnostic for ${root.replaceAll("\\", "/")}`,
+  const evidence = sanitizeCodeIntelligenceEvidence(
+    {
+      repoRoot: root,
+      commands: {
+        analyze: {
+          command: path.join(root, "tools", "npx"),
+          args: ["analyze", root],
+          spawnedCommand: path.join(root, "tools", "launcher"),
+          stdout: `Indexed ${root.replaceAll("\\", "/")}`,
+          stderr: `Diagnostic for ${root}`,
+        },
+        status: {
+          command: path.join(root, "tools", "npx"),
+          args: ["status", root.replaceAll("\\", "/")],
+          spawnedCommand: path.join(root, "tools", "launcher"),
+          stdout: `Repository: ${root}`,
+          stderr: `Status diagnostic for ${root.replaceAll("\\", "/")}`,
+        },
       },
     },
-  }, root);
+    root,
+  );
   assert.equal(evidence.repoRoot, REPO_ROOT_MARKER);
-  assert.deepEqual(evidence.commands.analyze.args, ["analyze", REPO_ROOT_MARKER]);
-  const rootVariants = [root, root.replaceAll("\\", "/")].map((value) => value.toLowerCase());
+  assert.deepEqual(evidence.commands.analyze.args, [
+    "analyze",
+    REPO_ROOT_MARKER,
+  ]);
+  const rootVariants = [root, root.replaceAll("\\", "/")].map((value) =>
+    value.toLowerCase(),
+  );
   function evidenceStrings(value) {
     if (typeof value === "string") return [value];
     if (Array.isArray(value)) return value.flatMap(evidenceStrings);
-    if (value && typeof value === "object") return Object.values(value).flatMap(evidenceStrings);
+    if (value && typeof value === "object")
+      return Object.values(value).flatMap(evidenceStrings);
     return [];
   }
   for (const command of Object.values(evidence.commands)) {
-    const strings = evidenceStrings(command).map((value) => value.toLowerCase());
-    assert.equal(strings.some((value) => rootVariants.some((variant) => value.includes(variant))), false, "GitNexus command evidence retained the absolute repository root");
-    assert.ok(strings.some((value) => value.includes(REPO_ROOT_MARKER)), "GitNexus command evidence lost its repo-relative marker");
+    const strings = evidenceStrings(command).map((value) =>
+      value.toLowerCase(),
+    );
+    assert.equal(
+      strings.some((value) =>
+        rootVariants.some((variant) => value.includes(variant)),
+      ),
+      false,
+      "GitNexus command evidence retained the absolute repository root",
+    );
+    assert.ok(
+      strings.some((value) => value.includes(REPO_ROOT_MARKER)),
+      "GitNexus command evidence lost its repo-relative marker",
+    );
   }
   write(root, "graph/gitnexus.json", `${JSON.stringify(evidence, null, 2)}\n`);
   expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
 
   const graph = JSON.parse(graphText);
-  const unrelatedLocalPath = process.platform === "win32"
-    ? ["C:", "Users", "unrelated-user", "private.txt"].join("\\")
-    : ["", "home", "unrelated-user", "private.txt"].join("/");
+  const unrelatedLocalPath =
+    process.platform === "win32"
+      ? ["C:", "Users", "unrelated-user", "private.txt"].join("\\")
+      : ["", "home", "unrelated-user", "private.txt"].join("/");
   graph.unrelatedLocalPath = unrelatedLocalPath;
   write(root, "graph/graph.json", `${JSON.stringify(graph, null, 2)}\n`);
   const injected = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(injected, "import-privacy", [unrelatedLocalPath]);
-  assert.ok(injected.payload.findings.some((item) => item.category === "local-user-path" && item.path === "graph/graph.json"));
+  assert.ok(
+    injected.payload.findings.some(
+      (item) =>
+        item.category === "local-user-path" && item.path === "graph/graph.json",
+    ),
+  );
 });
 
 test("privacy ignores schema types and code identifier references", (root) => {
@@ -266,7 +452,11 @@ test("privacy scans root files and rejects secrets without echoing material", (r
   write(root, "SECURITY.txt", `${secretKey}=${secret}\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [secret]);
-  assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === "SECURITY.txt"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "secret" && item.path === "SECURITY.txt",
+    ),
+  );
 });
 
 test("privacy rejects fine-grained GitHub tokens without echoing material", (root) => {
@@ -274,7 +464,12 @@ test("privacy rejects fine-grained GitHub tokens without echoing material", (roo
   write(root, "docs/credential.txt", `Credential: ${fineGrainedFixture}\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [fineGrainedFixture]);
-  assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === "docs/credential.txt"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) =>
+        item.category === "secret" && item.path === "docs/credential.txt",
+    ),
+  );
 });
 
 test("privacy rejects provider-prefixed and normalized secret assignments", (root) => {
@@ -292,24 +487,63 @@ test("privacy rejects provider-prefixed and normalized secret assignments", (roo
     ["api", "Key"].join(""),
     ["access", "Token"].join(""),
   ];
-  const values = aliases.map((_, index) => ["raw", "provider", "material", String(index + 100)].join("-"));
+  const values = aliases.map((_, index) =>
+    ["raw", "provider", "material", String(index + 100)].join("-"),
+  );
   const contaminatedValue = ["raw", "after", "marker", "999"].join("-");
-  write(root, "config/provider-secrets.env", `${aliases.map((alias, index) => `${alias}=${values[index]}`).join("\n")}\n${aliases[0]}=[REDACTED] ${contaminatedValue}\n`);
+  write(
+    root,
+    "config/provider-secrets.env",
+    `${aliases.map((alias, index) => `${alias}=${values[index]}`).join("\n")}\n${aliases[0]}=[REDACTED] ${contaminatedValue}\n`,
+  );
   const result = runGate("privacy-gate.mjs", root);
-  expectRedactedFailure(result, "import-privacy", [...values, contaminatedValue]);
-  assert.ok(result.payload.findings.filter((item) => item.category === "secret" && item.path === "config/provider-secrets.env").length >= aliases.length + 1);
+  expectRedactedFailure(result, "import-privacy", [
+    ...values,
+    contaminatedValue,
+  ]);
+  assert.ok(
+    result.payload.findings.filter(
+      (item) =>
+        item.category === "secret" &&
+        item.path === "config/provider-secrets.env",
+    ).length >=
+      aliases.length + 1,
+  );
 });
 
 test("privacy rejects raw database and cache credentials without echoing material", (root) => {
   const databaseUser = ["fixture", "user"].join("_");
   const databasePassword = ["fixture", "database", "password"].join("_");
   const cachePassword = ["fixture", "cache", "password"].join("_");
-  const postgresFixtureValue = ["postgres", "://", databaseUser, ":", databasePassword, "@db/app"].join("");
-  const redisFixtureValue = ["redis", "://:", cachePassword, "@cache/0"].join("");
-  write(root, "config/connections.env", `DATABASE_URL=${postgresFixtureValue}\nREDIS_URL=${redisFixtureValue}\n`);
+  const postgresFixtureValue = [
+    "postgres",
+    "://",
+    databaseUser,
+    ":",
+    databasePassword,
+    "@db/app",
+  ].join("");
+  const redisFixtureValue = ["redis", "://:", cachePassword, "@cache/0"].join(
+    "",
+  );
+  write(
+    root,
+    "config/connections.env",
+    `DATABASE_URL=${postgresFixtureValue}\nREDIS_URL=${redisFixtureValue}\n`,
+  );
   const result = runGate("privacy-gate.mjs", root);
-  expectRedactedFailure(result, "import-privacy", [postgresFixtureValue, redisFixtureValue, databasePassword, cachePassword]);
-  assert.ok(result.payload.findings.filter((item) => item.category === "secret" && item.path === "config/connections.env").length >= 2);
+  expectRedactedFailure(result, "import-privacy", [
+    postgresFixtureValue,
+    redisFixtureValue,
+    databasePassword,
+    cachePassword,
+  ]);
+  assert.ok(
+    result.payload.findings.filter(
+      (item) =>
+        item.category === "secret" && item.path === "config/connections.env",
+    ).length >= 2,
+  );
 });
 
 test("privacy rejects container superuser home paths without echoing them", (root) => {
@@ -317,12 +551,22 @@ test("privacy rejects container superuser home paths without echoing them", (roo
   write(root, "docs/local-path.txt", `artifact=${localPath}\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [localPath]);
-  assert.ok(result.payload.findings.some((item) => item.category === "local-user-path" && item.path === "docs/local-path.txt"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) =>
+        item.category === "local-user-path" &&
+        item.path === "docs/local-path.txt",
+    ),
+  );
 });
 
 test("privacy does not let example prose mask a real-looking secret", (root) => {
   const secret = `gh${"p"}_${"b".repeat(36)}`;
-  write(root, "examples/unsafe.md", `Example credential for documentation: ${secret}\n`);
+  write(
+    root,
+    "examples/unsafe.md",
+    `Example credential for documentation: ${secret}\n`,
+  );
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [secret]);
   assert.ok(result.payload.findings.some((item) => item.category === "secret"));
@@ -333,19 +577,41 @@ test("privacy scans publishable dist output", (root) => {
   write(root, "dist/bundle.js", `export const credential = "${secret}";\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [secret]);
-  assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === "dist/bundle.js"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "secret" && item.path === "dist/bundle.js",
+    ),
+  );
 });
 
 test("privacy scans tracked files inside ignored deploy directories", (root) => {
   const secret = `sk-${"T".repeat(32)}`;
-  write(root, ".next/server/private.js", `export const credential = "${secret}";\n`);
+  write(
+    root,
+    ".next/server/private.js",
+    `export const credential = "${secret}";\n`,
+  );
   for (const args of [["init"], ["add", ".next/server/private.js"]]) {
-    const git = spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false, windowsHide: true });
-    assert.equal(git.status, 0, `git ${args.join(" ")} failed: ${git.stderr || git.stdout}`);
+    const git = spawnSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+      windowsHide: true,
+    });
+    assert.equal(
+      git.status,
+      0,
+      `git ${args.join(" ")} failed: ${git.stderr || git.stdout}`,
+    );
   }
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [secret]);
-  assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === ".next/server/private.js"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) =>
+        item.category === "secret" && item.path === ".next/server/private.js",
+    ),
+  );
 });
 
 test("privacy scans a nested commissioned scope through a Windows worktree alias", (root) => {
@@ -355,14 +621,32 @@ test("privacy scans a nested commissioned scope through a Windows worktree alias
   const scopedPath = ".valdris-harness/.next/server/private.js";
   write(root, scopedPath, `export const credential = "${secret}";\n`);
   for (const args of [["init"], ["add", scopedPath]]) {
-    const git = spawnSync("git", args, { cwd: root, encoding: "utf8", shell: false, windowsHide: true });
-    assert.equal(git.status, 0, `git ${args.join(" ")} failed: ${git.stderr || git.stdout}`);
+    const git = spawnSync("git", args, {
+      cwd: root,
+      encoding: "utf8",
+      shell: false,
+      windowsHide: true,
+    });
+    assert.equal(
+      git.status,
+      0,
+      `git ${args.join(" ")} failed: ${git.stderr || git.stdout}`,
+    );
   }
   symlinkSync(root, alias, "junction");
   try {
-    const result = runGate("privacy-gate.mjs", path.join(alias, ".valdris-harness"));
+    const result = runGate(
+      "privacy-gate.mjs",
+      path.join(alias, ".valdris-harness"),
+    );
     expectRedactedFailure(result, "import-privacy", [secret]);
-    assert.ok(result.payload.findings.some((item) => item.category === "secret" && item.path === ".next/server/private.js"), result.text);
+    assert.ok(
+      result.payload.findings.some(
+        (item) =>
+          item.category === "secret" && item.path === ".next/server/private.js",
+      ),
+      result.text,
+    );
   } finally {
     rmSync(alias, { recursive: true, force: true });
   }
@@ -370,10 +654,17 @@ test("privacy scans a nested commissioned scope through a Windows worktree alias
 
 test("privacy checks a real password after an exact redacted placeholder", (root) => {
   const credentialValue = ["Actual", "Pass", "1234"].join("");
-  write(root, "config/runtime.env", `password=<redacted> password=${credentialValue}\n`);
+  write(
+    root,
+    "config/runtime.env",
+    `password=<redacted> password=${credentialValue}\n`,
+  );
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [credentialValue]);
-  assert.equal(result.payload.findings.filter((item) => item.category === "secret").length, 1);
+  assert.equal(
+    result.payload.findings.filter((item) => item.category === "secret").length,
+    1,
+  );
 });
 
 test("privacy checks a real email after an example-domain email", (root) => {
@@ -382,7 +673,12 @@ test("privacy checks a real email after an example-domain email", (root) => {
   write(root, "docs/contacts.md", `${safeEmail} ${realEmail}\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [realEmail]);
-  assert.equal(result.payload.findings.filter((item) => item.category === "non-example-email").length, 1);
+  assert.equal(
+    result.payload.findings.filter(
+      (item) => item.category === "non-example-email",
+    ).length,
+    1,
+  );
 });
 
 test("privacy does not treat example in an email local-part as safe", (root) => {
@@ -390,37 +686,91 @@ test("privacy does not treat example in an email local-part as safe", (root) => 
   write(root, "docs/owner.md", `${email}\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [email]);
-  assert.ok(result.payload.findings.some((item) => item.category === "non-example-email"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "non-example-email",
+    ),
+  );
 });
 
 test("privacy scans CI paths and rejects local paths, contact data, and identifiers", (root) => {
   const email = ["worker", "internal.invalid"].join("@");
-  const identifier = ["9ce0cabc", "2ea0", "4d22", "9afd", "b8f34bd0b177"].join("-");
-  const localPath = ["C:", "Users", "actual-user", "Desktop", "proof.json"].join("\\");
-  write(root, ".github/workflows/incident.yml", `# Owner ${email}; userId=${identifier}; artifact=${localPath}\n`);
+  const identifier = ["9ce0cabc", "2ea0", "4d22", "9afd", "b8f34bd0b177"].join(
+    "-",
+  );
+  const localPath = [
+    "C:",
+    "Users",
+    "actual-user",
+    "Desktop",
+    "proof.json",
+  ].join("\\");
+  write(
+    root,
+    ".github/workflows/incident.yml",
+    `# Owner ${email}; userId=${identifier}; artifact=${localPath}\n`,
+  );
   const result = runGate("privacy-gate.mjs", root);
-  expectRedactedFailure(result, "import-privacy", [email, identifier, localPath]);
-  assert.ok(result.payload.findings.some((item) => item.category === "local-user-path"));
-  assert.ok(result.payload.findings.some((item) => item.category === "non-example-email"));
-  assert.ok(result.payload.findings.some((item) => item.category === "non-example-id"));
-  assert.ok(result.payload.findings.every((item) => item.path === ".github/workflows/incident.yml"));
+  expectRedactedFailure(result, "import-privacy", [
+    email,
+    identifier,
+    localPath,
+  ]);
+  assert.ok(
+    result.payload.findings.some((item) => item.category === "local-user-path"),
+  );
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "non-example-email",
+    ),
+  );
+  assert.ok(
+    result.payload.findings.some((item) => item.category === "non-example-id"),
+  );
+  assert.ok(
+    result.payload.findings.every(
+      (item) => item.path === ".github/workflows/incident.yml",
+    ),
+  );
 });
 
 test("privacy rejects JSON-escaped and slash-form Windows user paths", (root) => {
-  const escapedPath = ["C:", "Users", "actual-user", "Desktop", "proof.json"].join("\\\\");
+  const escapedPath = [
+    "C:",
+    "Users",
+    "actual-user",
+    "Desktop",
+    "proof.json",
+  ].join("\\\\");
   const slashPath = ["D:", "Users", "actual-user", "proof.json"].join("/");
-  write(root, "project-adapter.json", `${JSON.stringify({ escapedPath, slashPath }, null, 2)}\n`);
+  write(
+    root,
+    "project-adapter.json",
+    `${JSON.stringify({ escapedPath, slashPath }, null, 2)}\n`,
+  );
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [escapedPath, slashPath]);
-  assert.ok(result.payload.findings.filter((item) => item.category === "local-user-path").length >= 2);
+  assert.ok(
+    result.payload.findings.filter(
+      (item) => item.category === "local-user-path",
+    ).length >= 2,
+  );
 });
 
 test("privacy rejects a local path wrapped in HTML markup", (root) => {
-  const localPath = ["C:", "Users", "actual-user", "Desktop", "proof.json"].join("\\");
+  const localPath = [
+    "C:",
+    "Users",
+    "actual-user",
+    "Desktop",
+    "proof.json",
+  ].join("\\");
   write(root, "docs/incident.md", `<code>${localPath}</code>\n`);
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", [localPath]);
-  assert.ok(result.payload.findings.some((item) => item.category === "local-user-path"));
+  assert.ok(
+    result.payload.findings.some((item) => item.category === "local-user-path"),
+  );
 });
 
 test("privacy rejects raw run and log evidence by path", (root) => {
@@ -428,7 +778,11 @@ test("privacy rejects raw run and log evidence by path", (root) => {
   write(root, "logs/session.log", "raw console output\n");
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", ["raw console output"]);
-  assert.ok(result.payload.findings.filter((item) => item.category === "raw-operational-evidence").length >= 2);
+  assert.ok(
+    result.payload.findings.filter(
+      (item) => item.category === "raw-operational-evidence",
+    ).length >= 2,
+  );
 });
 
 test("privacy rejects misleading example and template names under runs and logs", (root) => {
@@ -436,11 +790,20 @@ test("privacy rejects misleading example and template names under runs and logs"
   write(root, "logs/template-example.log", "operational output\n");
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy", ["operational output"]);
-  assert.equal(result.payload.findings.filter((item) => item.category === "raw-operational-evidence").length, 2);
+  assert.equal(
+    result.payload.findings.filter(
+      (item) => item.category === "raw-operational-evidence",
+    ).length,
+    2,
+  );
 });
 
 test("privacy permits only the exact approved run-template fixture path", (root) => {
-  write(root, "runs/_run-template/README.md", "# Project-neutral run packet template\n");
+  write(
+    root,
+    "runs/_run-template/README.md",
+    "# Project-neutral run packet template\n",
+  );
   expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
 });
 
@@ -457,18 +820,28 @@ test("privacy allows the exact public UI screenshot", (root) => {
 });
 
 test("privacy fails closed on unapproved binary content", (root) => {
-  writeBytes(root, "docs/assets/unreviewed.bin", Buffer.from([0, 1, 2, 3, 255]));
+  writeBytes(
+    root,
+    "docs/assets/unreviewed.bin",
+    Buffer.from([0, 1, 2, 3, 255]),
+  );
   const result = runGate("privacy-gate.mjs", root);
   expectRedactedFailure(result, "import-privacy");
   assert.equal(result.payload.binaryFiles, 1);
   assert.equal(result.payload.approvedBinaryFiles, 0);
   assert.equal(result.payload.unapprovedBinaryFiles, 1);
-  assert.ok(result.payload.findings.some((item) => item.category === "unapproved-binary"));
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "unapproved-binary",
+    ),
+  );
 });
 
 let passed = 0;
 for (const { name, fn } of cases) {
-  const root = mkdtempSync(path.join(os.tmpdir(), "valdris-import-boundaries-"));
+  const root = mkdtempSync(
+    path.join(os.tmpdir(), "valdris-import-boundaries-"),
+  );
   try {
     fn(root);
     passed += 1;
@@ -478,4 +851,11 @@ for (const { name, fn } of cases) {
   }
 }
 
-console.log(JSON.stringify({ ok: true, suite: "import-boundaries", passed, total: cases.length }));
+console.log(
+  JSON.stringify({
+    ok: true,
+    suite: "import-boundaries",
+    passed,
+    total: cases.length,
+  }),
+);

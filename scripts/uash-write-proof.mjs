@@ -7,7 +7,11 @@ import path from "node:path";
 const PROOF_SCHEMA = "uash.proof.v1";
 
 function parseArgs(argv) {
-  const args = { out: "proof/proof.json", runId: process.env.RUN_ID || "local-proof", commands: [] };
+  const args = {
+    out: "proof/proof.json",
+    runId: process.env.RUN_ID || "local-proof",
+    commands: [],
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--out") args.out = argv[++i];
@@ -23,7 +27,8 @@ Writes a schema-validated ${PROOF_SCHEMA} artifact. Exits non-zero if any comman
       throw new Error(`Unknown argument: ${arg}`);
     }
   }
-  if (!args.commands.length) throw new Error("At least one --command is required");
+  if (!args.commands.length)
+    throw new Error("At least one --command is required");
   return args;
 }
 
@@ -38,7 +43,10 @@ function tail(text, max = 6000) {
 function runShell(command) {
   return new Promise((resolve) => {
     const startedAt = new Date().toISOString();
-    const child = spawn(command, { shell: true, stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(command, {
+      shell: true,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => (stdout += chunk));
@@ -69,7 +77,9 @@ const proof = {
   generatedAt: new Date().toISOString(),
   runId: args.runId,
   status: passed ? "passed" : "failed",
-  summary: passed ? "All proof commands exited 0." : "One or more proof commands failed.",
+  summary: passed
+    ? "All proof commands exited 0."
+    : "One or more proof commands failed.",
   commands: commandResults,
 };
 const outputPath = path.resolve(args.out);

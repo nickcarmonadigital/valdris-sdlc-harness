@@ -16,7 +16,11 @@ const BRIDGE_PROXY_MAX_TIMEOUT_MS = 120_000;
 
 export type BridgeProxyRequestProblem = {
   status: 400 | 403 | 413 | 415;
-  error: "bridge_proxy_forbidden" | "invalid_request_body" | "payload_too_large" | "unsupported_media_type";
+  error:
+    | "bridge_proxy_forbidden"
+    | "invalid_request_body"
+    | "payload_too_large"
+    | "unsupported_media_type";
   message: string;
 };
 
@@ -26,7 +30,13 @@ export type BridgeProxyBodyResult =
 
 export type BridgeProxyResponseBodyResult =
   | { ok: true; body: Uint8Array<ArrayBuffer> }
-  | { ok: false; error: "bridge_proxy_upstream_too_large" | "bridge_proxy_invalid_upstream_response"; message: string };
+  | {
+      ok: false;
+      error:
+        | "bridge_proxy_upstream_too_large"
+        | "bridge_proxy_invalid_upstream_response";
+      message: string;
+    };
 
 function isLoopbackHostname(hostname: string) {
   return LOOPBACK_HOSTS.has(hostname.toLowerCase());
@@ -36,13 +46,17 @@ function isLoopbackHostname(hostname: string) {
  * The browser-facing proxy deliberately holds a server-side bridge credential.
  * Keep it usable only by the same-origin UI on a loopback-bound Next server.
  */
-export function bridgeProxyRequestProblem(request: Request, options: { write?: boolean } = {}): BridgeProxyRequestProblem | null {
+export function bridgeProxyRequestProblem(
+  request: Request,
+  options: { write?: boolean } = {},
+): BridgeProxyRequestProblem | null {
   const url = new URL(request.url);
   if (url.protocol !== "http:" || !isLoopbackHostname(url.hostname)) {
     return {
       status: 403,
       error: "bridge_proxy_forbidden",
-      message: "The bridge UI proxy is available only through an HTTP loopback origin.",
+      message:
+        "The bridge UI proxy is available only through an HTTP loopback origin.",
     };
   }
 
@@ -77,15 +91,21 @@ export function bridgeProxyRequestProblem(request: Request, options: { write?: b
       return {
         status: 403,
         error: "bridge_proxy_forbidden",
-        message: "State-changing bridge UI proxy requests require a same-origin Origin header.",
+        message:
+          "State-changing bridge UI proxy requests require a same-origin Origin header.",
       };
     }
-    const contentType = request.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
+    const contentType = request.headers
+      .get("content-type")
+      ?.split(";", 1)[0]
+      .trim()
+      .toLowerCase();
     if (contentType !== "application/json") {
       return {
         status: 415,
         error: "unsupported_media_type",
-        message: "State-changing bridge UI proxy requests require application/json.",
+        message:
+          "State-changing bridge UI proxy requests require application/json.",
       };
     }
   }
@@ -94,26 +114,41 @@ export function bridgeProxyRequestProblem(request: Request, options: { write?: b
 }
 
 export function bridgeProxyProblemResponse(problem: BridgeProxyRequestProblem) {
-  return Response.json({ ok: false, error: problem.error, message: problem.message }, {
-    status: problem.status,
-    headers: { "cache-control": "no-store" },
-  });
+  return Response.json(
+    { ok: false, error: problem.error, message: problem.message },
+    {
+      status: problem.status,
+      headers: { "cache-control": "no-store" },
+    },
+  );
 }
 
 function bodyProblem(status: 400 | 413): BridgeProxyBodyResult {
   return {
     ok: false,
-    problem: status === 413
-      ? { status, error: "payload_too_large", message: `Bridge proxy request bodies are limited to ${BRIDGE_PROXY_MAX_BODY_BYTES} bytes.` }
-      : { status, error: "invalid_request_body", message: "The bridge proxy request body could not be read safely." },
+    problem:
+      status === 413
+        ? {
+            status,
+            error: "payload_too_large",
+            message: `Bridge proxy request bodies are limited to ${BRIDGE_PROXY_MAX_BODY_BYTES} bytes.`,
+          }
+        : {
+            status,
+            error: "invalid_request_body",
+            message: "The bridge proxy request body could not be read safely.",
+          },
   };
 }
 
-export async function readBoundedBridgeProxyBody(request: Request): Promise<BridgeProxyBodyResult> {
+export async function readBoundedBridgeProxyBody(
+  request: Request,
+): Promise<BridgeProxyBodyResult> {
   const declaredLength = request.headers.get("content-length");
   if (declaredLength !== null) {
     if (!/^\d+$/.test(declaredLength)) return bodyProblem(400);
-    if (BigInt(declaredLength) > BigInt(BRIDGE_PROXY_MAX_BODY_BYTES)) return bodyProblem(413);
+    if (BigInt(declaredLength) > BigInt(BRIDGE_PROXY_MAX_BODY_BYTES))
+      return bodyProblem(413);
   }
   if (!request.body) return { ok: true, body: "" };
 
@@ -151,19 +186,34 @@ export async function readBoundedBridgeProxyBody(request: Request): Promise<Brid
   return { ok: true, body: new TextDecoder().decode(body) };
 }
 
-function upstreamResponseProblem(tooLarge: boolean): BridgeProxyResponseBodyResult {
+function upstreamResponseProblem(
+  tooLarge: boolean,
+): BridgeProxyResponseBodyResult {
   return tooLarge
-    ? { ok: false, error: "bridge_proxy_upstream_too_large", message: `Bridge responses are limited to ${BRIDGE_PROXY_MAX_RESPONSE_BYTES} bytes.` }
-    : { ok: false, error: "bridge_proxy_invalid_upstream_response", message: "The bridge returned a response body that could not be read safely." };
+    ? {
+        ok: false,
+        error: "bridge_proxy_upstream_too_large",
+        message: `Bridge responses are limited to ${BRIDGE_PROXY_MAX_RESPONSE_BYTES} bytes.`,
+      }
+    : {
+        ok: false,
+        error: "bridge_proxy_invalid_upstream_response",
+        message:
+          "The bridge returned a response body that could not be read safely.",
+      };
 }
 
-export async function readBoundedBridgeProxyResponse(response: Response): Promise<BridgeProxyResponseBodyResult> {
+export async function readBoundedBridgeProxyResponse(
+  response: Response,
+): Promise<BridgeProxyResponseBodyResult> {
   const declaredLength = response.headers.get("content-length");
   if (declaredLength !== null) {
     if (!/^\d+$/.test(declaredLength)) return upstreamResponseProblem(false);
-    if (BigInt(declaredLength) > BigInt(BRIDGE_PROXY_MAX_RESPONSE_BYTES)) return upstreamResponseProblem(true);
+    if (BigInt(declaredLength) > BigInt(BRIDGE_PROXY_MAX_RESPONSE_BYTES))
+      return upstreamResponseProblem(true);
   }
-  if (!response.body) return { ok: true, body: new Uint8Array(new ArrayBuffer(0)) };
+  if (!response.body)
+    return { ok: true, body: new Uint8Array(new ArrayBuffer(0)) };
 
   let reader: ReadableStreamDefaultReader<Uint8Array>;
   try {
@@ -201,8 +251,15 @@ export async function readBoundedBridgeProxyResponse(response: Response): Promis
 
 function bridgeBaseUrl() {
   const parsed = new URL(process.env.UASH_BRIDGE_URL || DEFAULT_BRIDGE_URL);
-  if (parsed.protocol !== "http:" || !isLoopbackHostname(parsed.hostname) || parsed.username || parsed.password) {
-    throw new Error("UASH_BRIDGE_URL must be a credential-free HTTP loopback URL");
+  if (
+    parsed.protocol !== "http:" ||
+    !isLoopbackHostname(parsed.hostname) ||
+    parsed.username ||
+    parsed.password
+  ) {
+    throw new Error(
+      "UASH_BRIDGE_URL must be a credential-free HTTP loopback URL",
+    );
   }
   parsed.pathname = parsed.pathname.replace(/\/$/, "");
   parsed.search = "";
@@ -212,27 +269,44 @@ function bridgeBaseUrl() {
 
 function bridgeAccessToken() {
   const token = process.env.UASH_BRIDGE_ACCESS_TOKEN;
-  if (!token) throw new Error("UASH_BRIDGE_ACCESS_TOKEN is required by the local bridge proxy");
+  if (!token)
+    throw new Error(
+      "UASH_BRIDGE_ACCESS_TOKEN is required by the local bridge proxy",
+    );
   return token;
 }
 
-export function bridgeProxyTimeoutMs(environment: NodeJS.ProcessEnv = process.env) {
+export function bridgeProxyTimeoutMs(
+  environment: NodeJS.ProcessEnv = process.env,
+) {
   const raw = environment.UASH_BRIDGE_PROXY_TIMEOUT_MS;
   if (raw === undefined || raw === "") return BRIDGE_PROXY_DEFAULT_TIMEOUT_MS;
-  if (!/^\d+$/.test(raw)) throw new Error("UASH_BRIDGE_PROXY_TIMEOUT_MS must be an integer between 100 and 120000");
+  if (!/^\d+$/.test(raw))
+    throw new Error(
+      "UASH_BRIDGE_PROXY_TIMEOUT_MS must be an integer between 100 and 120000",
+    );
   const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value < BRIDGE_PROXY_MIN_TIMEOUT_MS || value > BRIDGE_PROXY_MAX_TIMEOUT_MS) {
-    throw new Error("UASH_BRIDGE_PROXY_TIMEOUT_MS must be an integer between 100 and 120000");
+  if (
+    !Number.isSafeInteger(value) ||
+    value < BRIDGE_PROXY_MIN_TIMEOUT_MS ||
+    value > BRIDGE_PROXY_MAX_TIMEOUT_MS
+  ) {
+    throw new Error(
+      "UASH_BRIDGE_PROXY_TIMEOUT_MS must be an integer between 100 and 120000",
+    );
   }
   return value;
 }
 
 export async function proxyBridge(pathname: string, init: RequestInit = {}) {
-  if (!pathname.startsWith("/")) throw new Error("bridge proxy pathname must be absolute");
+  if (!pathname.startsWith("/"))
+    throw new Error("bridge proxy pathname must be absolute");
   const headers = new Headers(init.headers);
   headers.set("x-uash-bridge-token", bridgeAccessToken());
   const timeout = AbortSignal.timeout(bridgeProxyTimeoutMs());
-  const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, timeout])
+    : timeout;
   const response = await fetch(`${bridgeBaseUrl()}${pathname}`, {
     ...init,
     headers,
@@ -242,13 +316,17 @@ export async function proxyBridge(pathname: string, init: RequestInit = {}) {
   });
   const bounded = await readBoundedBridgeProxyResponse(response);
   if (!bounded.ok) {
-    return Response.json({ ok: false, error: bounded.error, message: bounded.message }, {
-      status: 502,
-      headers: { "cache-control": "no-store" },
-    });
+    return Response.json(
+      { ok: false, error: bounded.error, message: bounded.message },
+      {
+        status: 502,
+        headers: { "cache-control": "no-store" },
+      },
+    );
   }
   const responseHeaders = new Headers({
-    "content-type": response.headers.get("content-type") || "application/json; charset=utf-8",
+    "content-type":
+      response.headers.get("content-type") || "application/json; charset=utf-8",
     "cache-control": "no-store",
   });
   for (const name of PAGINATION_RESPONSE_HEADERS) {
@@ -262,8 +340,15 @@ export async function proxyBridge(pathname: string, init: RequestInit = {}) {
 }
 
 export function bridgeProxyError(_error: unknown) {
-  return Response.json({ ok: false, error: "bridge_proxy_failed", message: "The local bridge request failed." }, {
-    status: 502,
-    headers: { "cache-control": "no-store" },
-  });
+  return Response.json(
+    {
+      ok: false,
+      error: "bridge_proxy_failed",
+      message: "The local bridge request failed.",
+    },
+    {
+      status: 502,
+      headers: { "cache-control": "no-store" },
+    },
+  );
 }

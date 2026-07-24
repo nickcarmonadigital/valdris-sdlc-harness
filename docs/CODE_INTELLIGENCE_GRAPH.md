@@ -10,12 +10,12 @@ intake → route → code-intelligence → design-anchors → system-design → 
 
 ## Artifacts
 
-| Artifact | Purpose |
-|---|---|
-| `graph/gitnexus.json` | GitNexus index evidence: package, license boundary, command, status, output, and index alias. |
-| `graph/graph.json` | Stable Valdris graph artifact consumed by the harness. |
-| `graph/freshness.json` | Commit/freshness proof for the graph. |
-| `design/anchors.json` | Files/symbols the agent must cite before architecture, refactor, debugging, or cross-file implementation claims. |
+| Artifact               | Purpose                                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `graph/gitnexus.json`  | GitNexus index evidence: package, license boundary, command, status, output, and index alias.                    |
+| `graph/graph.json`     | Stable Valdris graph artifact consumed by the harness.                                                           |
+| `graph/freshness.json` | Commit/freshness proof for the graph.                                                                            |
+| `design/anchors.json`  | Files/symbols the agent must cite before architecture, refactor, debugging, or cross-file implementation claims. |
 
 ## Local commands
 

@@ -112,15 +112,15 @@ Coding agents are useful, but the failure mode is predictable:
 
 The harness turns “I did it” into a verifiable run packet:
 
-| Weak agent claim | Harness requirement |
-|---|---|
-| “I inspected the code” | GitNexus/code-intelligence evidence + graph/code anchor artifacts exist and cite real files |
+| Weak agent claim                 | Harness requirement                                                                                                                                                                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| “I inspected the code”           | GitNexus/code-intelligence evidence + graph/code anchor artifacts exist and cite real files                                                                                                                                                           |
 | “I found the cause and fixed it” | For bugs (including regressions), incidents, and self-heal corrective work, typed RCA runs the same regression command against distinct real pre-fix/post-fix commits and binds the failure signature, source change, fix, and passing post-fix proof |
-| “I built it” | implementation events + proof artifact exist |
-| “It passed” | proof gate emits `proof/proof.json` |
-| “No live smoke needed” | smoke node is skipped with an explicit reason |
-| “Approval is fine” | Red Zone approval comes from human, never the agent |
-| “Done” | finish-line gate confirms required artifacts passed/skipped |
+| “I built it”                     | implementation events + proof artifact exist                                                                                                                                                                                                          |
+| “It passed”                      | proof gate emits `proof/proof.json`                                                                                                                                                                                                                   |
+| “No live smoke needed”           | smoke node is skipped with an explicit reason                                                                                                                                                                                                         |
+| “Approval is fine”               | Red Zone approval comes from human, never the agent                                                                                                                                                                                                   |
+| “Done”                           | finish-line gate confirms required artifacts passed/skipped                                                                                                                                                                                           |
 
 ## Core flow
 
@@ -161,22 +161,22 @@ intake
 
 These nodes are not just labels. Each node has an expected artifact path and connector event behavior.
 
-| Node | Expected artifact |
-|---|---|
-| `intake` | `run/intake.json` |
-| `route` | `run/route.json` |
-| `code-intelligence` | `graph/graph.json` |
-| `design-anchors` | `design/anchors.json` |
-| `system-design` | `design/system_design.md` |
-| `production-readiness` | `production/layer-assessment.json` |
-| `cloud-platform` | `cloud/service-map.json` or skip evidence |
-| `implement` | `session/events.jsonl` |
-| `redzone` | `approvals/redzone.json` |
-| `qa-break-it` | `qa/break-it-results.md` |
-| `prove` | `proof/proof.json` |
-| `live-smoke` | `smoke/smoke_proof.json` or skip evidence |
-| `self-heal` | `self_heal/self_heal_report.md` |
-| `handoff` | `handoff/final.md` |
+| Node                   | Expected artifact                         |
+| ---------------------- | ----------------------------------------- |
+| `intake`               | `run/intake.json`                         |
+| `route`                | `run/route.json`                          |
+| `code-intelligence`    | `graph/graph.json`                        |
+| `design-anchors`       | `design/anchors.json`                     |
+| `system-design`        | `design/system_design.md`                 |
+| `production-readiness` | `production/layer-assessment.json`        |
+| `cloud-platform`       | `cloud/service-map.json` or skip evidence |
+| `implement`            | `session/events.jsonl`                    |
+| `redzone`              | `approvals/redzone.json`                  |
+| `qa-break-it`          | `qa/break-it-results.md`                  |
+| `prove`                | `proof/proof.json`                        |
+| `live-smoke`           | `smoke/smoke_proof.json` or skip evidence |
+| `self-heal`            | `self_heal/self_heal_report.md`           |
+| `handoff`              | `handoff/final.md`                        |
 
 ## GitNexus-backed code intelligence
 
@@ -204,21 +204,21 @@ For serious product work, “done” cannot mean “the page loaded once.” The
 
 ![13-layer production readiness pack](docs/assets/readme/production-readiness-pack.svg)
 
-| # | Layer | What proof should cover |
-|---:|---|---|
-| 1 | Frontend | routes, UI behavior, browser/e2e proof, screenshots when useful |
-| 2 | Backend / API / logic | request/response contracts, logs, error paths |
-| 3 | Database / storage | migrations, integrity, rollback, sample data boundaries |
-| 4 | Auth / permissions / RLS | positive/negative authorization, tenant/data boundaries |
-| 5 | Hosting / deployment | preview/staging/prod URL, health, deployment logs |
-| 6 | Cloud / compute | service map, IAM/secrets, topology, provider risk |
-| 7 | CI/CD / version control | workflows, required checks, branch/promotion model |
-| 8 | Security | secrets, threat surface, dependency/vulnerability posture |
-| 9 | Rate limiting | abuse policy, quotas, burst/concurrency notes |
-| 10 | Caching / CDN | cache behavior, invalidation, stale-data checks |
-| 11 | Load balancing / scaling | capacity, failover, autoscaling/concurrency assumptions |
-| 12 | Error tracking / logs / observability | logs, metrics, traces, alerts, dashboards/request IDs |
-| 13 | Availability / recovery / DR | rollback, restore, graceful degradation, RTO/RPO |
+|   # | Layer                                 | What proof should cover                                         |
+| --: | ------------------------------------- | --------------------------------------------------------------- |
+|   1 | Frontend                              | routes, UI behavior, browser/e2e proof, screenshots when useful |
+|   2 | Backend / API / logic                 | request/response contracts, logs, error paths                   |
+|   3 | Database / storage                    | migrations, integrity, rollback, sample data boundaries         |
+|   4 | Auth / permissions / RLS              | positive/negative authorization, tenant/data boundaries         |
+|   5 | Hosting / deployment                  | preview/staging/prod URL, health, deployment logs               |
+|   6 | Cloud / compute                       | service map, IAM/secrets, topology, provider risk               |
+|   7 | CI/CD / version control               | workflows, required checks, branch/promotion model              |
+|   8 | Security                              | secrets, threat surface, dependency/vulnerability posture       |
+|   9 | Rate limiting                         | abuse policy, quotas, burst/concurrency notes                   |
+|  10 | Caching / CDN                         | cache behavior, invalidation, stale-data checks                 |
+|  11 | Load balancing / scaling              | capacity, failover, autoscaling/concurrency assumptions         |
+|  12 | Error tracking / logs / observability | logs, metrics, traces, alerts, dashboards/request IDs           |
+|  13 | Availability / recovery / DR          | rollback, restore, graceful degradation, RTO/RPO                |
 
 The current repo has 39 named controls across the thirteen layers. `uash.production-readiness.v2` rejects evidence-shaped prose: paths must resolve, enterprise artifacts must match hashes/commit/environment, metrics must satisfy their thresholds, command results need output digests, and approvals must name a human. Five domain packs add SaaS, iOS, realtime multiplayer, digital-commerce, and youth-AI requirements without bloating the universal layer model.
 
@@ -259,11 +259,11 @@ The local bridge is a v0 connector/runtime boundary. It is intentionally strict:
 
 ## Blueprint vs Live Run vs Replay
 
-| Mode | Meaning | Allowed source |
-|---|---|---|
-| **Blueprint** | Static topology/schema/lane explanation | docs, schema, demo topology |
-| **Live Run** | Current run state from real events | bridge, MCP, API, CLI emitter, watched artifacts |
-| **Replay** | Historical run playback | JSONL, database, run packet |
+| Mode          | Meaning                                 | Allowed source                                   |
+| ------------- | --------------------------------------- | ------------------------------------------------ |
+| **Blueprint** | Static topology/schema/lane explanation | docs, schema, demo topology                      |
+| **Live Run**  | Current run state from real events      | bridge, MCP, API, CLI emitter, watched artifacts |
+| **Replay**    | Historical run playback                 | JSONL, database, run packet                      |
 
 Rule: **Demo data must be labeled Demo and must never pretend to be Live Run or historical Replay telemetry.**
 
@@ -271,16 +271,16 @@ Rule: **Demo data must be labeled Demo and must never pretend to be Live Run or 
 
 ![Universal core vs project adapter](docs/assets/readme/universal-core-project-adapter.svg)
 
-| Universal piece | What stays in the core | What generated adapters customize |
-|---|---|---|
-| Commissioning interview | question groups, schema, generator | project/team answers |
-| Agent front doors | AGENTS/CLAUDE/Codex prompt pattern | product name, repo paths, local laws |
-| Router/lane pattern | work-type classification | enabled lanes and repo-specific procedures |
-| SDLC node chain | canonical node IDs/artifacts | skip policies and required proof |
-| Run packet model | events, artifacts, approvals, gates | issue IDs, branch names, owners |
-| Proof gates | proof/red-zone/smoke/self-heal enforcement | actual validation commands |
-| Code Intelligence slot | GitNexus-backed code intelligence + graph/code anchors | repo-specific graph paths, index alias, and fallback policy |
-| Answer contract | bottom line, why, proof, fix, your call | tone and stakeholder style |
+| Universal piece         | What stays in the core                                 | What generated adapters customize                           |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------------------------------- |
+| Commissioning interview | question groups, schema, generator                     | project/team answers                                        |
+| Agent front doors       | AGENTS/CLAUDE/Codex prompt pattern                     | product name, repo paths, local laws                        |
+| Router/lane pattern     | work-type classification                               | enabled lanes and repo-specific procedures                  |
+| SDLC node chain         | canonical node IDs/artifacts                           | skip policies and required proof                            |
+| Run packet model        | events, artifacts, approvals, gates                    | issue IDs, branch names, owners                             |
+| Proof gates             | proof/red-zone/smoke/self-heal enforcement             | actual validation commands                                  |
+| Code Intelligence slot  | GitNexus-backed code intelligence + graph/code anchors | repo-specific graph paths, index alias, and fallback policy |
+| Answer contract         | bottom line, why, proof, fix, your call                | tone and stakeholder style                                  |
 
 ## Project commissioning output
 
@@ -372,39 +372,53 @@ commissioning-review.md
 
 ## Repository map
 
-| Area | Purpose |
-|---|---|
-| `app/` | Next.js app routes and API surface |
-| `components/` | visual monitor, control-plane shell, connector cards, flow views |
-| `lib/` | workflow nodes, telemetry data, run/event models |
-| `knowledge/` | OKF-style agent vault: progressive indexes, playbooks, concepts, and source notes |
-| `scripts/commission-harness.mjs` | project-adapter + harness-pack generator |
-| `scripts/claude-code-bridge.mjs` | local event bridge and finish-line enforcement |
-| `scripts/uash-emit-event.mjs` | CLI event emitter for runtimes |
-| `scripts/verify-harness.mjs` | adversarial verifier for generator + bridge + gates |
-| `scripts/code-intelligence-scan.mjs` | GitNexus-backed scan wrapper; writes GitNexus evidence and stable graph artifacts |
-| `scripts/code-intelligence-local-scan.mjs` | local Code-intelligence-compatible graph generator / fallback artifact writer |
-| `scripts/code-intelligence-gate.mjs` | graph schema/freshness gate |
-| `scripts/code-intelligence-gate-all.mjs` | combined graph and anchor gate wrapper |
-| `scripts/workload-classification-gate.mjs` | route-stage workload tier/profile classifier gate for `uash.route.v2` |
-| `scripts/foundation-gate.mjs` | executable Layer 0 Foundation / Good Looks Like assessment gate |
-| `scripts/production-layer-gate.mjs` | 13-layer production readiness validator |
-| `scripts/enterprise-ai-gate-all.mjs` | current-run aggregate intake/route/goal/context/production/AI/domain/eval/trajectory/waiver finish line |
-| `controls/` | workload taxonomy, Layer 0 foundation, production, AI, SaaS, iOS, realtime, commerce, and youth-safety catalogs |
-| `skills/` | eight phase-aware Valdris workflow skills, Codex YAML routing projection, and proof-gate registry |
-| `scripts/okf-vault-gate.mjs` | OKF-style knowledge vault validator |
-| `scripts/anchor-gate.mjs` | design-anchor file citation gate |
-| `docs/ENTERPRISE_PROOF_BANK.md` | enterprise/domain proof-bank standard |
-| `docs/OPERATING_INTELLIGENCE_LAYER.md` | evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, MCP/A2A, lifecycle |
-| `docs/TEST_DAY_ACCEPTANCE_GATES.md` | acceptance gates for proving the harness update itself |
-| `docs/` | architecture, connector, production, QA, cloud, mode, lane docs |
-| `templates/` | generated Claude Code and Codex front-door templates |
-| `runs/_run-template/` | project-neutral run packet contract; real operational runs stay outside the public harness |
-| `research/clean-room/` | public-source/clean-room product research and specs |
+| Area                                       | Purpose                                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `app/`                                     | Next.js app routes and API surface                                                                              |
+| `components/`                              | visual monitor, control-plane shell, connector cards, flow views                                                |
+| `lib/`                                     | workflow nodes, telemetry data, run/event models                                                                |
+| `knowledge/`                               | OKF-style agent vault: progressive indexes, playbooks, concepts, and source notes                               |
+| `scripts/commission-harness.mjs`           | project-adapter + harness-pack generator                                                                        |
+| `scripts/claude-code-bridge.mjs`           | local event bridge and finish-line enforcement                                                                  |
+| `scripts/uash-emit-event.mjs`              | CLI event emitter for runtimes                                                                                  |
+| `scripts/verify-harness.mjs`               | adversarial verifier for generator + bridge + gates                                                             |
+| `scripts/code-intelligence-scan.mjs`       | GitNexus-backed scan wrapper; writes GitNexus evidence and stable graph artifacts                               |
+| `scripts/code-intelligence-local-scan.mjs` | local Code-intelligence-compatible graph generator / fallback artifact writer                                   |
+| `scripts/code-intelligence-gate.mjs`       | graph schema/freshness gate                                                                                     |
+| `scripts/code-intelligence-gate-all.mjs`   | combined graph and anchor gate wrapper                                                                          |
+| `scripts/workload-classification-gate.mjs` | route-stage workload tier/profile classifier gate for `uash.route.v2`                                           |
+| `scripts/foundation-gate.mjs`              | executable Layer 0 Foundation / Good Looks Like assessment gate                                                 |
+| `scripts/production-layer-gate.mjs`        | 13-layer production readiness validator                                                                         |
+| `scripts/enterprise-ai-gate-all.mjs`       | current-run aggregate intake/route/goal/context/production/AI/domain/eval/trajectory/waiver finish line         |
+| `controls/`                                | workload taxonomy, Layer 0 foundation, production, AI, SaaS, iOS, realtime, commerce, and youth-safety catalogs |
+| `skills/`                                  | eight phase-aware Valdris workflow skills, Codex YAML routing projection, and proof-gate registry               |
+| `scripts/okf-vault-gate.mjs`               | OKF-style knowledge vault validator                                                                             |
+| `scripts/anchor-gate.mjs`                  | design-anchor file citation gate                                                                                |
+| `docs/ENTERPRISE_PROOF_BANK.md`            | enterprise/domain proof-bank standard                                                                           |
+| `docs/OPERATING_INTELLIGENCE_LAYER.md`     | evals, trajectory, context, skills, memory, tools, sandbox, model routing, economics, MCP/A2A, lifecycle        |
+| `docs/TEST_DAY_ACCEPTANCE_GATES.md`        | acceptance gates for proving the harness update itself                                                          |
+| `docs/`                                    | architecture, connector, production, QA, cloud, mode, lane docs                                                 |
+| `templates/`                               | generated Claude Code and Codex front-door templates                                                            |
+| `runs/_run-template/`                      | project-neutral run packet contract; real operational runs stay outside the public harness                      |
+| `research/clean-room/`                     | public-source/clean-room product research and specs                                                             |
 
 For a deeper generated map, see [`docs/HARNESS_REPO_MAP.md`](docs/HARNESS_REPO_MAP.md).
 
 For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.md`](docs/REPO_MERMAID_MAPS.md).
+
+## v0.9 release candidate: semantic and authoritative assurance
+
+- explicit `structural`, `semantic`, and `authoritative` claim levels without changing Layer 0 or the thirteen assurance domains;
+- externally signed, monotonic pre-implementation readiness seals for resolved contracts, red-test evidence, and risk-derived eval plans;
+- commissioned semantic proof adapters, owner-controlled thresholds, additive assurance augmentation, and end-to-end AI workload identity;
+- executable runtime-session contracts for connector conformance, multi-agent DAG/fan-in, capability-authorized tool calls, exact hooks, human consequential-tool approvals, context v2, prior-head-attested memory, model routing, decision-linked traces, usage, reconciled economics, and green acceptance results;
+- Git-reconstructed AI-change review plus route-derived prototype-to-production promotion and production-learning receipts;
+- operator-pinned Ed25519 approval, executor, routing, trace, usage, promotion, learning, and monotonic-head receipts;
+- an optional OCI read-only proof executor that binds a trusted-host-operator versus isolated UID/GID 65534 workload boundary, no host mounts/network/ambient secrets, derived bounded outputs, an independently signed external-principal authority-separation receipt, and a GitHub-backed compare-and-swap head adapter bound to the accepted proof-input set; same-principal host compromise remains non-authoritative;
+- `valdris.run-packet.v3` binding assurance level and packet-commit catalog snapshots, while v2 and non-HEAD packets receive integrity-only structural inspection; full revalidation requires an isolated checkout at the exact packet commit;
+- `npm run assurance:readiness -- --level semantic|authoritative` reports missing adapters, thresholds, identities, approvals, executor/head providers, and applicability receipts before closure.
+
+The default authority trust store is empty. This checkout is `0.9.0-rc.1` and cannot certify itself; `v0.9.0` requires a real commissioned provider-backed authoritative run. See [`docs/V09_AUTHORITATIVE_ASSURANCE.md`](docs/V09_AUTHORITATIVE_ASSURANCE.md).
 
 ## v0.8 clean-room assurance and portable proof
 
@@ -414,7 +428,7 @@ For lane-by-lane and repo-level Mermaid diagrams, see [`docs/REPO_MERMAID_MAPS.m
 - asynchronous workflows as a cross-cutting capability pack, with an adversarial rejection test for `layer-14`;
 - cross-platform proof execution with argv-safe process spawning, Windows npm/pnpm/yarn shim resolution without `shell:true`, bounded output, timeouts, repetition, red-baseline support, local-path/secret redaction, exact Git HEAD, worktree, validator, and artifact-aware application-source bindings;
 - required typed RCA for bugs (including regressions), incidents, and self-heal corrective work, with one command identity across distinct real pre-fix/post-fix commits, a declared failure signature, and root-cause/fix paths verified against the real source diff; documentation/process repairs additionally require matching `documentation-process` classes plus canonical `--causal-input` paths whose exact before/after proof digests and pre/post Git bytes are envelope-bound;
-- Ed25519-attested `valdris.review.v2` using project-owned public keys in `.valdris-harness/controls/review-trust.v1.json`; the signature binds the full pre-review input/evidence bundle, validator runtime, and a four-role provenance roster whose actor/session/execution identities are pairwise distinct, while `valdris.run-packet.v2` binds the roster digest into the final packet envelope;
+- Ed25519-attested `valdris.review.v2` using project-owned public keys in `.valdris-harness/controls/review-trust.v1.json`; the signature binds the full pre-review input/evidence bundle, validator runtime, and a four-role provenance roster whose actor/session/execution identities are pairwise distinct. v0.9 run-packet v3 preserves that binding and adds assurance level plus catalog snapshots;
 - Linux and Windows CI plus a full-history secret scan.
 
 The clean-room privacy gate walks the canonical harness tree or generated `.valdris-harness` pack recursively and fails closed on binary files unless a shipped public asset matches an approved path and SHA-256. CI separately runs `privacy:release` after `next build`, so the ignored `.next` tree cannot bypass scanning: the release mode inspects production text artifacts for high-confidence credentials and deployable local-user paths, allows only known binary asset extensions, fails closed on binary executable/config content, and excludes non-release/generated noise such as dev/cache output, source maps, traces, dependency traces, and Next build-root metadata. `verify:release-privacy` proves that the exclusions stay quiet while binary code and a synthetic credential in a deployable server bundle both fail with redacted output. This is not a universal product-asset policy: commissioned product binaries remain governed by that target's asset, privacy, security, and supply-chain rules. After code-intelligence generation, CI runs the repository detector only over `graph/` and `design/anchors.json` with explicit `--include` scopes. The runtime-only `restricted-residue:gate` accepts private names, paths, and issue prefixes from an external manifest and scans the repository, tar/tgz release archives, generated packs, the knowledge vault, and installed-skill manifests without printing matched values, paths, or reversible fingerprints. `skills:retire-local` consumes a separate external manifest, defaults to dry-run, and can remove only exact direct-child skills under configured `.codex/skills` or `.claude/skills` roots after identity and content revalidation plus atomic quarantine. Synthetic adversarial tests run on every PR; the protected `Restricted Residue Attestation` workflow must also pass with the operator-held manifest before a release tag. The clean-room guarantee covers the current canonical tree, release artifacts made from it, and newly generated commissioned packs. A normal PR does not purge earlier public Git objects: older commits may retain content removed from the current tree, and the full-history secret scan detects supported findings without deleting them. History rewriting is a separate destructive operation; [ADR-0001](docs/decisions/ADR-0001-public-history-retention.md) records the owner decision to retain that pre-existing public history for this non-destructive merge without claiming it was purged.
@@ -452,41 +466,42 @@ See [`docs/TRUST_BOUNDARY_HARDENING_V06.md`](docs/TRUST_BOUNDARY_HARDENING_V06.m
 
 ## Current implementation status
 
-| Capability | Status | Evidence |
-|---|---:|---|
-| Next.js visual monitor | Built MVP | `app/`, `components/HarnessTelemetryApp.tsx` |
-| Run queue/control-plane shell | Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts` |
-| Blueprint / Demo / Live / Replay truth model | Built + verified | bundled seed data is Demo; Live requires connector events; Replay is historical run data |
-| GitNexus/code-intelligence node | Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*`; GitNexus indexed + local stable projection unless a direct GitNexus exporter is added |
-| Commissioning generator | Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 31 groups / 158 questions |
-| Generated agent front doors | Built + verified | `AGENTS.md`, `CLAUDE.md`, templates |
-| Good-looks-like foundation docs | Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs |
-| Workload taxonomy classification | Built + gated | `uash.workload-classification.v1`, `controls/workload-taxonomy.v1.json`, route v2 digest binding |
-| Layer 0 foundation assurance | Built + gated | `foundation/assessment.json`, `controls/foundation-layer.v1.json`, `foundation-gate.mjs` |
-| Goal/checkpoint loop + skill router | Built + verified | `goal-gate.mjs`, YAML-frontmatter discovery, `skills/codex-routing.yaml`, `skills/registry.json`, eight Valdris workflows, forward tests |
-| Clean-room import boundary | Built + adversarially verified | `provenance-gate.mjs`, `neutrality-gate.mjs`, `privacy-gate.mjs`, `schema-compat-gate.mjs` |
-| Assurance execution overlay | Built + integrity locked | public-source crosswalk, execution policy, async-workflows capability pack, catalog hashes |
-| Portable proof, conditional RCA, review, and run packet | Built + adversarially verified | `proof-runner.mjs`, `rca-gate.mjs`, `review-gate.mjs`, `run-packet-gate.mjs`, focused verifiers; proof binds Git/worktree/application/validator state, review signs the complete evidence bundle, and RCA is mandatory for bugs/regressions, incidents, and self-heal corrective work |
-| Operating-intelligence enforcement core | Built + verified | executable goal, eval, trajectory, context, skill, production, AI/domain, smoke, waiver, and typed-evidence gates |
-| Extended operating-intelligence policy | Commissioned, not a runtime | memory, tool hooks, sandbox management, model routing, economics, background PR agents, MCP/A2A, and agent lifecycle are captured as policy fields/docs for external runtimes and providers |
-| Enterprise proof-bank map | Built + executable controls | 39 controls, typed evidence, dependency DAG, `production-layer-gate.mjs` |
-| Test-day acceptance gates | Built structurally | `docs/TEST_DAY_ACCEPTANCE_GATES.md`, verifier command set |
-| Local connector bridge | Built + verified | `scripts/claude-code-bridge.mjs`; adapter-aware v0.6 trust boundary |
-| Strict event contract | Built + verified | `docs/CONNECTOR_EVENT_CONTRACT.md`, verifier, CI |
-| Artifact content verification | Built + verified | `uash.proof.v1` schema validation + bridge + adversarial verifier |
-| Red Zone approval boundary | Built + verified | actor-human + pending approval + token gate; raw tokens not persisted |
-| Self-heal bypass prevention | Built + verified | verifier blocks detected-gap bypass |
-| 13 production layers | Built + adversarially verified | v2 control catalog, typed evidence, dependency DAG, bridge compatibility, negative tests |
-| Generative AI assurance | Built + adversarially verified | 10 control domains, conditional RAG/tools/memory, eval and trajectory gates |
-| Domain assurance packs | Built initial set | SaaS, mobile iOS, multiplayer realtime, digital commerce, youth AI safety |
-| Agent knowledge vault | Built + verified | `knowledge/index.md`, `scripts/okf-vault-gate.mjs`, `npm run knowledge:gate` |
-| Cloud/platform lane | Built structurally | docs + node/artifact policy |
-| CI enforcement | Built + verified | `.github/workflows/ci.yml` runs the harness gates automatically |
-| QA/break-it/live smoke | Partial | docs + node/gate positions; deeper automation next |
-| Enterprise load proof | Partial / policy-only | proof-bank standard exists; executable load gate is next |
-| Observability proof gate | Partial / policy-only | proof-bank standard exists; logs/metrics/traces validator is next |
-| AI/RAG + context-quality eval gate | Built + adversarially verified | executable thresholds, dataset/rubric identity, exact manifest/run binding, typed per-case arm results, derived aggregates and critical counts, same-arm identities, direction-aware minimum delta, and zero critical regressions |
-| Hosted multi-user backend | Future | local JSONL/run-packet first; DB later |
+| Capability                                              |                                                                       Status | Evidence                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------- | ---------------------------------------------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Next.js visual monitor                                  |                                                                    Built MVP | `app/`, `components/HarnessTelemetryApp.tsx`                                                                                                                                                                                                                                                                                   |
+| Run queue/control-plane shell                           |                                                                    Built MVP | `components/ControlPlaneApp.tsx`, `lib/control-plane.ts`                                                                                                                                                                                                                                                                       |
+| Blueprint / Demo / Live / Replay truth model            |                                                             Built + verified | bundled seed data is Demo; Live requires connector events; Replay is historical run data                                                                                                                                                                                                                                       |
+| GitNexus/code-intelligence node                         |                                                             Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*`; GitNexus indexed + local stable projection unless a direct GitNexus exporter is added                                                                                                                                                                    |
+| Commissioning generator                                 |                                                             Built + verified | `scripts/commission-harness.mjs`, `verify:harness`; 31 groups / 158 questions                                                                                                                                                                                                                                                  |
+| Generated agent front doors                             |                                                             Built + verified | `AGENTS.md`, `CLAUDE.md`, templates                                                                                                                                                                                                                                                                                            |
+| Good-looks-like foundation docs                         |                                                           Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs                                                                                                                                                                                                                                |
+| Workload taxonomy classification                        |                                                                Built + gated | `uash.workload-classification.v1`, `controls/workload-taxonomy.v1.json`, route v2 digest binding                                                                                                                                                                                                                               |
+| Layer 0 foundation assurance                            |                                                                Built + gated | `foundation/assessment.json`, `controls/foundation-layer.v1.json`, `foundation-gate.mjs`                                                                                                                                                                                                                                       |
+| Goal/checkpoint loop + skill router                     |                                                             Built + verified | `goal-gate.mjs`, YAML-frontmatter discovery, `skills/codex-routing.yaml`, `skills/registry.json`, eight Valdris workflows, forward tests                                                                                                                                                                                       |
+| Clean-room import boundary                              |                                               Built + adversarially verified | `provenance-gate.mjs`, `neutrality-gate.mjs`, `privacy-gate.mjs`, `schema-compat-gate.mjs`                                                                                                                                                                                                                                     |
+| Assurance execution overlay                             |                                                     Built + integrity locked | public-source crosswalk, execution policy, async-workflows capability pack, catalog hashes                                                                                                                                                                                                                                     |
+| Portable proof, conditional RCA, review, and run packet |                                               Built + adversarially verified | `proof-runner.mjs`, `rca-gate.mjs`, `review-gate.mjs`, `run-packet-gate.mjs`, focused verifiers; v3 binds assurance level and resolved catalogs while retaining historical v2 structural reads                                                                                                                                 |
+| Operating-intelligence enforcement core                 |                                                             Built + verified | executable goal, eval, trajectory, context, skill, production, AI/domain, smoke, waiver, and typed-evidence gates                                                                                                                                                                                                              |
+| Extended operating-intelligence contract                | Built + adversarially verified; external authority uncommissioned by default | typed requirements, tools/calls, durable memory heads, conditional model-judge calibration, runtime-driver/implementation receipts, decision/trace-v2 evidence, economics, dependency provenance, multi-agent DAG/fan-in, and full declared MCP/A2A transcripts are closure-bound; live providers remain commissioned adapters |
+| Semantic and authoritative assurance                    |                                                            Release candidate | `assurance-readiness.mjs`, `authoritative-assurance-gate.mjs`, `verify-v09-assurance.mjs`, semantic adapters, thresholds, full AI identity, signed readiness/Git review/promotion/learning contracts, OCI executor, GitHub head adapter; default trust store intentionally blocks authoritative claims                         |
+| Enterprise proof-bank map                               |                                                  Built + executable controls | 39 controls, typed evidence, dependency DAG, `production-layer-gate.mjs`                                                                                                                                                                                                                                                       |
+| Test-day acceptance gates                               |                                                           Built structurally | `docs/TEST_DAY_ACCEPTANCE_GATES.md`, verifier command set                                                                                                                                                                                                                                                                      |
+| Local connector bridge                                  |                                                             Built + verified | `scripts/claude-code-bridge.mjs`; adapter-aware v0.6 trust boundary                                                                                                                                                                                                                                                            |
+| Strict event contract                                   |                                                             Built + verified | `docs/CONNECTOR_EVENT_CONTRACT.md`, verifier, CI                                                                                                                                                                                                                                                                               |
+| Artifact content verification                           |                                                             Built + verified | `uash.proof.v1` schema validation + bridge + adversarial verifier                                                                                                                                                                                                                                                              |
+| Red Zone approval boundary                              |                                                             Built + verified | actor-human + pending approval + token gate; raw tokens not persisted                                                                                                                                                                                                                                                          |
+| Self-heal bypass prevention                             |                                                             Built + verified | verifier blocks detected-gap bypass                                                                                                                                                                                                                                                                                            |
+| 13 production layers                                    |                                               Built + adversarially verified | v2 control catalog, typed evidence, dependency DAG, bridge compatibility, negative tests                                                                                                                                                                                                                                       |
+| Generative AI assurance                                 |                                               Built + adversarially verified | 10 control domains, conditional RAG/tools/memory, eval and trajectory gates                                                                                                                                                                                                                                                    |
+| Domain assurance packs                                  |                                                            Built initial set | SaaS, mobile iOS, multiplayer realtime, digital commerce, youth AI safety                                                                                                                                                                                                                                                      |
+| Agent knowledge vault                                   |                                                             Built + verified | `knowledge/index.md`, `scripts/okf-vault-gate.mjs`, `npm run knowledge:gate`                                                                                                                                                                                                                                                   |
+| Cloud/platform lane                                     |                                                           Built structurally | docs + node/artifact policy                                                                                                                                                                                                                                                                                                    |
+| CI enforcement                                          |                                                             Built + verified | `.github/workflows/ci.yml` runs the harness gates automatically                                                                                                                                                                                                                                                                |
+| QA/break-it/live smoke                                  |                                                                      Partial | docs + node/gate positions; deeper automation next                                                                                                                                                                                                                                                                             |
+| Enterprise load proof                                   |                                                        Partial / policy-only | proof-bank standard exists; executable load gate is next                                                                                                                                                                                                                                                                       |
+| Observability proof gate                                |                                                        Partial / policy-only | proof-bank standard exists; logs/metrics/traces validator is next                                                                                                                                                                                                                                                              |
+| AI/RAG + context-quality eval gate                      |                                               Built + adversarially verified | executable thresholds, dataset/rubric identity, exact manifest/run binding, typed per-case arm results, derived aggregates and critical counts, same-arm identities, direction-aware minimum delta, and zero critical regressions                                                                                              |
+| Hosted multi-user backend                               |                                                                       Future | local JSONL/run-packet first; DB later                                                                                                                                                                                                                                                                                         |
 
 ## Quick start (development smoke, not release acceptance)
 
@@ -495,6 +510,7 @@ This starts and smoke-checks a development checkout. It is not the release proof
 ```bash
 npm ci
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

@@ -1,22 +1,53 @@
 #!/usr/bin/env node
 import { createServer } from "node:http";
-import { mkdir, open, readFile, readdir, rename, truncate, unlink } from "node:fs/promises";
-import { existsSync, lstatSync, readFileSync, realpathSync, statSync, unlinkSync } from "node:fs";
-import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  rename,
+  truncate,
+  unlink,
+} from "node:fs/promises";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  unlinkSync,
+} from "node:fs";
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
 import { spawnSync } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertPairwiseDistinctBridgeCredentials, finishLineChildEnv } from "./bridge-security.mjs";
+import {
+  assertPairwiseDistinctBridgeCredentials,
+  finishLineChildEnv,
+} from "./bridge-security.mjs";
 import { validateProductionLayerAssessment } from "./production-layer-gate.mjs";
 import { requiredReviewTrustSha256 } from "./review-gate.mjs";
-import { routeRequiresRca, validationRuntimeBinding } from "./run-packet-gate.mjs";
-import { evidencePolicyForEffectiveTier, PROFILE_EVIDENCE_MAX_AGE_HOURS } from "./control-gate-lib.mjs";
+import {
+  routeRequiresRca,
+  validationRuntimeBinding,
+} from "./run-packet-gate.mjs";
+import {
+  evidencePolicyForEffectiveTier,
+  PROFILE_EVIDENCE_MAX_AGE_HOURS,
+} from "./control-gate-lib.mjs";
 
 const PORT = Number(process.env.UASH_BRIDGE_PORT || 8787);
 const HOST = process.env.UASH_BRIDGE_HOST || "127.0.0.1";
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
-const DATA_DIR = path.resolve(process.env.UASH_DATA_DIR || path.join(os.homedir(), ".uash", "runs"));
+const DATA_DIR = path.resolve(
+  process.env.UASH_DATA_DIR || path.join(os.homedir(), ".uash", "runs"),
+);
 const SERVICE = "uash-claude-code-bridge";
 const CONTRACT_VERSION = "uash.connector-events.v0.5";
 const PROOF_SCHEMA = "uash.proof.v1";
@@ -31,8 +62,14 @@ const FINISH_LINE_GATE_TIMEOUT_MS = 120_000;
 const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
 const MAX_RESPONSE_BODY_BYTES = 768 * 1024;
 const MAX_EVENT_DOCUMENT_BYTES = 16 * 1024;
-const MAX_EVENTS_PER_RUN = boundedEnvironmentInteger("UASH_BRIDGE_MAX_EVENTS_PER_RUN", 2048, 1, 2048);
-const MAX_EVENT_JOURNAL_BYTES = MAX_EVENTS_PER_RUN * (MAX_EVENT_DOCUMENT_BYTES + 1024);
+const MAX_EVENTS_PER_RUN = boundedEnvironmentInteger(
+  "UASH_BRIDGE_MAX_EVENTS_PER_RUN",
+  2048,
+  1,
+  2048,
+);
+const MAX_EVENT_JOURNAL_BYTES =
+  MAX_EVENTS_PER_RUN * (MAX_EVENT_DOCUMENT_BYTES + 1024);
 const MAX_RUN_CONFIG_BYTES = 512 * 1024;
 const MAX_RUN_SNAPSHOT_BYTES = 64 * 1024 * 1024;
 const DEFAULT_RUN_PAGE_LIMIT = 25;
@@ -50,10 +87,12 @@ const EXTRA_ADAPTER_ROOTS = (process.env.UASH_ADAPTER_ROOTS || "")
   .map((entry) => entry.trim())
   .filter(Boolean)
   .map((entry) => path.resolve(entry));
-const EXTRA_ALLOWED_ORIGINS = new Set((process.env.UASH_ALLOWED_ORIGINS || "")
-  .split(",")
-  .map((entry) => entry.trim())
-  .filter(Boolean));
+const EXTRA_ALLOWED_ORIGINS = new Set(
+  (process.env.UASH_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean),
+);
 const REVIEW_TRUST_SHA256 = requiredReviewTrustSha256();
 process.env.UASH_REVIEW_TRUST_SHA256 = REVIEW_TRUST_SHA256;
 
@@ -111,13 +150,41 @@ const EVENT_TYPES = new Set([
 ]);
 
 const NODE_IDS = new Set(Object.keys(artifactByNode));
-const ACTORS = new Set(["claude-code", "codex", "hermes", "harness", "human", "system"]);
-const STATUSES = new Set(["ok", "warn", "blocked", "skipped", "failed", "needs_approval", "passed"]);
+const ACTORS = new Set([
+  "claude-code",
+  "codex",
+  "hermes",
+  "harness",
+  "human",
+  "system",
+]);
+const STATUSES = new Set([
+  "ok",
+  "warn",
+  "blocked",
+  "skipped",
+  "failed",
+  "needs_approval",
+  "passed",
+]);
 const RUN_MODES = new Set(["blueprint", "live", "replay"]);
-const EVENT_SOURCES = new Set(["bridge", "mcp", "api", "watched-artifact", "local-jsonl", "database", "run-packet", "static-blueprint", "browser-local"]);
+const EVENT_SOURCES = new Set([
+  "bridge",
+  "mcp",
+  "api",
+  "watched-artifact",
+  "local-jsonl",
+  "database",
+  "run-packet",
+  "static-blueprint",
+  "browser-local",
+]);
 
 function createBaseArtifacts(adapterPolicy = {}) {
-  const artifactMap = { ...artifactByNode, ...(adapterPolicy.artifactByNode || {}) };
+  const artifactMap = {
+    ...artifactByNode,
+    ...(adapterPolicy.artifactByNode || {}),
+  };
   const policyRequiredNodes = Array.isArray(adapterPolicy.requiredNodes)
     ? adapterPolicy.requiredNodes.filter((nodeId) => NODE_IDS.has(nodeId))
     : Object.keys(artifactByNode);
@@ -141,7 +208,9 @@ function runDir(runId) {
 
 function canonicalRunId(value) {
   if (typeof value !== "string" || !RUN_ID_PATTERN.test(value)) {
-    const error = new Error("run.id must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$");
+    const error = new Error(
+      "run.id must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+    );
     error.code = "INVALID_RUN_ID";
     throw error;
   }
@@ -157,11 +226,16 @@ function assertMonotonicObservedJournal(runId, journalState) {
   const prior = OBSERVED_RUN_HEADS.get(runId);
   if (prior) {
     if (journalState.events.length < prior.eventCount) {
-      throw new Error("authenticated event journal rolled back below the process-observed head");
+      throw new Error(
+        "authenticated event journal rolled back below the process-observed head",
+      );
     }
-    const retainedHead = prior.eventCount > 0 ? journalState.digests[prior.eventCount - 1] : null;
+    const retainedHead =
+      prior.eventCount > 0 ? journalState.digests[prior.eventCount - 1] : null;
     if (retainedHead !== prior.journalHeadDigest) {
-      throw new Error("authenticated event journal no longer extends the process-observed head");
+      throw new Error(
+        "authenticated event journal no longer extends the process-observed head",
+      );
     }
   }
   OBSERVED_RUN_HEADS.set(runId, {
@@ -177,10 +251,15 @@ function nowIso() {
 function boundedEnvironmentInteger(name, fallback, minimum, maximum) {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return fallback;
-  if (!/^\d+$/.test(raw)) throw new Error(`${name} must be an integer between ${minimum} and ${maximum}`);
+  if (!/^\d+$/.test(raw))
+    throw new Error(
+      `${name} must be an integer between ${minimum} and ${maximum}`,
+    );
   const value = Number(raw);
   if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
-    throw new Error(`${name} must be an integer between ${minimum} and ${maximum}`);
+    throw new Error(
+      `${name} must be an integer between ${minimum} and ${maximum}`,
+    );
   }
   return value;
 }
@@ -190,9 +269,12 @@ function allowedBridgeOrigin(origin) {
   if (EXTRA_ALLOWED_ORIGINS.has(origin)) return true;
   try {
     const parsed = new URL(origin);
-    return parsed.protocol === "http:"
-      && LOOPBACK_HOSTS.has(parsed.hostname)
-      && !parsed.username && !parsed.password;
+    return (
+      parsed.protocol === "http:" &&
+      LOOPBACK_HOSTS.has(parsed.hostname) &&
+      !parsed.username &&
+      !parsed.password
+    );
   } catch {
     return false;
   }
@@ -206,33 +288,57 @@ function send(res, status, body, extraHeaders = {}) {
     payload = JSON.stringify({
       ok: false,
       error: "response_page_too_large",
-      message: "The requested bridge page exceeded the response byte limit. Request a smaller page.",
+      message:
+        "The requested bridge page exceeded the response byte limit. Request a smaller page.",
       limitBytes: MAX_RESPONSE_BODY_BYTES,
     });
   }
   const origin = res.req?.headers?.origin;
   const headers = {
-    "content-type": typeof body === "string" ? "text/plain; charset=utf-8" : "application/json; charset=utf-8",
+    "content-type":
+      typeof body === "string"
+        ? "text/plain; charset=utf-8"
+        : "application/json; charset=utf-8",
     "content-length": String(Buffer.byteLength(payload, "utf8")),
     "access-control-allow-methods": "GET,POST,OPTIONS",
-    "access-control-allow-headers": "content-type, x-uash-bridge-token, x-uash-human-token",
-    "vary": "Origin",
+    "access-control-allow-headers":
+      "content-type, x-uash-bridge-token, x-uash-human-token",
+    vary: "Origin",
     ...extraHeaders,
   };
-  if (allowedBridgeOrigin(origin)) headers["access-control-allow-origin"] = origin;
+  if (allowedBridgeOrigin(origin))
+    headers["access-control-allow-origin"] = origin;
   res.writeHead(responseStatus, headers);
   res.end(payload);
 }
 
-function boundedPageParameter(searchParams, name, fallback, minimum, maximum, { optional = false } = {}) {
+function boundedPageParameter(
+  searchParams,
+  name,
+  fallback,
+  minimum,
+  maximum,
+  { optional = false } = {},
+) {
   const values = searchParams.getAll(name);
-  if (values.length === 0) return { value: optional ? null : fallback, problems: [] };
+  if (values.length === 0)
+    return { value: optional ? null : fallback, problems: [] };
   if (values.length !== 1 || !/^\d+$/.test(values[0])) {
-    return { value: null, problems: [`${name} must be supplied once as an integer between ${minimum} and ${maximum}`] };
+    return {
+      value: null,
+      problems: [
+        `${name} must be supplied once as an integer between ${minimum} and ${maximum}`,
+      ],
+    };
   }
   const value = Number(values[0]);
   if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
-    return { value: null, problems: [`${name} must be an integer between ${minimum} and ${maximum}`] };
+    return {
+      value: null,
+      problems: [
+        `${name} must be an integer between ${minimum} and ${maximum}`,
+      ],
+    };
   }
   return { value, problems: [] };
 }
@@ -244,7 +350,8 @@ function paginationHeaders({ offset, limit, returned, total, nextCursor }) {
     "x-uash-page-returned": String(returned),
     "x-uash-page-total": String(total),
   };
-  if (nextCursor !== null && nextCursor !== undefined) headers["x-uash-next-cursor"] = String(nextCursor);
+  if (nextCursor !== null && nextCursor !== undefined)
+    headers["x-uash-next-cursor"] = String(nextCursor);
   return headers;
 }
 
@@ -255,7 +362,6 @@ function unsupportedQueryParameterProblems(searchParams, allowedNames) {
     .map((name) => `unsupported query parameter: ${name}`);
 }
 
-
 function sha256(value) {
   return createHash("sha256").update(String(value)).digest("hex");
 }
@@ -263,7 +369,10 @@ function sha256(value) {
 function safeCompare(left, right) {
   const leftBuffer = Buffer.from(String(left));
   const rightBuffer = Buffer.from(String(right));
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
+  return (
+    leftBuffer.length === rightBuffer.length &&
+    timingSafeEqual(leftBuffer, rightBuffer)
+  );
 }
 
 function digestHumanApprovalToken(token) {
@@ -301,15 +410,29 @@ function safeAdapterRoots(artifactRoot) {
 function resolveAdapterPath(adapterPath, artifactRoot) {
   if (!adapterPath) return { adapterPath: null, problems: [] };
   const base = artifactRoot ? path.resolve(String(artifactRoot)) : REPO_ROOT;
-  const candidate = path.isAbsolute(String(adapterPath)) ? path.resolve(String(adapterPath)) : path.resolve(base, String(adapterPath));
-  if (!existsSync(candidate)) return { adapterPath: candidate, problems: [`adapterPath does not exist: ${candidate}`] };
-  if (lstatSync(candidate).isSymbolicLink()) return { adapterPath: candidate, problems: [`adapterPath is a symlink and is not allowed: ${adapterPath}`] };
+  const candidate = path.isAbsolute(String(adapterPath))
+    ? path.resolve(String(adapterPath))
+    : path.resolve(base, String(adapterPath));
+  if (!existsSync(candidate))
+    return {
+      adapterPath: candidate,
+      problems: [`adapterPath does not exist: ${candidate}`],
+    };
+  if (lstatSync(candidate).isSymbolicLink())
+    return {
+      adapterPath: candidate,
+      problems: [`adapterPath is a symlink and is not allowed: ${adapterPath}`],
+    };
   const realCandidate = realpathSync(candidate);
   const allowedRoots = safeAdapterRoots(artifactRoot);
-  if (!allowedRoots.some((allowedRoot) => isInside(allowedRoot, realCandidate))) {
+  if (
+    !allowedRoots.some((allowedRoot) => isInside(allowedRoot, realCandidate))
+  ) {
     return {
       adapterPath: realCandidate,
-      problems: [`adapterPath must resolve inside artifactRoot, UASH_REPO_ROOT, or UASH_ADAPTER_ROOTS: ${adapterPath}`],
+      problems: [
+        `adapterPath must resolve inside artifactRoot, UASH_REPO_ROOT, or UASH_ADAPTER_ROOTS: ${adapterPath}`,
+      ],
     };
   }
   return { adapterPath: realCandidate, problems: [] };
@@ -317,9 +440,13 @@ function resolveAdapterPath(adapterPath, artifactRoot) {
 
 function bridgeAccessTokenProblems(req) {
   const suppliedHeader = req.headers["x-uash-bridge-token"];
-  const supplied = Array.isArray(suppliedHeader) ? suppliedHeader[0] : suppliedHeader;
-  if (!supplied) return ["x-uash-bridge-token is required for run reads and writes"];
-  if (!safeCompare(String(supplied), requiredBridgeAccessToken())) return ["x-uash-bridge-token did not match UASH_BRIDGE_ACCESS_TOKEN"];
+  const supplied = Array.isArray(suppliedHeader)
+    ? suppliedHeader[0]
+    : suppliedHeader;
+  if (!supplied)
+    return ["x-uash-bridge-token is required for run reads and writes"];
+  if (!safeCompare(String(supplied), requiredBridgeAccessToken()))
+    return ["x-uash-bridge-token did not match UASH_BRIDGE_ACCESS_TOKEN"];
   return [];
 }
 
@@ -332,9 +459,13 @@ function gitHeadAt(repoRoot) {
     killSignal: "SIGTERM",
     maxBuffer: 4 * 1024 * 1024,
   });
-  if (result.status !== 0) throw new Error(`target must be a Git worktree with a committed HEAD: ${String(result.stderr || result.stdout || result.error?.message || "unknown Git error").trim()}`);
+  if (result.status !== 0)
+    throw new Error(
+      `target must be a Git worktree with a committed HEAD: ${String(result.stderr || result.stdout || result.error?.message || "unknown Git error").trim()}`,
+    );
   const commit = String(result.stdout || "").trim();
-  if (!/^[a-f0-9]{40,64}$/i.test(commit)) throw new Error("target Git HEAD is invalid");
+  if (!/^[a-f0-9]{40,64}$/i.test(commit))
+    throw new Error("target Git HEAD is invalid");
   return commit;
 }
 
@@ -346,66 +477,144 @@ function canonicalCommissionedRuntime(artifactRoot) {
   const pack = path.join(realRoot, ".valdris-harness");
   if (!existsSync(pack)) return null;
   const packStats = lstatSync(pack);
-  if (packStats.isSymbolicLink() || !packStats.isDirectory()) throw new Error("canonical .valdris-harness runtime must be a regular directory");
+  if (packStats.isSymbolicLink() || !packStats.isDirectory())
+    throw new Error(
+      "canonical .valdris-harness runtime must be a regular directory",
+    );
   const realPack = realpathSync(pack);
-  if (!isInside(realRoot, realPack)) throw new Error("canonical .valdris-harness runtime escapes artifactRoot");
+  if (!isInside(realRoot, realPack))
+    throw new Error("canonical .valdris-harness runtime escapes artifactRoot");
   const adapterPath = path.join(realPack, "project-adapter.json");
-  if (!existsSync(adapterPath)) throw new Error("canonical .valdris-harness runtime is missing project-adapter.json");
+  if (!existsSync(adapterPath))
+    throw new Error(
+      "canonical .valdris-harness runtime is missing project-adapter.json",
+    );
   const adapterStats = lstatSync(adapterPath);
-  if (adapterStats.isSymbolicLink() || !adapterStats.isFile()) throw new Error("canonical nested project adapter must be a regular file");
+  if (adapterStats.isSymbolicLink() || !adapterStats.isFile())
+    throw new Error("canonical nested project adapter must be a regular file");
   const scripts = path.join(realPack, "scripts");
-  if (!existsSync(scripts)) throw new Error("canonical .valdris-harness scripts directory is missing");
+  if (!existsSync(scripts))
+    throw new Error("canonical .valdris-harness scripts directory is missing");
   const scriptStats = lstatSync(scripts);
-  if (scriptStats.isSymbolicLink() || !scriptStats.isDirectory()) throw new Error("canonical .valdris-harness scripts path must be a regular directory");
-  return { root: realRoot, pack: realPack, scripts: realpathSync(scripts), adapterPath: realpathSync(adapterPath) };
+  if (scriptStats.isSymbolicLink() || !scriptStats.isDirectory())
+    throw new Error(
+      "canonical .valdris-harness scripts path must be a regular directory",
+    );
+  return {
+    root: realRoot,
+    pack: realPack,
+    scripts: realpathSync(scripts),
+    adapterPath: realpathSync(adapterPath),
+  };
 }
 
 function assertCommissionedScriptsMatchHost(binding) {
-  const sources = (binding.files || []).filter(({ kind }) => kind === "validator-source");
-  if (sources.length === 0) throw new Error("commissioned runtime has no bound validator sources");
+  const sources = (binding.files || []).filter(
+    ({ kind }) => kind === "validator-source",
+  );
+  if (sources.length === 0)
+    throw new Error("commissioned runtime has no bound validator sources");
   for (const source of sources) {
     const relativePath = String(source.path || "").replaceAll("\\", "/");
-    if (!relativePath.startsWith("scripts/") || path.posix.normalize(relativePath) !== relativePath) {
-      throw new Error(`commissioned validator path is invalid: ${relativePath}`);
+    if (
+      !relativePath.startsWith("scripts/") ||
+      path.posix.normalize(relativePath) !== relativePath
+    ) {
+      throw new Error(
+        `commissioned validator path is invalid: ${relativePath}`,
+      );
     }
-    const hostFile = path.join(path.resolve(BRIDGE_SCRIPT_DIR, ".."), ...relativePath.split("/"));
+    const hostFile = path.join(
+      path.resolve(BRIDGE_SCRIPT_DIR, ".."),
+      ...relativePath.split("/"),
+    );
     if (!isInside(BRIDGE_SCRIPT_DIR, hostFile) || !existsSync(hostFile)) {
-      throw new Error(`commissioned validator is not present in the trusted host runtime: ${relativePath}`);
+      throw new Error(
+        `commissioned validator is not present in the trusted host runtime: ${relativePath}`,
+      );
     }
     const stats = lstatSync(hostFile);
-    if (stats.isSymbolicLink() || !stats.isFile()) throw new Error(`trusted host validator must be a regular file: ${relativePath}`);
+    if (stats.isSymbolicLink() || !stats.isFile())
+      throw new Error(
+        `trusted host validator must be a regular file: ${relativePath}`,
+      );
     const hostBytes = readFileSync(hostFile);
     const hostText = hostBytes.toString("utf8");
-    if (hostBytes.includes(0) || !Buffer.from(hostText, "utf8").equals(hostBytes)) throw new Error(`trusted host validator must be UTF-8 text: ${relativePath}`);
-    const hostSha256 = createHash("sha256").update(hostText.replace(/\r\n/g, "\n"), "utf8").digest("hex");
+    if (
+      hostBytes.includes(0) ||
+      !Buffer.from(hostText, "utf8").equals(hostBytes)
+    )
+      throw new Error(
+        `trusted host validator must be UTF-8 text: ${relativePath}`,
+      );
+    const hostSha256 = createHash("sha256")
+      .update(hostText.replace(/\r\n/g, "\n"), "utf8")
+      .digest("hex");
     if (source.sha256 !== hostSha256) {
-      throw new Error(`commissioned validator differs from the trusted host runtime; recommission required: ${relativePath}`);
+      throw new Error(
+        `commissioned validator differs from the trusted host runtime; recommission required: ${relativePath}`,
+      );
     }
   }
 }
 
 function adapterPolicyFrom(adapter) {
-  if (!adapter || typeof adapter !== "object") throw new Error("project adapter must be a JSON object");
-  const runtime = adapter.runtime && typeof adapter.runtime === "object" ? adapter.runtime : {};
-  const artifactMap = runtime.artifactByNode && typeof runtime.artifactByNode === "object" ? runtime.artifactByNode : {};
-  const requiredNodes = Array.isArray(runtime.requiredNodes) ? runtime.requiredNodes : Object.keys(artifactByNode);
-  const unknownRequired = requiredNodes.filter((nodeId) => !NODE_IDS.has(nodeId));
-  if (unknownRequired.length) throw new Error(`project adapter contains unknown required node IDs: ${unknownRequired.join(", ")}`);
+  if (!adapter || typeof adapter !== "object")
+    throw new Error("project adapter must be a JSON object");
+  const runtime =
+    adapter.runtime && typeof adapter.runtime === "object"
+      ? adapter.runtime
+      : {};
+  const artifactMap =
+    runtime.artifactByNode && typeof runtime.artifactByNode === "object"
+      ? runtime.artifactByNode
+      : {};
+  const requiredNodes = Array.isArray(runtime.requiredNodes)
+    ? runtime.requiredNodes
+    : Object.keys(artifactByNode);
+  const unknownRequired = requiredNodes.filter(
+    (nodeId) => !NODE_IDS.has(nodeId),
+  );
+  if (unknownRequired.length)
+    throw new Error(
+      `project adapter contains unknown required node IDs: ${unknownRequired.join(", ")}`,
+    );
   const requiredSet = new Set(requiredNodes);
-  const missingInvariantNodes = ["prove", "handoff"].filter((nodeId) => !requiredSet.has(nodeId));
-  if (missingInvariantNodes.length) throw new Error(`project adapter cannot remove finish-line required node IDs: ${missingInvariantNodes.join(", ")}`);
-  const invalidArtifacts = Object.keys(artifactMap).filter((nodeId) => !NODE_IDS.has(nodeId));
-  if (invalidArtifacts.length) throw new Error(`project adapter contains unknown artifact node IDs: ${invalidArtifacts.join(", ")}`);
+  const missingInvariantNodes = ["prove", "handoff"].filter(
+    (nodeId) => !requiredSet.has(nodeId),
+  );
+  if (missingInvariantNodes.length)
+    throw new Error(
+      `project adapter cannot remove finish-line required node IDs: ${missingInvariantNodes.join(", ")}`,
+    );
+  const invalidArtifacts = Object.keys(artifactMap).filter(
+    (nodeId) => !NODE_IDS.has(nodeId),
+  );
+  if (invalidArtifacts.length)
+    throw new Error(
+      `project adapter contains unknown artifact node IDs: ${invalidArtifacts.join(", ")}`,
+    );
   return {
     schema: adapter.schema,
     generatorVersion: adapter.generatorVersion,
     requiredNodes,
-    artifactByNode: Object.fromEntries(Object.entries(artifactMap).filter(([nodeId, value]) => NODE_IDS.has(nodeId) && typeof value === "string" && value.trim())),
-    approvalOwner: adapter.humanApproval?.approvalOwner || adapter.answers?.approval_owner || adapter.humanAgentProtocol?.decisionOwner || "primary human/operator",
+    artifactByNode: Object.fromEntries(
+      Object.entries(artifactMap).filter(
+        ([nodeId, value]) =>
+          NODE_IDS.has(nodeId) && typeof value === "string" && value.trim(),
+      ),
+    ),
+    approvalOwner:
+      adapter.humanApproval?.approvalOwner ||
+      adapter.answers?.approval_owner ||
+      adapter.humanAgentProtocol?.decisionOwner ||
+      "primary human/operator",
     proofSchema: adapter.proofSchema?.schema || PROOF_SCHEMA,
     productionReadinessSchema: adapter.productionReadiness?.schema,
-    enterpriseFinishLineRequired: adapter.finishLineAssurance?.required === true,
-    portableFinishLineRequired: adapter.finishLineAssurance?.packetRequired === true,
+    enterpriseFinishLineRequired:
+      adapter.finishLineAssurance?.required === true,
+    portableFinishLineRequired:
+      adapter.finishLineAssurance?.packetRequired === true,
   };
 }
 
@@ -413,12 +622,19 @@ function bootstrapCommissionedRuntime(artifactRoot) {
   const runtime = canonicalCommissionedRuntime(artifactRoot);
   if (!runtime) return null;
   const commit = gitHeadAt(runtime.root);
-  const binding = validationRuntimeBinding(runtime.root, commit, { runtimeRoot: runtime.pack });
+  const binding = validationRuntimeBinding(runtime.root, commit, {
+    runtimeRoot: runtime.pack,
+  });
   assertCommissionedScriptsMatchHost(binding);
   const adapter = JSON.parse(readFileSync(runtime.adapterPath, "utf8"));
   const adapterPolicy = adapterPolicyFrom(adapter);
-  if (!adapterPolicy.enterpriseFinishLineRequired || !adapterPolicy.portableFinishLineRequired) {
-    throw new Error("canonical v0.8 project adapter cannot disable enterprise or portable finish-line assurance");
+  if (
+    !adapterPolicy.enterpriseFinishLineRequired ||
+    !adapterPolicy.portableFinishLineRequired
+  ) {
+    throw new Error(
+      "canonical v0.8 project adapter cannot disable enterprise or portable finish-line assurance",
+    );
   }
   return { ...runtime, commit, binding, adapterPolicy };
 }
@@ -433,32 +649,67 @@ function commissionedRuntimeIdentity(runtime) {
 }
 
 function generatorRequiresCanonicalRuntime(version) {
-  const [major, minor] = String(version || "").split(".").map(Number);
-  return Number.isInteger(major) && Number.isInteger(minor) && (major > 0 || minor >= 8);
+  const [major, minor] = String(version || "")
+    .split(".")
+    .map(Number);
+  return (
+    Number.isInteger(major) &&
+    Number.isInteger(minor) &&
+    (major > 0 || minor >= 8)
+  );
 }
 
 function loadAdapterPolicy(adapterPath, artifactRoot) {
   const canonicalRuntime = bootstrapCommissionedRuntime(artifactRoot);
-  const rootAdapter = artifactRoot ? path.resolve(String(artifactRoot), "project-adapter.json") : null;
+  const rootAdapter = artifactRoot
+    ? path.resolve(String(artifactRoot), "project-adapter.json")
+    : null;
   if (canonicalRuntime) {
     if (adapterPath) {
       const explicit = resolveAdapterPath(adapterPath, artifactRoot);
-      if (explicit.problems.length) throw new Error(explicit.problems.join("; "));
-      if (path.relative(canonicalRuntime.adapterPath, realpathSync(explicit.adapterPath)) !== "") {
-        throw new Error("canonical nested project adapter exists; explicit adapterPath must identify .valdris-harness/project-adapter.json");
+      if (explicit.problems.length)
+        throw new Error(explicit.problems.join("; "));
+      if (
+        path.relative(
+          canonicalRuntime.adapterPath,
+          realpathSync(explicit.adapterPath),
+        ) !== ""
+      ) {
+        throw new Error(
+          "canonical nested project adapter exists; explicit adapterPath must identify .valdris-harness/project-adapter.json",
+        );
       }
     }
-    if (rootAdapter && existsSync(rootAdapter) && path.relative(canonicalRuntime.adapterPath, realpathSync(rootAdapter)) !== "") {
+    if (
+      rootAdapter &&
+      existsSync(rootAdapter) &&
+      path.relative(canonicalRuntime.adapterPath, realpathSync(rootAdapter)) !==
+        ""
+    ) {
       const rootStats = lstatSync(rootAdapter);
-      if (rootStats.isSymbolicLink() || !rootStats.isFile() || !readFileSync(rootAdapter).equals(readFileSync(canonicalRuntime.adapterPath))) {
-        throw new Error("legacy target-root project adapter conflicts with the canonical nested adapter");
+      if (
+        rootStats.isSymbolicLink() ||
+        !rootStats.isFile() ||
+        !readFileSync(rootAdapter).equals(
+          readFileSync(canonicalRuntime.adapterPath),
+        )
+      ) {
+        throw new Error(
+          "legacy target-root project adapter conflicts with the canonical nested adapter",
+        );
       }
     }
-    return { adapterPath: canonicalRuntime.adapterPath, adapterPolicy: canonicalRuntime.adapterPolicy, commissionedRuntime: commissionedRuntimeIdentity(canonicalRuntime) };
+    return {
+      adapterPath: canonicalRuntime.adapterPath,
+      adapterPolicy: canonicalRuntime.adapterPolicy,
+      commissionedRuntime: commissionedRuntimeIdentity(canonicalRuntime),
+    };
   }
-  const implicitAdapter = !adapterPath && rootAdapter && existsSync(rootAdapter)
-    ? rootAdapter
-    : !adapterPath && existsSync(path.resolve(REPO_ROOT, "project-adapter.json"))
+  const implicitAdapter =
+    !adapterPath && rootAdapter && existsSync(rootAdapter)
+      ? rootAdapter
+      : !adapterPath &&
+          existsSync(path.resolve(REPO_ROOT, "project-adapter.json"))
         ? path.resolve(REPO_ROOT, "project-adapter.json")
         : adapterPath;
   if (!implicitAdapter) return { adapterPath: null, adapterPolicy: undefined };
@@ -466,8 +717,13 @@ function loadAdapterPolicy(adapterPath, artifactRoot) {
   if (resolved.problems.length) throw new Error(resolved.problems.join("; "));
   const adapter = JSON.parse(readFileSync(resolved.adapterPath, "utf8"));
   const adapterPolicy = adapterPolicyFrom(adapter);
-  if (adapterPolicy.portableFinishLineRequired || generatorRequiresCanonicalRuntime(adapterPolicy.generatorVersion)) {
-    throw new Error("portable v0.8 adapter policy requires the canonical target-nested .valdris-harness runtime");
+  if (
+    adapterPolicy.portableFinishLineRequired ||
+    generatorRequiresCanonicalRuntime(adapterPolicy.generatorVersion)
+  ) {
+    throw new Error(
+      "portable v0.8 adapter policy requires the canonical target-nested .valdris-harness runtime",
+    );
   }
   return { adapterPath: resolved.adapterPath, adapterPolicy };
 }
@@ -482,12 +738,22 @@ function artifactPathForNode(run, nodeId) {
 
 function isProofEvent(run, event) {
   const proofPath = artifactPathForNode(run, "prove") || artifactByNode.prove;
-  return event.nodeId === "prove" || event.artifact === proofPath || event.artifact === artifactByNode.prove;
+  return (
+    event.nodeId === "prove" ||
+    event.artifact === proofPath ||
+    event.artifact === artifactByNode.prove
+  );
 }
 
 function isProductionLayerEvent(run, event) {
-  const productionPath = artifactPathForNode(run, "production-readiness") || artifactByNode["production-readiness"];
-  return event.nodeId === "production-readiness" || event.artifact === productionPath || event.artifact === artifactByNode["production-readiness"];
+  const productionPath =
+    artifactPathForNode(run, "production-readiness") ||
+    artifactByNode["production-readiness"];
+  return (
+    event.nodeId === "production-readiness" ||
+    event.artifact === productionPath ||
+    event.artifact === artifactByNode["production-readiness"]
+  );
 }
 
 function validateProofDocument(filePath) {
@@ -496,12 +762,22 @@ function validateProofDocument(filePath) {
   try {
     document = JSON.parse(readFileSync(filePath, "utf8"));
   } catch (error) {
-    return { checked: true, valid: false, schema: null, commandCount: 0, problems: [`proof artifact must be valid JSON: ${error.message}`] };
+    return {
+      checked: true,
+      valid: false,
+      schema: null,
+      commandCount: 0,
+      problems: [`proof artifact must be valid JSON: ${error.message}`],
+    };
   }
-  if (document.schema !== PROOF_SCHEMA) problems.push(`proof artifact schema must be ${PROOF_SCHEMA}`);
-  if (!document.generatedAt || Number.isNaN(Date.parse(document.generatedAt))) problems.push("proof.generatedAt must be an ISO timestamp");
-  if (document.status !== "passed") problems.push("proof.status must be passed for finish-line proof");
-  if (typeof document.summary !== "string" || !document.summary.trim()) problems.push("proof.summary is required");
+  if (document.schema !== PROOF_SCHEMA)
+    problems.push(`proof artifact schema must be ${PROOF_SCHEMA}`);
+  if (!document.generatedAt || Number.isNaN(Date.parse(document.generatedAt)))
+    problems.push("proof.generatedAt must be an ISO timestamp");
+  if (document.status !== "passed")
+    problems.push("proof.status must be passed for finish-line proof");
+  if (typeof document.summary !== "string" || !document.summary.trim())
+    problems.push("proof.summary is required");
   if (!Array.isArray(document.commands) || document.commands.length === 0) {
     problems.push("proof.commands must contain at least one command result");
   } else {
@@ -510,42 +786,67 @@ function validateProofDocument(filePath) {
         problems.push(`proof.commands[${index}] must be an object`);
         return;
       }
-      if (typeof command.command !== "string" || !command.command.trim()) problems.push(`proof.commands[${index}].command is required`);
-      if (!Number.isInteger(command.exitCode)) problems.push(`proof.commands[${index}].exitCode must be an integer`);
-      if (!command.completedAt || Number.isNaN(Date.parse(command.completedAt))) problems.push(`proof.commands[${index}].completedAt must be an ISO timestamp`);
-      if (!command.stdoutTail && !command.stderrTail && !command.outputDigest) problems.push(`proof.commands[${index}] must include stdoutTail, stderrTail, or outputDigest`);
+      if (typeof command.command !== "string" || !command.command.trim())
+        problems.push(`proof.commands[${index}].command is required`);
+      if (!Number.isInteger(command.exitCode))
+        problems.push(`proof.commands[${index}].exitCode must be an integer`);
+      if (!command.completedAt || Number.isNaN(Date.parse(command.completedAt)))
+        problems.push(
+          `proof.commands[${index}].completedAt must be an ISO timestamp`,
+        );
+      if (!command.stdoutTail && !command.stderrTail && !command.outputDigest)
+        problems.push(
+          `proof.commands[${index}] must include stdoutTail, stderrTail, or outputDigest`,
+        );
     });
   }
-  if (Array.isArray(document.commands) && document.commands.some((command) => command?.exitCode !== 0)) {
+  if (
+    Array.isArray(document.commands) &&
+    document.commands.some((command) => command?.exitCode !== 0)
+  ) {
     problems.push("finish-line proof requires every command exitCode to be 0");
   }
   return {
     checked: true,
     valid: problems.length === 0,
     schema: document.schema,
-    commandCount: Array.isArray(document.commands) ? document.commands.length : 0,
+    commandCount: Array.isArray(document.commands)
+      ? document.commands.length
+      : 0,
     status: document.status,
     problems,
   };
 }
 
 function humanApprovalTokenProblems(run, event, humanToken) {
-  if (event.type !== "approval.granted" && event.type !== "approval.denied") return [];
+  if (event.type !== "approval.granted" && event.type !== "approval.denied")
+    return [];
   const envToken = process.env.UASH_HUMAN_APPROVAL_TOKEN;
   if (envToken) {
-    if (!humanToken) return ["human approval token is required for approval grant/deny events"];
-    if (!safeCompare(String(humanToken), String(envToken))) return ["human approval token did not match UASH_HUMAN_APPROVAL_TOKEN"];
+    if (!humanToken)
+      return [
+        "human approval token is required for approval grant/deny events",
+      ];
+    if (!safeCompare(String(humanToken), String(envToken)))
+      return ["human approval token did not match UASH_HUMAN_APPROVAL_TOKEN"];
     const runDigest = run.auth?.humanApprovalTokenSha256;
-    if (runDigest && !humanApprovalTokenMatches(envToken, runDigest)) return ["current operator token does not match the token sealed for this run"];
+    if (runDigest && !humanApprovalTokenMatches(envToken, runDigest))
+      return [
+        "current operator token does not match the token sealed for this run",
+      ];
     return [];
   }
-  return ["human approval token is required; create a new run with operator-held UASH_HUMAN_APPROVAL_TOKEN configured before approval or commissioning"];
+  return [
+    "human approval token is required; create a new run with operator-held UASH_HUMAN_APPROVAL_TOKEN configured before approval or commissioning",
+  ];
 }
 
 function requestBodyError(code) {
-  const error = new Error(code === "REQUEST_BODY_TOO_LARGE"
-    ? "request payload exceeds the configured byte limit"
-    : "request body is not valid JSON");
+  const error = new Error(
+    code === "REQUEST_BODY_TOO_LARGE"
+      ? "request payload exceeds the configured byte limit"
+      : "request body is not valid JSON",
+  );
   error.code = code;
   return error;
 }
@@ -600,9 +901,12 @@ async function readJson(req) {
       }
       chunks.push(buffer);
     };
-    const onEnd = () => settle(() => resolve(Buffer.concat(chunks).toString("utf8")));
-    const onAborted = () => settle(() => reject(requestBodyError("INVALID_JSON")));
-    const onError = () => settle(() => reject(requestBodyError("INVALID_JSON")));
+    const onEnd = () =>
+      settle(() => resolve(Buffer.concat(chunks).toString("utf8")));
+    const onAborted = () =>
+      settle(() => reject(requestBodyError("INVALID_JSON")));
+    const onError = () =>
+      settle(() => reject(requestBodyError("INVALID_JSON")));
     req.on("data", onData);
     req.on("end", onEnd);
     req.on("aborted", onAborted);
@@ -635,7 +939,10 @@ function sendPayloadTooLarge(req, res) {
 
 async function writeTextAtomically(file, text) {
   await mkdir(path.dirname(file), { recursive: true });
-  const temporary = path.join(path.dirname(file), `.${path.basename(file)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`);
+  const temporary = path.join(
+    path.dirname(file),
+    `.${path.basename(file)}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`,
+  );
   let handle;
   try {
     handle = await open(temporary, "wx");
@@ -654,7 +961,9 @@ async function writeTextAtomically(file, text) {
 async function readBoundedBridgeStateFile(file, maximumBytes, label) {
   const stats = statSync(file);
   if (!stats.isFile() || stats.size > maximumBytes) {
-    throw new Error(`${label} must be a regular file no larger than ${maximumBytes} bytes`);
+    throw new Error(
+      `${label} must be a regular file no larger than ${maximumBytes} bytes`,
+    );
   }
   return readFile(file, "utf8");
 }
@@ -670,43 +979,77 @@ function boundedBridgeStateText(document, maximumBytes, label) {
 async function readRun(runId) {
   const expectedRunId = canonicalRunId(runId);
   const file = path.join(runDir(runId), "run.json");
-  const raw = await readBoundedBridgeStateFile(file, MAX_RUN_SNAPSHOT_BYTES, "bridge run snapshot");
+  const raw = await readBoundedBridgeStateFile(
+    file,
+    MAX_RUN_SNAPSHOT_BYTES,
+    "bridge run snapshot",
+  );
   const verifiedSnapshot = verifiedRunSnapshotPayload(JSON.parse(raw));
   let run = verifiedSnapshot.run;
-  if (run.id !== expectedRunId) throw new Error("persisted run identity does not match its canonical storage key");
+  if (run.id !== expectedRunId)
+    throw new Error(
+      "persisted run identity does not match its canonical storage key",
+    );
   const configPath = path.join(runDir(runId), "run-config.json");
-  if (!existsSync(configPath)) throw new Error("immutable bridge run configuration is missing");
-  const persistedConfig = verifiedRunConfigPayload(JSON.parse(await readBoundedBridgeStateFile(configPath, MAX_RUN_CONFIG_BYTES, "bridge run configuration")));
+  if (!existsSync(configPath))
+    throw new Error("immutable bridge run configuration is missing");
+  const persistedConfig = verifiedRunConfigPayload(
+    JSON.parse(
+      await readBoundedBridgeStateFile(
+        configPath,
+        MAX_RUN_CONFIG_BYTES,
+        "bridge run configuration",
+      ),
+    ),
+  );
   const journalState = await readEventJournalState(runId);
   assertMonotonicObservedJournal(expectedRunId, journalState);
   const persistedEvents = journalState.events;
   const snapshotEvents = Array.isArray(run.events) ? run.events : [];
-  if (snapshotEvents.length > persistedEvents.length
-    || JSON.stringify(snapshotEvents) !== JSON.stringify(persistedEvents.slice(0, snapshotEvents.length))) {
-    throw new Error("persisted run snapshot is not a prefix of the authoritative bridge event journal");
+  if (
+    snapshotEvents.length > persistedEvents.length ||
+    JSON.stringify(snapshotEvents) !==
+      JSON.stringify(persistedEvents.slice(0, snapshotEvents.length))
+  ) {
+    throw new Error(
+      "persisted run snapshot is not a prefix of the authoritative bridge event journal",
+    );
   }
-  const expectedSnapshotHead = verifiedSnapshot.eventCount > 0
-    ? journalState.digests[verifiedSnapshot.eventCount - 1]
-    : null;
-  if (verifiedSnapshot.eventCount !== snapshotEvents.length
-    || verifiedSnapshot.journalHeadDigest !== expectedSnapshotHead) {
-    throw new Error("persisted run snapshot is not bound to its authenticated journal prefix");
+  const expectedSnapshotHead =
+    verifiedSnapshot.eventCount > 0
+      ? journalState.digests[verifiedSnapshot.eventCount - 1]
+      : null;
+  if (
+    verifiedSnapshot.eventCount !== snapshotEvents.length ||
+    verifiedSnapshot.journalHeadDigest !== expectedSnapshotHead
+  ) {
+    throw new Error(
+      "persisted run snapshot is not bound to its authenticated journal prefix",
+    );
   }
 
   const snapshotConfig = immutableRunConfig(run);
-  const configurationMatchesSnapshot = JSON.stringify(persistedConfig) === JSON.stringify(snapshotConfig);
+  const configurationMatchesSnapshot =
+    JSON.stringify(persistedConfig) === JSON.stringify(snapshotConfig);
   let snapshotRepairRequired = false;
   if (!configurationMatchesSnapshot) {
-    const persistedAddsArtifactRoot = !snapshotConfig.artifactRoot && Boolean(persistedConfig.artifactRoot);
-    const persistedAddsAdapter = !snapshotConfig.adapterPolicy && Boolean(persistedConfig.adapterPolicy);
-    const firstEventSealBase = snapshotEvents.length === 0
-      && !snapshotConfig.adapterPolicy
-      && !snapshotConfig.commissionedRuntime
-      && (persistedAddsArtifactRoot || persistedAddsAdapter);
-    const canRecoverPreEventSeal = firstEventSealBase && persistedEvents.length === 0;
-    const canRecoverJournaledFirstEventSeal = firstEventSealBase && persistedEvents.length > 0;
+    const persistedAddsArtifactRoot =
+      !snapshotConfig.artifactRoot && Boolean(persistedConfig.artifactRoot);
+    const persistedAddsAdapter =
+      !snapshotConfig.adapterPolicy && Boolean(persistedConfig.adapterPolicy);
+    const firstEventSealBase =
+      snapshotEvents.length === 0 &&
+      !snapshotConfig.adapterPolicy &&
+      !snapshotConfig.commissionedRuntime &&
+      (persistedAddsArtifactRoot || persistedAddsAdapter);
+    const canRecoverPreEventSeal =
+      firstEventSealBase && persistedEvents.length === 0;
+    const canRecoverJournaledFirstEventSeal =
+      firstEventSealBase && persistedEvents.length > 0;
     if (!canRecoverPreEventSeal && !canRecoverJournaledFirstEventSeal) {
-      throw new Error("persisted run configuration does not match the immutable bridge creation record");
+      throw new Error(
+        "persisted run configuration does not match the immutable bridge creation record",
+      );
     }
     const sealedBase = normalizeRun({
       ...run,
@@ -714,32 +1057,51 @@ async function readRun(runId) {
       adapterPath: persistedConfig.adapterPath || undefined,
       adapterPolicy: persistedConfig.adapterPolicy || undefined,
       commissionedRuntime: persistedConfig.commissionedRuntime || undefined,
-      artifacts: createBaseArtifacts(persistedConfig.adapterPolicy || undefined),
+      artifacts: createBaseArtifacts(
+        persistedConfig.adapterPolicy || undefined,
+      ),
     });
-    const recovered = canRecoverPreEventSeal ? sealedBase : replayJournalEvents(sealedBase, persistedEvents);
-    if (JSON.stringify(persistedConfig) !== JSON.stringify(immutableRunConfig(recovered))) {
-      throw new Error("persisted run configuration does not match a recoverable first-event commissioning seal");
+    const recovered = canRecoverPreEventSeal
+      ? sealedBase
+      : replayJournalEvents(sealedBase, persistedEvents);
+    if (
+      JSON.stringify(persistedConfig) !==
+      JSON.stringify(immutableRunConfig(recovered))
+    ) {
+      throw new Error(
+        "persisted run configuration does not match a recoverable first-event commissioning seal",
+      );
     }
     run = recovered;
     snapshotRepairRequired = true;
   } else if (snapshotEvents.length < persistedEvents.length) {
-    run = replayJournalEvents(run, persistedEvents.slice(snapshotEvents.length));
+    run = replayJournalEvents(
+      run,
+      persistedEvents.slice(snapshotEvents.length),
+    );
     snapshotRepairRequired = true;
   }
   run = validateRunRuntimeTrust(run);
   run = validatePersistedRunState(run, persistedEvents);
   if (run.status === "complete") {
-    const validationFingerprint = completedRunValidationFingerprint(run, journalState);
+    const validationFingerprint = completedRunValidationFingerprint(
+      run,
+      journalState,
+    );
     if (COMPLETED_RUN_VALIDATIONS.get(run.id) !== validationFingerprint) {
       COMPLETED_RUN_VALIDATION_METRICS.executions += 1;
       const problems = finishLineProblems(run);
       if (problems.length) {
         COMPLETED_RUN_VALIDATIONS.delete(run.id);
-        throw new Error(`completed run failed trust revalidation: ${problems.join("; ")}`);
+        throw new Error(
+          `completed run failed trust revalidation: ${problems.join("; ")}`,
+        );
       }
       COMPLETED_RUN_VALIDATIONS.set(run.id, validationFingerprint);
       while (COMPLETED_RUN_VALIDATIONS.size > MAX_COMPLETED_RUN_VALIDATIONS) {
-        COMPLETED_RUN_VALIDATIONS.delete(COMPLETED_RUN_VALIDATIONS.keys().next().value);
+        COMPLETED_RUN_VALIDATIONS.delete(
+          COMPLETED_RUN_VALIDATIONS.keys().next().value,
+        );
       }
     } else {
       COMPLETED_RUN_VALIDATION_METRICS.cacheHits += 1;
@@ -793,46 +1155,92 @@ function sealJournalEvent(runId, event, previousDigest) {
 }
 
 function sealedArtifactVerificationProblems(event) {
-  const requiresSealedVerification = event.type === "artifact.written" || (event.type === "approval.granted" && Boolean(event.artifact));
+  const requiresSealedVerification =
+    event.type === "artifact.written" ||
+    (event.type === "approval.granted" && Boolean(event.artifact));
   if (!requiresSealedVerification) return [];
   const verification = event.artifactVerification;
   const problems = [];
-  if (!verification || typeof verification !== "object" || Array.isArray(verification)) {
-    return [`${event.type} journal records with artifacts require a bridge-sealed artifactVerification`];
+  if (
+    !verification ||
+    typeof verification !== "object" ||
+    Array.isArray(verification)
+  ) {
+    return [
+      `${event.type} journal records with artifacts require a bridge-sealed artifactVerification`,
+    ];
   }
-  if (verification.checked !== true || verification.exists !== true) problems.push("sealed artifact verification must be a successful file check");
-  if (typeof verification.path !== "string" || typeof verification.realPath !== "string") problems.push("sealed artifact verification must bind resolved paths");
-  if (!Number.isFinite(verification.size) || verification.size < 0) problems.push("sealed artifact verification must bind file size");
-  if (!Number.isFinite(verification.mtimeMs) || verification.mtimeMs < 0) problems.push("sealed artifact verification must bind file modification time");
-  if (!/^[a-f0-9]{64}$/.test(verification.sha256 || "")) problems.push("sealed artifact verification must bind a SHA-256 content digest");
+  if (verification.checked !== true || verification.exists !== true)
+    problems.push(
+      "sealed artifact verification must be a successful file check",
+    );
+  if (
+    typeof verification.path !== "string" ||
+    typeof verification.realPath !== "string"
+  )
+    problems.push("sealed artifact verification must bind resolved paths");
+  if (!Number.isFinite(verification.size) || verification.size < 0)
+    problems.push("sealed artifact verification must bind file size");
+  if (!Number.isFinite(verification.mtimeMs) || verification.mtimeMs < 0)
+    problems.push(
+      "sealed artifact verification must bind file modification time",
+    );
+  if (!/^[a-f0-9]{64}$/.test(verification.sha256 || ""))
+    problems.push(
+      "sealed artifact verification must bind a SHA-256 content digest",
+    );
   return problems;
 }
 
 function verifiedJournalRecord(runId, record, previousDigest) {
-  if (!record || typeof record !== "object" || Array.isArray(record)
-    || record.schema !== EVENT_JOURNAL_SCHEMA
-    || !record.event || typeof record.event !== "object" || Array.isArray(record.event)) {
-    throw new Error("bridge event journal contains an invalid or unauthenticated record");
+  if (
+    !record ||
+    typeof record !== "object" ||
+    Array.isArray(record) ||
+    record.schema !== EVENT_JOURNAL_SCHEMA ||
+    !record.event ||
+    typeof record.event !== "object" ||
+    Array.isArray(record.event)
+  ) {
+    throw new Error(
+      "bridge event journal contains an invalid or unauthenticated record",
+    );
   }
   if ((record.integrity?.previousDigest || null) !== (previousDigest || null)) {
     throw new Error("bridge event journal digest chain is discontinuous");
   }
   const key = requiredRunIntegrityKey();
   const requiredScheme = "hmac-sha256-chain";
-  const supplied = typeof record.integrity?.digest === "string" && /^[a-f0-9]{64}$/i.test(record.integrity.digest)
-    ? Buffer.from(record.integrity.digest, "hex")
-    : null;
-  const expected = Buffer.from(journalRecordDigest(runId, record.event, previousDigest, key), "hex");
-  if (record.integrity?.scheme !== requiredScheme
-    || !supplied
-    || supplied.length !== expected.length
-    || !timingSafeEqual(supplied, expected)) {
+  const supplied =
+    typeof record.integrity?.digest === "string" &&
+    /^[a-f0-9]{64}$/i.test(record.integrity.digest)
+      ? Buffer.from(record.integrity.digest, "hex")
+      : null;
+  const expected = Buffer.from(
+    journalRecordDigest(runId, record.event, previousDigest, key),
+    "hex",
+  );
+  if (
+    record.integrity?.scheme !== requiredScheme ||
+    !supplied ||
+    supplied.length !== expected.length ||
+    !timingSafeEqual(supplied, expected)
+  ) {
     throw new Error("bridge event journal integrity verification failed");
   }
   const contractProblems = eventContractProblems(record.event);
-  const sealedVerificationProblems = sealedArtifactVerificationProblems(record.event);
-  if (typeof record.event.id !== "string" || !record.event.id || contractProblems.length || sealedVerificationProblems.length) {
-    throw new Error(`bridge event journal contains an invalid event: ${[...(record.event.id ? [] : ["event.id is required"]), ...contractProblems, ...sealedVerificationProblems].join("; ")}`);
+  const sealedVerificationProblems = sealedArtifactVerificationProblems(
+    record.event,
+  );
+  if (
+    typeof record.event.id !== "string" ||
+    !record.event.id ||
+    contractProblems.length ||
+    sealedVerificationProblems.length
+  ) {
+    throw new Error(
+      `bridge event journal contains an invalid event: ${[...(record.event.id ? [] : ["event.id is required"]), ...contractProblems, ...sealedVerificationProblems].join("; ")}`,
+    );
   }
   return { event: record.event, digest: record.integrity.digest };
 }
@@ -840,10 +1248,13 @@ function verifiedJournalRecord(runId, record, previousDigest) {
 async function readEventJournalState(runId) {
   const canonicalId = canonicalRunId(runId);
   const eventLogPath = path.join(runDir(runId), "events.jsonl");
-  if (!existsSync(eventLogPath)) return { events: [], digests: [], lastDigest: null };
+  if (!existsSync(eventLogPath))
+    return { events: [], digests: [], lastDigest: null };
   const journalBytes = statSync(eventLogPath).size;
   if (journalBytes > MAX_EVENT_JOURNAL_BYTES) {
-    throw new Error(`bridge event journal exceeds the ${MAX_EVENT_JOURNAL_BYTES}-byte safety limit`);
+    throw new Error(
+      `bridge event journal exceeds the ${MAX_EVENT_JOURNAL_BYTES}-byte safety limit`,
+    );
   }
   let raw = await readFile(eventLogPath, "utf8");
   if (raw && !raw.endsWith("\n")) {
@@ -857,13 +1268,24 @@ async function readEventJournalState(runId) {
   let previousDigest = null;
   for (const line of raw.split(/\r?\n/).filter(Boolean)) {
     if (events.length >= MAX_EVENTS_PER_RUN) {
-      throw new Error(`bridge event journal exceeds the ${MAX_EVENTS_PER_RUN}-event safety limit`);
+      throw new Error(
+        `bridge event journal exceeds the ${MAX_EVENTS_PER_RUN}-event safety limit`,
+      );
     }
     if (Buffer.byteLength(line, "utf8") > MAX_EVENT_DOCUMENT_BYTES + 1024) {
-      throw new Error("bridge event journal record exceeds the per-event safety limit");
+      throw new Error(
+        "bridge event journal record exceeds the per-event safety limit",
+      );
     }
-    const verified = verifiedJournalRecord(canonicalId, JSON.parse(line), previousDigest);
-    if (eventIds.has(verified.event.id)) throw new Error(`bridge event journal contains duplicate event id: ${verified.event.id}`);
+    const verified = verifiedJournalRecord(
+      canonicalId,
+      JSON.parse(line),
+      previousDigest,
+    );
+    if (eventIds.has(verified.event.id))
+      throw new Error(
+        `bridge event journal contains duplicate event id: ${verified.event.id}`,
+      );
     eventIds.add(verified.event.id);
     events.push(verified.event);
     digests.push(verified.digest);
@@ -885,67 +1307,148 @@ async function writeRun(run) {
   const eventLogPath = path.join(dir, "events.jsonl");
   if (existsSync(configPath) && !existsSync(runPath)) {
     const journalSource = existsSync(eventLogPath)
-      ? await readBoundedBridgeStateFile(eventLogPath, MAX_EVENT_JOURNAL_BYTES, "bridge event journal")
+      ? await readBoundedBridgeStateFile(
+          eventLogPath,
+          MAX_EVENT_JOURNAL_BYTES,
+          "bridge event journal",
+        )
       : "";
     if (!journalSource.trim()) {
-      const orphanedConfig = verifiedRunConfigPayload(JSON.parse(await readBoundedBridgeStateFile(configPath, MAX_RUN_CONFIG_BYTES, "bridge run configuration")));
-      if (orphanedConfig.runId !== run.id) throw new Error("orphaned bridge run configuration belongs to a different run");
-      run = validateRunRuntimeTrust(normalizeRun({
-        ...run,
-        contractVersion: orphanedConfig.contractVersion,
-        createdAt: orphanedConfig.createdAt,
-        artifactRoot: orphanedConfig.artifactRoot || undefined,
-        adapterPath: orphanedConfig.adapterPath || undefined,
-        adapterPolicy: orphanedConfig.adapterPolicy || undefined,
-        commissionedRuntime: orphanedConfig.commissionedRuntime || undefined,
-        reviewTrustSha256: orphanedConfig.reviewTrustSha256,
-        artifacts: createBaseArtifacts(orphanedConfig.adapterPolicy || undefined),
-        events: [],
-      }));
-      if (JSON.stringify(immutableRunConfig(run)) !== JSON.stringify(orphanedConfig)) {
-        throw new Error("orphaned bridge run configuration could not be reconstructed exactly");
+      const orphanedConfig = verifiedRunConfigPayload(
+        JSON.parse(
+          await readBoundedBridgeStateFile(
+            configPath,
+            MAX_RUN_CONFIG_BYTES,
+            "bridge run configuration",
+          ),
+        ),
+      );
+      if (orphanedConfig.runId !== run.id)
+        throw new Error(
+          "orphaned bridge run configuration belongs to a different run",
+        );
+      run = validateRunRuntimeTrust(
+        normalizeRun({
+          ...run,
+          contractVersion: orphanedConfig.contractVersion,
+          createdAt: orphanedConfig.createdAt,
+          artifactRoot: orphanedConfig.artifactRoot || undefined,
+          adapterPath: orphanedConfig.adapterPath || undefined,
+          adapterPolicy: orphanedConfig.adapterPolicy || undefined,
+          commissionedRuntime: orphanedConfig.commissionedRuntime || undefined,
+          reviewTrustSha256: orphanedConfig.reviewTrustSha256,
+          artifacts: createBaseArtifacts(
+            orphanedConfig.adapterPolicy || undefined,
+          ),
+          events: [],
+        }),
+      );
+      if (
+        JSON.stringify(immutableRunConfig(run)) !==
+        JSON.stringify(orphanedConfig)
+      ) {
+        throw new Error(
+          "orphaned bridge run configuration could not be reconstructed exactly",
+        );
       }
     }
   }
   const config = immutableRunConfig(run);
   if (existsSync(configPath)) {
-    const persisted = verifiedRunConfigPayload(JSON.parse(await readBoundedBridgeStateFile(configPath, MAX_RUN_CONFIG_BYTES, "bridge run configuration")));
+    const persisted = verifiedRunConfigPayload(
+      JSON.parse(
+        await readBoundedBridgeStateFile(
+          configPath,
+          MAX_RUN_CONFIG_BYTES,
+          "bridge run configuration",
+        ),
+      ),
+    );
     if (JSON.stringify(persisted) !== JSON.stringify(config)) {
       const priorRun = existsSync(runPath)
-        ? verifiedRunSnapshotPayload(JSON.parse(await readBoundedBridgeStateFile(runPath, MAX_RUN_SNAPSHOT_BYTES, "bridge run snapshot"))).run
+        ? verifiedRunSnapshotPayload(
+            JSON.parse(
+              await readBoundedBridgeStateFile(
+                runPath,
+                MAX_RUN_SNAPSHOT_BYTES,
+                "bridge run snapshot",
+              ),
+            ),
+          ).run
         : null;
-      const addsFirstArtifactRoot = !persisted.artifactRoot && Boolean(config.artifactRoot);
-      const addsFirstAdapter = !persisted.adapterPolicy && Boolean(config.adapterPolicy);
-      const safeFirstEventSeal = priorRun
-        && JSON.stringify(persisted) === JSON.stringify(immutableRunConfig(priorRun))
-        && !persisted.adapterPolicy
-        && !persisted.commissionedRuntime
-        && (addsFirstArtifactRoot || addsFirstAdapter)
-        && (!persisted.artifactRoot || persisted.artifactRoot === config.artifactRoot)
-        && Array.isArray(priorRun.events) && priorRun.events.length === 0
-        && Array.isArray(run.events) && run.events.length <= 1
-        && priorRun.status === "running"
-        && priorRun.id === run.id
-        && priorRun.createdAt === run.createdAt;
-      if (!safeFirstEventSeal) throw new Error("immutable bridge run configuration cannot change after creation");
-      await writeTextAtomically(configPath, boundedBridgeStateText(sealRunConfigPayload(config), MAX_RUN_CONFIG_BYTES, "bridge run configuration"));
+      const addsFirstArtifactRoot =
+        !persisted.artifactRoot && Boolean(config.artifactRoot);
+      const addsFirstAdapter =
+        !persisted.adapterPolicy && Boolean(config.adapterPolicy);
+      const safeFirstEventSeal =
+        priorRun &&
+        JSON.stringify(persisted) ===
+          JSON.stringify(immutableRunConfig(priorRun)) &&
+        !persisted.adapterPolicy &&
+        !persisted.commissionedRuntime &&
+        (addsFirstArtifactRoot || addsFirstAdapter) &&
+        (!persisted.artifactRoot ||
+          persisted.artifactRoot === config.artifactRoot) &&
+        Array.isArray(priorRun.events) &&
+        priorRun.events.length === 0 &&
+        Array.isArray(run.events) &&
+        run.events.length <= 1 &&
+        priorRun.status === "running" &&
+        priorRun.id === run.id &&
+        priorRun.createdAt === run.createdAt;
+      if (!safeFirstEventSeal)
+        throw new Error(
+          "immutable bridge run configuration cannot change after creation",
+        );
+      await writeTextAtomically(
+        configPath,
+        boundedBridgeStateText(
+          sealRunConfigPayload(config),
+          MAX_RUN_CONFIG_BYTES,
+          "bridge run configuration",
+        ),
+      );
     }
   } else {
-    await writeTextAtomically(configPath, boundedBridgeStateText(sealRunConfigPayload(config), MAX_RUN_CONFIG_BYTES, "bridge run configuration"));
+    await writeTextAtomically(
+      configPath,
+      boundedBridgeStateText(
+        sealRunConfigPayload(config),
+        MAX_RUN_CONFIG_BYTES,
+        "bridge run configuration",
+      ),
+    );
   }
   const journalState = await readEventJournalState(run.id);
   assertMonotonicObservedJournal(run.id, journalState);
-  if (JSON.stringify(normalizeRun(run).events || []) !== JSON.stringify(journalState.events)) {
-    throw new Error("refusing to persist a run snapshot that does not match the authenticated event journal");
+  if (
+    JSON.stringify(normalizeRun(run).events || []) !==
+    JSON.stringify(journalState.events)
+  ) {
+    throw new Error(
+      "refusing to persist a run snapshot that does not match the authenticated event journal",
+    );
   }
-  await writeTextAtomically(runPath, boundedBridgeStateText(sealRunSnapshotPayload(run, journalState), MAX_RUN_SNAPSHOT_BYTES, "bridge run snapshot"));
+  await writeTextAtomically(
+    runPath,
+    boundedBridgeStateText(
+      sealRunSnapshotPayload(run, journalState),
+      MAX_RUN_SNAPSHOT_BYTES,
+      "bridge run snapshot",
+    ),
+  );
   return normalizeRun(run);
 }
 
 function normalizeApprovalRecords(approvals = []) {
   return approvals.map((approval) => {
     if (typeof approval === "string") {
-      return { scope: approval, status: "granted", owner: "unknown", migratedFromLegacy: true };
+      return {
+        scope: approval,
+        status: "granted",
+        owner: "unknown",
+        migratedFromLegacy: true,
+      };
     }
     return approval;
   });
@@ -961,7 +1464,10 @@ function normalizeRun(run) {
     reviewTrustSha256: run.reviewTrustSha256,
     auth: run.auth,
     approvals: normalizeApprovalRecords(run.approvals || []),
-    artifacts: Array.isArray(run.artifacts) && run.artifacts.length ? run.artifacts : createBaseArtifacts(adapterPolicy),
+    artifacts:
+      Array.isArray(run.artifacts) && run.artifacts.length
+        ? run.artifacts
+        : createBaseArtifacts(adapterPolicy),
     events: Array.isArray(run.events) ? run.events : [],
   };
 }
@@ -972,7 +1478,9 @@ function immutableRunConfig(run) {
     contractVersion: run.contractVersion,
     runId: run.id,
     createdAt: run.createdAt,
-    artifactRoot: run.artifactRoot ? path.resolve(String(run.artifactRoot)) : null,
+    artifactRoot: run.artifactRoot
+      ? path.resolve(String(run.artifactRoot))
+      : null,
     adapterPath: run.adapterPath ? path.resolve(String(run.adapterPath)) : null,
     adapterPolicy: run.adapterPolicy || null,
     commissionedRuntime: run.commissionedRuntime || null,
@@ -987,22 +1495,40 @@ function runIntegrityKey() {
 
 function requiredRunIntegrityKey() {
   const key = runIntegrityKey();
-  if (!key) throw new Error("UASH_BRIDGE_INTEGRITY_KEY is required for bridge run integrity");
-  if (Buffer.byteLength(key, "utf8") < MINIMUM_BRIDGE_CREDENTIAL_BYTES) throw new Error(`UASH_BRIDGE_INTEGRITY_KEY must contain at least ${MINIMUM_BRIDGE_CREDENTIAL_BYTES} bytes of secret material`);
+  if (!key)
+    throw new Error(
+      "UASH_BRIDGE_INTEGRITY_KEY is required for bridge run integrity",
+    );
+  if (Buffer.byteLength(key, "utf8") < MINIMUM_BRIDGE_CREDENTIAL_BYTES)
+    throw new Error(
+      `UASH_BRIDGE_INTEGRITY_KEY must contain at least ${MINIMUM_BRIDGE_CREDENTIAL_BYTES} bytes of secret material`,
+    );
   return key;
 }
 
 function requiredBridgeAccessToken() {
   const value = process.env.UASH_BRIDGE_ACCESS_TOKEN;
-  if (typeof value !== "string" || value.length === 0) throw new Error("UASH_BRIDGE_ACCESS_TOKEN is required for bridge run API access");
-  if (Buffer.byteLength(value, "utf8") < MINIMUM_BRIDGE_CREDENTIAL_BYTES) throw new Error(`UASH_BRIDGE_ACCESS_TOKEN must contain at least ${MINIMUM_BRIDGE_CREDENTIAL_BYTES} bytes of secret material`);
+  if (typeof value !== "string" || value.length === 0)
+    throw new Error(
+      "UASH_BRIDGE_ACCESS_TOKEN is required for bridge run API access",
+    );
+  if (Buffer.byteLength(value, "utf8") < MINIMUM_BRIDGE_CREDENTIAL_BYTES)
+    throw new Error(
+      `UASH_BRIDGE_ACCESS_TOKEN must contain at least ${MINIMUM_BRIDGE_CREDENTIAL_BYTES} bytes of secret material`,
+    );
   return value;
 }
 
 function requiredHumanApprovalToken() {
   const value = process.env.UASH_HUMAN_APPROVAL_TOKEN;
-  if (typeof value !== "string" || value.length === 0) throw new Error("UASH_HUMAN_APPROVAL_TOKEN is required for human approvals");
-  if (Buffer.byteLength(value, "utf8") < MINIMUM_BRIDGE_CREDENTIAL_BYTES) throw new Error(`UASH_HUMAN_APPROVAL_TOKEN must contain at least ${MINIMUM_BRIDGE_CREDENTIAL_BYTES} bytes of secret material`);
+  if (typeof value !== "string" || value.length === 0)
+    throw new Error(
+      "UASH_HUMAN_APPROVAL_TOKEN is required for human approvals",
+    );
+  if (Buffer.byteLength(value, "utf8") < MINIMUM_BRIDGE_CREDENTIAL_BYTES)
+    throw new Error(
+      `UASH_HUMAN_APPROVAL_TOKEN must contain at least ${MINIMUM_BRIDGE_CREDENTIAL_BYTES} bytes of secret material`,
+    );
   return value;
 }
 
@@ -1034,19 +1560,27 @@ function sealRunConfigPayload(payload) {
 
 function verifiedRunConfigPayload(document) {
   if (!document || typeof document !== "object" || Array.isArray(document)) {
-    throw new Error("persisted run configuration integrity document is invalid");
+    throw new Error(
+      "persisted run configuration integrity document is invalid",
+    );
   }
   const { integrity, ...payload } = document;
   const key = requiredRunIntegrityKey();
-  const supplied = typeof integrity?.digest === "string" && /^[a-f0-9]{64}$/i.test(integrity.digest)
-    ? Buffer.from(integrity.digest, "hex")
-    : null;
+  const supplied =
+    typeof integrity?.digest === "string" &&
+    /^[a-f0-9]{64}$/i.test(integrity.digest)
+      ? Buffer.from(integrity.digest, "hex")
+      : null;
   const expected = Buffer.from(runConfigHmac(payload, key), "hex");
-  if (integrity?.scheme !== "hmac-sha256"
-    || !supplied
-    || supplied.length !== expected.length
-    || !timingSafeEqual(supplied, expected)) {
-    throw new Error("persisted run configuration integrity verification failed");
+  if (
+    integrity?.scheme !== "hmac-sha256" ||
+    !supplied ||
+    supplied.length !== expected.length ||
+    !timingSafeEqual(supplied, expected)
+  ) {
+    throw new Error(
+      "persisted run configuration integrity verification failed",
+    );
   }
   return payload;
 }
@@ -1091,18 +1625,24 @@ function verifiedRunSnapshotPayload(document) {
     eventCount: snapshotIntegrity?.eventCount,
     journalHeadDigest: snapshotIntegrity?.journalHeadDigest ?? null,
   };
-  const supplied = typeof snapshotIntegrity?.digest === "string" && /^[a-f0-9]{64}$/i.test(snapshotIntegrity.digest)
-    ? Buffer.from(snapshotIntegrity.digest, "hex")
-    : null;
+  const supplied =
+    typeof snapshotIntegrity?.digest === "string" &&
+    /^[a-f0-9]{64}$/i.test(snapshotIntegrity.digest)
+      ? Buffer.from(snapshotIntegrity.digest, "hex")
+      : null;
   const expected = Buffer.from(runSnapshotDigest(payload, binding, key), "hex");
   const requiredScheme = "hmac-sha256";
-  if (snapshotIntegrity?.schema !== RUN_SNAPSHOT_SCHEMA
-    || snapshotIntegrity?.scheme !== requiredScheme
-    || !Number.isInteger(binding.eventCount) || binding.eventCount < 0
-    || (binding.journalHeadDigest !== null && !/^[a-f0-9]{64}$/i.test(binding.journalHeadDigest))
-    || !supplied
-    || supplied.length !== expected.length
-    || !timingSafeEqual(supplied, expected)) {
+  if (
+    snapshotIntegrity?.schema !== RUN_SNAPSHOT_SCHEMA ||
+    snapshotIntegrity?.scheme !== requiredScheme ||
+    !Number.isInteger(binding.eventCount) ||
+    binding.eventCount < 0 ||
+    (binding.journalHeadDigest !== null &&
+      !/^[a-f0-9]{64}$/i.test(binding.journalHeadDigest)) ||
+    !supplied ||
+    supplied.length !== expected.length ||
+    !timingSafeEqual(supplied, expected)
+  ) {
     throw new Error("persisted run snapshot integrity verification failed");
   }
   return {
@@ -1116,8 +1656,16 @@ function derivedPersistedStatus(run) {
   const events = Array.isArray(run.events) ? run.events : [];
   const last = events.at(-1);
   if (!last) return "running";
-  if (last.type === "approval.requested" || last.status === "needs_approval") return "approval";
-  if (last.type === "approval.denied" || last.type === "run.blocked" || last.type === "node.failed" || last.status === "blocked" || last.status === "failed") return "blocked";
+  if (last.type === "approval.requested" || last.status === "needs_approval")
+    return "approval";
+  if (
+    last.type === "approval.denied" ||
+    last.type === "run.blocked" ||
+    last.type === "node.failed" ||
+    last.status === "blocked" ||
+    last.status === "failed"
+  )
+    return "blocked";
   if (last.type === "run.completed") return "complete";
   if (unresolvedApprovalProblems(run).length) return "approval";
   return "running";
@@ -1125,11 +1673,15 @@ function derivedPersistedStatus(run) {
 
 function validatePersistedRunState(run, persistedEvents) {
   if (JSON.stringify(run.events || []) !== JSON.stringify(persistedEvents)) {
-    throw new Error("persisted run events do not match the append-only bridge event log");
+    throw new Error(
+      "persisted run events do not match the append-only bridge event log",
+    );
   }
   const derivedStatus = derivedPersistedStatus(run);
   if (run.status !== derivedStatus) {
-    throw new Error(`persisted run status does not match bridge events: expected ${derivedStatus}`);
+    throw new Error(
+      `persisted run status does not match bridge events: expected ${derivedStatus}`,
+    );
   }
   return run;
 }
@@ -1146,9 +1698,15 @@ function publicRunWithoutEventHistory(run) {
   const approvals = Array.isArray(safeRun.approvals) ? safeRun.approvals : [];
   const returnedApprovals = [];
   let approvalBytes = 2;
-  for (let index = approvals.length - 1; index >= 0 && returnedApprovals.length < MAX_PUBLIC_APPROVALS; index -= 1) {
+  for (
+    let index = approvals.length - 1;
+    index >= 0 && returnedApprovals.length < MAX_PUBLIC_APPROVALS;
+    index -= 1
+  ) {
     const serialized = JSON.stringify(approvals[index]);
-    const entryBytes = Buffer.byteLength(serialized, "utf8") + (returnedApprovals.length > 0 ? 1 : 0);
+    const entryBytes =
+      Buffer.byteLength(serialized, "utf8") +
+      (returnedApprovals.length > 0 ? 1 : 0);
     if (approvalBytes + entryBytes > MAX_PUBLIC_APPROVAL_BYTES) break;
     returnedApprovals.unshift(approvals[index]);
     approvalBytes += entryBytes;
@@ -1164,7 +1722,10 @@ function publicRunWithoutEventHistory(run) {
   };
 }
 
-function publicRunEventPage(run, { eventCursor = null, eventLimit = DEFAULT_EVENT_PAGE_LIMIT } = {}) {
+function publicRunEventPage(
+  run,
+  { eventCursor = null, eventLimit = DEFAULT_EVENT_PAGE_LIMIT } = {},
+) {
   const safeRun = publicRun(run);
   const events = Array.isArray(safeRun.events) ? safeRun.events : [];
   const base = publicRunWithoutEventHistory(safeRun);
@@ -1174,14 +1735,16 @@ function publicRunEventPage(run, { eventCursor = null, eventLimit = DEFAULT_EVEN
     : Math.max(0, events.length - eventLimit);
   const requestedEnd = Math.min(events.length, requestedOffset + eventLimit);
   const reserveBytes = 8 * 1024;
-  let responseBytes = Buffer.byteLength(JSON.stringify(base), "utf8") + reserveBytes;
+  let responseBytes =
+    Buffer.byteLength(JSON.stringify(base), "utf8") + reserveBytes;
   const returnedEvents = [];
   let actualOffset = requestedOffset;
   let byteLimited = false;
 
   if (explicitCursor) {
     for (let index = requestedOffset; index < requestedEnd; index += 1) {
-      const eventBytes = Buffer.byteLength(JSON.stringify(events[index]), "utf8") + 1;
+      const eventBytes =
+        Buffer.byteLength(JSON.stringify(events[index]), "utf8") + 1;
       if (responseBytes + eventBytes > MAX_RESPONSE_BODY_BYTES) {
         byteLimited = true;
         break;
@@ -1191,7 +1754,8 @@ function publicRunEventPage(run, { eventCursor = null, eventLimit = DEFAULT_EVEN
     }
   } else {
     for (let index = requestedEnd - 1; index >= requestedOffset; index -= 1) {
-      const eventBytes = Buffer.byteLength(JSON.stringify(events[index]), "utf8") + 1;
+      const eventBytes =
+        Buffer.byteLength(JSON.stringify(events[index]), "utf8") + 1;
       if (responseBytes + eventBytes > MAX_RESPONSE_BODY_BYTES) {
         byteLimited = true;
         break;
@@ -1209,7 +1773,8 @@ function publicRunEventPage(run, { eventCursor = null, eventLimit = DEFAULT_EVEN
     limit: eventLimit,
     returned,
     total: events.length,
-    previousCursor: actualOffset > 0 ? String(Math.max(0, actualOffset - eventLimit)) : null,
+    previousCursor:
+      actualOffset > 0 ? String(Math.max(0, actualOffset - eventLimit)) : null,
     nextCursor: nextOffset < events.length ? String(nextOffset) : null,
     truncated: returned < events.length,
     byteLimited,
@@ -1227,7 +1792,10 @@ function publicRunEventPage(run, { eventCursor = null, eventLimit = DEFAULT_EVEN
 
 function createMinimalRun(runId, event = {}, options = {}) {
   const now = nowIso();
-  const adapterConfig = loadAdapterPolicy(event.adapterPath, event.artifactRoot);
+  const adapterConfig = loadAdapterPolicy(
+    event.adapterPath,
+    event.artifactRoot,
+  );
   return normalizeRun({
     id: runId,
     title: event.title || `Claude Code run ${runId}`,
@@ -1235,7 +1803,10 @@ function createMinimalRun(runId, event = {}, options = {}) {
     repo: event.repo || "local/claude-code",
     branch: event.branch || "unknown",
     lane: event.lane || "agent-runtime",
-    agent: event.actor === "codex" || event.actor === "hermes" ? event.actor : "claude-code",
+    agent:
+      event.actor === "codex" || event.actor === "hermes"
+        ? event.actor
+        : "claude-code",
     status: "running",
     risk: "medium",
     mode: event.runMode || event.mode || "live",
@@ -1286,7 +1857,10 @@ function normalizeEvent(runId, event) {
   const nodeId = event.nodeId || event.node;
   const ts = event.ts || nowIso();
   return {
-    id: event.id === undefined ? `${runId}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}` : event.id,
+    id:
+      event.id === undefined
+        ? `${runId}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
+        : event.id,
     type: event.type,
     ts,
     at: event.at || ts,
@@ -1311,46 +1885,82 @@ function normalizeEvent(runId, event) {
 
 function eventContractProblems(event) {
   const problems = [];
-  if (Buffer.byteLength(JSON.stringify(event), "utf8") > MAX_EVENT_DOCUMENT_BYTES) {
-    problems.push(`event document must be ${MAX_EVENT_DOCUMENT_BYTES} bytes or fewer`);
+  if (
+    Buffer.byteLength(JSON.stringify(event), "utf8") > MAX_EVENT_DOCUMENT_BYTES
+  ) {
+    problems.push(
+      `event document must be ${MAX_EVENT_DOCUMENT_BYTES} bytes or fewer`,
+    );
   }
-  if (typeof event.id !== "string" || event.id.length === 0) problems.push("event.id must be a non-empty string when supplied or generated");
-  else if (event.id.length > 512) problems.push("event.id must be 512 characters or fewer");
+  if (typeof event.id !== "string" || event.id.length === 0)
+    problems.push(
+      "event.id must be a non-empty string when supplied or generated",
+    );
+  else if (event.id.length > 512)
+    problems.push("event.id must be 512 characters or fewer");
   if (!event.type) problems.push("event.type is required");
-  else if (!EVENT_TYPES.has(event.type)) problems.push(`unknown event.type: ${event.type}`);
+  else if (!EVENT_TYPES.has(event.type))
+    problems.push(`unknown event.type: ${event.type}`);
 
   if (!event.actor) problems.push("event.actor is required");
-  else if (!ACTORS.has(event.actor)) problems.push(`unknown event.actor: ${event.actor}`);
+  else if (!ACTORS.has(event.actor))
+    problems.push(`unknown event.actor: ${event.actor}`);
 
   if (!event.message) problems.push("event.message is required");
 
   if (!event.status) problems.push("event.status is required");
-  else if (!STATUSES.has(event.status)) problems.push(`unknown event.status: ${event.status}`);
+  else if (!STATUSES.has(event.status))
+    problems.push(`unknown event.status: ${event.status}`);
 
   if (!event.runMode) problems.push("event.runMode is required");
-  else if (!RUN_MODES.has(event.runMode)) problems.push(`unknown event.runMode: ${event.runMode}`);
+  else if (!RUN_MODES.has(event.runMode))
+    problems.push(`unknown event.runMode: ${event.runMode}`);
 
   if (!event.eventSource) problems.push("event.eventSource is required");
-  else if (!EVENT_SOURCES.has(event.eventSource)) problems.push(`unknown event.eventSource: ${event.eventSource}`);
+  else if (!EVENT_SOURCES.has(event.eventSource))
+    problems.push(`unknown event.eventSource: ${event.eventSource}`);
 
   if (!event.nodeId) problems.push("event.nodeId is required");
-  else if (!NODE_IDS.has(event.nodeId)) problems.push(`unknown event.nodeId: ${event.nodeId}`);
+  else if (!NODE_IDS.has(event.nodeId))
+    problems.push(`unknown event.nodeId: ${event.nodeId}`);
 
-  if ((event.type === "node.skipped" || event.status === "skipped") && !event.skipReason) {
+  if (
+    (event.type === "node.skipped" || event.status === "skipped") &&
+    !event.skipReason
+  ) {
     problems.push("node.skipped events must include skipReason");
   }
   if (event.type === "node.failed" || event.status === "failed") {
-    if (!event.failureReason) problems.push("node.failed events must include failureReason");
-    if (!event.recoveryPath) problems.push("node.failed events must include recoveryPath");
+    if (!event.failureReason)
+      problems.push("node.failed events must include failureReason");
+    if (!event.recoveryPath)
+      problems.push("node.failed events must include recoveryPath");
   }
-  if (["approval.requested", "approval.granted", "approval.denied"].includes(event.type) || event.status === "needs_approval") {
-    if (!event.approvalOwner) problems.push("approval events must include approvalOwner");
-    if (!event.approvalScope) problems.push("approval events must include approvalScope");
+  if (
+    ["approval.requested", "approval.granted", "approval.denied"].includes(
+      event.type,
+    ) ||
+    event.status === "needs_approval"
+  ) {
+    if (!event.approvalOwner)
+      problems.push("approval events must include approvalOwner");
+    if (!event.approvalScope)
+      problems.push("approval events must include approvalScope");
   }
-  if ((event.type === "approval.granted" || event.type === "approval.denied") && event.actor !== "human") {
-    problems.push("approval.granted and approval.denied events must be emitted by actor human");
+  if (
+    (event.type === "approval.granted" || event.type === "approval.denied") &&
+    event.actor !== "human"
+  ) {
+    problems.push(
+      "approval.granted and approval.denied events must be emitted by actor human",
+    );
   }
-  if ((event.type === "self_heal.pr_opened" || event.type === "self_heal.pr_proposed") && !event.selfHealPrUrl && !event.artifact) {
+  if (
+    (event.type === "self_heal.pr_opened" ||
+      event.type === "self_heal.pr_proposed") &&
+    !event.selfHealPrUrl &&
+    !event.artifact
+  ) {
     problems.push("self-heal PR events must include selfHealPrUrl or artifact");
   }
   if (event.type === "artifact.written" && !event.artifact) {
@@ -1362,7 +1972,9 @@ function eventContractProblems(event) {
 function eventStateProblems(run, event, humanToken) {
   const problems = [];
   if ((run.events || []).length >= MAX_EVENTS_PER_RUN) {
-    problems.push(`run event history is limited to ${MAX_EVENTS_PER_RUN} persisted events; start a continuation run`);
+    problems.push(
+      `run event history is limited to ${MAX_EVENTS_PER_RUN} persisted events; start a continuation run`,
+    );
   }
   if ((run.events || []).some((existing) => existing.id === event.id)) {
     problems.push(`event.id already exists for this run: ${event.id}`);
@@ -1370,38 +1982,72 @@ function eventStateProblems(run, event, humanToken) {
   if (event.artifactRoot && run.artifactRoot) {
     const currentRoot = path.resolve(String(run.artifactRoot));
     const nextRoot = path.resolve(String(event.artifactRoot));
-    if (currentRoot !== nextRoot) problems.push(`artifactRoot cannot change after run creation: existing ${currentRoot}, event ${nextRoot}`);
+    if (currentRoot !== nextRoot)
+      problems.push(
+        `artifactRoot cannot change after run creation: existing ${currentRoot}, event ${nextRoot}`,
+      );
   }
   if (event.type === "approval.granted" || event.type === "approval.denied") {
     problems.push(...humanApprovalTokenProblems(run, event, humanToken));
     const approvals = normalizeApprovalRecords(run.approvals || []);
-    const pending = approvals.find((approval) => approval.scope === event.approvalScope && approval.owner === event.approvalOwner && approval.status === "pending");
-    if (!pending) problems.push(`approval ${event.type} requires an existing pending approval for ${event.approvalScope} owned by ${event.approvalOwner}`);
+    const pending = approvals.find(
+      (approval) =>
+        approval.scope === event.approvalScope &&
+        approval.owner === event.approvalOwner &&
+        approval.status === "pending",
+    );
+    if (!pending)
+      problems.push(
+        `approval ${event.type} requires an existing pending approval for ${event.approvalScope} owned by ${event.approvalOwner}`,
+      );
     if (event.approvalScope === "route") {
-      if (event.artifact !== "run/route.json") problems.push("route approval must bind artifact run/route.json");
-      else problems.push(...resolveArtifactPath(run, event.artifact, true).problems.map((problem) => `route approval artifact invalid: ${problem}`));
+      if (event.artifact !== "run/route.json")
+        problems.push("route approval must bind artifact run/route.json");
+      else
+        problems.push(
+          ...resolveArtifactPath(run, event.artifact, true).problems.map(
+            (problem) => `route approval artifact invalid: ${problem}`,
+          ),
+        );
     }
-    if (["testflight-release", "app-store-release"].includes(event.approvalScope)) {
-      if (event.artifact !== "domain/assurance.json") problems.push("Apple release approval must bind artifact domain/assurance.json");
-      else problems.push(...resolveArtifactPath(run, event.artifact, true).problems.map((problem) => `Apple release approval artifact invalid: ${problem}`));
+    if (
+      ["testflight-release", "app-store-release"].includes(event.approvalScope)
+    ) {
+      if (event.artifact !== "domain/assurance.json")
+        problems.push(
+          "Apple release approval must bind artifact domain/assurance.json",
+        );
+      else
+        problems.push(
+          ...resolveArtifactPath(run, event.artifact, true).problems.map(
+            (problem) => `Apple release approval artifact invalid: ${problem}`,
+          ),
+        );
     }
   }
-  if (event.type === "self_heal.pr_opened" || event.type === "self_heal.pr_proposed") {
+  if (
+    event.type === "self_heal.pr_opened" ||
+    event.type === "self_heal.pr_proposed"
+  ) {
     problems.push(...selfHealResolutionProblems(run, event));
   }
   return problems;
 }
 
 function artifactTargetFor(run, event) {
-  if (event.type === "artifact.written" && event.artifact) return event.artifact;
+  if (event.type === "artifact.written" && event.artifact)
+    return event.artifact;
   return artifactPathForNode(run, event.nodeId) || event.artifact;
 }
 
 function artifactPathConsistencyProblems(run, event) {
-  if (event.type !== "artifact.written" || !event.nodeId || !event.artifact) return [];
+  if (event.type !== "artifact.written" || !event.nodeId || !event.artifact)
+    return [];
   const expected = artifactPathForNode(run, event.nodeId);
   if (expected && event.artifact !== expected) {
-    return [`artifact.written for node ${event.nodeId} must use configured artifact path ${expected}; got ${event.artifact}`];
+    return [
+      `artifact.written for node ${event.nodeId} must use configured artifact path ${expected}; got ${event.artifact}`,
+    ];
   }
   return [];
 }
@@ -1413,7 +2059,10 @@ function artifactRootFor(run) {
 
 function isInside(root, candidate) {
   const relative = path.relative(root, candidate);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
 }
 
 function runMetadataSizeProblems(body) {
@@ -1442,59 +2091,121 @@ function runMetadataSizeProblems(body) {
 
 function runCreationBodyProblems(body) {
   const problems = runMetadataSizeProblems(body);
-  for (const field of ["title", "task", "repo", "branch", "lane", "agent", "risk", "mode", "runMode", "eventSource", "artifactRoot", "adapterPath"]) {
-    if (body[field] !== undefined && (typeof body[field] !== "string" || body[field].trim().length === 0)) {
+  for (const field of [
+    "title",
+    "task",
+    "repo",
+    "branch",
+    "lane",
+    "agent",
+    "risk",
+    "mode",
+    "runMode",
+    "eventSource",
+    "artifactRoot",
+    "adapterPath",
+  ]) {
+    if (
+      body[field] !== undefined &&
+      (typeof body[field] !== "string" || body[field].trim().length === 0)
+    ) {
       problems.push(`run.${field} must be a non-empty string when supplied`);
     }
   }
-  if (typeof body.mode === "string" && body.mode.trim().length > 0 && !RUN_MODES.has(body.mode)) {
+  if (
+    typeof body.mode === "string" &&
+    body.mode.trim().length > 0 &&
+    !RUN_MODES.has(body.mode)
+  ) {
     problems.push(`run.mode must be one of: ${[...RUN_MODES].join(", ")}`);
   }
-  if (typeof body.runMode === "string" && body.runMode.trim().length > 0 && !RUN_MODES.has(body.runMode)) {
+  if (
+    typeof body.runMode === "string" &&
+    body.runMode.trim().length > 0 &&
+    !RUN_MODES.has(body.runMode)
+  ) {
     problems.push(`run.runMode must be one of: ${[...RUN_MODES].join(", ")}`);
   }
-  if (typeof body.mode === "string" && typeof body.runMode === "string" && body.mode !== body.runMode) {
-    problems.push("run.mode and run.runMode must match when both aliases are supplied");
+  if (
+    typeof body.mode === "string" &&
+    typeof body.runMode === "string" &&
+    body.mode !== body.runMode
+  ) {
+    problems.push(
+      "run.mode and run.runMode must match when both aliases are supplied",
+    );
   }
-  if (typeof body.eventSource === "string" && body.eventSource.trim().length > 0 && !EVENT_SOURCES.has(body.eventSource)) {
-    problems.push(`run.eventSource must be one of: ${[...EVENT_SOURCES].join(", ")}`);
+  if (
+    typeof body.eventSource === "string" &&
+    body.eventSource.trim().length > 0 &&
+    !EVENT_SOURCES.has(body.eventSource)
+  ) {
+    problems.push(
+      `run.eventSource must be one of: ${[...EVENT_SOURCES].join(", ")}`,
+    );
   }
   if (Object.prototype.hasOwnProperty.call(body, "status")) {
-    problems.push("run.status cannot be supplied at creation; completion must flow through verified run.completed events");
+    problems.push(
+      "run.status cannot be supplied at creation; completion must flow through verified run.completed events",
+    );
   }
   return problems;
 }
 
 function commissionedRuntimeForRun(run) {
   const runtime = bootstrapCommissionedRuntime(artifactRootFor(run));
-  if (!runtime) throw new Error("canonical .valdris-harness runtime is missing");
-  if (!run.adapterPath || path.relative(realpathSync(run.adapterPath), runtime.adapterPath) !== "") {
-    throw new Error("v0.8 finish line adapter must come from the canonical .valdris-harness runtime");
+  if (!runtime)
+    throw new Error("canonical .valdris-harness runtime is missing");
+  if (
+    !run.adapterPath ||
+    path.relative(realpathSync(run.adapterPath), runtime.adapterPath) !== ""
+  ) {
+    throw new Error(
+      "v0.8 finish line adapter must come from the canonical .valdris-harness runtime",
+    );
   }
-  if (JSON.stringify(run.adapterPolicy) !== JSON.stringify(runtime.adapterPolicy)) {
-    throw new Error("v0.8 project adapter policy changed after the run was loaded");
+  if (
+    JSON.stringify(run.adapterPolicy) !== JSON.stringify(runtime.adapterPolicy)
+  ) {
+    throw new Error(
+      "v0.8 project adapter policy changed after the run was loaded",
+    );
   }
   if (!run.commissionedRuntime) {
     throw new Error("v0.8 commissioned runtime identity is required");
   }
-  if (JSON.stringify(run.commissionedRuntime) !== JSON.stringify(commissionedRuntimeIdentity(runtime))) {
-    throw new Error("v0.8 commissioned runtime identity changed after the run was created");
+  if (
+    JSON.stringify(run.commissionedRuntime) !==
+    JSON.stringify(commissionedRuntimeIdentity(runtime))
+  ) {
+    throw new Error(
+      "v0.8 commissioned runtime identity changed after the run was created",
+    );
   }
   return runtime;
 }
 
 function runExpectsCommissionedRuntime(run) {
-  if (run.commissionedRuntime || run.adapterPolicy?.portableFinishLineRequired) return true;
+  if (run.commissionedRuntime || run.adapterPolicy?.portableFinishLineRequired)
+    return true;
   if (!run.artifactRoot || !run.adapterPath) return false;
-  const expected = path.resolve(String(run.artifactRoot), ".valdris-harness", "project-adapter.json");
+  const expected = path.resolve(
+    String(run.artifactRoot),
+    ".valdris-harness",
+    "project-adapter.json",
+  );
   return path.relative(expected, path.resolve(String(run.adapterPath))) === "";
 }
 
 function validateRunRuntimeTrust(run) {
   if (run.reviewTrustSha256 !== REVIEW_TRUST_SHA256) {
-    throw new Error("bridge run review trust pin does not match the operator-held startup UASH_REVIEW_TRUST_SHA256");
+    throw new Error(
+      "bridge run review trust pin does not match the operator-held startup UASH_REVIEW_TRUST_SHA256",
+    );
   }
-  const packPresent = Boolean(canonicalCommissionedRuntime(artifactRootFor(run)));
+  const packPresent = Boolean(
+    canonicalCommissionedRuntime(artifactRootFor(run)),
+  );
   if (!packPresent && !runExpectsCommissionedRuntime(run)) return run;
   commissionedRuntimeForRun(run);
   return run;
@@ -1503,8 +2214,12 @@ function validateRunRuntimeTrust(run) {
 function resolveArtifactPath(run, target, requireExists = false) {
   const root = artifactRootFor(run);
   const problems = [];
-  if (!root) return { problems: ["run.artifactRoot is required for artifact verification"] };
-  if (!existsSync(root)) return { problems: [`artifactRoot does not exist: ${root}`] };
+  if (!root)
+    return {
+      problems: ["run.artifactRoot is required for artifact verification"],
+    };
+  if (!existsSync(root))
+    return { problems: [`artifactRoot does not exist: ${root}`] };
 
   const realRoot = realpathSync(root);
   const resolved = path.resolve(realRoot, target);
@@ -1513,41 +2228,83 @@ function resolveArtifactPath(run, target, requireExists = false) {
     return { root: realRoot, resolved, problems };
   }
   if (!existsSync(resolved)) {
-    if (requireExists) problems.push(`artifact file does not exist under artifactRoot: ${target}`);
+    if (requireExists)
+      problems.push(
+        `artifact file does not exist under artifactRoot: ${target}`,
+      );
     return { root: realRoot, resolved, problems };
   }
 
   const lstat = lstatSync(resolved);
-  if (lstat.isSymbolicLink()) problems.push(`artifact path is a symlink and is not allowed: ${target}`);
-  if (!lstat.isSymbolicLink() && !lstat.isFile()) problems.push(`artifact path must be a regular file: ${target}`);
+  if (lstat.isSymbolicLink())
+    problems.push(`artifact path is a symlink and is not allowed: ${target}`);
+  if (!lstat.isSymbolicLink() && !lstat.isFile())
+    problems.push(`artifact path must be a regular file: ${target}`);
   const realTarget = realpathSync(resolved);
-  if (!isInside(realRoot, realTarget)) problems.push(`artifact real path escapes artifactRoot: ${target}`);
+  if (!isInside(realRoot, realTarget))
+    problems.push(`artifact real path escapes artifactRoot: ${target}`);
   return { root: realRoot, resolved, realTarget, problems };
 }
 
-function artifactWriteProblems(run, event, verification = artifactVerification(run, event)) {
+function artifactWriteProblems(
+  run,
+  event,
+  verification = artifactVerification(run, event),
+) {
   if (event.type !== "artifact.written") return [];
   const problems = artifactPathConsistencyProblems(run, event);
   if (problems.length) return problems;
   if (!verification?.checked || verification.exists !== true) {
-    problems.push(...(verification?.problems || ["artifact verification did not produce a trusted file claim"]));
+    problems.push(
+      ...(verification?.problems || [
+        "artifact verification did not produce a trusted file claim",
+      ]),
+    );
   }
   if (!problems.length && !/^[a-f0-9]{64}$/.test(verification.sha256 || "")) {
-    problems.push("artifact verification did not bind a SHA-256 content digest");
+    problems.push(
+      "artifact verification did not bind a SHA-256 content digest",
+    );
   }
-  if (!problems.length && isProofEvent(run, event) && verification.proof?.valid !== true) {
-    problems.push(...(verification.proof?.problems || ["proof artifact was not schema-validated"]));
+  if (
+    !problems.length &&
+    isProofEvent(run, event) &&
+    verification.proof?.valid !== true
+  ) {
+    problems.push(
+      ...(verification.proof?.problems || [
+        "proof artifact was not schema-validated",
+      ]),
+    );
   }
-  if (!problems.length && isProductionLayerEvent(run, event) && verification.productionLayerAssessment?.valid !== true) {
-    problems.push(...(verification.productionLayerAssessment?.problems || ["production layer assessment was not schema-validated"]));
+  if (
+    !problems.length &&
+    isProductionLayerEvent(run, event) &&
+    verification.productionLayerAssessment?.valid !== true
+  ) {
+    problems.push(
+      ...(verification.productionLayerAssessment?.problems || [
+        "production layer assessment was not schema-validated",
+      ]),
+    );
   }
   return problems;
 }
 
 function artifactVerification(run, event) {
-  if (event.type !== "artifact.written" && !(event.type === "approval.granted" && event.artifact)) return undefined;
+  if (
+    event.type !== "artifact.written" &&
+    !(event.type === "approval.granted" && event.artifact)
+  )
+    return undefined;
   const result = resolveArtifactPath(run, event.artifact, true);
-  if (result.problems.length) return { checked: true, exists: false, problems: result.problems, path: result.resolved };
+  if (result.problems.length)
+    return {
+      checked: true,
+      exists: false,
+      problems: result.problems,
+      path: result.resolved,
+    };
   const stat = statSync(result.resolved);
   const bytes = readFileSync(result.resolved);
   const verification = {
@@ -1559,17 +2316,27 @@ function artifactVerification(run, event) {
     mtimeMs: stat.mtimeMs,
     sha256: createHash("sha256").update(bytes).digest("hex"),
   };
-  if (isProofEvent(run, event)) verification.proof = validateProofDocument(result.resolved);
-  if (isProductionLayerEvent(run, event)) verification.productionLayerAssessment = productionAssessmentVerification(run, result.resolved);
+  if (isProofEvent(run, event))
+    verification.proof = validateProofDocument(result.resolved);
+  if (isProductionLayerEvent(run, event))
+    verification.productionLayerAssessment = productionAssessmentVerification(
+      run,
+      result.resolved,
+    );
   return verification;
 }
 
 function productionAssessmentVerification(run, filePath) {
   const expected = run.adapterPolicy?.productionReadinessSchema;
-  const verification = validateProductionLayerAssessment(filePath, { allowLegacy: expected !== "uash.production-readiness.v2" });
+  const verification = validateProductionLayerAssessment(filePath, {
+    allowLegacy: expected !== "uash.production-readiness.v2",
+  });
   if (expected && verification.schema !== expected) {
     verification.valid = false;
-    verification.problems = [...verification.problems, `production layer assessment schema must match adapter policy: ${expected}`];
+    verification.problems = [
+      ...verification.problems,
+      `production layer assessment schema must match adapter policy: ${expected}`,
+    ];
   }
   return verification;
 }
@@ -1581,7 +2348,11 @@ function selfHealResolutionProblems(run, event) {
   if (event.artifact) {
     const result = resolveArtifactPath(run, event.artifact, true);
     if (result.problems.length) {
-      problems.push(...result.problems.map((problem) => `self-heal resolution artifact invalid: ${problem}`));
+      problems.push(
+        ...result.problems.map(
+          (problem) => `self-heal resolution artifact invalid: ${problem}`,
+        ),
+      );
     } else {
       hasVerifiedArtifact = true;
     }
@@ -1596,14 +2367,26 @@ function selfHealResolutionProblems(run, event) {
       return problems;
     }
     if (parsed.protocol === "file:") {
-      if (!hasVerifiedArtifact) problems.push("self-heal file URLs require a verified artifact under artifactRoot");
+      if (!hasVerifiedArtifact)
+        problems.push(
+          "self-heal file URLs require a verified artifact under artifactRoot",
+        );
     } else if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
-      problems.push("self-heal PR URL must be http(s) or backed by a verified local artifact");
-    } else if (event.type === "self_heal.pr_opened" && !/^\/[^/]+\/[^/]+\/pull\/\d+\/?$/.test(parsed.pathname)) {
-      problems.push("self_heal.pr_opened requires a real pull-request URL or a verified local artifact");
+      problems.push(
+        "self-heal PR URL must be http(s) or backed by a verified local artifact",
+      );
+    } else if (
+      event.type === "self_heal.pr_opened" &&
+      !/^\/[^/]+\/[^/]+\/pull\/\d+\/?$/.test(parsed.pathname)
+    ) {
+      problems.push(
+        "self_heal.pr_opened requires a real pull-request URL or a verified local artifact",
+      );
     }
   } else if (!hasVerifiedArtifact) {
-    problems.push("self-heal resolution requires a real PR URL or verified self_heal/pr.json artifact");
+    problems.push(
+      "self-heal resolution requires a real PR URL or verified self_heal/pr.json artifact",
+    );
   }
 
   return problems;
@@ -1612,26 +2395,44 @@ function selfHealResolutionProblems(run, event) {
 function unresolvedApprovalProblems(run) {
   const approvals = normalizeApprovalRecords(run.approvals || []);
   return approvals.flatMap((approval) => {
-    if (approval.status === "pending") return [`approval pending for ${approval.scope} owned by ${approval.owner}`];
-    if (approval.status === "denied") return [`approval denied for ${approval.scope} by ${approval.owner}`];
+    if (approval.status === "pending")
+      return [
+        `approval pending for ${approval.scope} owned by ${approval.owner}`,
+      ];
+    if (approval.status === "denied")
+      return [`approval denied for ${approval.scope} by ${approval.owner}`];
     return [];
   });
 }
 
 function selfHealProblems(run) {
   const events = run.events || [];
-  const detectedIndex = events.findLastIndex((event) => event.type === "self_heal.detected");
+  const detectedIndex = events.findLastIndex(
+    (event) => event.type === "self_heal.detected",
+  );
   if (detectedIndex < 0) return [];
-  const resolvedIndex = events.findIndex((event, index) => index > detectedIndex && (event.type === "self_heal.pr_opened" || event.type === "self_heal.pr_proposed"));
-  return resolvedIndex >= 0 ? [] : ["self-heal detected without later self_heal.pr_opened or self_heal.pr_proposed"];
+  const resolvedIndex = events.findIndex(
+    (event, index) =>
+      index > detectedIndex &&
+      (event.type === "self_heal.pr_opened" ||
+        event.type === "self_heal.pr_proposed"),
+  );
+  return resolvedIndex >= 0
+    ? []
+    : [
+        "self-heal detected without later self_heal.pr_opened or self_heal.pr_proposed",
+      ];
 }
 
 function artifactProofProblems(run, artifact, phase = "finish-line") {
   if (!artifact.present) return [`${artifact.path} missing or not skipped`];
-  if (!artifact.verification?.checked) return [`${artifact.path} present but not verified against artifactRoot`];
-  if (!artifact.verification.exists) return [`${artifact.path} was claimed but file verification failed`];
+  if (!artifact.verification?.checked)
+    return [`${artifact.path} present but not verified against artifactRoot`];
+  if (!artifact.verification.exists)
+    return [`${artifact.path} was claimed but file verification failed`];
   const sealedDigest = artifact.verification.sha256;
-  if (!/^[a-f0-9]{64}$/.test(sealedDigest || "")) return [`${artifact.path} is missing a journal-sealed SHA-256 claim`];
+  if (!/^[a-f0-9]{64}$/.test(sealedDigest || ""))
+    return [`${artifact.path} is missing a journal-sealed SHA-256 claim`];
 
   const current = artifactVerification(run, {
     type: "artifact.written",
@@ -1639,18 +2440,28 @@ function artifactProofProblems(run, artifact, phase = "finish-line") {
     artifact: artifact.evidenceArtifact || artifact.path,
   });
   if (!current?.checked || current.exists !== true) {
-    const detail = current?.problems?.join("; ") || "artifact could not be re-read";
+    const detail =
+      current?.problems?.join("; ") || "artifact could not be re-read";
     return [`${artifact.path} failed ${phase} revalidation: ${detail}`];
   }
   if (!safeCompare(current.sha256, sealedDigest)) {
-    return [`${artifact.path} changed after its bridge-sealed artifact claim (${phase} SHA-256 mismatch)`];
+    return [
+      `${artifact.path} changed after its bridge-sealed artifact claim (${phase} SHA-256 mismatch)`,
+    ];
   }
   if (artifact.nodeId === "prove" && current.proof?.valid !== true) {
-    const problems = current.proof?.problems?.join("; ") || "proof content was not schema-validated";
+    const problems =
+      current.proof?.problems?.join("; ") ||
+      "proof content was not schema-validated";
     return [`${artifact.path} failed ${PROOF_SCHEMA} validation: ${problems}`];
   }
-  if (artifact.nodeId === "production-readiness" && current.productionLayerAssessment?.valid !== true) {
-    const problems = current.productionLayerAssessment?.problems?.join("; ") || "production layer assessment was not schema-validated";
+  if (
+    artifact.nodeId === "production-readiness" &&
+    current.productionLayerAssessment?.valid !== true
+  ) {
+    const problems =
+      current.productionLayerAssessment?.problems?.join("; ") ||
+      "production layer assessment was not schema-validated";
     return [`${artifact.path} failed production layer validation: ${problems}`];
   }
   return [];
@@ -1661,15 +2472,20 @@ function finishLineProblems(run) {
   for (const artifact of run.artifacts || []) {
     if (!artifact.required) continue;
     if (artifact.failed) {
-      problems.push(`${artifact.path} failed${artifact.recoveryPath ? `; recovery: ${artifact.recoveryPath}` : ""}`);
+      problems.push(
+        `${artifact.path} failed${artifact.recoveryPath ? `; recovery: ${artifact.recoveryPath}` : ""}`,
+      );
       continue;
     }
     if (artifact.skipped) {
       if (artifact.nodeId === "prove" || artifact.nodeId === "handoff") {
-        problems.push(`${artifact.path} is a non-skippable finish-line invariant`);
+        problems.push(
+          `${artifact.path} is a non-skippable finish-line invariant`,
+        );
         continue;
       }
-      if (!artifact.skipReason) problems.push(`${artifact.path} skipped without a reason`);
+      if (!artifact.skipReason)
+        problems.push(`${artifact.path} skipped without a reason`);
       continue;
     }
     problems.push(...artifactProofProblems(run, artifact));
@@ -1728,49 +2544,77 @@ const PORTABLE_PRIVACY_MAX_REFERENCE_DEPTH = 4;
 const PORTABLE_PRIVACY_MAX_REFERENCE_DOCUMENT_BYTES = 64 * 1024 * 1024;
 
 function canonicalPortablePrivacyPath(value) {
-  if (typeof value !== "string" || value.length === 0 || value !== value.trim() || value.includes("\0")) return null;
-  if (value.includes("\\") || path.posix.isAbsolute(value) || path.win32.isAbsolute(value) || /^[A-Za-z]:/.test(value)) return null;
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value !== value.trim() ||
+    value.includes("\0")
+  )
+    return null;
+  if (
+    value.includes("\\") ||
+    path.posix.isAbsolute(value) ||
+    path.win32.isAbsolute(value) ||
+    /^[A-Za-z]:/.test(value)
+  )
+    return null;
   const segments = value.split("/");
-  if (segments.some((segment) => !segment || segment === "." || segment === "..")) return null;
+  if (
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  )
+    return null;
   return path.posix.normalize(value) === value ? value : null;
 }
 
 function typedControlEvidencePaths(controls) {
   const referenced = [];
   for (const control of Array.isArray(controls) ? controls : []) {
-    for (const evidence of Array.isArray(control?.evidence) ? control.evidence : []) {
+    for (const evidence of Array.isArray(control?.evidence)
+      ? control.evidence
+      : []) {
       if (evidence?.type === "artifact") referenced.push(evidence.path);
-      else if (evidence?.type === "command") referenced.push(evidence.outputPath);
-      else if (evidence?.type === "provider-report") referenced.push(evidence.attestationPath);
+      else if (evidence?.type === "command")
+        referenced.push(evidence.outputPath);
+      else if (evidence?.type === "provider-report")
+        referenced.push(evidence.attestationPath);
     }
   }
   return referenced;
 }
 
 function assuranceEvidencePaths(artifactPath, document) {
-  if (artifactPath === "ai/assurance.json") return typedControlEvidencePaths(document.controls);
+  if (artifactPath === "ai/assurance.json")
+    return typedControlEvidencePaths(document.controls);
   if (artifactPath === "domain/assurance.json") {
-    return (Array.isArray(document.packs) ? document.packs : [])
-      .flatMap((pack) => typedControlEvidencePaths(pack?.controls));
+    return (Array.isArray(document.packs) ? document.packs : []).flatMap(
+      (pack) => typedControlEvidencePaths(pack?.controls),
+    );
   }
   if (artifactPath === "foundation/assessment.json") {
-    return (Array.isArray(document.capabilities) ? document.capabilities : [])
-      .flatMap((capability) => typedControlEvidencePaths(capability?.controls));
+    return (
+      Array.isArray(document.capabilities) ? document.capabilities : []
+    ).flatMap((capability) => typedControlEvidencePaths(capability?.controls));
   }
   if (artifactPath === "production/layer-assessment.json") {
     const layers = Array.isArray(document.layers)
       ? document.layers
-      : document.layers && typeof document.layers === "object" && !Array.isArray(document.layers)
-          ? Object.values(document.layers)
-          : [];
-    return layers.flatMap((layer) => typedControlEvidencePaths(layer?.controls));
+      : document.layers &&
+          typeof document.layers === "object" &&
+          !Array.isArray(document.layers)
+        ? Object.values(document.layers)
+        : [];
+    return layers.flatMap((layer) =>
+      typedControlEvidencePaths(layer?.controls),
+    );
   }
-  if (artifactPath === "smoke/smoke_proof.json") return typedControlEvidencePaths([document.control]);
+  if (artifactPath === "smoke/smoke_proof.json")
+    return typedControlEvidencePaths([document.control]);
   return [];
 }
 
 function portablePrivacyReferencedPaths(artifactPath, document) {
-  if (!document || typeof document !== "object" || Array.isArray(document)) return [];
+  if (!document || typeof document !== "object" || Array.isArray(document))
+    return [];
   const referenced = [];
   const add = (value) => {
     if (value !== undefined && value !== null) referenced.push(value);
@@ -1778,22 +2622,36 @@ function portablePrivacyReferencedPaths(artifactPath, document) {
 
   if (artifactPath === "run/packet.json") {
     for (const entry of Object.values(document.inputs || {})) add(entry?.path);
-    for (const entry of Array.isArray(document.gateArtifacts) ? document.gateArtifacts : []) {
+    for (const entry of Array.isArray(document.gateArtifacts)
+      ? document.gateArtifacts
+      : []) {
       add(entry?.path);
-      for (const supporting of Array.isArray(entry?.supportingArtifacts) ? entry.supportingArtifacts : []) add(supporting?.path);
+      for (const supporting of Array.isArray(entry?.supportingArtifacts)
+        ? entry.supportingArtifacts
+        : [])
+        add(supporting?.path);
     }
-    for (const entry of Array.isArray(document.artifactInventory) ? document.artifactInventory : []) add(entry?.path);
+    for (const entry of Array.isArray(document.artifactInventory)
+      ? document.artifactInventory
+      : [])
+      add(entry?.path);
   }
   if (artifactPath === "trajectory/trajectory.json") add(document.tracePath);
   if (artifactPath === "context/manifest.json") {
-    for (const entry of Array.isArray(document.loadedFiles) ? document.loadedFiles : []) add(entry?.path);
+    for (const entry of Array.isArray(document.loadedFiles)
+      ? document.loadedFiles
+      : [])
+      add(entry?.path);
     add(document.contextQuality?.caseSet?.path);
     add(document.contextQuality?.answerKey?.path);
   }
   if (artifactPath === "evals/results.json") {
     for (const suite of Array.isArray(document.suites) ? document.suites : []) {
       add(suite?.resultPath);
-      for (const arm of [suite?.contextComparison?.baseline, suite?.contextComparison?.candidate]) {
+      for (const arm of [
+        suite?.contextComparison?.baseline,
+        suite?.contextComparison?.candidate,
+      ]) {
         add(arm?.resultPath);
         add(arm?.caseSet?.path);
         add(arm?.answerKey?.path);
@@ -1801,13 +2659,17 @@ function portablePrivacyReferencedPaths(artifactPath, document) {
     }
   }
   if (artifactPath === "rca/rca.json") {
-    for (const evidence of Array.isArray(document.evidence) ? document.evidence : []) add(evidence?.artifact);
+    for (const evidence of Array.isArray(document.evidence)
+      ? document.evidence
+      : [])
+      add(evidence?.artifact);
   }
   if (artifactPath === "graph/graph.json") {
     add("graph/freshness.json");
     add(document.codeIntelligence?.evidenceArtifact);
   }
-  if (artifactPath === "graph/freshness.json") add(document.codeIntelligence?.evidenceArtifact);
+  if (artifactPath === "graph/freshness.json")
+    add(document.codeIntelligence?.evidenceArtifact);
   if (artifactPath === "review/review.json") {
     add(document.subject?.artifact);
     for (const provenance of Object.values(document.roleProvenance || {})) {
@@ -1815,7 +2677,8 @@ function portablePrivacyReferencedPaths(artifactPath, document) {
       add(provenance?.evidence?.artifact);
     }
   }
-  for (const evidencePath of assuranceEvidencePaths(artifactPath, document)) add(evidencePath);
+  for (const evidencePath of assuranceEvidencePaths(artifactPath, document))
+    add(evidencePath);
   return referenced;
 }
 
@@ -1827,16 +2690,22 @@ function portablePrivacyClosure(run) {
   const enqueue = (value, depth = 0) => {
     const artifactPath = canonicalPortablePrivacyPath(value);
     if (!artifactPath) {
-      problems.push("run-artifact privacy closure contains a missing, unsafe, or non-canonical path");
+      problems.push(
+        "run-artifact privacy closure contains a missing, unsafe, or non-canonical path",
+      );
       return;
     }
     if (enqueued.has(artifactPath)) return;
     if (depth > PORTABLE_PRIVACY_MAX_REFERENCE_DEPTH) {
-      problems.push("run-artifact privacy closure exceeded its reference-depth bound");
+      problems.push(
+        "run-artifact privacy closure exceeded its reference-depth bound",
+      );
       return;
     }
     if (enqueued.size >= PORTABLE_PRIVACY_MAX_PATHS) {
-      problems.push("run-artifact privacy closure exceeded its artifact-count bound");
+      problems.push(
+        "run-artifact privacy closure exceeded its artifact-count bound",
+      );
       return;
     }
     enqueued.add(artifactPath);
@@ -1844,40 +2713,64 @@ function portablePrivacyClosure(run) {
   };
 
   for (const artifact of run.artifacts || []) {
-    if (artifact.required && !artifact.skipped) enqueue(artifact.evidenceArtifact || artifact.path);
+    if (artifact.required && !artifact.skipped)
+      enqueue(artifact.evidenceArtifact || artifact.path);
   }
-  for (const artifactPath of PORTABLE_PRIVACY_REQUIRED_PATHS) enqueue(artifactPath);
+  for (const artifactPath of PORTABLE_PRIVACY_REQUIRED_PATHS)
+    enqueue(artifactPath);
   for (const artifactPath of PORTABLE_PRIVACY_CONDITIONAL_PATHS) {
     const resolution = resolveArtifactPath(run, artifactPath, false);
-    if (resolution.resolved && existsSync(resolution.resolved)) enqueue(artifactPath);
+    if (resolution.resolved && existsSync(resolution.resolved))
+      enqueue(artifactPath);
   }
 
   while (pending.length > 0) {
     const { artifactPath, depth } = pending.shift();
     const resolution = resolveArtifactPath(run, artifactPath, true);
     if (resolution.problems.length) {
-      problems.push("run-artifact privacy closure contains a missing, unsafe, or non-file path");
+      problems.push(
+        "run-artifact privacy closure contains a missing, unsafe, or non-file path",
+      );
       continue;
     }
-    const canonicalRealPath = canonicalPortablePrivacyPath(path.relative(resolution.root, resolution.realTarget).split(path.sep).join("/"));
+    const canonicalRealPath = canonicalPortablePrivacyPath(
+      path
+        .relative(resolution.root, resolution.realTarget)
+        .split(path.sep)
+        .join("/"),
+    );
     if (!canonicalRealPath) {
-      problems.push("run-artifact privacy closure resolved outside its canonical repository-relative namespace");
+      problems.push(
+        "run-artifact privacy closure resolved outside its canonical repository-relative namespace",
+      );
       continue;
     }
     bounded.add(canonicalRealPath);
     if (!PORTABLE_PRIVACY_REFERENCE_DOCUMENT_PATHS.has(artifactPath)) continue;
-    if (statSync(resolution.realTarget).size > PORTABLE_PRIVACY_MAX_REFERENCE_DOCUMENT_BYTES) {
-      problems.push("run-artifact privacy closure reference document exceeded its byte bound");
+    if (
+      statSync(resolution.realTarget).size >
+      PORTABLE_PRIVACY_MAX_REFERENCE_DOCUMENT_BYTES
+    ) {
+      problems.push(
+        "run-artifact privacy closure reference document exceeded its byte bound",
+      );
       continue;
     }
     try {
       const document = JSON.parse(readFileSync(resolution.realTarget, "utf8"));
-      if (!document || typeof document !== "object" || Array.isArray(document)) throw new Error("invalid reference document");
-      for (const referencedPath of portablePrivacyReferencedPaths(artifactPath, document)) enqueue(referencedPath, depth + 1);
+      if (!document || typeof document !== "object" || Array.isArray(document))
+        throw new Error("invalid reference document");
+      for (const referencedPath of portablePrivacyReferencedPaths(
+        artifactPath,
+        document,
+      ))
+        enqueue(referencedPath, depth + 1);
     } catch {
-      problems.push(artifactPath === "run/packet.json"
-        ? "run packet is invalid for privacy-closure enumeration"
-        : "run-artifact privacy closure contains invalid JSON in a reference-bearing document");
+      problems.push(
+        artifactPath === "run/packet.json"
+          ? "run packet is invalid for privacy-closure enumeration"
+          : "run-artifact privacy closure contains invalid JSON in a reference-bearing document",
+      );
     }
   }
   return { paths: [...bounded].sort(), problems: [...new Set(problems)] };
@@ -1887,7 +2780,8 @@ function completedRunValidationFingerprint(run, journalState) {
   const closure = portablePrivacyClosure(run);
   const paths = new Set(closure.paths);
   for (const artifact of run.artifacts || []) {
-    if (artifact.required && !artifact.skipped) paths.add(artifact.evidenceArtifact || artifact.path);
+    if (artifact.required && !artifact.skipped)
+      paths.add(artifact.evidenceArtifact || artifact.path);
   }
   const artifacts = [];
   for (const artifactPath of [...paths].sort()) {
@@ -1899,7 +2793,10 @@ function completedRunValidationFingerprint(run, journalState) {
     artifacts.push([artifactPath, sha256(readFileSync(resolution.realTarget))]);
   }
   let currentRuntimeIdentity = null;
-  if (runExpectsCommissionedRuntime(run) || canonicalCommissionedRuntime(artifactRootFor(run))) {
+  if (
+    runExpectsCommissionedRuntime(run) ||
+    canonicalCommissionedRuntime(artifactRootFor(run))
+  ) {
     try {
       const current = commissionedRuntimeForRun(run);
       currentRuntimeIdentity = {
@@ -1908,18 +2805,22 @@ function completedRunValidationFingerprint(run, journalState) {
         setSha256: current.binding.setSha256,
       };
     } catch (error) {
-      currentRuntimeIdentity = { trustError: error instanceof Error ? error.message : String(error) };
+      currentRuntimeIdentity = {
+        trustError: error instanceof Error ? error.message : String(error),
+      };
     }
   }
-  return sha256(JSON.stringify({
-    journalHeadDigest: journalState.lastDigest || null,
-    reviewTrustSha256: run.reviewTrustSha256,
-    commissionedRuntimeSha256: run.commissionedRuntime?.runtimeSha256 || null,
-    currentRuntimeIdentity,
-    closureProblems: closure.problems,
-    artifacts,
-    freshnessState: completedRunFreshnessState(run),
-  }));
+  return sha256(
+    JSON.stringify({
+      journalHeadDigest: journalState.lastDigest || null,
+      reviewTrustSha256: run.reviewTrustSha256,
+      commissionedRuntimeSha256: run.commissionedRuntime?.runtimeSha256 || null,
+      currentRuntimeIdentity,
+      closureProblems: closure.problems,
+      artifacts,
+      freshnessState: completedRunFreshnessState(run),
+    }),
+  );
 }
 
 const COMPLETED_RUN_FRESHNESS_ARTIFACTS = Object.freeze([
@@ -1940,21 +2841,41 @@ const COMPLETED_RUN_FRESHNESS_ARTIFACTS = Object.freeze([
 
 function completedRunFreshnessState(run) {
   try {
-    const classificationResolution = resolveArtifactPath(run, "run/workload-classification.json", true);
-    if (classificationResolution.problems.length || !classificationResolution.realTarget) return "classification-unavailable";
-    const classification = JSON.parse(readFileSync(classificationResolution.realTarget, "utf8"));
+    const classificationResolution = resolveArtifactPath(
+      run,
+      "run/workload-classification.json",
+      true,
+    );
+    if (
+      classificationResolution.problems.length ||
+      !classificationResolution.realTarget
+    )
+      return "classification-unavailable";
+    const classification = JSON.parse(
+      readFileSync(classificationResolution.realTarget, "utf8"),
+    );
     const policy = evidencePolicyForEffectiveTier(classification.effectiveTier);
     const profile = policy?.profile || "production";
-    const maxAgeMs = (PROFILE_EVIDENCE_MAX_AGE_HOURS[profile] || 168) * 60 * 60 * 1000;
+    const maxAgeMs =
+      (PROFILE_EVIDENCE_MAX_AGE_HOURS[profile] || 168) * 60 * 60 * 1000;
     const now = Date.now();
     const state = [];
     for (const artifactPath of COMPLETED_RUN_FRESHNESS_ARTIFACTS) {
       const resolution = resolveArtifactPath(run, artifactPath, false);
-      if (resolution.problems.length || !resolution.realTarget || !existsSync(resolution.realTarget)) continue;
+      if (
+        resolution.problems.length ||
+        !resolution.realTarget ||
+        !existsSync(resolution.realTarget)
+      )
+        continue;
       const document = JSON.parse(readFileSync(resolution.realTarget, "utf8"));
       const timestamp = document.generatedAt || document.receivedAt;
-      if (typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp))) continue;
-      state.push([artifactPath, now - Date.parse(timestamp) > maxAgeMs ? "expired" : "current"]);
+      if (typeof timestamp !== "string" || Number.isNaN(Date.parse(timestamp)))
+        continue;
+      state.push([
+        artifactPath,
+        now - Date.parse(timestamp) > maxAgeMs ? "expired" : "current",
+      ]);
     }
     return state;
   } catch {
@@ -1965,13 +2886,20 @@ function completedRunFreshnessState(run) {
 function enterpriseFinishLineProblems(run) {
   let commissionedBaseline = null;
   try {
-    if (runExpectsCommissionedRuntime(run) || canonicalCommissionedRuntime(artifactRootFor(run))) commissionedBaseline = commissionedRuntimeForRun(run);
+    if (
+      runExpectsCommissionedRuntime(run) ||
+      canonicalCommissionedRuntime(artifactRootFor(run))
+    )
+      commissionedBaseline = commissionedRuntimeForRun(run);
   } catch (error) {
     return [`v0.8 commissioned runtime bootstrap failed: ${error.message}`];
   }
   if (!run.adapterPolicy?.enterpriseFinishLineRequired) return [];
-  const finishLineVersion = run.adapterPolicy?.portableFinishLineRequired ? "v0.8" : "v0.7";
-  if (!run.artifactRoot || !existsSync(run.artifactRoot)) return [`${finishLineVersion} finish-line artifactRoot is missing`];
+  const finishLineVersion = run.adapterPolicy?.portableFinishLineRequired
+    ? "v0.8"
+    : "v0.7";
+  if (!run.artifactRoot || !existsSync(run.artifactRoot))
+    return [`${finishLineVersion} finish-line artifactRoot is missing`];
   let finishLineScriptDir = BRIDGE_SCRIPT_DIR;
   if (run.adapterPolicy?.portableFinishLineRequired) {
     try {
@@ -1985,108 +2913,239 @@ function enterpriseFinishLineProblems(run) {
     if (commissionedBaseline) {
       try {
         const current = commissionedRuntimeForRun(run);
-        if (current.commit !== commissionedBaseline.commit || current.binding.setSha256 !== commissionedBaseline.binding.setSha256) {
-          return { status: null, error: new Error("commissioned runtime changed during finish-line execution") };
+        if (
+          current.commit !== commissionedBaseline.commit ||
+          current.binding.setSha256 !== commissionedBaseline.binding.setSha256
+        ) {
+          return {
+            status: null,
+            error: new Error(
+              "commissioned runtime changed during finish-line execution",
+            ),
+          };
         }
       } catch (error) {
-        return { status: null, error: new Error(`commissioned runtime trust validation failed: ${error.message}`) };
+        return {
+          status: null,
+          error: new Error(
+            `commissioned runtime trust validation failed: ${error.message}`,
+          ),
+        };
       }
     }
     const gatePath = path.join(scriptDir, script);
-    if (!existsSync(gatePath)) return { status: null, error: new Error(`finish-line gate is missing: ${gatePath}`) };
+    if (!existsSync(gatePath))
+      return {
+        status: null,
+        error: new Error(`finish-line gate is missing: ${gatePath}`),
+      };
     const gateStats = lstatSync(gatePath);
-    if (gateStats.isSymbolicLink() || !gateStats.isFile()) return { status: null, error: new Error(`finish-line gate must be a regular file: ${gatePath}`) };
-    return spawnSync(process.execPath, [gatePath, "--repo", run.artifactRoot, ...extraArgs], {
-      encoding: "utf8",
-      env: finishLineChildEnv({ ...process.env, UASH_REVIEW_TRUST_SHA256: run.reviewTrustSha256 }),
-      shell: false,
-      windowsHide: true,
-      timeout: FINISH_LINE_GATE_TIMEOUT_MS,
-      killSignal: "SIGTERM",
-      maxBuffer: 16 * 1024 * 1024,
-    });
+    if (gateStats.isSymbolicLink() || !gateStats.isFile())
+      return {
+        status: null,
+        error: new Error(
+          `finish-line gate must be a regular file: ${gatePath}`,
+        ),
+      };
+    return spawnSync(
+      process.execPath,
+      [gatePath, "--repo", run.artifactRoot, ...extraArgs],
+      {
+        encoding: "utf8",
+        env: finishLineChildEnv({
+          ...process.env,
+          UASH_REVIEW_TRUST_SHA256: run.reviewTrustSha256,
+        }),
+        shell: false,
+        windowsHide: true,
+        timeout: FINISH_LINE_GATE_TIMEOUT_MS,
+        killSignal: "SIGTERM",
+        maxBuffer: 16 * 1024 * 1024,
+      },
+    );
   };
-  const failureOutput = (result) => result.error?.code === "ETIMEDOUT"
-    ? `timed out after ${FINISH_LINE_GATE_TIMEOUT_MS}ms`
-    : String(result.stderr || result.stdout || result.error?.message || "no gate output").trim().slice(-4000);
+  const failureOutput = (result) =>
+    result.error?.code === "ETIMEDOUT"
+      ? `timed out after ${FINISH_LINE_GATE_TIMEOUT_MS}ms`
+      : String(
+          result.stderr ||
+            result.stdout ||
+            result.error?.message ||
+            "no gate output",
+        )
+          .trim()
+          .slice(-4000);
   if (run.adapterPolicy?.portableFinishLineRequired) {
     const privacyClosure = portablePrivacyClosure(run);
-    if (privacyClosure.problems.length) return privacyClosure.problems.map((problem) => `v0.8 run-artifact privacy finish line failed: ${problem}`);
-    if (privacyClosure.paths.length === 0) return ["v0.8 run-artifact privacy finish line failed: no required run artifacts were selected"];
-    const privacyArgs = privacyClosure.paths.flatMap((artifactPath) => ["--include", artifactPath]);
-    const privacy = runGate("privacy-gate.mjs", finishLineScriptDir, privacyArgs);
-    if (privacy.status !== 0) return [`v0.8 run-artifact privacy finish line failed: ${failureOutput(privacy)}`];
+    if (privacyClosure.problems.length)
+      return privacyClosure.problems.map(
+        (problem) => `v0.8 run-artifact privacy finish line failed: ${problem}`,
+      );
+    if (privacyClosure.paths.length === 0)
+      return [
+        "v0.8 run-artifact privacy finish line failed: no required run artifacts were selected",
+      ];
+    const privacyArgs = privacyClosure.paths.flatMap((artifactPath) => [
+      "--include",
+      artifactPath,
+    ]);
+    const privacy = runGate(
+      "privacy-gate.mjs",
+      finishLineScriptDir,
+      privacyArgs,
+    );
+    if (privacy.status !== 0)
+      return [
+        `v0.8 run-artifact privacy finish line failed: ${failureOutput(privacy)}`,
+      ];
   }
   const result = runGate("enterprise-ai-gate-all.mjs", finishLineScriptDir);
-  if (result.status !== 0) return [`${finishLineVersion} enterprise/AI finish line failed: ${failureOutput(result)}`];
+  if (result.status !== 0)
+    return [
+      `${finishLineVersion} enterprise/AI finish line failed: ${failureOutput(result)}`,
+    ];
   if (run.adapterPolicy?.portableFinishLineRequired) {
     const portableGates = [
       ["independent review", "review-gate.mjs"],
       ["run packet", "run-packet-gate.mjs"],
     ];
     try {
-      const route = JSON.parse(readFileSync(path.join(run.artifactRoot, "run", "route.json"), "utf8"));
-      const intake = JSON.parse(readFileSync(path.join(run.artifactRoot, "run", "intake.json"), "utf8"));
-      if (routeRequiresRca(route, intake) || existsSync(path.join(run.artifactRoot, "rca", "rca.json"))) portableGates.unshift(["RCA", "rca-gate.mjs"]);
+      const route = JSON.parse(
+        readFileSync(path.join(run.artifactRoot, "run", "route.json"), "utf8"),
+      );
+      const intake = JSON.parse(
+        readFileSync(path.join(run.artifactRoot, "run", "intake.json"), "utf8"),
+      );
+      if (
+        routeRequiresRca(route, intake) ||
+        existsSync(path.join(run.artifactRoot, "rca", "rca.json"))
+      )
+        portableGates.unshift(["RCA", "rca-gate.mjs"]);
     } catch (error) {
       return [`v0.8 RCA applicability read failed: ${error.message}`];
     }
     for (const [label, script] of portableGates) {
       const gate = runGate(script, finishLineScriptDir);
-      if (gate.status !== 0) return [`v0.8 ${label} finish line failed: ${failureOutput(gate)}`];
+      if (gate.status !== 0)
+        return [`v0.8 ${label} finish line failed: ${failureOutput(gate)}`];
     }
   }
   try {
     const routePath = path.join(run.artifactRoot, "run", "route.json");
     const routeBytes = readFileSync(routePath);
     const route = JSON.parse(routeBytes.toString("utf8"));
-    const goal = JSON.parse(readFileSync(path.join(run.artifactRoot, "goal", "goal.json"), "utf8"));
-    const waiverLedger = JSON.parse(readFileSync(path.join(run.artifactRoot, "waivers", "waivers.json"), "utf8"));
+    const goal = JSON.parse(
+      readFileSync(path.join(run.artifactRoot, "goal", "goal.json"), "utf8"),
+    );
+    const waiverLedger = JSON.parse(
+      readFileSync(
+        path.join(run.artifactRoot, "waivers", "waivers.json"),
+        "utf8",
+      ),
+    );
     const domainPath = path.join(run.artifactRoot, "domain", "assurance.json");
     const domainBytes = readFileSync(domainPath);
     const domainAssurance = JSON.parse(domainBytes.toString("utf8"));
     const problems = [];
-    if (route.runId !== run.id) problems.push("route.runId must match the bridge run ID");
-    if (goal.goalId !== run.id) problems.push("goal.goalId must match the bridge run ID");
+    if (route.runId !== run.id)
+      problems.push("route.runId must match the bridge run ID");
+    if (goal.goalId !== run.id)
+      problems.push("goal.goalId must match the bridge run ID");
     const approvals = normalizeApprovalRecords(run.approvals || []);
     const routeDigest = createHash("sha256").update(routeBytes).digest("hex");
-    if (!approvals.some((approval) => approval.status === "granted" && approval.scope === "route" && approval.artifact === "run/route.json" && approval.artifactDigest === routeDigest)) {
-      problems.push("current run/route.json is not bound to a token-gated human route approval");
+    if (
+      !approvals.some(
+        (approval) =>
+          approval.status === "granted" &&
+          approval.scope === "route" &&
+          approval.artifact === "run/route.json" &&
+          approval.artifactDigest === routeDigest,
+      )
+    ) {
+      problems.push(
+        "current run/route.json is not bound to a token-gated human route approval",
+      );
     }
     for (const waiver of waiverLedger.waivers || []) {
-      if (!approvals.some((approval) => approval.status === "granted" && approval.eventId === waiver.approvalEventId && approval.scope === waiver.scope)) problems.push(`waiver ${waiver.id} is not bound to a granted token-gated bridge approval event`);
+      if (
+        !approvals.some(
+          (approval) =>
+            approval.status === "granted" &&
+            approval.eventId === waiver.approvalEventId &&
+            approval.scope === waiver.scope,
+        )
+      )
+        problems.push(
+          `waiver ${waiver.id} is not bound to a granted token-gated bridge approval event`,
+        );
     }
     const domainDigest = createHash("sha256").update(domainBytes).digest("hex");
-    for (const control of (domainAssurance.packs || []).flatMap((pack) => pack.controls || [])) {
+    for (const control of (domainAssurance.packs || []).flatMap(
+      (pack) => pack.controls || [],
+    )) {
       for (const evidence of control.evidence || []) {
-        if (evidence.type === "approval" && !approvals.some((approval) => approval.status === "granted" && approval.eventId === evidence.bridgeEventId && approval.scope === evidence.scope && approval.artifact === "domain/assurance.json" && approval.artifactDigest === domainDigest)) {
-          problems.push(`domain approval for ${control.id} is not bound to its token-gated bridge event`);
+        if (
+          evidence.type === "approval" &&
+          !approvals.some(
+            (approval) =>
+              approval.status === "granted" &&
+              approval.eventId === evidence.bridgeEventId &&
+              approval.scope === evidence.scope &&
+              approval.artifact === "domain/assurance.json" &&
+              approval.artifactDigest === domainDigest,
+          )
+        ) {
+          problems.push(
+            `domain approval for ${control.id} is not bound to its token-gated bridge event`,
+          );
         }
       }
     }
     if (commissionedBaseline) {
       try {
         const current = commissionedRuntimeForRun(run);
-        if (current.commit !== commissionedBaseline.commit || current.binding.setSha256 !== commissionedBaseline.binding.setSha256) {
-          problems.push("commissioned runtime changed during finish-line execution");
+        if (
+          current.commit !== commissionedBaseline.commit ||
+          current.binding.setSha256 !== commissionedBaseline.binding.setSha256
+        ) {
+          problems.push(
+            "commissioned runtime changed during finish-line execution",
+          );
         }
       } catch (error) {
-        problems.push(`commissioned runtime final trust validation failed: ${error.message}`);
+        problems.push(
+          `commissioned runtime final trust validation failed: ${error.message}`,
+        );
       }
     }
     return problems;
   } catch (error) {
-    return [`${finishLineVersion} finish-line binding read failed: ${error.message}`];
+    return [
+      `${finishLineVersion} finish-line binding read failed: ${error.message}`,
+    ];
   }
 }
 
 function updateApproval(run, event) {
   const approvals = normalizeApprovalRecords(run.approvals || []);
-  if (!["approval.requested", "approval.granted", "approval.denied"].includes(event.type) && event.status !== "needs_approval") return approvals;
+  if (
+    !["approval.requested", "approval.granted", "approval.denied"].includes(
+      event.type,
+    ) &&
+    event.status !== "needs_approval"
+  )
+    return approvals;
   const scope = event.approvalScope;
   const owner = event.approvalOwner;
-  const status = event.type === "approval.granted" ? "granted" : event.type === "approval.denied" ? "denied" : "pending";
-  const existingIndex = approvals.findIndex((approval) => approval.scope === scope && approval.owner === owner);
+  const status =
+    event.type === "approval.granted"
+      ? "granted"
+      : event.type === "approval.denied"
+        ? "denied"
+        : "pending";
+  const existingIndex = approvals.findIndex(
+    (approval) => approval.scope === scope && approval.owner === owner,
+  );
   const record = {
     scope,
     owner,
@@ -2109,7 +3168,9 @@ function updateApproval(run, event) {
 function applyArtifactEvent(run, event, verification) {
   const targetArtifact = artifactTargetFor(run, event);
   if (!targetArtifact) return run.artifacts || createBaseArtifacts();
-  const artifacts = (run.artifacts || createBaseArtifacts()).some((entry) => entry.path === targetArtifact)
+  const artifacts = (run.artifacts || createBaseArtifacts()).some(
+    (entry) => entry.path === targetArtifact,
+  )
     ? run.artifacts || createBaseArtifacts()
     : [
         ...(run.artifacts || createBaseArtifacts()),
@@ -2134,7 +3195,11 @@ function applyArtifactEvent(run, event, verification) {
         evidenceArtifact: event.artifact,
       };
     }
-    if (event.type === "node.failed" || event.status === "failed" || event.status === "blocked") {
+    if (
+      event.type === "node.failed" ||
+      event.status === "failed" ||
+      event.status === "blocked"
+    ) {
       return {
         ...entry,
         present: false,
@@ -2163,8 +3228,18 @@ function applyArtifactEvent(run, event, verification) {
         failed: false,
         evidenceArtifact: event.artifact || targetArtifact,
         verification: verification
-          ? { ...verification, source: "human-approval-event", eventId: event.id }
-          : { checked: false, exists: false, source: "human-approval-event", eventId: event.id, problems: ["approval artifact was not bridge-sealed"] },
+          ? {
+              ...verification,
+              source: "human-approval-event",
+              eventId: event.id,
+            }
+          : {
+              checked: false,
+              exists: false,
+              source: "human-approval-event",
+              eventId: event.id,
+              problems: ["approval artifact was not bridge-sealed"],
+            },
       };
     }
     return entry;
@@ -2174,7 +3249,9 @@ function applyArtifactEvent(run, event, verification) {
 function applyEvent(run, event) {
   const sealedVerificationProblems = sealedArtifactVerificationProblems(event);
   if (sealedVerificationProblems.length) {
-    throw new Error(`event is missing bridge-sealed artifact verification: ${sealedVerificationProblems.join("; ")}`);
+    throw new Error(
+      `event is missing bridge-sealed artifact verification: ${sealedVerificationProblems.join("; ")}`,
+    );
   }
   const verification = event.artifactVerification;
   const updated = normalizeRun({
@@ -2190,10 +3267,19 @@ function applyEvent(run, event) {
   updated.approvals = updateApproval(updated, event);
   updated.artifacts = applyArtifactEvent(updated, event, verification);
 
-  if (event.type === "approval.requested" || event.status === "needs_approval") updated.status = "approval";
-  else if (event.type === "approval.denied" || event.type === "run.blocked" || event.type === "node.failed" || event.status === "blocked" || event.status === "failed") updated.status = "blocked";
+  if (event.type === "approval.requested" || event.status === "needs_approval")
+    updated.status = "approval";
+  else if (
+    event.type === "approval.denied" ||
+    event.type === "run.blocked" ||
+    event.type === "node.failed" ||
+    event.status === "blocked" ||
+    event.status === "failed"
+  )
+    updated.status = "blocked";
   else if (event.type === "run.completed") updated.status = "complete";
-  else if (unresolvedApprovalProblems(updated).length) updated.status = "approval";
+  else if (unresolvedApprovalProblems(updated).length)
+    updated.status = "approval";
   else updated.status = "running";
 
   return updated;
@@ -2203,7 +3289,9 @@ async function listRuns({ cursor = 0, limit = DEFAULT_RUN_PAGE_LIMIT } = {}) {
   await mkdir(DATA_DIR, { recursive: true });
   const names = await readdir(DATA_DIR);
   if (names.length > MAX_RUN_DIRECTORY_ENTRIES) {
-    throw new Error(`bridge data directory exceeds the ${MAX_RUN_DIRECTORY_ENTRIES}-entry safety limit`);
+    throw new Error(
+      `bridge data directory exceeds the ${MAX_RUN_DIRECTORY_ENTRIES}-entry safety limit`,
+    );
   }
   const candidates = names
     .filter((name) => /^run-[a-f0-9]{64}$/.test(name))
@@ -2216,24 +3304,44 @@ async function listRuns({ cursor = 0, limit = DEFAULT_RUN_PAGE_LIMIT } = {}) {
         return [];
       }
     })
-    .sort((left, right) => right.updatedMs - left.updatedMs || left.name.localeCompare(right.name));
+    .sort(
+      (left, right) =>
+        right.updatedMs - left.updatedMs || left.name.localeCompare(right.name),
+    );
   const runs = [];
   let candidateIndex = Math.min(cursor, candidates.length);
   let responseBytes = 2;
   const maximumCandidatesScanned = Math.max(limit * 4, limit);
   let scanned = 0;
-  while (candidateIndex < candidates.length && runs.length < limit && scanned < maximumCandidatesScanned) {
+  while (
+    candidateIndex < candidates.length &&
+    runs.length < limit &&
+    scanned < maximumCandidatesScanned
+  ) {
     const candidateOffset = candidateIndex;
     const { name } = candidates[candidateIndex];
     candidateIndex += 1;
     scanned += 1;
     try {
       const file = path.join(DATA_DIR, name, "run.json");
-      const candidate = JSON.parse(await readBoundedBridgeStateFile(file, MAX_RUN_SNAPSHOT_BYTES, "bridge run snapshot"));
+      const candidate = JSON.parse(
+        await readBoundedBridgeStateFile(
+          file,
+          MAX_RUN_SNAPSHOT_BYTES,
+          "bridge run snapshot",
+        ),
+      );
       const runId = canonicalRunId(candidate.id);
-      if (storageRunKey(runId) !== name) throw new Error("persisted run is stored under a noncanonical directory key");
-      const summary = publicRunWithoutEventHistory(await withRunLock(runId, () => readRun(runId)));
-      const summaryBytes = Buffer.byteLength(JSON.stringify(summary), "utf8") + (runs.length > 0 ? 1 : 0);
+      if (storageRunKey(runId) !== name)
+        throw new Error(
+          "persisted run is stored under a noncanonical directory key",
+        );
+      const summary = publicRunWithoutEventHistory(
+        await withRunLock(runId, () => readRun(runId)),
+      );
+      const summaryBytes =
+        Buffer.byteLength(JSON.stringify(summary), "utf8") +
+        (runs.length > 0 ? 1 : 0);
       if (responseBytes + summaryBytes > MAX_RESPONSE_BODY_BYTES - 8 * 1024) {
         if (runs.length === 0) continue;
         candidateIndex = candidateOffset;
@@ -2252,7 +3360,8 @@ async function listRuns({ cursor = 0, limit = DEFAULT_RUN_PAGE_LIMIT } = {}) {
       limit,
       returned: runs.length,
       total: candidates.length,
-      nextCursor: candidateIndex < candidates.length ? String(candidateIndex) : null,
+      nextCursor:
+        candidateIndex < candidates.length ? String(candidateIndex) : null,
     },
   };
 }
@@ -2261,16 +3370,24 @@ async function appendEvent(runId, event) {
   await mkdir(runDir(runId), { recursive: true });
   const contractProblems = eventContractProblems(event);
   if (contractProblems.length) {
-    throw new Error(`refusing to append an invalid event: ${contractProblems.join("; ")}`);
+    throw new Error(
+      `refusing to append an invalid event: ${contractProblems.join("; ")}`,
+    );
   }
   const journal = await readEventJournalState(runId);
   if (journal.events.length >= MAX_EVENTS_PER_RUN) {
-    throw new Error(`refusing to append beyond the ${MAX_EVENTS_PER_RUN}-event run-history limit`);
+    throw new Error(
+      `refusing to append beyond the ${MAX_EVENTS_PER_RUN}-event run-history limit`,
+    );
   }
   if (journal.events.some((existing) => existing.id === event.id)) {
     throw new Error(`refusing to append duplicate event id: ${event.id}`);
   }
-  const record = sealJournalEvent(canonicalRunId(runId), event, journal.lastDigest);
+  const record = sealJournalEvent(
+    canonicalRunId(runId),
+    event,
+    journal.lastDigest,
+  );
   const handle = await open(path.join(runDir(runId), "events.jsonl"), "a");
   try {
     await handle.writeFile(JSON.stringify(record) + "\n", "utf8");
@@ -2286,7 +3403,9 @@ async function withRunLock(runId, operation) {
   const canonicalId = canonicalRunId(runId);
   const previous = RUN_LOCKS.get(canonicalId) || Promise.resolve();
   let release;
-  const gate = new Promise((resolve) => { release = resolve; });
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
   const queued = previous.then(() => gate);
   RUN_LOCKS.set(canonicalId, queued);
   await previous;
@@ -2304,7 +3423,9 @@ async function assertNoLegacyRunDirectories() {
   const legacy = [];
   for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
     const directory = path.join(DATA_DIR, entry.name);
-    const presentStateFiles = stateFiles.filter((file) => existsSync(path.join(directory, file)));
+    const presentStateFiles = stateFiles.filter((file) =>
+      existsSync(path.join(directory, file)),
+    );
     if (!presentStateFiles.length) continue;
 
     const problems = [];
@@ -2316,46 +3437,82 @@ async function assertNoLegacyRunDirectories() {
     let snapshotRunId = null;
     try {
       if (presentStateFiles.includes("run-config.json")) {
-        const config = verifiedRunConfigPayload(JSON.parse(await readBoundedBridgeStateFile(path.join(directory, "run-config.json"), MAX_RUN_CONFIG_BYTES, "bridge run configuration")));
+        const config = verifiedRunConfigPayload(
+          JSON.parse(
+            await readBoundedBridgeStateFile(
+              path.join(directory, "run-config.json"),
+              MAX_RUN_CONFIG_BYTES,
+              "bridge run configuration",
+            ),
+          ),
+        );
         configRunId = canonicalRunId(config.runId);
       }
     } catch (error) {
-      problems.push(`run-config identity is invalid: ${error instanceof Error ? error.message : String(error)}`);
+      problems.push(
+        `run-config identity is invalid: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
     try {
       if (presentStateFiles.includes("run.json")) {
-        const snapshot = verifiedRunSnapshotPayload(JSON.parse(await readBoundedBridgeStateFile(path.join(directory, "run.json"), MAX_RUN_SNAPSHOT_BYTES, "bridge run snapshot")));
+        const snapshot = verifiedRunSnapshotPayload(
+          JSON.parse(
+            await readBoundedBridgeStateFile(
+              path.join(directory, "run.json"),
+              MAX_RUN_SNAPSHOT_BYTES,
+              "bridge run snapshot",
+            ),
+          ),
+        );
         snapshotRunId = canonicalRunId(snapshot.run.id);
       }
     } catch (error) {
-      problems.push(`run snapshot identity is invalid: ${error instanceof Error ? error.message : String(error)}`);
+      problems.push(
+        `run snapshot identity is invalid: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
 
     const boundRunId = configRunId || snapshotRunId;
-    if (!boundRunId) problems.push("no authenticated v0.8 run identity is present");
+    if (!boundRunId)
+      problems.push("no authenticated v0.8 run identity is present");
     if (configRunId && snapshotRunId && configRunId !== snapshotRunId) {
       problems.push("run-config and snapshot identities disagree");
     }
     if (boundRunId && storageRunKey(boundRunId) !== entry.name) {
-      problems.push("authenticated run identity does not match the storage directory key");
+      problems.push(
+        "authenticated run identity does not match the storage directory key",
+      );
     }
-    if (snapshotRunId && !configRunId) problems.push("authenticated snapshot is missing its immutable run-config");
+    if (snapshotRunId && !configRunId)
+      problems.push(
+        "authenticated snapshot is missing its immutable run-config",
+      );
 
-    if (boundRunId && storageRunKey(boundRunId) === entry.name && presentStateFiles.includes("events.jsonl")) {
+    if (
+      boundRunId &&
+      storageRunKey(boundRunId) === entry.name &&
+      presentStateFiles.includes("events.jsonl")
+    ) {
       try {
         const journal = await readEventJournalState(boundRunId);
         if (!snapshotRunId && journal.events.length > 0) {
-          problems.push("non-empty authenticated journal is missing its derived snapshot");
+          problems.push(
+            "non-empty authenticated journal is missing its derived snapshot",
+          );
         }
       } catch (error) {
-        problems.push(`event journal identity is invalid: ${error instanceof Error ? error.message : String(error)}`);
+        problems.push(
+          `event journal identity is invalid: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 
     if (problems.length) legacy.push(`${entry.name} (${problems.join("; ")})`);
   }
   if (legacy.length) {
-    throw new Error(`legacy bridge state requires explicit archival before v0.8 startup; refusing silent migration or fork: ${legacy.join(", ")}`);
+    throw new Error(
+      `legacy bridge state requires explicit archival before v0.8 startup; refusing silent migration or fork: ${legacy.join(", ")}`,
+    );
   }
 }
 
@@ -2384,10 +3541,12 @@ async function writeExclusiveLease(lockPath, payload) {
 }
 
 function leaseOwnedBy(document, ownership) {
-  return document?.pid === process.pid
-    && document?.hostname === os.hostname()
-    && typeof ownership?.leaseId === "string"
-    && document?.leaseId === ownership.leaseId;
+  return (
+    document?.pid === process.pid &&
+    document?.hostname === os.hostname() &&
+    typeof ownership?.leaseId === "string" &&
+    document?.leaseId === ownership.leaseId
+  );
 }
 
 async function removeOwnedRecoveryMutex(ownership) {
@@ -2395,10 +3554,14 @@ async function removeOwnedRecoveryMutex(ownership) {
   try {
     persisted = JSON.parse(await readFile(ownership.lockPath, "utf8"));
   } catch (error) {
-    throw new Error(`bridge lease recovery mutex could not be revalidated for owned cleanup; stop and inspect ${ownership.lockPath}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `bridge lease recovery mutex could not be revalidated for owned cleanup; stop and inspect ${ownership.lockPath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   if (!leaseOwnedBy(persisted, ownership)) {
-    throw new Error(`bridge lease recovery mutex ownership changed; refusing to remove it automatically. Stop and inspect ${ownership.lockPath}`);
+    throw new Error(
+      `bridge lease recovery mutex ownership changed; refusing to remove it automatically. Stop and inspect ${ownership.lockPath}`,
+    );
   }
   await unlink(ownership.lockPath);
 }
@@ -2417,7 +3580,9 @@ async function acquireBridgeRecoveryMutex() {
     return { lockPath, ...ownership };
   } catch (error) {
     if (error?.code !== "EEXIST") throw error;
-    throw new Error(`bridge lease recovery mutex already exists; refusing to steal it even if it appears stale or malformed. Confirm no bridge startup is active, then archive or remove ${lockPath} explicitly before retrying`);
+    throw new Error(
+      `bridge lease recovery mutex already exists; refusing to steal it even if it appears stale or malformed. Confirm no bridge startup is active, then archive or remove ${lockPath} explicitly before retrying`,
+    );
   }
 }
 
@@ -2444,19 +3609,24 @@ async function acquireBridgeDataLease() {
       } catch {
         // A malformed main lease is never safe to steal automatically.
       }
-      const staleLocalLease = existing?.schema === "uash.bridge-process-lease.v1"
-        && typeof existing?.leaseId === "string"
-        && existing.leaseId.length > 0
-        && existing.hostname === os.hostname()
-        && !processAppearsAlive(Number(existing.pid));
+      const staleLocalLease =
+        existing?.schema === "uash.bridge-process-lease.v1" &&
+        typeof existing?.leaseId === "string" &&
+        existing.leaseId.length > 0 &&
+        existing.hostname === os.hostname() &&
+        !processAppearsAlive(Number(existing.pid));
       if (!staleLocalLease) {
-        throw new Error(`UASH_DATA_DIR is already leased by another bridge process or contains an unsafe lease: ${lockPath}`);
+        throw new Error(
+          `UASH_DATA_DIR is already leased by another bridge process or contains an unsafe lease: ${lockPath}`,
+        );
       }
       // Recovery ownership serializes this re-read, stale unlink, and replacement.
       // No second starter can remove a freshly-created main lease behind us.
       const revalidated = JSON.parse(await readFile(lockPath, "utf8"));
       if (JSON.stringify(revalidated) !== JSON.stringify(existing)) {
-        throw new Error("bridge data-directory lease changed during stale recovery; refusing automatic reclamation");
+        throw new Error(
+          "bridge data-directory lease changed during stale recovery; refusing automatic reclamation",
+        );
       }
       await unlink(lockPath);
       await writeExclusiveLease(lockPath, lease);
@@ -2494,16 +3664,26 @@ async function handle(req, res) {
       return send(res, 403, { ok: false, error: "origin_not_allowed" });
     }
     if (req.method === "OPTIONS") return send(res, 204, "");
-    if (url.pathname.startsWith("/runs") && ["GET", "POST"].includes(req.method || "")) {
+    if (
+      url.pathname.startsWith("/runs") &&
+      ["GET", "POST"].includes(req.method || "")
+    ) {
       const accessProblems = bridgeAccessTokenProblems(req);
-      if (accessProblems.length) return send(res, 401, { ok: false, error: "bridge_auth_required", problems: accessProblems });
+      if (accessProblems.length)
+        return send(res, 401, {
+          ok: false,
+          error: "bridge_auth_required",
+          problems: accessProblems,
+        });
     }
     if (req.method === "GET" && url.pathname === "/health") {
       const health = {
         ok: true,
         service: SERVICE,
         contractVersion: CONTRACT_VERSION,
-        listenMode: LOOPBACK_HOSTS.has(HOST) ? "loopback" : "configured-network",
+        listenMode: LOOPBACK_HOSTS.has(HOST)
+          ? "loopback"
+          : "configured-network",
       };
       if (bridgeAccessTokenProblems(req).length === 0) {
         Object.assign(health, {
@@ -2514,10 +3694,17 @@ async function handle(req, res) {
           proofSchema: PROOF_SCHEMA,
           adapterAware: true,
           bridgeAccessTokenConfigured: true,
-          bridgeIntegrityKeyConfigured: Boolean(process.env.UASH_BRIDGE_INTEGRITY_KEY),
-          humanApprovalTokenConfigured: Boolean(process.env.UASH_HUMAN_APPROVAL_TOKEN),
+          bridgeIntegrityKeyConfigured: Boolean(
+            process.env.UASH_BRIDGE_INTEGRITY_KEY,
+          ),
+          humanApprovalTokenConfigured: Boolean(
+            process.env.UASH_HUMAN_APPROVAL_TOKEN,
+          ),
           reviewTrustSha256Configured: true,
-          completedRunValidation: { ...COMPLETED_RUN_VALIDATION_METRICS, cachedRuns: COMPLETED_RUN_VALIDATIONS.size },
+          completedRunValidation: {
+            ...COMPLETED_RUN_VALIDATION_METRICS,
+            cachedRuns: COMPLETED_RUN_VALIDATIONS.size,
+          },
           repoRoot: REPO_ROOT,
         });
       }
@@ -2525,18 +3712,45 @@ async function handle(req, res) {
     }
 
     if (req.method === "GET" && url.pathname === "/runs") {
-      const cursor = boundedPageParameter(url.searchParams, "cursor", 0, 0, MAX_RUN_DIRECTORY_ENTRIES);
-      const limit = boundedPageParameter(url.searchParams, "limit", DEFAULT_RUN_PAGE_LIMIT, 1, MAX_RUN_PAGE_LIMIT);
+      const cursor = boundedPageParameter(
+        url.searchParams,
+        "cursor",
+        0,
+        0,
+        MAX_RUN_DIRECTORY_ENTRIES,
+      );
+      const limit = boundedPageParameter(
+        url.searchParams,
+        "limit",
+        DEFAULT_RUN_PAGE_LIMIT,
+        1,
+        MAX_RUN_PAGE_LIMIT,
+      );
       const paginationProblems = [
-        ...unsupportedQueryParameterProblems(url.searchParams, ["cursor", "limit"]),
+        ...unsupportedQueryParameterProblems(url.searchParams, [
+          "cursor",
+          "limit",
+        ]),
         ...cursor.problems,
         ...limit.problems,
       ];
       if (paginationProblems.length) {
-        return send(res, 400, { ok: false, error: "invalid_pagination", problems: paginationProblems });
+        return send(res, 400, {
+          ok: false,
+          error: "invalid_pagination",
+          problems: paginationProblems,
+        });
       }
-      const pageResult = await listRuns({ cursor: cursor.value, limit: limit.value });
-      return send(res, 200, pageResult.runs, paginationHeaders(pageResult.page));
+      const pageResult = await listRuns({
+        cursor: cursor.value,
+        limit: limit.value,
+      });
+      return send(
+        res,
+        200,
+        pageResult.runs,
+        paginationHeaders(pageResult.page),
+      );
     }
 
     if (req.method === "POST" && url.pathname === "/runs") {
@@ -2546,212 +3760,422 @@ async function handle(req, res) {
       try {
         runId = canonicalRunId(body.id);
       } catch (error) {
-        return send(res, 400, { ok: false, error: "invalid_run_id", problems: [error instanceof Error ? error.message : String(error)] });
+        return send(res, 400, {
+          ok: false,
+          error: "invalid_run_id",
+          problems: [error instanceof Error ? error.message : String(error)],
+        });
       }
       const creationProblems = runCreationBodyProblems(body);
-      if (creationProblems.length) return send(res, 400, { ok: false, error: "run_creation_contract_violation", problems: creationProblems });
+      if (creationProblems.length)
+        return send(res, 400, {
+          ok: false,
+          error: "run_creation_contract_violation",
+          problems: creationProblems,
+        });
       return await withRunLock(runId, async () => {
-      if (body.humanApprovalToken || body.humanToken || body.auth) {
-        return send(res, 400, { ok: false, error: "client_supplied_human_token_rejected", problems: ["Human approval tokens are operator-held process configuration, not POST /runs input. Set UASH_HUMAN_APPROVAL_TOKEN on the bridge process."] });
-      }
-      try {
-        const existing = await readRun(runId);
-        const mismatches = [];
-        const scalarFields = ["title", "task", "repo", "branch", "lane", "agent", "risk", "eventSource"];
-        for (const field of scalarFields) {
-          if (body[field] !== undefined && body[field] !== existing[field]) mismatches.push(`${field} differs from the existing run`);
+        if (body.humanApprovalToken || body.humanToken || body.auth) {
+          return send(res, 400, {
+            ok: false,
+            error: "client_supplied_human_token_rejected",
+            problems: [
+              "Human approval tokens are operator-held process configuration, not POST /runs input. Set UASH_HUMAN_APPROVAL_TOKEN on the bridge process.",
+            ],
+          });
         }
-        const requestedMode = body.mode ?? body.runMode;
-        if (requestedMode !== undefined && requestedMode !== existing.mode) mismatches.push("mode differs from the existing run");
-        if (body.artifactRoot !== undefined && path.resolve(String(body.artifactRoot)) !== path.resolve(String(existing.artifactRoot || ""))) {
-          mismatches.push("artifactRoot differs from the existing run");
-        }
-        if (body.adapterPath !== undefined) {
-          const requestedAdapter = resolveAdapterPath(body.adapterPath, body.artifactRoot || existing.artifactRoot);
-          if (requestedAdapter.problems.length || requestedAdapter.adapterPath !== existing.adapterPath) {
-            mismatches.push("adapterPath differs from the existing run");
+        try {
+          const existing = await readRun(runId);
+          const mismatches = [];
+          const scalarFields = [
+            "title",
+            "task",
+            "repo",
+            "branch",
+            "lane",
+            "agent",
+            "risk",
+            "eventSource",
+          ];
+          for (const field of scalarFields) {
+            if (body[field] !== undefined && body[field] !== existing[field])
+              mismatches.push(`${field} differs from the existing run`);
+          }
+          const requestedMode = body.mode ?? body.runMode;
+          if (requestedMode !== undefined && requestedMode !== existing.mode)
+            mismatches.push("mode differs from the existing run");
+          if (
+            body.artifactRoot !== undefined &&
+            path.resolve(String(body.artifactRoot)) !==
+              path.resolve(String(existing.artifactRoot || ""))
+          ) {
+            mismatches.push("artifactRoot differs from the existing run");
+          }
+          if (body.adapterPath !== undefined) {
+            const requestedAdapter = resolveAdapterPath(
+              body.adapterPath,
+              body.artifactRoot || existing.artifactRoot,
+            );
+            if (
+              requestedAdapter.problems.length ||
+              requestedAdapter.adapterPath !== existing.adapterPath
+            ) {
+              mismatches.push("adapterPath differs from the existing run");
+            }
+          }
+          if (mismatches.length) {
+            return send(res, 409, {
+              ok: false,
+              error: "run_already_exists",
+              problems: mismatches,
+              run: publicRunEventPage(existing).run,
+            });
+          }
+          const existingPage = publicRunEventPage(existing).run;
+          return send(res, 200, {
+            ...existingPage,
+            idempotentReplay: true,
+            humanApprovalTokenRequired: true,
+            humanApprovalTokenNotice:
+              "Approval grant/deny requires operator-held UASH_HUMAN_APPROVAL_TOKEN sent as x-uash-human-token by the separate operator-shell emitter. Raw tokens are never accepted from request bodies and never returned by HTTP.",
+          });
+        } catch (error) {
+          if (error?.code !== "ENOENT") {
+            return send(res, 409, {
+              ok: false,
+              error: "existing_run_trust_violation",
+              problems: [
+                error instanceof Error ? error.message : String(error),
+              ],
+            });
           }
         }
-        if (mismatches.length) {
-          return send(res, 409, { ok: false, error: "run_already_exists", problems: mismatches, run: publicRunEventPage(existing).run });
+        let created;
+        try {
+          created = createRunFromBody(body);
+        } catch (error) {
+          return send(res, 400, {
+            ok: false,
+            error: "adapter_policy_violation",
+            problems: [error instanceof Error ? error.message : String(error)],
+          });
         }
-        const existingPage = publicRunEventPage(existing).run;
+        created.run = await writeRun(created.run);
         return send(res, 200, {
-          ...existingPage,
-          idempotentReplay: true,
+          ...publicRun(created.run),
           humanApprovalTokenRequired: true,
-          humanApprovalTokenNotice: "Approval grant/deny requires operator-held UASH_HUMAN_APPROVAL_TOKEN sent as x-uash-human-token by the separate operator-shell emitter. Raw tokens are never accepted from request bodies and never returned by HTTP.",
+          humanApprovalTokenNotice:
+            "Approval grant/deny requires operator-held UASH_HUMAN_APPROVAL_TOKEN sent as x-uash-human-token by the separate operator-shell emitter. Raw tokens are never accepted from request bodies and never returned by HTTP.",
         });
-      } catch (error) {
-        if (error?.code !== "ENOENT") {
-          return send(res, 409, { ok: false, error: "existing_run_trust_violation", problems: [error instanceof Error ? error.message : String(error)] });
-        }
-      }
-      let created;
-      try {
-        created = createRunFromBody(body);
-      } catch (error) {
-        return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
-      }
-      created.run = await writeRun(created.run);
-      return send(res, 200, {
-        ...publicRun(created.run),
-        humanApprovalTokenRequired: true,
-        humanApprovalTokenNotice: "Approval grant/deny requires operator-held UASH_HUMAN_APPROVAL_TOKEN sent as x-uash-human-token by the separate operator-shell emitter. Raw tokens are never accepted from request bodies and never returned by HTTP.",
-      });
       });
     }
 
-    if (parts[0] === "runs" && parts[1] && req.method === "GET" && parts.length === 2) {
+    if (
+      parts[0] === "runs" &&
+      parts[1] &&
+      req.method === "GET" &&
+      parts.length === 2
+    ) {
       let runId;
       try {
         runId = canonicalRunId(parts[1]);
       } catch (error) {
-        return send(res, 400, { ok: false, error: "invalid_run_id", problems: [error instanceof Error ? error.message : String(error)] });
+        return send(res, 400, {
+          ok: false,
+          error: "invalid_run_id",
+          problems: [error instanceof Error ? error.message : String(error)],
+        });
       }
-      const eventCursor = boundedPageParameter(url.searchParams, "eventCursor", null, 0, MAX_EVENTS_PER_RUN, { optional: true });
-      const eventLimit = boundedPageParameter(url.searchParams, "eventLimit", DEFAULT_EVENT_PAGE_LIMIT, 1, MAX_EVENT_PAGE_LIMIT);
+      const eventCursor = boundedPageParameter(
+        url.searchParams,
+        "eventCursor",
+        null,
+        0,
+        MAX_EVENTS_PER_RUN,
+        { optional: true },
+      );
+      const eventLimit = boundedPageParameter(
+        url.searchParams,
+        "eventLimit",
+        DEFAULT_EVENT_PAGE_LIMIT,
+        1,
+        MAX_EVENT_PAGE_LIMIT,
+      );
       const paginationProblems = [
-        ...unsupportedQueryParameterProblems(url.searchParams, ["eventCursor", "eventLimit"]),
+        ...unsupportedQueryParameterProblems(url.searchParams, [
+          "eventCursor",
+          "eventLimit",
+        ]),
         ...eventCursor.problems,
         ...eventLimit.problems,
       ];
       if (paginationProblems.length) {
-        return send(res, 400, { ok: false, error: "invalid_pagination", problems: paginationProblems });
+        return send(res, 400, {
+          ok: false,
+          error: "invalid_pagination",
+          problems: paginationProblems,
+        });
       }
       return await withRunLock(runId, async () => {
         const pageResult = publicRunEventPage(await readRun(runId), {
           eventCursor: eventCursor.value,
           eventLimit: eventLimit.value,
         });
-        return send(res, 200, pageResult.run, paginationHeaders(pageResult.page));
+        return send(
+          res,
+          200,
+          pageResult.run,
+          paginationHeaders(pageResult.page),
+        );
       });
     }
 
-    if (parts[0] === "runs" && parts[1] && parts[2] === "events" && req.method === "POST") {
+    if (
+      parts[0] === "runs" &&
+      parts[1] &&
+      parts[2] === "events" &&
+      req.method === "POST"
+    ) {
       let runId;
       try {
         runId = canonicalRunId(parts[1]);
       } catch (error) {
-        return send(res, 400, { ok: false, error: "invalid_run_id", problems: [error instanceof Error ? error.message : String(error)] });
+        return send(res, 400, {
+          ok: false,
+          error: "invalid_run_id",
+          problems: [error instanceof Error ? error.message : String(error)],
+        });
       }
       const body = await readJson(req);
       const metadataSizeProblems = runMetadataSizeProblems(body);
       if (metadataSizeProblems.length) {
-        return send(res, 400, { ok: false, error: "event_contract_violation", problems: metadataSizeProblems });
+        return send(res, 400, {
+          ok: false,
+          error: "event_contract_violation",
+          problems: metadataSizeProblems,
+        });
       }
-      const bodyHumanCredentialFields = ["humanToken", "humanApprovalToken"]
-        .filter((field) => body && typeof body === "object" && Object.prototype.hasOwnProperty.call(body, field));
+      const bodyHumanCredentialFields = [
+        "humanToken",
+        "humanApprovalToken",
+      ].filter(
+        (field) =>
+          body &&
+          typeof body === "object" &&
+          Object.prototype.hasOwnProperty.call(body, field),
+      );
       if (bodyHumanCredentialFields.length) {
         return send(res, 400, {
           ok: false,
           error: "client_supplied_human_token_rejected",
-          problems: ["Human approval tokens are accepted only through x-uash-human-token, never from an event request body."],
+          problems: [
+            "Human approval tokens are accepted only through x-uash-human-token, never from an event request body.",
+          ],
         });
       }
       return await withRunLock(runId, async () => {
-      const humanToken = extractHumanToken(req);
-      let run;
-      let createdImplicitly = false;
-      try {
-        run = await readRun(runId);
-      } catch (error) {
-        if (error?.code !== "ENOENT") {
-          return send(res, 409, { ok: false, error: "commissioned_runtime_trust_violation", problems: [error instanceof Error ? error.message : String(error)] });
-        }
+        const humanToken = extractHumanToken(req);
+        let run;
+        let createdImplicitly = false;
         try {
-          run = createMinimalRun(runId, body);
-          createdImplicitly = true;
+          run = await readRun(runId);
         } catch (error) {
-          return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
+          if (error?.code !== "ENOENT") {
+            return send(res, 409, {
+              ok: false,
+              error: "commissioned_runtime_trust_violation",
+              problems: [
+                error instanceof Error ? error.message : String(error),
+              ],
+            });
+          }
+          try {
+            run = createMinimalRun(runId, body);
+            createdImplicitly = true;
+          } catch (error) {
+            return send(res, 400, {
+              ok: false,
+              error: "adapter_policy_violation",
+              problems: [
+                error instanceof Error ? error.message : String(error),
+              ],
+            });
+          }
         }
-      }
-      const preBindingConfig = immutableRunConfig(run);
-      if (!run.artifactRoot && body.artifactRoot) {
-        if ((run.events || []).length > 0) {
-          return send(res, 409, { ok: false, error: "event_state_violation", problems: ["artifactRoot must be bound before the first persisted event"] });
-        }
-        run = normalizeRun({ ...run, artifactRoot: path.resolve(String(body.artifactRoot)) });
-      }
-      if (!run.adapterPolicy && (body.adapterPath || body.artifactRoot || run.artifactRoot)) {
-        try {
-          const adapterConfig = loadAdapterPolicy(body.adapterPath, body.artifactRoot || run.artifactRoot);
-          if (adapterConfig.adapterPolicy) run = normalizeRun({ ...run, artifactRoot: run.artifactRoot || body.artifactRoot, adapterPath: adapterConfig.adapterPath, adapterPolicy: adapterConfig.adapterPolicy, commissionedRuntime: adapterConfig.commissionedRuntime, artifacts: createBaseArtifacts(adapterConfig.adapterPolicy) });
-        } catch (error) {
-          return send(res, 400, { ok: false, error: "adapter_policy_violation", problems: [error instanceof Error ? error.message : String(error)] });
-        }
-      }
-      const configurationBoundOnFirstEvent = !createdImplicitly
-        && JSON.stringify(preBindingConfig) !== JSON.stringify(immutableRunConfig(run));
-      if (configurationBoundOnFirstEvent && (run.events || []).length > 0) {
-        return send(res, 409, { ok: false, error: "event_state_violation", problems: ["artifactRoot and adapter commissioning must be bound before the first persisted event"] });
-      }
-      if (run.commissionedRuntime && !runIntegrityKey()) {
-        return send(res, 409, { ok: false, error: "commissioned_runtime_trust_violation", problems: ["commissioned run creation and first-event binding require UASH_BRIDGE_INTEGRITY_KEY before any journal append"] });
-      }
-      const event = normalizeEvent(runId, body);
-      const contractProblems = eventContractProblems(event);
-      if (contractProblems.length) {
-        return send(res, 400, { ok: false, error: "event_contract_violation", problems: contractProblems });
-      }
-      const stateProblems = eventStateProblems(run, event, humanToken);
-      if (stateProblems.length) {
-        return send(res, 409, { ok: false, error: "event_state_violation", problems: stateProblems });
-      }
-      const artifactClaim = artifactVerification(run, event);
-      const artifactProblems = event.type === "artifact.written"
-        ? artifactWriteProblems(run, event, artifactClaim)
-        : artifactClaim?.exists === true && /^[a-f0-9]{64}$/.test(artifactClaim.sha256 || "")
-            ? []
-            : artifactClaim?.problems || (event.type === "approval.granted" && event.artifact
-                ? ["approval artifact verification did not bind an existing regular file and SHA-256 digest"]
-                : []);
-      if (artifactProblems.length) {
-        return send(res, 400, { ok: false, error: "artifact_verification_failed", problems: artifactProblems });
-      }
-      if (artifactClaim) event.artifactVerification = artifactClaim;
-      const sealedEventProblems = eventContractProblems(event);
-      if (sealedEventProblems.length) {
-        return send(res, 400, { ok: false, error: "event_contract_violation", problems: sealedEventProblems });
-      }
-
-      // Persist a replayable base and any first-event adapter seal before the
-      // journal append so a crash cannot orphan or downgrade the event stream.
-      if (createdImplicitly || configurationBoundOnFirstEvent) run = await writeRun(run);
-      const nextRun = applyEvent(run, event);
-      if (event.type === "run.completed") {
-        const problems = finishLineProblems(nextRun);
-        if (problems.length) {
-          const blockedEvent = normalizeEvent(runId, {
-            type: "run.blocked",
-            nodeId: "prove",
-            artifact: "proof/proof.json",
-            status: "blocked",
-            actor: "harness",
-            runMode: nextRun.mode || "live",
-            eventSource: nextRun.eventSource || "bridge",
-            message: `Finish line blocked: ${problems.join("; ")}`,
-            failureReason: "Finish-line contract unsatisfied.",
-            recoveryPath: "Attach verified artifacts, resolve approvals/self-heal, or emit node.skipped with explicit reasons, then retry run.completed.",
+        const preBindingConfig = immutableRunConfig(run);
+        if (!run.artifactRoot && body.artifactRoot) {
+          if ((run.events || []).length > 0) {
+            return send(res, 409, {
+              ok: false,
+              error: "event_state_violation",
+              problems: [
+                "artifactRoot must be bound before the first persisted event",
+              ],
+            });
+          }
+          run = normalizeRun({
+            ...run,
+            artifactRoot: path.resolve(String(body.artifactRoot)),
           });
-          const blockedRun = applyEvent(run, blockedEvent);
-          await appendEvent(runId, blockedEvent);
-          await writeRun(blockedRun);
-          return send(res, 409, { ok: false, error: "finish_line_blocked", problems, run: publicRunEventPage(blockedRun).run, event: blockedEvent });
         }
-      }
+        if (
+          !run.adapterPolicy &&
+          (body.adapterPath || body.artifactRoot || run.artifactRoot)
+        ) {
+          try {
+            const adapterConfig = loadAdapterPolicy(
+              body.adapterPath,
+              body.artifactRoot || run.artifactRoot,
+            );
+            if (adapterConfig.adapterPolicy)
+              run = normalizeRun({
+                ...run,
+                artifactRoot: run.artifactRoot || body.artifactRoot,
+                adapterPath: adapterConfig.adapterPath,
+                adapterPolicy: adapterConfig.adapterPolicy,
+                commissionedRuntime: adapterConfig.commissionedRuntime,
+                artifacts: createBaseArtifacts(adapterConfig.adapterPolicy),
+              });
+          } catch (error) {
+            return send(res, 400, {
+              ok: false,
+              error: "adapter_policy_violation",
+              problems: [
+                error instanceof Error ? error.message : String(error),
+              ],
+            });
+          }
+        }
+        const configurationBoundOnFirstEvent =
+          !createdImplicitly &&
+          JSON.stringify(preBindingConfig) !==
+            JSON.stringify(immutableRunConfig(run));
+        if (configurationBoundOnFirstEvent && (run.events || []).length > 0) {
+          return send(res, 409, {
+            ok: false,
+            error: "event_state_violation",
+            problems: [
+              "artifactRoot and adapter commissioning must be bound before the first persisted event",
+            ],
+          });
+        }
+        if (run.commissionedRuntime && !runIntegrityKey()) {
+          return send(res, 409, {
+            ok: false,
+            error: "commissioned_runtime_trust_violation",
+            problems: [
+              "commissioned run creation and first-event binding require UASH_BRIDGE_INTEGRITY_KEY before any journal append",
+            ],
+          });
+        }
+        const event = normalizeEvent(runId, body);
+        const contractProblems = eventContractProblems(event);
+        if (contractProblems.length) {
+          return send(res, 400, {
+            ok: false,
+            error: "event_contract_violation",
+            problems: contractProblems,
+          });
+        }
+        const stateProblems = eventStateProblems(run, event, humanToken);
+        if (stateProblems.length) {
+          return send(res, 409, {
+            ok: false,
+            error: "event_state_violation",
+            problems: stateProblems,
+          });
+        }
+        const artifactClaim = artifactVerification(run, event);
+        const artifactProblems =
+          event.type === "artifact.written"
+            ? artifactWriteProblems(run, event, artifactClaim)
+            : artifactClaim?.exists === true &&
+                /^[a-f0-9]{64}$/.test(artifactClaim.sha256 || "")
+              ? []
+              : artifactClaim?.problems ||
+                (event.type === "approval.granted" && event.artifact
+                  ? [
+                      "approval artifact verification did not bind an existing regular file and SHA-256 digest",
+                    ]
+                  : []);
+        if (artifactProblems.length) {
+          return send(res, 400, {
+            ok: false,
+            error: "artifact_verification_failed",
+            problems: artifactProblems,
+          });
+        }
+        if (artifactClaim) event.artifactVerification = artifactClaim;
+        const sealedEventProblems = eventContractProblems(event);
+        if (sealedEventProblems.length) {
+          return send(res, 400, {
+            ok: false,
+            error: "event_contract_violation",
+            problems: sealedEventProblems,
+          });
+        }
 
-      await appendEvent(runId, event);
-      await writeRun(nextRun);
-      return send(res, 200, { ok: true, run: publicRunEventPage(nextRun).run, event });
+        // Persist a replayable base and any first-event adapter seal before the
+        // journal append so a crash cannot orphan or downgrade the event stream.
+        if (createdImplicitly || configurationBoundOnFirstEvent)
+          run = await writeRun(run);
+        const nextRun = applyEvent(run, event);
+        if (event.type === "run.completed") {
+          const problems = finishLineProblems(nextRun);
+          if (problems.length) {
+            const blockedEvent = normalizeEvent(runId, {
+              type: "run.blocked",
+              nodeId: "prove",
+              artifact: "proof/proof.json",
+              status: "blocked",
+              actor: "harness",
+              runMode: nextRun.mode || "live",
+              eventSource: nextRun.eventSource || "bridge",
+              message: `Finish line blocked: ${problems.join("; ")}`,
+              failureReason: "Finish-line contract unsatisfied.",
+              recoveryPath:
+                "Attach verified artifacts, resolve approvals/self-heal, or emit node.skipped with explicit reasons, then retry run.completed.",
+            });
+            const blockedRun = applyEvent(run, blockedEvent);
+            await appendEvent(runId, blockedEvent);
+            await writeRun(blockedRun);
+            return send(res, 409, {
+              ok: false,
+              error: "finish_line_blocked",
+              problems,
+              run: publicRunEventPage(blockedRun).run,
+              event: blockedEvent,
+            });
+          }
+        }
+
+        await appendEvent(runId, event);
+        await writeRun(nextRun);
+        return send(res, 200, {
+          ok: true,
+          run: publicRunEventPage(nextRun).run,
+          event,
+        });
       });
     }
 
-    return send(res, 404, { error: "not_found", routes: ["GET /health", "GET /runs", "POST /runs", "GET /runs/:id", "POST /runs/:id/events"] });
+    return send(res, 404, {
+      error: "not_found",
+      routes: [
+        "GET /health",
+        "GET /runs",
+        "POST /runs",
+        "GET /runs/:id",
+        "POST /runs/:id/events",
+      ],
+    });
   } catch (error) {
-    if (error?.code === "REQUEST_BODY_TOO_LARGE") return sendPayloadTooLarge(req, res);
-    if (error?.code === "INVALID_JSON") return send(res, 400, { ok: false, error: "invalid_json" });
-    return send(res, 500, { error: error instanceof Error ? error.message : String(error) });
+    if (error?.code === "REQUEST_BODY_TOO_LARGE")
+      return sendPayloadTooLarge(req, res);
+    if (error?.code === "INVALID_JSON")
+      return send(res, 400, { ok: false, error: "invalid_json" });
+    return send(res, 500, {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -2780,12 +4204,15 @@ try {
 
 const server = createServer(handle);
 const sanitizedBridgeServerError = (phase, error) => {
-  const code = typeof error?.code === "string" && /^[A-Z0-9_]{1,64}$/.test(error.code)
-    ? error.code
-    : "UNKNOWN_SERVER_ERROR";
-  const syscall = typeof error?.syscall === "string" && /^[a-z0-9_-]{1,32}$/i.test(error.syscall)
-    ? ` (${error.syscall})`
-    : "";
+  const code =
+    typeof error?.code === "string" && /^[A-Z0-9_]{1,64}$/.test(error.code)
+      ? error.code
+      : "UNKNOWN_SERVER_ERROR";
+  const syscall =
+    typeof error?.syscall === "string" &&
+    /^[a-z0-9_-]{1,32}$/i.test(error.syscall)
+      ? ` (${error.syscall})`
+      : "";
   console.error(`${SERVICE} ${phase} failed: ${code}${syscall}`);
 };
 const failBridgeStartup = (error) => {
@@ -2807,7 +4234,8 @@ const failBridgeRuntime = (error) => {
     return;
   }
   server.close(exitAfterServerClose);
-  if (typeof server.closeAllConnections === "function") server.closeAllConnections();
+  if (typeof server.closeAllConnections === "function")
+    server.closeAllConnections();
 };
 server.once("error", failBridgeStartup);
 try {
@@ -2817,7 +4245,9 @@ try {
     console.log(`${SERVICE} listening on http://${HOST}:${PORT}`);
     console.log(`contract: ${CONTRACT_VERSION}`);
     console.log(`data dir: ${DATA_DIR}`);
-    console.log("separate run-integrity, bridge-access, and human-approval credentials are configured");
+    console.log(
+      "separate run-integrity, bridge-access, and human-approval credentials are configured",
+    );
     console.log("Open the app, click Check bridge, then Sync run to bridge.");
   });
 } catch (error) {

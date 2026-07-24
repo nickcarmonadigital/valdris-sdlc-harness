@@ -34,7 +34,15 @@ const FORMATTED_EXTENSIONS = new Set([
   ".yaml",
   ".yml",
 ]);
-const WHOLE_FILE_FORMAT_EXTENSIONS = new Set([".json"]);
+const WHOLE_FILE_FORMAT_EXTENSIONS = new Set([
+  ".cjs",
+  ".js",
+  ".json",
+  ".jsx",
+  ".mjs",
+  ".ts",
+  ".tsx",
+]);
 
 function changedRanges(repoRoot, baseRef) {
   const commands =
@@ -100,6 +108,32 @@ function changedRanges(repoRoot, baseRef) {
       ranges.set(relative, fileRanges);
     }
   }
+  const untracked = runBoundedGit(repoRoot, [
+    "-c",
+    "core.quotePath=false",
+    "ls-files",
+    "--others",
+    "--exclude-standard",
+    "-z",
+  ]);
+  if (untracked.status !== 0)
+    throw new Error(
+      `unable to resolve untracked files for formatting${untracked.error ? `: ${untracked.error.message}` : ""}`,
+    );
+  for (const relative of String(untracked.stdout || "").split("\0")) {
+    if (
+      !relative ||
+      !FORMATTED_EXTENSIONS.has(path.extname(relative).toLowerCase()) ||
+      !existsSync(path.join(repoRoot, relative))
+    )
+      continue;
+    ranges.set(
+      relative,
+      new Map([
+        ["__whole_file__", { startLine: 1, lineCount: 0, wholeFile: true }],
+      ]),
+    );
+  }
   return new Map(
     [...ranges].sort(([left], [right]) => left.localeCompare(right)),
   );
@@ -122,7 +156,8 @@ function enforceDeterministicFormatting(
     throw new Error("pinned Prettier runtime is unavailable; run npm ci");
   for (const [relative, fileRanges] of ranges) {
     if (
-      WHOLE_FILE_FORMAT_EXTENSIONS.has(path.extname(relative).toLowerCase())
+      WHOLE_FILE_FORMAT_EXTENSIONS.has(path.extname(relative).toLowerCase()) ||
+      [...fileRanges.values()].some((range) => range.wholeFile === true)
     ) {
       const result = spawnSync(
         process.execPath,

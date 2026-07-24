@@ -3,11 +3,29 @@
   "id": "youth-ai-safety",
   "version": "1.0.0",
   "controls": [
-    {"id": "YOUTH-AUDIENCE-001", "requirement": "Intended age audience, age assurance, parental/guardian flows, storefront age rating, and jurisdictional obligations are identified."},
-    {"id": "YOUTH-CONTENT-001", "requirement": "Generated and user-supplied content is evaluated for age-inappropriate, sexual, violent, self-harm, bullying, grooming, and manipulative behavior."},
-    {"id": "YOUTH-PRIVACY-001", "requirement": "Collection, profiling, personalization, retention, deletion, location, contacts, voice, chat, and advertising minimize youth data and respect consent."},
-    {"id": "YOUTH-SOCIAL-001", "requirement": "Chat, sharing, discovery, blocking, reporting, moderation, escalation, and evidence retention are safety-tested."},
-    {"id": "YOUTH-AI-AUTHORITY-001", "requirement": "AI cannot expose hidden state, pressure purchases, bypass moderation, form unsafe relationships, or take consequential account/game actions without governed authority."},
-    {"id": "YOUTH-INCIDENT-001", "requirement": "Safety incidents have human escalation, model/prompt disable controls, preservation rules, notification decisions, and corrective-action ownership."}
+    {
+      "id": "YOUTH-AUDIENCE-001",
+      "requirement": "Intended age audience, age assurance, parental/guardian flows, storefront age rating, and jurisdictional obligations are identified."
+    },
+    {
+      "id": "YOUTH-CONTENT-001",
+      "requirement": "Generated and user-supplied content is evaluated for age-inappropriate, sexual, violent, self-harm, bullying, grooming, and manipulative behavior."
+    },
+    {
+      "id": "YOUTH-PRIVACY-001",
+      "requirement": "Collection, profiling, personalization, retention, deletion, location, contacts, voice, chat, and advertising minimize youth data and respect consent."
+    },
+    {
+      "id": "YOUTH-SOCIAL-001",
+      "requirement": "Chat, sharing, discovery, blocking, reporting, moderation, escalation, and evidence retention are safety-tested."
+    },
+    {
+      "id": "YOUTH-AI-AUTHORITY-001",
+      "requirement": "AI cannot expose hidden state, pressure purchases, bypass moderation, form unsafe relationships, or take consequential account/game actions without governed authority."
+    },
+    {
+      "id": "YOUTH-INCIDENT-001",
+      "requirement": "Safety incidents have human escalation, model/prompt disable controls, preservation rules, notification decisions, and corrective-action ownership."
+    }
   ]
 }

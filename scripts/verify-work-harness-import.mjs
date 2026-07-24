@@ -1,11 +1,29 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+} from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  workflowEveryActionStepHasInputs,
+  workflowUsesCommissionedActions,
+} from "./workflow-security.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const CHECKOUT_ACTION =
+  "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1";
+const SETUP_NODE_ACTION =
+  "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020";
+const UPLOAD_ARTIFACT_ACTION =
+  "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a";
+const DOWNLOAD_ARTIFACT_ACTION =
+  "actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c";
 const failures = [];
 const checks = [];
 
@@ -39,6 +57,112 @@ function includesEvery(text, values) {
   return values.every((value) => text.includes(value));
 }
 
+function yamlScalar(value) {
+  const scalar = value.replace(/\s+#.*$/u, "").trim();
+  if (
+    scalar.length >= 2 &&
+    ((scalar.startsWith('"') && scalar.endsWith('"')) ||
+      (scalar.startsWith("'") && scalar.endsWith("'")))
+  )
+    return scalar.slice(1, -1);
+  return scalar;
+}
+
+function unconditionallyEnabled(value) {
+  const normalized = yamlScalar(value).toLowerCase().replace(/\s+/gu, "");
+  return (
+    normalized === "" || normalized === "true" || normalized === "${{true}}"
+  );
+}
+
+function permitsFailure(value) {
+  const normalized = yamlScalar(value).toLowerCase().replace(/\s+/gu, "");
+  return normalized === "true" || normalized === "${{true}}";
+}
+
+function workflowJobRunSteps(source, jobName) {
+  const lines = source.split(/\r?\n/u);
+  const jobsIndex = lines.findIndex((line) => /^jobs:\s*(?:#.*)?$/u.test(line));
+  if (jobsIndex < 0) return [];
+  const jobPattern = new RegExp(
+    `^ {2}${jobName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}:\\s*(?:#.*)?$`,
+    "u",
+  );
+  const jobIndex = lines.findIndex(
+    (line, index) => index > jobsIndex && jobPattern.test(line),
+  );
+  if (jobIndex < 0) return [];
+  const steps = [];
+  let jobCondition = "";
+  let jobContinueOnError = "";
+  let inSteps = false;
+  let currentStep = null;
+  const finishStep = () => {
+    if (currentStep) steps.push(currentStep);
+    currentStep = null;
+  };
+  for (let index = jobIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^ {2}\S/u.test(line)) break;
+    if (!inSteps) {
+      const jobIf = line.match(/^ {4}if:\s*(.*?)\s*$/u);
+      if (jobIf) jobCondition = jobIf[1];
+      const jobFailurePolicy = line.match(
+        /^ {4}continue-on-error:\s*(.*?)\s*$/u,
+      );
+      if (jobFailurePolicy) jobContinueOnError = jobFailurePolicy[1];
+    }
+    if (/^ {4}steps:\s*(?:#.*)?$/u.test(line)) {
+      inSteps = true;
+      continue;
+    }
+    if (!inSteps) continue;
+    if (/^ {4}\S/u.test(line)) {
+      finishStep();
+      break;
+    }
+    const stepStart = line.match(/^ {6}-\s*(.*?)\s*$/u);
+    if (stepStart) {
+      finishStep();
+      currentStep = {};
+      const inline = stepStart[1].match(
+        /^(run|if|continue-on-error):\s*(.*?)\s*$/u,
+      );
+      if (inline) currentStep[inline[1]] = inline[2];
+      continue;
+    }
+    if (!currentStep) continue;
+    const property = line.match(
+      /^ {8}(run|if|continue-on-error):\s*(.*?)\s*$/u,
+    );
+    if (property) currentStep[property[1]] = property[2];
+  }
+  finishStep();
+  if (
+    !unconditionallyEnabled(jobCondition) ||
+    permitsFailure(jobContinueOnError)
+  )
+    return [];
+  return steps
+    .filter(
+      (step) =>
+        step.run &&
+        unconditionallyEnabled(step.if || "") &&
+        !permitsFailure(step["continue-on-error"] || ""),
+    )
+    .map((step) => yamlScalar(step.run));
+}
+
+function markdownBashCommands(source) {
+  return [...source.matchAll(/```bash\s*\r?\n([\s\S]*?)```/gu)].flatMap(
+    (match) =>
+      match[1]
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean),
+  );
+}
+
 const requiredScripts = [
   "provenance-gate.mjs",
   "neutrality-gate.mjs",
@@ -70,9 +194,20 @@ const focusedVerifiers = [
   "scripts/verify-clean-room-convergence.mjs",
 ];
 const requiredRuntimeFiles = ["controls/review-trust.v1.json"];
+const requiredVerifierSupportFiles = ["scripts/workflow-security.mjs"];
 
-for (const relativePath of [...requiredScripts.map((name) => `scripts/${name}`), ...requiredControls, ...requiredRuntimeFiles, ...focusedVerifiers]) {
-  record(`required file ${relativePath}`, existsSync(path.join(ROOT, relativePath)), "missing clean-room import artifact");
+for (const relativePath of [
+  ...requiredScripts.map((name) => `scripts/${name}`),
+  ...requiredControls,
+  ...requiredRuntimeFiles,
+  ...requiredVerifierSupportFiles,
+  ...focusedVerifiers,
+]) {
+  record(
+    `required file ${relativePath}`,
+    existsSync(path.join(ROOT, relativePath)),
+    "missing clean-room import artifact",
+  );
 }
 
 for (const verifier of focusedVerifiers) {
@@ -86,8 +221,13 @@ for (const verifier of focusedVerifiers) {
 }
 
 const packageJson = readJson("package.json");
-record("release version is 0.8.0", packageJson.version === "0.8.0", `got ${packageJson.version}`);
+record(
+  "release version is 0.9.0-rc.1",
+  packageJson.version === "0.9.0-rc.1",
+  `got ${packageJson.version}`,
+);
 const requiredPackageScripts = [
+  "dependency:audit",
   "provenance:gate",
   "neutrality:gate",
   "privacy:gate",
@@ -106,25 +246,240 @@ const requiredPackageScripts = [
   "verify:work-harness-import",
   "verify:clean-room-convergence",
 ];
-for (const name of requiredPackageScripts) record(`package script ${name}`, Boolean(packageJson.scripts?.[name]), "missing package script");
+for (const name of requiredPackageScripts)
+  record(
+    `package script ${name}`,
+    Boolean(packageJson.scripts?.[name]),
+    "missing package script",
+  );
+record(
+  "dependency audit package script is pinned",
+  packageJson.scripts?.["dependency:audit"] === "npm audit --audit-level=high",
+  "dependency audit package script does not run the commissioned audit command",
+);
 
 const workflow = read(".github/workflows/ci.yml");
-record("CI covers Linux, Windows, and macOS portability", includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]), "missing Linux/Windows/macOS coverage");
+const restrictedAttestationWorkflow = read(
+  ".github/workflows/restricted-residue-attestation.yml",
+);
+const gitleaksConfig = read(".gitleaks.toml");
+record(
+  "CI covers Linux, Windows, and macOS portability",
+  includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]),
+  "missing Linux/Windows/macOS coverage",
+);
+record(
+  "CI uses supported commit-pinned core actions",
+  workflowUsesCommissionedActions(workflow, [
+    CHECKOUT_ACTION,
+    SETUP_NODE_ACTION,
+  ]) &&
+    workflowEveryActionStepHasInputs(workflow, CHECKOUT_ACTION, {
+      "fetch-depth": "0",
+      "persist-credentials": "false",
+    }),
+  "CI checkout or setup-node action is stale or not pinned to the commissioned commit",
+);
+record(
+  "restricted attestation uses supported commit-pinned core actions",
+  workflowUsesCommissionedActions(restrictedAttestationWorkflow, [
+    CHECKOUT_ACTION,
+    SETUP_NODE_ACTION,
+    UPLOAD_ARTIFACT_ACTION,
+    DOWNLOAD_ARTIFACT_ACTION,
+  ]) &&
+    workflowEveryActionStepHasInputs(
+      restrictedAttestationWorkflow,
+      CHECKOUT_ACTION,
+      { "persist-credentials": "false" },
+    ),
+  "restricted attestation action is stale or not pinned to the commissioned commit",
+);
+record(
+  "action pin verifier rejects inert comments",
+  !workflowUsesCommissionedActions(
+    "jobs:\n  verify:\n    steps:\n      - run: echo ok # actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted an inert comment as a uses step",
+);
+record(
+  "action pin verifier rejects inert YAML block text",
+  !workflowUsesCommissionedActions(
+    "env:\n  FORGED_WORKFLOW: |\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\njobs:\n  verify:\n    steps:\n      - run: echo ok\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted block-scalar text as a uses step",
+);
+record(
+  "action pin verifier rejects non-job extension steps",
+  !workflowUsesCommissionedActions(
+    "x-inert-extension:\n  steps:\n    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\njobs:\n  verify:\n    steps:\n      - run: echo ok\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted a non-job extension uses entry",
+);
+record(
+  "action pin verifier rejects mixed stale action uses",
+  !workflowUsesCommissionedActions(
+    "jobs:\n  verify:\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n      - uses: actions/checkout@v7\n",
+    [CHECKOUT_ACTION],
+  ),
+  "action pin verifier accepted a stale repeated core action",
+);
+record(
+  "checkout hardening verifier binds inputs to the action step",
+  !workflowEveryActionStepHasInputs(
+    "jobs:\n  verify:\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1\n      - run: echo fetch-depth: 0 persist-credentials: false\n",
+    CHECKOUT_ACTION,
+    { "fetch-depth": "0", "persist-credentials": "false" },
+  ),
+  "checkout hardening verifier accepted inputs outside the checkout step",
+);
 record(
   "CI runs clean-room gates",
-  includesEvery(workflow, ["provenance:gate", "neutrality:gate", "privacy:gate", "privacy:release", "verify:release-privacy", "schema:compat:gate", "verify:proof-security", "verify:run-packet-trust", "verify:commissioned-portability", "verify:work-harness-import", "verify:clean-room-convergence"]),
+  includesEvery(workflow, [
+    "provenance:gate",
+    "neutrality:gate",
+    "privacy:gate",
+    "privacy:release",
+    "verify:release-privacy",
+    "schema:compat:gate",
+    "verify:proof-security",
+    "verify:run-packet-trust",
+    "verify:commissioned-portability",
+    "verify:work-harness-import",
+    "verify:clean-room-convergence",
+  ]),
   "one or more clean-room gates are absent from CI",
 );
-record("CI scans secrets", /gitleaks\/gitleaks-action@/.test(workflow), "gitleaks action is not configured");
+record(
+  "CI scans secrets",
+  /gitleaks\/gitleaks-action@/.test(workflow),
+  "gitleaks action is not configured",
+);
+record(
+  "Gitleaks allowlist targets only extracted secret values",
+  gitleaksConfig.includes('regexTarget = "secret"') &&
+    !gitleaksConfig.includes('regexTarget = "match"'),
+  "Gitleaks allowlist is not scoped to the detector's extracted secret value",
+);
+for (const controlId of [
+  "CI-SUPPLYCHAIN-001",
+  "SEC-SECRETS-001",
+  "SEC-VULNERABILITY-001",
+])
+  record(
+    `Gitleaks allowlist anchors ${controlId}`,
+    gitleaksConfig.includes(`'''^${controlId}$'''`) &&
+      !gitleaksConfig.includes(`'''${controlId}'''`),
+    "Gitleaks secret-value allowlist is not restricted to one exact control ID",
+  );
+record(
+  "CI rejects high-severity dependency advisories",
+  workflowJobRunSteps(workflow, "dependency-audit").includes(
+    "npm run dependency:audit",
+  ),
+  "dependency audit gate is not configured",
+);
+record(
+  "dependency audit CI assertion is job-scoped",
+  !workflowJobRunSteps(
+    "jobs:\n  unrelated:\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted an unrelated workflow step",
+);
+record(
+  "dependency audit CI assertion rejects a disabled job",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    if: false\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted a disabled workflow job",
+);
+record(
+  "dependency audit CI assertion rejects a disabled step",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    steps:\n      - if: ${{ false }}\n        run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted a disabled workflow step",
+);
+record(
+  "dependency audit CI assertion rejects a conditional job",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    if: github.ref == 'refs/heads/never'\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted a conditional workflow job",
+);
+record(
+  "dependency audit CI assertion rejects an allowed-failure step",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    steps:\n      - run: npm run dependency:audit\n        continue-on-error: true\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted an allowed-failure workflow step",
+);
+record(
+  "dependency audit CI assertion rejects an allowed-failure job",
+  !workflowJobRunSteps(
+    "jobs:\n  dependency-audit:\n    continue-on-error: true\n    steps:\n      - run: npm run dependency:audit\n",
+    "dependency-audit",
+  ).includes("npm run dependency:audit"),
+  "dependency audit assertion accepted an allowed-failure workflow job",
+);
+record(
+  "Claude proof stack includes dependency audit",
+  markdownBashCommands(read("CLAUDE.md")).includes("npm run dependency:audit"),
+  "Claude proof instructions omit the dependency audit command",
+);
+record(
+  "agent proof stack includes dependency audit",
+  markdownBashCommands(read("AGENTS.md")).includes("npm run dependency:audit"),
+  "agent proof instructions omit the dependency audit command",
+);
+for (const proofDocument of [
+  "README.md",
+  "docs/TEST_DAY_ACCEPTANCE_GATES.md",
+  "docs/UNIVERSAL_COMMISSIONING_FLOW.md",
+  "docs/PRODUCTION_ASSURANCE_GAP_REGISTER.md",
+  "knowledge/playbooks/engineering-task-routing.md",
+  "meta-skills/valdris-sdlc-harness/references/verification-and-branches.md",
+]) {
+  record(
+    `${proofDocument} includes dependency audit`,
+    markdownBashCommands(read(proofDocument)).includes(
+      "npm run dependency:audit",
+    ),
+    `${proofDocument} proof instructions omit the dependency audit command`,
+  );
+}
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
 for (const relativePath of requiredControls) {
-  record(`catalog integrity covers ${relativePath}`, catalogGate.includes(relativePath), "new canonical catalog is not integrity locked");
+  record(
+    `catalog integrity covers ${relativePath}`,
+    catalogGate.includes(relativePath),
+    "new canonical catalog is not integrity locked",
+  );
 }
 
 const registry = readJson("skills/registry.json");
-for (const gate of ["provenance", "neutrality", "privacy", "schema-compat", "run-packet", "review"]) {
-  record(`skill registry gate policy ${gate}`, JSON.stringify(registry.gatePolicy ?? {}).includes(gate), "gate is not routed by the skill registry");
+for (const gate of [
+  "provenance",
+  "neutrality",
+  "privacy",
+  "schema-compat",
+  "run-packet",
+  "review",
+]) {
+  record(
+    `skill registry gate policy ${gate}`,
+    JSON.stringify(registry.gatePolicy ?? {}).includes(gate),
+    "gate is not routed by the skill registry",
+  );
 }
 const proofSkill = read("skills/valdris-proof-handoff/SKILL.md");
 record(
@@ -140,13 +495,18 @@ record(
   "knowledge index has no clean-room assurance playbook",
 );
 
-const tempRoot = realpathSync(mkdtempSync(path.join(os.tmpdir(), "valdris-clean-room-import-")));
+const tempRoot = realpathSync(
+  mkdtempSync(path.join(os.tmpdir(), "valdris-clean-room-import-")),
+);
 const generated = path.join(tempRoot, ".valdris-harness");
 try {
   const commission = runNode("scripts/commission-harness.mjs", [
-    "--repo", tempRoot,
-    "--project-name", "Neutral Example",
-    "--out", generated,
+    "--repo",
+    tempRoot,
+    "--project-name",
+    "Neutral Example",
+    "--out",
+    generated,
     "--yes",
   ]);
   record(
@@ -156,26 +516,65 @@ try {
   );
   if (commission.status === 0) {
     for (const scriptName of requiredScripts) {
-      record(`commissioned script ${scriptName}`, existsSync(path.join(generated, "scripts", scriptName)), "script not copied into commissioned pack");
+      record(
+        `commissioned script ${scriptName}`,
+        existsSync(path.join(generated, "scripts", scriptName)),
+        "script not copied into commissioned pack",
+      );
     }
     for (const relativePath of requiredControls) {
-      record(`commissioned control ${relativePath}`, existsSync(path.join(generated, relativePath)), "control not copied into commissioned pack");
+      record(
+        `commissioned control ${relativePath}`,
+        existsSync(path.join(generated, relativePath)),
+        "control not copied into commissioned pack",
+      );
     }
-    const generatedPackage = JSON.parse(readFileSync(path.join(generated, "package.json"), "utf8"));
-    for (const name of ["provenance:gate", "neutrality:gate", "privacy:gate", "restricted-residue:gate", "skills:retire-local", "schema:compat:gate", "run:packet:gate"]) {
-      record(`commissioned package script ${name}`, Boolean(generatedPackage.scripts?.[name]), "generated pack omits gate script");
+    const generatedPackage = JSON.parse(
+      readFileSync(path.join(generated, "package.json"), "utf8"),
+    );
+    for (const name of [
+      "provenance:gate",
+      "neutrality:gate",
+      "privacy:gate",
+      "restricted-residue:gate",
+      "skills:retire-local",
+      "schema:compat:gate",
+      "run:packet:gate",
+    ]) {
+      record(
+        `commissioned package script ${name}`,
+        Boolean(generatedPackage.scripts?.[name]),
+        "generated pack omits gate script",
+      );
     }
-    const generatedWorkflow = readFileSync(path.join(generated, ".github", "workflows", "valdris-assurance.yml"), "utf8");
+    const generatedWorkflow = readFileSync(
+      path.join(generated, ".github", "workflows", "valdris-assurance.yml"),
+      "utf8",
+    );
     record(
       "commissioned workflow runs clean-room gates",
-      includesEvery(generatedWorkflow, ["provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs"]),
+      includesEvery(generatedWorkflow, [
+        "provenance-gate.mjs",
+        "neutrality-gate.mjs",
+        "privacy-gate.mjs",
+        "schema-compat-gate.mjs",
+      ]),
       "generated CI omits clean-room gates",
     );
-    for (const gate of ["provenance-gate.mjs", "neutrality-gate.mjs", "privacy-gate.mjs", "schema-compat-gate.mjs"]) {
-      const result = spawnSync(process.execPath, [path.join(generated, "scripts", gate), "--repo", generated], {
-        cwd: generated,
-        encoding: "utf8",
-      });
+    for (const gate of [
+      "provenance-gate.mjs",
+      "neutrality-gate.mjs",
+      "privacy-gate.mjs",
+      "schema-compat-gate.mjs",
+    ]) {
+      const result = spawnSync(
+        process.execPath,
+        [path.join(generated, "scripts", gate), "--repo", generated],
+        {
+          cwd: generated,
+          encoding: "utf8",
+        },
+      );
       record(
         `commissioned ${gate} passes`,
         result.status === 0,

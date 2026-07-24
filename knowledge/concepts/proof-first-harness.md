@@ -13,13 +13,13 @@ Proof-first means the harness treats artifacts and command output as stronger th
 
 # Practical Rules
 
-* Required artifacts must exist under the declared artifact root.
-* Skipped nodes need explicit reasons.
-* Failed nodes need failure reasons and recovery paths.
-* Red Zone approval is human-only.
-* Self-heal findings need a real reviewable artifact or PR path.
+- Required artifacts must exist under the declared artifact root.
+- Skipped nodes need explicit reasons.
+- Failed nodes need failure reasons and recovery paths.
+- Red Zone approval is human-only.
+- Self-heal findings need a real reviewable artifact or PR path.
 
 # Related Playbooks
 
-* [Engineering Task Routing](/playbooks/engineering-task-routing.md)
-* [Production Readiness 13 Layers](/playbooks/production-readiness-13-layers.md)
+- [Engineering Task Routing](/playbooks/engineering-task-routing.md)
+- [Production Readiness 13 Layers](/playbooks/production-readiness-13-layers.md)

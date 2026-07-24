@@ -1,0 +1,13 @@
+title = "Valdris Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Exact Valdris assurance control IDs misclassified as generic API keys"
+regexTarget = "secret"
+regexes = [
+  '''^CI-SUPPLYCHAIN-001$''',
+  '''^SEC-SECRETS-001$''',
+  '''^SEC-VULNERABILITY-001$''',
+]

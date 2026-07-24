@@ -29,5 +29,5 @@ Run `node scripts/enterprise-ai-gate-all.mjs --repo .`. Runtime-native completio
 
 # Related
 
-* [Goal Loop and Skill Routing](/playbooks/goal-loop-skill-routing.md)
-* [Typed Evidence](/concepts/typed-evidence.md)
+- [Goal Loop and Skill Routing](/playbooks/goal-loop-skill-routing.md)
+- [Typed Evidence](/concepts/typed-evidence.md)

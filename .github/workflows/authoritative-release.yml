@@ -1,0 +1,284 @@
+name: Authoritative Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      stable_tag:
+        description: Exact stable SemVer tag to create, for example v0.9.0
+        required: true
+        type: string
+      trusted_run_id:
+        description: Successful trusted same-repository authoritative workflow run ID
+        required: true
+        type: string
+      source_commit:
+        description: Lowercase 40-character commit produced by the trusted run and targeted by the tag
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: authoritative-stable-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Validate authoritative evidence before stable tag creation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: authoritative-release
+    permissions:
+      actions: read
+      contents: read
+    env:
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      RELEASE_TAG: ${{ inputs.stable_tag }}
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      TRUSTED_RUN_ID: ${{ inputs.trusted_run_id }}
+      TRUSTED_WORKFLOW_ID: ${{ vars.VALDRIS_TRUSTED_AUTHORITATIVE_WORKFLOW_ID }}
+      TRUSTED_WORKFLOW_PATH: ${{ vars.VALDRIS_TRUSTED_AUTHORITATIVE_WORKFLOW_PATH }}
+      AUTHORITATIVE_ARTIFACT_NAME: ${{ vars.VALDRIS_AUTHORITATIVE_ARTIFACT_NAME }}
+      TRUSTED_VALIDATOR_COMMIT: ${{ vars.VALDRIS_TRUSTED_RELEASE_VALIDATOR_COMMIT }}
+      STABLE_TAG_RULESET_ID: ${{ vars.VALDRIS_STABLE_TAG_RULESET_ID }}
+      RELEASE_APP_ID: ${{ vars.VALDRIS_RELEASE_APP_ID }}
+      VALDRIS_AUTHORITY_TRUST_SHA256: ${{ vars.VALDRIS_AUTHORITY_TRUST_SHA256 }}
+    steps:
+      - name: Authorize protected stable-release request
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_SERVER_URL" = "https://github.com"
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          [[ "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+          [[ "$TRUSTED_RUN_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$SOURCE_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$TRUSTED_WORKFLOW_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$TRUSTED_WORKFLOW_PATH" =~ ^\.github/workflows/[A-Za-z0-9][A-Za-z0-9._-]{0,126}\.ya?ml$ ]]
+          [[ "$AUTHORITATIVE_ARTIFACT_NAME" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,126}$ ]]
+          [[ "$TRUSTED_VALIDATOR_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$STABLE_TAG_RULESET_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$RELEASE_APP_ID" =~ ^[1-9][0-9]*$ ]]
+          [[ "$VALDRIS_AUTHORITY_TRUST_SHA256" =~ ^[a-f0-9]{64}$ ]]
+
+      - name: Checkout protected release validator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ vars.VALDRIS_TRUSTED_RELEASE_VALIDATOR_COMMIT }}
+          path: validator
+          persist-credentials: false
+
+      - name: Setup commissioned Node runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+
+      - name: Resolve trusted same-repository run and artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --hostname github.com \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$TRUSTED_RUN_ID" \
+            > "$RUNNER_TEMP/trusted-run.json"
+          gh api --hostname github.com --paginate --slurp \
+            "repos/$GITHUB_REPOSITORY/actions/runs/$TRUSTED_RUN_ID/artifacts?per_page=100" \
+            > "$RUNNER_TEMP/trusted-artifacts.json"
+
+      - name: Validate trusted run metadata before download
+        id: trusted-source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C "$GITHUB_WORKSPACE/validator" rev-parse HEAD)" = "$TRUSTED_VALIDATOR_COMMIT"
+          node "$GITHUB_WORKSPACE/validator/scripts/authoritative-release-source-gate.mjs" \
+            --metadata-only \
+            --run-metadata "$RUNNER_TEMP/trusted-run.json" \
+            --artifact-metadata "$RUNNER_TEMP/trusted-artifacts.json" \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-id "$TRUSTED_WORKFLOW_ID" \
+            --workflow-path "$TRUSTED_WORKFLOW_PATH" \
+            --run-id "$TRUSTED_RUN_ID" \
+            --source-commit "$SOURCE_COMMIT" \
+            --artifact-name "$AUTHORITATIVE_ARTIFACT_NAME" \
+            --default-branch "$DEFAULT_BRANCH"
+          artifact_id="$(node -e '
+            const fs = require("node:fs");
+            const pages = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const matches = pages.flatMap((page) => page.artifacts || [])
+              .filter((artifact) => artifact.name === process.env.AUTHORITATIVE_ARTIFACT_NAME);
+            if (matches.length !== 1 || !Number.isSafeInteger(matches[0].id)) {
+              throw new Error("trusted authoritative artifact identity is ambiguous");
+            }
+            process.stdout.write(String(matches[0].id));
+          ' "$RUNNER_TEMP/trusted-artifacts.json")"
+          echo "artifact_id=$artifact_id" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout intended release commit without credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source_commit }}
+          path: candidate
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify intended commit provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C "$GITHUB_WORKSPACE/candidate" rev-parse HEAD)" = "$SOURCE_COMMIT"
+          git -C "$GITHUB_WORKSPACE/candidate" fetch --no-tags origin \
+            "refs/heads/$DEFAULT_BRANCH:refs/remotes/origin/$DEFAULT_BRANCH"
+          git -C "$GITHUB_WORKSPACE/candidate" merge-base --is-ancestor \
+            "$SOURCE_COMMIT" "refs/remotes/origin/$DEFAULT_BRANCH"
+          git -C "$GITHUB_WORKSPACE/candidate" tag -- "$RELEASE_TAG" "$SOURCE_COMMIT"
+          test "$(git -C "$GITHUB_WORKSPACE/candidate" rev-parse --verify "refs/tags/$RELEASE_TAG^{commit}")" = "$SOURCE_COMMIT"
+
+      - name: Download commissioned authoritative run artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          artifact-ids: ${{ steps.trusted-source.outputs.artifact_id }}
+          path: ${{ runner.temp }}/authoritative-artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.trusted_run_id }}
+
+      - name: Validate downloaded artifact provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$GITHUB_WORKSPACE/validator/scripts/authoritative-release-source-gate.mjs" \
+            --run-metadata "$RUNNER_TEMP/trusted-run.json" \
+            --artifact-metadata "$RUNNER_TEMP/trusted-artifacts.json" \
+            --artifact-root "$RUNNER_TEMP/authoritative-artifact" \
+            --repository "$GITHUB_REPOSITORY" \
+            --workflow-id "$TRUSTED_WORKFLOW_ID" \
+            --workflow-path "$TRUSTED_WORKFLOW_PATH" \
+            --run-id "$TRUSTED_RUN_ID" \
+            --source-commit "$SOURCE_COMMIT" \
+            --artifact-name "$AUTHORITATIVE_ARTIFACT_NAME" \
+            --default-branch "$DEFAULT_BRANCH"
+
+      - name: Run authoritative stable-release gate before tag creation
+        shell: bash
+        run: |
+          set -euo pipefail
+          node "$GITHUB_WORKSPACE/validator/scripts/authoritative-release-gate.mjs" \
+            --tag "$RELEASE_TAG" \
+            --repository-root "$GITHUB_WORKSPACE/candidate" \
+            --run-root "$RUNNER_TEMP/authoritative-artifact/run-root"
+
+      - name: Verify active stable-tag ruleset
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --hostname github.com \
+            "repos/$GITHUB_REPOSITORY/rulesets/$STABLE_TAG_RULESET_ID" \
+            > "$RUNNER_TEMP/stable-tag-ruleset.json"
+          node -e '
+            const fs = require("node:fs");
+            const ruleset = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const expectedInclude = ["refs/tags/v[0-9]*.[0-9]*.[0-9]*"];
+            const expectedExclude = ["refs/tags/v*-*"];
+            const types = new Set((ruleset.rules || []).map((rule) => rule.type));
+            const bypass = ruleset.bypass_actors || [];
+            if (
+              ruleset.id !== Number(process.env.STABLE_TAG_RULESET_ID) ||
+              ruleset.target !== "tag" ||
+              ruleset.enforcement !== "active" ||
+              JSON.stringify(ruleset.conditions?.ref_name?.include) !== JSON.stringify(expectedInclude) ||
+              JSON.stringify(ruleset.conditions?.ref_name?.exclude) !== JSON.stringify(expectedExclude) ||
+              bypass.length !== 1 ||
+              bypass[0].actor_id !== Number(process.env.RELEASE_APP_ID) ||
+              bypass[0].actor_type !== "Integration" ||
+              bypass[0].bypass_mode !== "always" ||
+              !["creation", "update", "deletion"].every((type) => types.has(type))
+            ) {
+              throw new Error("active stable-tag ruleset is not restricted to the commissioned release App");
+            }
+          ' "$RUNNER_TEMP/stable-tag-ruleset.json"
+
+      - name: Verify dedicated release-app identity and absent tag
+        env:
+          GH_TOKEN: ${{ secrets.VALDRIS_RELEASE_APP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          gh api --hostname github.com --paginate --slurp \
+            "installation/repositories?per_page=100" \
+            > "$RUNNER_TEMP/release-installation-repositories.json"
+          node -e '
+            const fs = require("node:fs");
+            const repository = process.env.GITHUB_REPOSITORY;
+            const pages = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const matches = pages.flatMap((page) => page.repositories || [])
+              .filter((entry) => entry.full_name === repository);
+            if (matches.length !== 1) {
+              throw new Error("release App installation is not uniquely authorized for this repository");
+            }
+          ' "$RUNNER_TEMP/release-installation-repositories.json"
+          if gh api --hostname github.com \
+            "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+            > /dev/null 2> "$RUNNER_TEMP/tag-lookup.stderr"; then
+            echo "stable tag already exists" >&2
+            exit 1
+          fi
+          grep -q "HTTP 404" "$RUNNER_TEMP/tag-lookup.stderr"
+
+      - name: Create stable tag and release with dedicated release App
+        env:
+          GH_TOKEN: ${{ secrets.VALDRIS_RELEASE_APP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SOURCE_COMMIT" \
+            --title "$RELEASE_TAG" \
+            --notes "Authoritative Valdris release validated from trusted workflow run $TRUSTED_RUN_ID."
+
+      - name: Verify stable tag and published release
+        env:
+          GH_TOKEN: ${{ secrets.VALDRIS_RELEASE_APP_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --hostname github.com \
+            "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" \
+            > "$RUNNER_TEMP/created-tag.json"
+          gh api --hostname github.com \
+            "repos/$GITHUB_REPOSITORY/releases/tags/$RELEASE_TAG" \
+            > "$RUNNER_TEMP/created-release.json"
+          node -e '
+            const fs = require("node:fs");
+            const tag = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            const release = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            if (
+              tag.object?.type !== "commit" ||
+              tag.object?.sha !== process.env.SOURCE_COMMIT ||
+              release.tag_name !== process.env.RELEASE_TAG ||
+              release.draft !== false ||
+              release.prerelease !== false ||
+              !release.published_at
+            ) {
+              throw new Error("created stable tag or release does not match the validated commit");
+            }
+          ' "$RUNNER_TEMP/created-tag.json" "$RUNNER_TEMP/created-release.json"
+
+      - name: Remove downloaded authoritative evidence and metadata
+        if: always()
+        shell: bash
+        run: |
+          rm -rf \
+            "$RUNNER_TEMP/authoritative-artifact" \
+            "$RUNNER_TEMP/trusted-run.json" \
+            "$RUNNER_TEMP/trusted-artifacts.json" \
+            "$RUNNER_TEMP/release-installation-repositories.json" \
+            "$RUNNER_TEMP/stable-tag-ruleset.json" \
+            "$RUNNER_TEMP/tag-lookup.stderr" \
+            "$RUNNER_TEMP/created-tag.json" \
+            "$RUNNER_TEMP/created-release.json"

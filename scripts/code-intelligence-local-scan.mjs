@@ -1,11 +1,57 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 
-const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".py", ".go", ".rs", ".java", ".kt", ".swift"]);
-const EXCLUDED_DIRS = new Set([".git", "node_modules", ".next", "dist", "build", "coverage", ".vercel", "out", ".turbo", ".cache", "runs"]);
-const RESOLVE_EXTENSIONS = ["", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py", ".json", "/index.ts", "/index.tsx", "/index.js", "/index.jsx"];
+const SOURCE_EXTENSIONS = new Set([
+  ".js",
+  ".jsx",
+  ".ts",
+  ".tsx",
+  ".mjs",
+  ".cjs",
+  ".py",
+  ".go",
+  ".rs",
+  ".java",
+  ".kt",
+  ".swift",
+]);
+const EXCLUDED_DIRS = new Set([
+  ".git",
+  "node_modules",
+  ".next",
+  "dist",
+  "build",
+  "coverage",
+  ".vercel",
+  "out",
+  ".turbo",
+  ".cache",
+  "runs",
+]);
+const RESOLVE_EXTENSIONS = [
+  "",
+  ".ts",
+  ".tsx",
+  ".js",
+  ".jsx",
+  ".mjs",
+  ".cjs",
+  ".py",
+  ".json",
+  "/index.ts",
+  "/index.tsx",
+  "/index.js",
+  "/index.jsx",
+];
 
 function parseArgs(argv) {
   const args = {
@@ -27,7 +73,9 @@ function parseArgs(argv) {
     else if (arg === "--backend-evidence") args.backendEvidence = argv[++i];
     else if (arg === "--backend-index-name") args.backendIndexName = argv[++i];
     else if (arg === "--help" || arg === "-h") {
-      console.log(`Code-intelligence-compatible local code graph scan\n\nUsage:\n  node scripts/code-intelligence-local-scan.mjs --repo .\n\nOptions:\n  --repo <path>       Repo root. Defaults to cwd.\n  --graph <path>      Graph artifact path relative to repo. Defaults to graph/graph.json.\n  --freshness <path>  Freshness artifact path relative to repo. Defaults to graph/freshness.json.\n  --anchors <path>    Design anchors artifact path relative to repo. Defaults to design/anchors.json.\n  --backend-provider <name>   Backend that produced the primary intelligence signal. Defaults to local-static-code-graph.\n  --backend-evidence <path>   Optional evidence artifact for an external backend such as GitNexus.\n  --backend-index-name <name> Optional external backend index name.\n`);
+      console.log(
+        `Code-intelligence-compatible local code graph scan\n\nUsage:\n  node scripts/code-intelligence-local-scan.mjs --repo .\n\nOptions:\n  --repo <path>       Repo root. Defaults to cwd.\n  --graph <path>      Graph artifact path relative to repo. Defaults to graph/graph.json.\n  --freshness <path>  Freshness artifact path relative to repo. Defaults to graph/freshness.json.\n  --anchors <path>    Design anchors artifact path relative to repo. Defaults to design/anchors.json.\n  --backend-provider <name>   Backend that produced the primary intelligence signal. Defaults to local-static-code-graph.\n  --backend-evidence <path>   Optional evidence artifact for an external backend such as GitNexus.\n  --backend-index-name <name> Optional external backend index name.\n`,
+      );
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -38,7 +86,13 @@ function parseArgs(argv) {
 
 function runGit(repo, args, fallback = "unknown") {
   try {
-    return execFileSync("git", args, { cwd: repo, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || fallback;
+    return (
+      execFileSync("git", args, {
+        cwd: repo,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim() || fallback
+    );
   } catch {
     return fallback;
   }
@@ -46,17 +100,24 @@ function runGit(repo, args, fallback = "unknown") {
 
 function isInside(root, candidate) {
   const relative = path.relative(root, candidate);
-  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+  return (
+    relative === "" ||
+    (!relative.startsWith("..") && !path.isAbsolute(relative))
+  );
 }
 
 function walk(repo, dir = repo, out = []) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith(".") && ![".github"].includes(entry.name)) continue;
+    if (entry.name.startsWith(".") && ![".github"].includes(entry.name))
+      continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       if (EXCLUDED_DIRS.has(entry.name)) continue;
       walk(repo, full, out);
-    } else if (entry.isFile() && SOURCE_EXTENSIONS.has(path.extname(entry.name))) {
+    } else if (
+      entry.isFile() &&
+      SOURCE_EXTENSIONS.has(path.extname(entry.name))
+    ) {
       out.push(path.relative(repo, full).split(path.sep).join("/"));
     }
   }
@@ -112,7 +173,8 @@ function publicEntrypointScore(file) {
 
 function writeJson(repo, relativePath, payload) {
   const target = path.resolve(repo, relativePath);
-  if (!isInside(repo, target)) throw new Error(`output path escapes repo: ${relativePath}`);
+  if (!isInside(repo, target))
+    throw new Error(`output path escapes repo: ${relativePath}`);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
@@ -140,7 +202,8 @@ for (const file of files) {
   });
   for (const specifier of dependencies) {
     const target = resolveDependency(repo, file, specifier, knownFiles);
-    if (target) edges.push({ from: file, to: target, kind: "imports", specifier });
+    if (target)
+      edges.push({ from: file, to: target, kind: "imports", specifier });
   }
 }
 
@@ -154,7 +217,10 @@ const dirtyFileCount = dirtyFiles.length;
 const generatedAt = new Date().toISOString();
 const entrypoints = [...nodes]
   .filter((node) => node.entrypointScore > 0)
-  .sort((a, b) => b.entrypointScore - a.entrypointScore || a.path.localeCompare(b.path))
+  .sort(
+    (a, b) =>
+      b.entrypointScore - a.entrypointScore || a.path.localeCompare(b.path),
+  )
   .slice(0, 25)
   .map((node) => node.path);
 const gitnexusBacked = args.backendProvider === "gitnexus";
@@ -170,7 +236,9 @@ const codeIntelligence = {
 
 const graph = {
   schema: "uash.code-intelligence.graph.v0.1",
-  generator: gitnexusBacked ? "gitnexus-backed-code-intelligence" : "local-static-code-graph",
+  generator: gitnexusBacked
+    ? "gitnexus-backed-code-intelligence"
+    : "local-static-code-graph",
   codeIntelligenceCompatible: true,
   codeIntelligence,
   generatedAt,
@@ -200,21 +268,49 @@ const freshness = {
   nodeCount: nodes.length,
   edgeCount: edges.length,
   validForCommit: commit,
-  staleWhen: "git HEAD changes, cited files change, GitNexus index drifts, or task scope expands to uncrawled code",
+  staleWhen:
+    "git HEAD changes, cited files change, GitNexus index drifts, or task scope expands to uncrawled code",
 };
 
-const anchorFiles = (entrypoints.length ? entrypoints : nodes.map((node) => node.path).sort()).slice(0, 12);
+const anchorFiles = (
+  entrypoints.length ? entrypoints : nodes.map((node) => node.path).sort()
+).slice(0, 12);
 
 const anchors = {
   schema: "uash.design-anchors.v0.1",
   generatedAt,
   source: args.graph,
-  policy: "Agents must cite current files/symbols before architecture, refactor, bug-path, or cross-file implementation claims.",
-  anchors: anchorFiles.map((file) => ({ path: file, kind: classify(file), reason: entrypoints.includes(file) ? "high-signal entrypoint from code graph scan" : "source file from code graph scan" })),
+  policy:
+    "Agents must cite current files/symbols before architecture, refactor, bug-path, or cross-file implementation claims.",
+  anchors: anchorFiles.map((file) => ({
+    path: file,
+    kind: classify(file),
+    reason: entrypoints.includes(file)
+      ? "high-signal entrypoint from code graph scan"
+      : "source file from code graph scan",
+  })),
 };
 
 writeJson(repo, args.graph, graph);
 writeJson(repo, args.freshness, freshness);
 writeJson(repo, args.anchors, anchors);
 
-console.log(JSON.stringify({ ok: true, graph: args.graph, freshness: args.freshness, anchors: args.anchors, provider: codeIntelligence.primaryBackend, backendEvidence: codeIntelligence.evidenceArtifact, nodes: nodes.length, edges: edges.length, entrypoints: entrypoints.length, commit, dirty: dirtyFiles.length > 0 }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      ok: true,
+      graph: args.graph,
+      freshness: args.freshness,
+      anchors: args.anchors,
+      provider: codeIntelligence.primaryBackend,
+      backendEvidence: codeIntelligence.evidenceArtifact,
+      nodes: nodes.length,
+      edges: edges.length,
+      entrypoints: entrypoints.length,
+      commit,
+      dirty: dirtyFiles.length > 0,
+    },
+    null,
+    2,
+  ),
+);

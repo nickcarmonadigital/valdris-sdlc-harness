@@ -31,6 +31,6 @@ A completed goal requires all stopping conditions to pass with typed evidence, n
 
 # Related
 
-* [Typed Evidence](/concepts/typed-evidence.md)
-* [Generative AI Assurance](/playbooks/genai-assurance.md)
-* [Production Readiness 13 Layers](/playbooks/production-readiness-13-layers.md)
+- [Typed Evidence](/concepts/typed-evidence.md)
+- [Generative AI Assurance](/playbooks/genai-assurance.md)
+- [Production Readiness 13 Layers](/playbooks/production-readiness-13-layers.md)

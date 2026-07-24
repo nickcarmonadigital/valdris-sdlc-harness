@@ -25,9 +25,9 @@ The visual surface is a **Miro / n8n-style workflow canvas**:
 
 We do not need hosted persistence yet. The v0 can run in two modes:
 
-| Mode | Storage | Purpose |
-|---|---|---|
-| Vercel demo | bundled seed events | public/shareable product preview |
+| Mode          | Storage                                               | Purpose                                |
+| ------------- | ----------------------------------------------------- | -------------------------------------- |
+| Vercel demo   | bundled seed events                                   | public/shareable product preview       |
 | On-prem/local | filesystem JSONL under `data/runs/<run>/events.jsonl` | real connector spike without hosted DB |
 
 Later, when collaboration/auth/history matter, replace the file adapter with Postgres/Supabase/Vercel Postgres/etc. The event contract should not change.

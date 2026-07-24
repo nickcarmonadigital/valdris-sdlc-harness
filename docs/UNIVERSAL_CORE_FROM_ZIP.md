@@ -52,7 +52,7 @@ The universal value of the uploaded zip is the **agentic SDLC operating model**.
      - `proof/portable.json`
      - `rca/rca.json` when corrective-work RCA is required or supplied
      - `review/review.json` using the signed four-role `valdris.review.v2` contract
-     - `run/packet.json` using `valdris.run-packet.v2`
+     - `run/packet.json` using `valdris.run-packet.v3` with an explicit assurance level and catalog snapshots; v2 is historical structural evidence only
      - `handoff/final.md`
 
 7. **Mechanical gates**
@@ -94,20 +94,20 @@ The universal value of the uploaded zip is the **agentic SDLC operating model**.
 
 These must not live in the universal core:
 
-| Adapter field | Why it is project-specific |
-|---|---|
-| Product/company names | Different per repo/team |
-| Users/customers | Defines blast radius and UX expectations |
-| Production definition | Branch/deploy models differ wildly |
-| Merge/deploy owner | Human authority differs by org |
-| Source-of-truth order | Some teams trust GitHub first, others Linear/Jira/docs/live dashboards |
-| Validation commands | Every stack has different tests/build/evals |
-| Safe edit paths | Depends on architecture and ownership |
-| Review-required paths | Depends on auth/data/billing/infra surfaces |
-| Red Zone actions | Risk profile differs by product |
-| Answer style | Human preference differs |
-| Lane set | Repos need different work lanes |
-| GitNexus/code-intelligence path | Generated per repo snapshot |
+| Adapter field                   | Why it is project-specific                                             |
+| ------------------------------- | ---------------------------------------------------------------------- |
+| Product/company names           | Different per repo/team                                                |
+| Users/customers                 | Defines blast radius and UX expectations                               |
+| Production definition           | Branch/deploy models differ wildly                                     |
+| Merge/deploy owner              | Human authority differs by org                                         |
+| Source-of-truth order           | Some teams trust GitHub first, others Linear/Jira/docs/live dashboards |
+| Validation commands             | Every stack has different tests/build/evals                            |
+| Safe edit paths                 | Depends on architecture and ownership                                  |
+| Review-required paths           | Depends on auth/data/billing/infra surfaces                            |
+| Red Zone actions                | Risk profile differs by product                                        |
+| Answer style                    | Human preference differs                                               |
+| Lane set                        | Repos need different work lanes                                        |
+| GitNexus/code-intelligence path | Generated per repo snapshot                                            |
 
 ## Product rule
 

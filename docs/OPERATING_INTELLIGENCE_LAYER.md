@@ -8,23 +8,23 @@ This document is the durable map for that layer. The v0.7 commissioning generato
 
 ## Operating-intelligence families
 
-| Family | Why it exists | Commissioning group | Canonical artifacts |
-|---|---|---|---|
-| Maturity / stakes classifier | Not every task deserves the same autonomy or proof burden. | project identity, validation, enterprise proof banks | `run/route.json`, `production/layer-assessment.json` |
-| Tests + evals | AI behavior changes need evals in addition to tests. | eval gate | `evals/results.json`, datasets, rubrics, thresholds |
-| Trajectory evaluation | A final artifact can pass while the agent path was unsafe or wasteful. | trajectory evaluation | `trajectory/trajectory.json`, retry/failure ledger |
-| Context manifest / ICM | Agents need the right context, not unlimited context. | context manifest / ICM | `context/manifest.json`, hashed loaded-file ledger |
-| Skill registry | Procedures should load only when relevant and with version/owner/proof. | skill registry | `skills/registry.json`, eight `SKILL.md` workflows |
-| Memory substrate | Durable memory must help future runs without storing secrets/stale task state. | memory substrate | memory policy, provenance, review log |
-| Tool registry + hooks | Tool use needs risk classes, hooks, and audit logs. | tool registry and hooks | `tools/registry.yaml`, hook outputs, audit log |
-| Sandbox manager | Runs need allowed roots, network policy, secret policy, cleanup, escape proof. | sandbox manager | sandbox policy, allowed-root audit |
-| Model routing | Strong/cheap model choice should be explicit and logged. | model routing | model route log, fallback record |
-| AI economics | Token burn, retry loops, and human review time are product costs. | AI economics ledger | `cost/ledger.json`, handoff cost notes |
-| Background PR agents | Async agents need branch/PR/reviewer/proof/stale-cleanup policy. | background PR agents | PR run packet, branch policy, proof bundle |
-| MCP / A2A interoperability | External runtimes need tool contracts, auth roots, and live-event definitions. | MCP / A2A interoperability | MCP tool manifest, A2A policy, connector auth |
-| Production-agent lifecycle | Deployed agents need states, eval gates, observability, and rollback. | production-agent lifecycle | lifecycle state, eval/canary/rollback proof |
-| Team harness registry | Prompts, evals, connectors, skills, and proof banks need owners. | team harness registry | registry/owner map, drift checks |
-| Human-agent protocol | Approvals and escalations must be scoped, durable, and auditable. | human-agent operating protocol | approval contract, contact channels, SLA |
+| Family                       | Why it exists                                                                          | Commissioning group                                  | Canonical artifacts                                  |
+| ---------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
+| Maturity / stakes classifier | Not every task deserves the same autonomy or proof burden.                             | project identity, validation, enterprise proof banks | `run/route.json`, `production/layer-assessment.json` |
+| Tests + evals                | AI behavior changes need evals in addition to tests.                                   | eval gate                                            | `evals/results.json`, datasets, rubrics, thresholds  |
+| Trajectory evaluation        | A final artifact can pass while the agent path was unsafe or wasteful.                 | trajectory evaluation                                | `trajectory/trajectory.json`, retry/failure ledger   |
+| Context manifest / ICM       | Agents need the right context, not unlimited context.                                  | context manifest / ICM                               | `context/manifest.json`, hashed loaded-file ledger   |
+| Skill registry               | Procedures should load only when relevant and with version/owner/proof.                | skill registry                                       | `skills/registry.json`, eight `SKILL.md` workflows   |
+| Memory substrate             | Durable memory must help future runs without storing secrets/stale task state.         | memory substrate                                     | memory policy, provenance, review log                |
+| Tool registry + hooks        | Tool use needs risk classes, hooks, and audit logs.                                    | tool registry and hooks                              | `tools/registry.yaml`, hook outputs, audit log       |
+| Sandbox manager              | Runs need allowed roots, network policy, secret policy, cleanup, escape proof.         | sandbox manager                                      | sandbox policy, allowed-root audit                   |
+| Model routing                | Strong/cheap model choice should be explicit and logged.                               | model routing                                        | model route log, fallback record                     |
+| AI economics                 | Token burn, retry loops, tool calls, latency, and human review time are product costs. | `uash.ai-economics-ledger.v1`                        | `runtime/economics.json`, signed usage receipt       |
+| Background PR agents         | Async agents need branch/PR/reviewer/proof/stale-cleanup policy.                       | background PR agents                                 | PR run packet, branch policy, proof bundle           |
+| MCP / A2A interoperability   | External runtimes need tool contracts, auth roots, and live-event definitions.         | MCP / A2A interoperability                           | MCP tool manifest, A2A policy, connector auth        |
+| Production-agent lifecycle   | Deployed agents need states, eval gates, observability, and rollback.                  | production-agent lifecycle                           | lifecycle state, eval/canary/rollback proof          |
+| Team harness registry        | Prompts, evals, connectors, skills, and proof banks need owners.                       | team harness registry                                | registry/owner map, drift checks                     |
+| Human-agent protocol         | Approvals and escalations must be scoped, durable, and auditable.                      | human-agent operating protocol                       | approval contract, contact channels, SLA             |
 
 ## Portable context-quality A/B contract
 
@@ -36,9 +36,26 @@ A context manifest is not proof that the loaded context helped. Every non-empty 
     "schema": "uash.context-quality-eval.v1",
     "suiteId": "context-lane-quality",
     "baselineMode": "no-context",
-    "caseSet": { "id": "repo-context-cases", "version": "v1", "path": "evals/context-cases.json", "sha256": "<sha256>", "caseCount": 1 },
-    "answerKey": { "id": "repo-context-answer-key", "version": "v1", "path": "evals/context-answer-key.json", "sha256": "<sha256>", "caseCount": 1 },
-    "metric": { "id": "answer-key-score", "direction": "higher-is-better", "minDelta": 0.1, "candidateThreshold": 0.8 }
+    "caseSet": {
+      "id": "repo-context-cases",
+      "version": "v1",
+      "path": "evals/context-cases.json",
+      "sha256": "<sha256>",
+      "caseCount": 1
+    },
+    "answerKey": {
+      "id": "repo-context-answer-key",
+      "version": "v1",
+      "path": "evals/context-answer-key.json",
+      "sha256": "<sha256>",
+      "caseCount": 1
+    },
+    "metric": {
+      "id": "answer-key-score",
+      "direction": "higher-is-better",
+      "minDelta": 0.1,
+      "candidateThreshold": 0.8
+    }
   }
 }
 ```
@@ -57,15 +74,41 @@ Each typed arm result binds the exact manifest and run identity, suite/context m
   "commit": "<commit>",
   "environment": "verification",
   "contextMode": "loaded-context",
-  "caseSet": { "id": "repo-context-cases", "version": "v1", "path": "evals/context-cases.json", "sha256": "<sha256>", "caseCount": 1 },
-  "answerKey": { "id": "repo-context-answer-key", "version": "v1", "path": "evals/context-answer-key.json", "sha256": "<sha256>", "caseCount": 1 },
+  "caseSet": {
+    "id": "repo-context-cases",
+    "version": "v1",
+    "path": "evals/context-cases.json",
+    "sha256": "<sha256>",
+    "caseCount": 1
+  },
+  "answerKey": {
+    "id": "repo-context-answer-key",
+    "version": "v1",
+    "path": "evals/context-answer-key.json",
+    "sha256": "<sha256>",
+    "caseCount": 1
+  },
   "evaluator": { "name": "project-evaluator", "version": "v1" },
-  "model": { "provider": "provider-or-local", "name": "model-or-engine", "version": "v1" },
+  "model": {
+    "provider": "provider-or-local",
+    "name": "model-or-engine",
+    "version": "v1"
+  },
   "promptVersion": "context-eval-v1",
   "configDigest": "<sha256>",
-  "metric": { "id": "answer-key-score", "direction": "higher-is-better", "minDelta": 0.1, "candidateThreshold": 0.8 },
+  "metric": {
+    "id": "answer-key-score",
+    "direction": "higher-is-better",
+    "minDelta": 0.1,
+    "candidateThreshold": 0.8
+  },
   "cases": [{ "caseId": "routing", "value": 1, "criticalRegression": false }],
-  "aggregate": { "method": "arithmetic-mean", "caseCount": 1, "value": 1, "criticalRegressions": 0 }
+  "aggregate": {
+    "method": "arithmetic-mean",
+    "caseCount": 1,
+    "value": 1,
+    "criticalRegressions": 0
+  }
 }
 ```
 
@@ -90,21 +133,36 @@ The recurring missing/partial patterns are:
 13. background PR agents;
 14. production-agent lifecycle: create, eval, deploy, observe, refine;
 15. AI development economics: token burn, prompt-loop waste, review time, hidden debt, OpEx;
-16. human-agent team protocols: owners, escalation, approvals, reviewer routing, SLA/block timers.
+
+## Executable v0.9 operating contracts
+
+The commissioned answers above become enforceable through the following Layer 0 cross-cutting artifacts:
+
+- `run/requirements-contract.json` maps requirements to acceptance, tests, eval suites, schema identities, and stopping conditions.
+- `runtime/tool-registry.json` plus `runtime/session.json.toolCallReceipts` proves registered tools and observed calls.
+- `runtime/session.json.memoryHeadReceipts` advances durable memory heads across sessions and tenant/project/run isolation boundaries.
+- `runtime/driver.json` and `runtime/driver-state.json` bind the external agent runtime, goal, lease, checkpoint, stop policy, and implementation receipt.
+- `evals/calibrations/<suite>.json` is required when, and only when, a model judges an eval.
+- `runtime/economics.json` reconciles usage, retries, calls, latency, human review, spend, and tenant attribution.
+- `runtime/interop/{mcp|a2a}.json` records the full conformance transcript for every declared protocol.
+- `valdris.trace-receipt.v2` binds the evaluated trajectory to actual trace bytes and observable decision evidence.
+- `review/change-review.json.dependencyProvenance` blocks added or updated dependencies without approved origin, integrity, vulnerability, and confusable-name evidence.
+
+Validate individual documents with `npm run operating-contract:gate -- --file <path>` and the complete cross-bindings with `npm run verify:v09-assurance` or the authoritative closure gate. 16. human-agent team protocols: owners, escalation, approvals, reviewer routing, SLA/block timers.
 
 ## Current implementation status
 
-| Layer | Current status | Notes |
-|---|---|---|
-| Commissioning questions | Built | `scripts/commission-harness.mjs --print-questions` emits 31 groups / 158 questions. |
-| Generated adapter fields | Built structurally | `project-adapter.json` includes `operatingIntelligence`, `enterpriseProofBank`, `teamHarnessRegistry`, `humanAgentProtocol`. |
-| Generated docs | Built structurally | Generated packs include Good Looks Like, Code Quality, Enterprise Proof Bank, Operating Intelligence, Team Registry, Human Agent Protocol. |
-| Verifier assertions | Built structurally | `npm run verify:harness` checks expanded groups, adapter fields, and generated docs. |
+| Layer                                               | Current status                 | Notes                                                                                                                                                                                                                                                        |
+| --------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Commissioning questions                             | Built                          | `scripts/commission-harness.mjs --print-questions` emits 31 groups / 158 questions.                                                                                                                                                                          |
+| Generated adapter fields                            | Built structurally             | `project-adapter.json` includes `operatingIntelligence`, `enterpriseProofBank`, `teamHarnessRegistry`, `humanAgentProtocol`.                                                                                                                                 |
+| Generated docs                                      | Built structurally             | Generated packs include Good Looks Like, Code Quality, Enterprise Proof Bank, Operating Intelligence, Team Registry, Human Agent Protocol.                                                                                                                   |
+| Verifier assertions                                 | Built structurally             | `npm run verify:harness` checks expanded groups, adapter fields, and generated docs.                                                                                                                                                                         |
 | Executable goal/context/skill/eval/trajectory gates | Built + adversarially verified | Strict JSON validators reject incomplete goals, secret context, registry escapes, failing thresholds, violations, budget overruns, and context A/B comparisons that are missing, unbound, mismatched, tampered, regressive, or below the commissioned delta. |
-| Enterprise production controls | Built + adversarially verified | 39 catalog controls use typed evidence under `uash.production-readiness.v2`. |
-| Generative AI assurance | Built + adversarially verified | Ten cross-cutting controls plus RAG/tool/memory activation, eval, and trajectory gates. |
-| Domain packs | Built initial set | iOS, realtime multiplayer, digital commerce, and youth-AI catalogs with a generic assurance gate. |
-| Hosted backend / MCP daemon / A2A runtime | Partial/future | Local bridge is verified; product-grade connector runtime remains next phase. |
+| Enterprise production controls                      | Built + adversarially verified | 39 catalog controls use typed evidence under `uash.production-readiness.v2`.                                                                                                                                                                                 |
+| Generative AI assurance                             | Built + adversarially verified | Ten cross-cutting controls plus RAG/tool/memory activation, eval, and trajectory gates.                                                                                                                                                                      |
+| Domain packs                                        | Built initial set              | iOS, realtime multiplayer, digital commerce, and youth-AI catalogs with a generic assurance gate.                                                                                                                                                            |
+| Hosted backend / MCP daemon / A2A runtime           | Partial/future                 | Local bridge is verified; product-grade connector runtime remains next phase.                                                                                                                                                                                |
 
 ## Rule
 

@@ -9,6 +9,27 @@ permissions:
   contents: read
 
 jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24.18.0"
+          cache: npm
+
+      - name: Install pinned dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Reject high-severity dependency advisories
+        run: npm run dependency:audit
+
   trust-boundary-hardening:
     strategy:
       fail-fast: false
@@ -19,13 +40,13 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24.18.0"
           cache: npm
@@ -35,6 +56,14 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Runtime-driver local identity preflight
+        run: npm run verify:runtime-driver-identity
+        timeout-minutes: 2
+
+      - name: Attested executor path and identity preflight
+        run: npm run verify:attested-executor
+        timeout-minutes: 30
 
       - name: Formatting and whitespace gate
         run: npm run format:check
@@ -92,6 +121,18 @@ jobs:
       - name: Run-packet trust verifier
         run: npm run verify:run-packet-trust
 
+      - name: Semantic and authoritative assurance verifier
+        run: npm run verify:v09-assurance
+
+      - name: Authoritative release/tag gate verifier
+        run: npm run verify:authoritative-release
+
+      - name: Protected pre-tag release workflow verifier
+        run: npm run verify:authoritative-release-workflow
+
+      - name: Current release eligibility gate
+        run: npm run release:gate:authoritative
+
       - name: Commissioned nested-pack portability verifier
         run: npm run verify:commissioned-portability
 
@@ -130,7 +171,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout full history
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -146,13 +187,13 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24.18.0"
           cache: npm
@@ -163,11 +204,28 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Runtime-driver local identity preflight
+        run: npm run verify:runtime-driver-identity
+        timeout-minutes: 2
+
+      - name: Attested executor path and identity preflight
+        run: npm run verify:attested-executor
+        timeout-minutes: 10
+
       - name: Clean-room convergence and generated-pack verifier
         run: npm run verify:clean-room-convergence
 
       - name: Commissioned nested-pack portability verifier
         run: npm run verify:commissioned-portability
+
+      - name: Semantic and authoritative assurance verifier
+        run: npm run verify:v09-assurance
+
+      - name: Authoritative release/tag gate verifier
+        run: npm run verify:authoritative-release
+
+      - name: Protected pre-tag release workflow verifier
+        run: npm run verify:authoritative-release-workflow
 
       - name: Full harness and generated skill-pack verifier
         run: npm run verify:harness

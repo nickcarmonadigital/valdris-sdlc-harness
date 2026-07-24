@@ -12,21 +12,39 @@
   "profile": "enterprise",
   "commit": "replace-with-target-commit",
   "environment": "blueprint",
-  "budgets": {"attempts": 40, "toolCalls": 2000, "tokens": 5000000, "costUsd": 2500, "wallClockMinutes": 43200},
+  "budgets": {
+    "attempts": 40,
+    "toolCalls": 2000,
+    "tokens": 5000000,
+    "costUsd": 2500,
+    "wallClockMinutes": 43200
+  },
   "stoppingConditions": [
-    {"id": "ios-core-loop", "status": "pending"},
-    {"id": "two-player-reconnect-flow", "status": "pending"},
-    {"id": "authoritative-server-state", "status": "pending"},
-    {"id": "ai-quality-safety-latency-cost-evals", "status": "pending"},
-    {"id": "prompt-injection-hidden-state-and-tool-boundaries", "status": "pending"},
-    {"id": "storekit-idempotency-lifecycle-and-reconciliation", "status": "pending"},
-    {"id": "cloud-save-conflict-restore-and-outage", "status": "pending"},
-    {"id": "matchmaking-quality-capacity-and-abuse", "status": "pending"},
-    {"id": "security-and-residual-risk", "status": "pending"},
-    {"id": "macos-signed-archive-testflight-device-smoke", "status": "blocked"},
-    {"id": "backend-model-client-rollback", "status": "pending"},
-    {"id": "all-applicable-enterprise-ai-domain-controls", "status": "pending"},
-    {"id": "human-approvals-recorded", "status": "pending"}
+    { "id": "ios-core-loop", "status": "pending" },
+    { "id": "two-player-reconnect-flow", "status": "pending" },
+    { "id": "authoritative-server-state", "status": "pending" },
+    { "id": "ai-quality-safety-latency-cost-evals", "status": "pending" },
+    {
+      "id": "prompt-injection-hidden-state-and-tool-boundaries",
+      "status": "pending"
+    },
+    {
+      "id": "storekit-idempotency-lifecycle-and-reconciliation",
+      "status": "pending"
+    },
+    { "id": "cloud-save-conflict-restore-and-outage", "status": "pending" },
+    { "id": "matchmaking-quality-capacity-and-abuse", "status": "pending" },
+    { "id": "security-and-residual-risk", "status": "pending" },
+    {
+      "id": "macos-signed-archive-testflight-device-smoke",
+      "status": "blocked"
+    },
+    { "id": "backend-model-client-rollback", "status": "pending" },
+    {
+      "id": "all-applicable-enterprise-ai-domain-controls",
+      "status": "pending"
+    },
+    { "id": "human-approvals-recorded", "status": "pending" }
   ],
   "checkpoints": [
     {

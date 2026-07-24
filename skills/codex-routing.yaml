@@ -229,6 +229,8 @@ skills:
       - "proof"
     conditional_gates:
       - "RAG, tool, and memory controls only when each feature is active"
+      - "model-judge calibration only when an evaluator is a model"
+      - "typed runtime driver, tool calls, memory heads, economics, and MCP/A2A transcripts when those capabilities are active"
       - "youth-safety domain pack for child or teen audiences"
     red_zone_triggers:
       - "consequential-tool"
@@ -270,6 +272,8 @@ skills:
       - "ai-assurance and eval for AI impact"
       - "trajectory for multi-checkpoint or agentic execution"
       - "smoke for deployed, provider-integration, platform-native, or runtime claims"
+      - "authoritative-assurance for semantic or authoritative claims"
+      - "requirements, runtime driver, dependency provenance, economics, interop, and trace-v2 operating contracts when applicable"
       - "commissioned domain packs"
       - "rca for bug, regression, incident, or self-heal routes"
       - "restricted-residue for clean-room convergence or migration when an external restricted-values manifest is commissioned"

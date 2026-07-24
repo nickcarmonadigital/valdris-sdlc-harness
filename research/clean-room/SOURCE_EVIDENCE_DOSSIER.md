@@ -8,7 +8,6 @@ This dossier concatenates the source-specific evidence notes. It is clean-room: 
 - Video transcript content was not invented; where extraction was blocked, the evidence file says so.
 - The private work-harness snapshot and prompt library are treated as restricted behavioral inputs, not HumanLayer sources and not copyable implementation sources.
 
-
 ---
 
 # Source 01: HumanLayer homepage
@@ -48,7 +47,6 @@ URL: https://www.humanlayer.dev/
 ## Clean-room boundary
 
 Do not copy brand, page design, private app behavior, proprietary UI copy, or unauthenticated demo details. Use only public functional patterns.
-
 
 ---
 
@@ -102,7 +100,6 @@ Tags visible on the blog index include:
 
 Only the index was read here. Individual article content must be separately cited if used for specific technical claims.
 
-
 ---
 
 # Source 03: Advanced Context Engineering for Coding Agents
@@ -149,7 +146,6 @@ URL: https://github.com/humanlayer/advanced-context-engineering-for-coding-agent
 
 The repo had no detected license, so treat expressive prose/prompts/screenshots as reference-only. Reimplement concepts independently with original wording and cite source.
 
-
 ---
 
 # Source 04: Applying 12-Factor Principles to Coding Agent SDKs
@@ -194,7 +190,6 @@ URL: https://github.com/ai-that-works/ai-that-works/tree/main/2026-01-13-applyin
 
 High for control-flow/structured-output/RALPH patterns from source files; medium for runtime behavior because examples were not executed.
 
-
 ---
 
 # Source 05: hitchhiker guide to riptide
@@ -202,6 +197,7 @@ High for control-flow/structured-output/RALPH patterns from source files; medium
 URL: https://www.youtube.com/watch?v=eKWCx9nKe4I
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: hitchhiker's guide to riptide - feb 2026
   - author/channel: HumanLayer
@@ -212,21 +208,24 @@ URL: https://www.youtube.com/watch?v=eKWCx9nKe4I
   - thumbnail: https://i.ytimg.com/vi/eKWCx9nKe4I/hqdefault.jpg
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] eKWCx9nKe4I: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -235,6 +234,7 @@ URL: https://www.youtube.com/watch?v=eKWCx9nKe4I
 URL: https://www.youtube.com/watch?v=qgAny0sEdIk
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: Applying 12-Factor Principles to Coding Agent SDKs:🦄 #40
   - author/channel: Boundary
@@ -245,21 +245,24 @@ URL: https://www.youtube.com/watch?v=qgAny0sEdIk
   - thumbnail: https://i.ytimg.com/vi/qgAny0sEdIk/hqdefault.jpg
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] qgAny0sEdIk: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -268,6 +271,7 @@ URL: https://www.youtube.com/watch?v=qgAny0sEdIk
 URL: https://www.youtube.com/watch?v=KQoSiBbsVso
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: HumanLayer - Platform Demo
   - author/channel: HumanLayer
@@ -278,21 +282,24 @@ URL: https://www.youtube.com/watch?v=KQoSiBbsVso
   - thumbnail: https://i.ytimg.com/vi/KQoSiBbsVso/hqdefault.jpg
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] KQoSiBbsVso: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -301,6 +308,7 @@ URL: https://www.youtube.com/watch?v=KQoSiBbsVso
 URL: https://www.youtube.com/watch?v=rmvDxxNubIg
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: No Vibes Allowed: Solving Hard Problems in Complex Codebases – Dex Horthy, HumanLayer
   - author/channel: AI Engineer
@@ -311,21 +319,24 @@ URL: https://www.youtube.com/watch?v=rmvDxxNubIg
   - thumbnail: https://i.ytimg.com/vi/rmvDxxNubIg/hqdefault.jpg
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] rmvDxxNubIg: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -334,6 +345,7 @@ URL: https://www.youtube.com/watch?v=rmvDxxNubIg
 URL: https://www.youtube.com/watch?v=IS_y40zY-hc
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: Advanced Context Engineering for Agents
   - author/channel: YC Root Access
@@ -344,21 +356,24 @@ URL: https://www.youtube.com/watch?v=IS_y40zY-hc
   - thumbnail: https://i.ytimg.com/vi/IS_y40zY-hc/hqdefault.jpg
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] IS_y40zY-hc: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -367,6 +382,7 @@ URL: https://www.youtube.com/watch?v=IS_y40zY-hc
 URL: https://www.youtube.com/live/6IxSbMhT7v4?t=1943s
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: AIE Miami Keynote & Talks ft. OpenCode. Google Deepmind, OpenAI, and more!
   - author/channel: AI Engineer
@@ -377,21 +393,24 @@ URL: https://www.youtube.com/live/6IxSbMhT7v4?t=1943s
   - thumbnail: None
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] 6IxSbMhT7v4: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -400,6 +419,7 @@ URL: https://www.youtube.com/live/6IxSbMhT7v4?t=1943s
 URL: https://www.youtube.com/watch?v=kBqRubi7dSk&t=1859s
 
 ## Metadata attempts
+
 - youtube_oembed: HTTP 200
   - title: Making Agents Ship in Complex Brownfield Codebases | Dex Horothy, CEO of HumanLayer
   - author/channel: The Modern Software Developer
@@ -410,21 +430,24 @@ URL: https://www.youtube.com/watch?v=kBqRubi7dSk&t=1859s
   - thumbnail: https://i.ytimg.com/vi/kBqRubi7dSk/hqdefault.jpg
 
 ## Transcript extraction attempts
+
 - yt-dlp dump-json exit code: 1
   - blocker: `ERROR: [youtube] kBqRubi7dSk: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies`
 
 ## Clean-room evidence value
+
 - Evidence available from public oEmbed metadata only in this run. Do not claim transcript-specific content unless a transcript is later obtained.
 - Use titles/channels to prioritize manual follow-up or authenticated transcript capture.
 
 ## Clean-room requirements implied
+
 - Video ingestion subsystem should track metadata source, transcript availability, blocker reason, and confidence separately.
 - The platform should never silently invent transcript content when extraction is blocked.
 
 ## Confidence
+
 - High for oEmbed title/channel metadata when HTTP 200.
 - Low for content-level claims because transcripts were blocked/not captured.
-
 
 ---
 
@@ -461,7 +484,6 @@ Local path inspected: `<ephemeral-research-root>/homebrew-humanlayer`
 
 High for packaging/version/channel/path evidence; low for internal app implementation.
 
-
 ---
 
 # Source 13: distilled
@@ -496,7 +518,6 @@ Local path inspected: `<ephemeral-research-root>/distilled`
 ## Confidence
 
 High for static architecture/generator/package signals; medium for generated SDK completeness without building/submodules.
-
 
 ---
 
@@ -533,7 +554,6 @@ Local path inspected: `<ephemeral-research-root>/pulumi-resend`
 
 High for static resource/function/config evidence; no live Resend API validation.
 
-
 ---
 
 # Source 15: pulumi-stripe
@@ -565,7 +585,6 @@ Local path inspected: `<ephemeral-research-root>/pulumi-stripe`
 
 High for static resource/config/packaging evidence; medium for legal/license interpretation.
 
-
 ---
 
 # Source 16: react-hotkeys-hook
@@ -594,7 +613,6 @@ Local path inspected: `<ephemeral-research-root>/react-hotkeys-hook`
 ## Confidence
 
 High for API/package evidence; medium for HumanLayer-specific product intent.
-
 
 ---
 
@@ -627,7 +645,6 @@ Local path inspected: `<ephemeral-research-root>/skills`
 ## Confidence
 
 High for license/plugin structure/skill behavior.
-
 
 ---
 
@@ -662,7 +679,6 @@ Local path inspected: `<ephemeral-research-root>/rpi-coordination-template`
 
 High for template workflow; high that reuse should be reference-only unless license is clarified.
 
-
 ---
 
 # Source 19: 12-factor-agents
@@ -695,7 +711,6 @@ Local path inspected: `<ephemeral-research-root>/12-factor-agents`
 ## Confidence
 
 High for principles and workflows; medium for package-level license interpretation.
-
 
 ---
 
@@ -735,7 +750,6 @@ Local path inspected: `<ephemeral-research-root>/agentcontrolplane`
 
 High for CRD/domain model extraction; medium-high for controller workflow because source was statically inspected, not executed.
 
-
 ---
 
 # Source 21: Latest uploaded agentic SDLC harness zip
@@ -752,7 +766,6 @@ Path: withheld private work-harness snapshot
 ## Clean-room evidence value
 
 This is a restricted project harness reference, not a HumanLayer source. It contributes behavioral requirements for lanes, gates, run packets, prompts, and anti-skip flow enforcement; its project content is excluded.
-
 
 ---
 
@@ -774,7 +787,6 @@ This source defines a project-specific implementation that should be split into:
 
 1. Universal core: lanes/stages, run packets, gate scripts, Answer Contract, GitNexus code-intelligence pattern, ADR/self-heal pattern.
 2. Project adapter: project-specific source truth, branch and deploy rules, Red Zone, validation commands, tracker and team style, and runtime maps.
-
 
 ---
 
@@ -822,7 +834,6 @@ Path: `<restricted-private-prompt-library>`
 
 High — file read directly from latest uploaded zip extraction.
 
-
 ---
 
 # Source 24: Prompt Library GitHub
@@ -839,4 +850,3 @@ URL: withheld private prompt-library mirror
 ## Clean-room evidence value
 
 Use the local extracted file as primary if GitHub raw is blocked or changes. If `raw_same` is true, the GitHub source corroborates the uploaded zip version.
-

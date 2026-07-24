@@ -1,6 +1,6 @@
 {
   "name": "valdris-sdlc-harness",
-  "version": "0.8.0",
+  "version": "0.9.0-rc.1",
   "private": true,
   "description": "Valdris SDLC Harness: commissioning, project adapters, proof gates, and workflow telemetry for Claude Code/Codex/Hermes.",
   "scripts": {
@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start -H 127.0.0.1",
     "typecheck": "tsc --noEmit",
+    "dependency:audit": "npm audit --audit-level=high",
     "format:check": "node scripts/format-gate.mjs",
     "format:write": "node scripts/format-gate.mjs --write",
     "worktree:check": "node scripts/clean-worktree-gate.mjs",
@@ -55,6 +56,16 @@
     "proof:run": "node scripts/proof-runner.mjs",
     "rca:gate": "node scripts/rca-gate.mjs --repo .",
     "review:gate": "node scripts/review-gate.mjs --repo .",
+    "authoritative:gate": "node scripts/authoritative-assurance-gate.mjs --repo .",
+    "operating-contract:gate": "node scripts/operating-contract-gate.mjs --repo .",
+    "interop:conformance": "node scripts/interop-conformance-runner.mjs --repo .",
+    "assurance:readiness": "node scripts/assurance-readiness.mjs --repo .",
+    "runtime:driver:state": "node scripts/runtime-driver-state.mjs --repo .",
+    "proof:execute:attested": "node scripts/attested-proof-executor.mjs",
+    "operator-root:inspect": "node scripts/operator-root-security.mjs",
+    "release:gate:authoritative": "node scripts/authoritative-release-gate.mjs",
+    "release:source:gate": "node scripts/authoritative-release-source-gate.mjs",
+    "bridge:head:github": "node scripts/github-bridge-head.mjs",
     "enterprise-ai:gate": "node scripts/enterprise-ai-gate-all.mjs --repo .",
     "verify:enterprise-ai": "node scripts/verify-enterprise-ai.mjs",
     "verify:import-boundaries": "node scripts/verify-import-boundaries.mjs",
@@ -69,6 +80,11 @@
     "verify:routing-convergence": "node scripts/verify-routing-convergence.mjs",
     "verify:restricted-residue-convergence": "node scripts/verify-restricted-residue-convergence.mjs",
     "verify:clean-room-convergence": "node scripts/verify-clean-room-convergence.mjs",
+    "verify:runtime-driver-identity": "node scripts/verify-runtime-driver-identity.mjs",
+    "verify:v09-assurance": "node scripts/verify-v09-assurance.mjs",
+    "verify:attested-executor": "node scripts/verify-attested-executor-hardening.mjs",
+    "verify:authoritative-release": "node scripts/verify-authoritative-release-gate.mjs",
+    "verify:authoritative-release-workflow": "node scripts/verify-authoritative-release-workflow.mjs",
     "render:readme-visuals": "node scripts/render-readme-visuals.mjs",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
     "bridge:emit": "node scripts/uash-emit-event.mjs",
@@ -78,7 +94,7 @@
     "@types/node": "25.9.3",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
-    "next": "16.2.9",
+    "next": "16.2.11",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "typescript": "6.0.3"
@@ -87,6 +103,7 @@
     "prettier": "3.9.6"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "postcss": "8.5.22",
+    "sharp": "0.35.3"
   }
 }

@@ -30,14 +30,14 @@ Layer 0 is not a new connector node and not a fourteenth production domain. Asyn
 
 ## Terminology calibration
 
-| Operator language | Best term | Semantics | Taxonomy | Domain-term calibration |
-|---|---|---|---|---|
-| “Make my harness universal” | Harness commissioning | Convert repo/team facts into an AI-operable harness pack | Internal Developer Platform / Agentic SDLC | Emerging, strong product term |
-| “Questions asked to understand the person and repo” | Commissioning interview | Structured intake that captures facts code scanning cannot infer | Onboarding / discovery workflow | Standard pattern, product-specific use |
-| “Put inside Claude Code or Codex” | Agent front door / runtime adapter | Instructions + local tools that make an external coding agent follow the harness | Agent connector | Emerging category |
-| “Use GitNexus in the SDLC flow” | Code-intelligence backend | GitNexus indexes the repo; the harness consumes stable graph/freshness/anchor artifacts | Static analysis / GraphRAG / AgentOps | GitNexus is vendor/project-specific; code-intelligence gate is standardizing |
-| “See what was done / what the agent did” | Run packet / artifact ledger | Durable evidence of stages, gates, approvals, proof, and handoff | AgentOps / audit trail | Standardizing now |
-| “Don’t let agents freelance” | Policy/gate engine | Mechanical rules that block done without required artifacts | SDLC governance | Standard concept applied to agents |
+| Operator language                                   | Best term                          | Semantics                                                                               | Taxonomy                                   | Domain-term calibration                                                      |
+| --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
+| “Make my harness universal”                         | Harness commissioning              | Convert repo/team facts into an AI-operable harness pack                                | Internal Developer Platform / Agentic SDLC | Emerging, strong product term                                                |
+| “Questions asked to understand the person and repo” | Commissioning interview            | Structured intake that captures facts code scanning cannot infer                        | Onboarding / discovery workflow            | Standard pattern, product-specific use                                       |
+| “Put inside Claude Code or Codex”                   | Agent front door / runtime adapter | Instructions + local tools that make an external coding agent follow the harness        | Agent connector                            | Emerging category                                                            |
+| “Use GitNexus in the SDLC flow”                     | Code-intelligence backend          | GitNexus indexes the repo; the harness consumes stable graph/freshness/anchor artifacts | Static analysis / GraphRAG / AgentOps      | GitNexus is vendor/project-specific; code-intelligence gate is standardizing |
+| “See what was done / what the agent did”            | Run packet / artifact ledger       | Durable evidence of stages, gates, approvals, proof, and handoff                        | AgentOps / audit trail                     | Standardizing now                                                            |
+| “Don’t let agents freelance”                        | Policy/gate engine                 | Mechanical rules that block done without required artifacts                             | SDLC governance                            | Standard concept applied to agents                                           |
 
 ## What we extracted from the uploaded harness
 
@@ -201,7 +201,7 @@ A repo is commissioned only when:
 - Red Zone owner and approval-required actions are explicit.
 - Source-of-truth order is explicit.
 - At least one run packet can be created.
-- The portable closure uses `valdris.review.v2` and `valdris.run-packet.v2`: scout, implementer, verifier, and independent reviewer identities are explicit, evidence-bound, signed, and pairwise distinct on actor, session, and execution IDs; the packet envelope binds `roleProvenanceSha256`.
+- The portable closure uses `valdris.review.v2` and new `valdris.run-packet.v3`: scout, implementer, verifier, and independent reviewer identities are explicit, evidence-bound, signed, and pairwise distinct on actor, session, and execution IDs; the packet envelope binds `roleProvenanceSha256`, assurance level, and resolved catalogs. Historical v2 packets remain structural evidence only.
 - New route packets generate `uash.route.v2`, bind `run/workload-classification.json`, and enforce Layer 0 foundation assurance before implementation.
 - A simulated agent run blocks completion when proof is missing.
 
@@ -209,6 +209,7 @@ A repo is commissioned only when:
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run knowledge:gate
 npm run skills:gate

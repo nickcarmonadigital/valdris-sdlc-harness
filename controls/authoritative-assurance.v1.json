@@ -1,0 +1,282 @@
+{
+  "schema": "valdris.authoritative-assurance-policy.v1",
+  "description": "Versioned policy for semantic and authoritative Valdris claims. Layer 0 owns these cross-cutting contracts; the thirteen assurance domains remain unchanged.",
+  "assuranceLevels": {
+    "structural": {
+      "description": "Schemas, bindings, and local gates are valid. No production-semantic or external-authority claim is implied.",
+      "requiredArtifacts": []
+    },
+    "semantic": {
+      "description": "Commissioned semantic adapters and owner-selected thresholds prove workload behavior.",
+      "requiredArtifacts": [
+        "run/implementation-readiness.json",
+        "run/acceptance-results.json",
+        "assurance/semantic.json",
+        "runtime/session.json",
+        "review/change-review.json",
+        "assurance/authoritative.json"
+      ]
+    },
+    "authoritative": {
+      "description": "Semantic proof is combined with externally signed approval, immutable execution, and rollback-resistant head receipts.",
+      "requiredArtifacts": [
+        "run/implementation-readiness.json",
+        "run/acceptance-results.json",
+        "assurance/semantic.json",
+        "runtime/session.json",
+        "review/change-review.json",
+        "assurance/authoritative.json"
+      ]
+    }
+  },
+  "schemas": {
+    "augmentation": "uash.assurance-augmentation.v1",
+    "semanticAdapter": "valdris.semantic-proof-adapter.v1",
+    "semanticExecutionReceipt": "valdris.semantic-execution-receipt.v1",
+    "acceptancePolicy": "valdris.acceptance-policy.v1",
+    "aiIdentity": "uash.ai-workload-identity.v1",
+    "approvalReceipt": "uash.approval-receipt.v1",
+    "implementationReadiness": "uash.implementation-readiness.v1",
+    "implementationReadinessReceipt": "uash.implementation-readiness-receipt.v1",
+    "implementationStartReceipt": "uash.implementation-start-receipt.v1",
+    "agentEvalPlan": "uash.agent-eval-plan.v1",
+    "requirementsContract": "uash.requirements-contract.v1",
+    "acceptanceResults": "uash.acceptance-results.v1",
+    "toolRegistry": "valdris.tool-registry.v1",
+    "toolApprovalReceipt": "uash.tool-approval-receipt.v1",
+    "memoryHeadReceipt": "valdris.memory-head-receipt.v1",
+    "modelJudgeCalibration": "uash.model-judge-calibration.v1",
+    "aiEconomicsLedger": "uash.ai-economics-ledger.v1",
+    "interopTranscript": "valdris.interop-transcript.v1",
+    "interopConformanceRequest": "valdris.interop-conformance-request.v1",
+    "interopExecutionReceipt": "valdris.interop-execution-receipt.v1",
+    "runtimeDriver": "valdris.runtime-driver.v1",
+    "runtimeDriverState": "valdris.runtime-driver-state.v1",
+    "implementationExecutionReceipt": "valdris.implementation-execution-receipt.v1",
+    "dependencyProvenance": "valdris.dependency-provenance.v1",
+    "decisionEvidence": "uash.decision-evidence.v1",
+    "traceReceipt": "valdris.trace-receipt.v2",
+    "runtimeSession": "valdris.runtime-session.v1",
+    "runtimeConformanceReceipt": "valdris.runtime-conformance-receipt.v1",
+    "runtimeExecutionIsolationPolicy": "valdris.runtime-execution-isolation-policy.v1",
+    "executorReceipt": "valdris.proof-executor-receipt.v1",
+    "executorAuthoritySeparationReceipt": "valdris.executor-authority-separation-receipt.v1",
+    "executorOutput": "valdris.proof-executor-output.v1",
+    "gitObjectTreeManifest": "valdris.git-object-tree-manifest.v1",
+    "ociDaemonIdentity": "valdris.oci-daemon-identity.v1",
+    "bridgeHeadReceipt": "valdris.bridge-head-receipt.v1",
+    "bridgeProofInput": "valdris.bridge-proof-input.v1",
+    "githubHeadCheckpoint": "valdris.github-head-checkpoint.v1",
+    "githubHeadCheckAttestation": "valdris.github-head-check-attestation.v1",
+    "changeReview": "uash.ai-change-review.v1",
+    "promotionReceipt": "uash.promotion-receipt.v1",
+    "learningReceipt": "uash.harness-learning.v1",
+    "authoritativeClosure": "valdris.authoritative-closure.v1"
+  },
+  "execution": {
+    "modes": ["single-agent", "orchestrator", "conductor", "hybrid"],
+    "capabilities": [
+      "read",
+      "write",
+      "execute",
+      "network",
+      "secrets",
+      "approve",
+      "deploy"
+    ],
+    "hookPoints": [
+      "before-context-load",
+      "before-tool",
+      "after-tool",
+      "before-approval",
+      "before-deploy",
+      "after-deploy"
+    ],
+    "authoritativeExecutorRequirements": {
+      "readOnlySource": true,
+      "sourceSnapshotMode": "git-raw-object-tree-content-addressed-oci-layer",
+      "completeTreeEntryManifest": true,
+      "submodules": "fail-closed",
+      "liveWorktreeMount": false,
+      "isolatedOutput": true,
+      "exclusiveOutputRoot": true,
+      "outputRootCurrentOwner": true,
+      "outputRootRestrictivePermissions": true,
+      "outputRootStableIdentityDigest": true,
+      "outputRootPolicyDigest": true,
+      "containerIdentity": "cidfile-and-unique-name",
+      "absoluteCommissionedGitCli": true,
+      "exactGitCliDigest": true,
+      "absoluteCommissionedRuntimeCli": true,
+      "exactRuntimeCliDigest": true,
+      "runtimeEndpoint": "local-default",
+      "runtimeExecutionMode": "hardened-private-capsule",
+      "runtimeExecutionThreatBoundary": "trusted-host-operator-vs-isolated-untrusted-workload",
+      "runtimeExecutionAuthorityIdentityDigest": true,
+      "runtimeExecutionIsolationPolicyDigest": true,
+      "runtimeExecutionSamePrincipalCompromisePolicy": "external-isolation-required",
+      "authoritySeparationMode": "independent-external-principal",
+      "authoritySeparationValidatorDigest": true,
+      "authoritySeparationProviderIdentityDigest": true,
+      "authoritySeparationSignerDistinctFromExecutor": true,
+      "isolatedWorkloadUid": 65534,
+      "isolatedWorkloadGid": 65534,
+      "networkPolicy": "none",
+      "hostMounts": false,
+      "capsuleAccess": false,
+      "runtimeExecutionPathDigest": true,
+      "runtimeExecutionRootPathDigest": true,
+      "runtimeExecutionRootStableIdentityDigest": true,
+      "commissionedDaemonIdentityDigest": true,
+      "isolatedRuntimeHomeAndConfig": true,
+      "inheritAmbientSecrets": false,
+      "explicitNetworkPolicy": true,
+      "commissionedExactResourceLimits": [
+        "cpu",
+        "memory",
+        "outputBytes",
+        "wallClockMs",
+        "wallClockScope",
+        "cleanupReserveMs"
+      ],
+      "wallClockScope": "total host operation: preflight, archive, import, build, inspect, execution, materialization, and cleanup",
+      "cleanupReserveMaximumFraction": "one-third",
+      "cleanupReserveMaximumMs": 45000,
+      "completedOperationElapsedMs": true
+    },
+    "authoritativeBridgeHeadRequirements": {
+      "providerNeutralCore": true,
+      "commissionedProviderIdentity": true,
+      "commissionedAdapterSchema": true,
+      "commissionedTargetDigest": true,
+      "commissionedProtectionPolicyDigest": true,
+      "signedProviderProof": true,
+      "canonicalProviderHostname": true,
+      "hostnameOnEveryProviderCall": true,
+      "ambientHostnameOverride": false,
+      "monotonicCompareAndSwap": true,
+      "explicitExpectedHistoryDigest": true,
+      "cumulativeAuthenticatedCheckpoint": true,
+      "constantCallTailVerification": true,
+      "commissionedFullReplayInterval": true,
+      "externalFullReplayAttestation": true,
+      "protectedProposalFlow": true,
+      "directProtectedBranchWrites": false,
+      "separateCommissionedStatusCheck": true,
+      "expectedProposalShaMerge": true,
+      "singleTotalOperationDeadline": true,
+      "lateSuccessAccepted": false,
+      "threePhaseProtectionObservation": true,
+      "postMergeHighWaterVerification": true,
+      "deterministicOperationIdentity": true,
+      "deterministicRecordTimestamp": true,
+      "mergeThenCrashResume": true,
+      "exactDurableTailReconciliation": true,
+      "proposalRefCleanup": true,
+      "cleanupFailureRecordedAndRetried": true,
+      "precreatedOperatorReceiptRoot": true,
+      "receiptRootCurrentOwner": true,
+      "receiptRootRestrictivePermissions": true,
+      "receiptRootStableIdentityDigest": true,
+      "receiptDirectChildReservation": true,
+      "repositoryAncestorReceiptRoots": false
+    }
+  },
+  "modelLifecycleStages": [
+    "development",
+    "verification",
+    "canary",
+    "production"
+  ],
+  "context": {
+    "schema": "uash.context-manifest.v2",
+    "kinds": [
+      "instructions",
+      "knowledge",
+      "memory",
+      "examples",
+      "tools",
+      "guardrails"
+    ],
+    "loadModes": ["static", "dynamic"],
+    "memoryActions": ["read", "write", "update", "delete", "expire"],
+    "isolationScopes": ["run", "project", "tenant"],
+    "emptyMemoryHeadSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "aiEvalDimensions": {
+    "AI0": [],
+    "AI1": ["task-success", "response-quality", "hallucination"],
+    "AI2": [
+      "task-success",
+      "response-quality",
+      "hallucination",
+      "grounding",
+      "tool-use",
+      "trajectory",
+      "safety"
+    ],
+    "AI3": [
+      "task-success",
+      "response-quality",
+      "hallucination",
+      "grounding",
+      "tool-use",
+      "trajectory",
+      "safety",
+      "authority-boundary",
+      "critical-slices",
+      "recovery"
+    ]
+  },
+  "reviewCoverage": [
+    "changed-paths",
+    "diff",
+    "dependencies",
+    "lockfiles",
+    "error-paths",
+    "tests",
+    "security",
+    "observability"
+  ],
+  "applicability": {
+    "productionPromotion": {
+      "sourceStage": "prototype",
+      "targetStage": "production"
+    },
+    "harnessLearning": {
+      "changeKinds": ["prompt", "tool", "skill", "harness-rule", "eval"],
+      "failureDispositions": ["recurring-failure"]
+    }
+  },
+  "interop": {
+    "optional": true,
+    "protocols": ["mcp", "a2a"],
+    "requiredWhenDeclared": [
+      "version",
+      "capabilities",
+      "identity",
+      "authRoot",
+      "timeoutMs",
+      "adapterCommandIdentity",
+      "adapterSourceIdentity",
+      "runnerIdentity",
+      "executorIdentity",
+      "executorPrincipal",
+      "authorityPrincipal",
+      "attestedExecutionReceipt",
+      "conformanceTranscript"
+    ],
+    "conformanceTests": [
+      "initialize",
+      "version-negotiation",
+      "auth-root-isolation",
+      "capability-discovery",
+      "schema-negotiation",
+      "event-correlation",
+      "timeout",
+      "cancellation",
+      "unknown-tool-rejection",
+      "replay-protection"
+    ]
+  }
+}

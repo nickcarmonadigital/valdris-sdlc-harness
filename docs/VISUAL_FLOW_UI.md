@@ -23,12 +23,12 @@ Each node = a harness stage/gate.
 
 Node state:
 
-| State | Meaning |
-|---|---|
-| Queued | stage is waiting |
-| Running | agent/session is currently there |
-| Complete | required output exists |
-| Blocked | missing proof, approval, source truth, or failing validation |
+| State    | Meaning                                                      |
+| -------- | ------------------------------------------------------------ |
+| Queued   | stage is waiting                                             |
+| Running  | agent/session is currently there                             |
+| Complete | required output exists                                       |
+| Blocked  | missing proof, approval, source truth, or failing validation |
 
 Each node shows:
 

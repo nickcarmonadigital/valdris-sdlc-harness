@@ -1,11 +1,15 @@
 import { lstatSync, readFileSync } from "node:fs";
 
-export const ROOT_DISCOVERY_LOADER_FILES = Object.freeze(["AGENTS.md", "CLAUDE.md"]);
+export const ROOT_DISCOVERY_LOADER_FILES = Object.freeze([
+  "AGENTS.md",
+  "CLAUDE.md",
+]);
 export const ROOT_LOADER_START = "<!-- valdris-sdlc-harness-loader:start -->";
 export const ROOT_LOADER_END = "<!-- valdris-sdlc-harness-loader:end -->";
 
 function assertLoaderFileName(fileName) {
-  if (!ROOT_DISCOVERY_LOADER_FILES.includes(fileName)) throw new Error(`unsupported target-root discovery loader: ${fileName}`);
+  if (!ROOT_DISCOVERY_LOADER_FILES.includes(fileName))
+    throw new Error(`unsupported target-root discovery loader: ${fileName}`);
 }
 
 export function renderRootDiscoveryLoader(fileName) {
@@ -23,7 +27,9 @@ export function validateRootDiscoveryLoaderBytes(bytes, fileName) {
   assertLoaderFileName(fileName);
   const decoded = bytes.toString("utf8");
   if (bytes.includes(0) || !Buffer.from(decoded, "utf8").equals(bytes)) {
-    throw new Error(`target-root discovery loader ${fileName} must be UTF-8 text`);
+    throw new Error(
+      `target-root discovery loader ${fileName} must be UTF-8 text`,
+    );
   }
 
   const content = decoded.replace(/\r\n/g, "\n");
@@ -32,12 +38,16 @@ export function validateRootDiscoveryLoaderBytes(bytes, fileName) {
   const start = content.indexOf(ROOT_LOADER_START);
   const end = content.indexOf(ROOT_LOADER_END);
   if (startCount !== 1 || endCount !== 1 || start > end) {
-    throw new Error(`target-root discovery loader ${fileName} must contain exactly one bounded loader block`);
+    throw new Error(
+      `target-root discovery loader ${fileName} must contain exactly one bounded loader block`,
+    );
   }
   const actualBlock = content.slice(start, end + ROOT_LOADER_END.length);
   const expectedBlock = renderRootDiscoveryLoader(fileName).trimEnd();
   if (actualBlock !== expectedBlock) {
-    throw new Error(`target-root discovery loader ${fileName} bounded loader block does not match the commissioned contract`);
+    throw new Error(
+      `target-root discovery loader ${fileName} bounded loader block does not match the commissioned contract`,
+    );
   }
   return bytes;
 }
@@ -48,11 +58,14 @@ export function validateRootDiscoveryLoaderFile(file, fileName) {
   try {
     stats = lstatSync(file);
   } catch (error) {
-    if (error?.code === "ENOENT") throw new Error(`target-root discovery loader ${fileName} is missing`);
+    if (error?.code === "ENOENT")
+      throw new Error(`target-root discovery loader ${fileName} is missing`);
     throw error;
   }
   if (stats.isSymbolicLink() || !stats.isFile()) {
-    throw new Error(`target-root discovery loader ${fileName} must be a regular file`);
+    throw new Error(
+      `target-root discovery loader ${fileName} must be a regular file`,
+    );
   }
   return validateRootDiscoveryLoaderBytes(readFileSync(file), fileName);
 }

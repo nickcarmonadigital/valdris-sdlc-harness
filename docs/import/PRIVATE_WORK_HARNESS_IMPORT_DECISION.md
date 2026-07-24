@@ -36,15 +36,15 @@ These exclusions must remain outside the current canonical tree, its release art
 
 Reusable concepts from the private work harness must use commissioned values:
 
-| Private assumption class | Valdris replacement |
-| --- | --- |
-| Ticket namespace and issue key | `${tracker}` and `${issue_id}` |
-| Named operator or approver | commissioned roles and approval policy |
-| Fixed branch or environment topology | target-generated branch and promotion model |
+| Private assumption class                                                            | Valdris replacement                                     |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Ticket namespace and issue key                                                      | `${tracker}` and `${issue_id}`                          |
+| Named operator or approver                                                          | commissioned roles and approval policy                  |
+| Fixed branch or environment topology                                                | target-generated branch and promotion model             |
 | Fixed data, cloud, deployment, communications, payment, review, or support provider | optional provider adapter selected during commissioning |
-| Private product lane | capability-based generic lane |
-| Project-specific command, path, or repository | commissioned project adapter value |
-| Real incident or run packet | documented synthetic fixture using example identifiers |
+| Private product lane                                                                | capability-based generic lane                           |
+| Project-specific command, path, or repository                                       | commissioned project adapter value                      |
+| Real incident or run packet                                                         | documented synthetic fixture using example identifiers  |
 
 Provider examples may appear in comparative documentation, but executable defaults must not silently select one provider.
 

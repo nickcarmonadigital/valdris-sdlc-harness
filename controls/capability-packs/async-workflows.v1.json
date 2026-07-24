@@ -41,22 +41,13 @@
       "capability": "state",
       "requirement": "Long-running work defines owned states, valid transitions, terminal outcomes, timeout behavior, and recovery expectations.",
       "minimumEffectiveTier": "T1",
-      "lifecycleStages": [
-        "specify",
-        "design"
-      ],
+      "lifecycleStages": ["specify", "design"],
       "applicability": {
-        "anyChangedPath": [
-          "**/workers/**",
-          "**/jobs/**",
-          "**/workflows/**"
-        ]
+        "anyChangedPath": ["**/workers/**", "**/jobs/**", "**/workflows/**"]
       },
       "failurePolicy": "block-stage",
       "requiredEvidence": {
-        "static": [
-          "workflow-state-model"
-        ]
+        "static": ["workflow-state-model"]
       },
       "mappedControlIds": [
         "FND-ARCH-001",
@@ -64,35 +55,21 @@
         "API-CONTRACT-001",
         "DATA-INTEGRITY-001"
       ],
-      "mappedProductionLayers": [
-        "backend-api-logic",
-        "database-storage"
-      ]
+      "mappedProductionLayers": ["backend-api-logic", "database-storage"]
     },
     {
       "id": "ASYNC-HANDOFF-001",
       "capability": "handoff",
       "requirement": "State changes and message publication use a durable handoff with reconciliation when either side fails.",
       "minimumEffectiveTier": "T2",
-      "lifecycleStages": [
-        "design",
-        "verify"
-      ],
+      "lifecycleStages": ["design", "verify"],
       "applicability": {
-        "anyChangedPath": [
-          "**/workers/**",
-          "**/jobs/**",
-          "**/queues/**"
-        ]
+        "anyChangedPath": ["**/workers/**", "**/jobs/**", "**/queues/**"]
       },
       "failurePolicy": "block-stage",
       "requiredEvidence": {
-        "static": [
-          "durable-handoff-design"
-        ],
-        "executable": [
-          "enqueue-failure-test"
-        ]
+        "static": ["durable-handoff-design"],
+        "executable": ["enqueue-failure-test"]
       },
       "mappedControlIds": [
         "FND-BOUNDARY-001",
@@ -114,26 +91,14 @@
       "capability": "replay",
       "requirement": "Failed, delayed, or duplicate work can be replayed within bounded policy without duplicating externally visible effects.",
       "minimumEffectiveTier": "T2",
-      "lifecycleStages": [
-        "verify",
-        "operate"
-      ],
+      "lifecycleStages": ["verify", "operate"],
       "applicability": {
-        "anyChangedPath": [
-          "**/workers/**",
-          "**/jobs/**",
-          "**/queues/**"
-        ]
+        "anyChangedPath": ["**/workers/**", "**/jobs/**", "**/queues/**"]
       },
       "failurePolicy": "block-stage",
       "requiredEvidence": {
-        "executable": [
-          "replay-test",
-          "duplicate-delivery-test"
-        ],
-        "recovery": [
-          "operator-replay-exercise"
-        ]
+        "executable": ["replay-test", "duplicate-delivery-test"],
+        "recovery": ["operator-replay-exercise"]
       },
       "mappedControlIds": [
         "FND-TRANSACTION-001",
@@ -153,11 +118,7 @@
       "capability": "observability",
       "requirement": "Operators can correlate workflow state, message identity, retries, worker attempts, dependencies, and terminal outcome.",
       "minimumEffectiveTier": "T2",
-      "lifecycleStages": [
-        "implement",
-        "verify",
-        "operate"
-      ],
+      "lifecycleStages": ["implement", "verify", "operate"],
       "applicability": {
         "anyChangedPath": [
           "**/workers/**",
@@ -168,18 +129,10 @@
       },
       "failurePolicy": "block-stage",
       "requiredEvidence": {
-        "executable": [
-          "correlation-propagation-test"
-        ],
-        "runtime": [
-          "workflow-trajectory-trace"
-        ]
+        "executable": ["correlation-propagation-test"],
+        "runtime": ["workflow-trajectory-trace"]
       },
-      "mappedControlIds": [
-        "API-TRACE-001",
-        "OBS-TELEMETRY-001",
-        "OBS-SLO-001"
-      ],
+      "mappedControlIds": ["API-TRACE-001", "OBS-TELEMETRY-001", "OBS-SLO-001"],
       "mappedProductionLayers": [
         "backend-api-logic",
         "error-tracking-logs-observability"
@@ -190,10 +143,7 @@
       "capability": "versioning",
       "requirement": "Deployments preserve or explicitly migrate in-flight workflow compatibility and retain a bounded rollback path.",
       "minimumEffectiveTier": "T3",
-      "lifecycleStages": [
-        "design",
-        "release"
-      ],
+      "lifecycleStages": ["design", "release"],
       "applicability": {
         "anyChangedPath": [
           "**/workers/**",
@@ -204,18 +154,10 @@
       },
       "failurePolicy": "block-release",
       "requiredEvidence": {
-        "static": [
-          "workflow-versioning-plan"
-        ],
-        "executable": [
-          "inflight-upgrade-test"
-        ],
-        "recovery": [
-          "rollback-with-inflight-work"
-        ],
-        "human": [
-          "release-owner-approval"
-        ]
+        "static": ["workflow-versioning-plan"],
+        "executable": ["inflight-upgrade-test"],
+        "recovery": ["rollback-with-inflight-work"],
+        "human": ["release-owner-approval"]
       },
       "mappedControlIds": [
         "FND-ARCH-001",

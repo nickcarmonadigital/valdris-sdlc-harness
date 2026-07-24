@@ -56,6 +56,7 @@ Prefer repo validation commands from `docs/Validation Commands.md` or `project-a
 
 ```bash
 npm run typecheck
+npm run dependency:audit
 npm run build
 npm run verify:release-privacy
 npm run privacy:release

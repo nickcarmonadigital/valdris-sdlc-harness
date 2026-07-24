@@ -3,11 +3,31 @@
   "id": "mobile-ios",
   "version": "1.0.0",
   "controls": [
-    {"id": "IOS-SUPPORT-001", "requirement": "Supported iOS versions, devices, orientations, accessibility modes, and upgrade paths are explicit and tested."},
-    {"id": "IOS-QUALITY-001", "requirement": "Unit, UI, launch, crash, memory, energy, frame-time, poor-network, offline, and background/foreground behavior meet budgets; native proof includes CI-attested xcodebuild test evidence from a commissioned macOS simulator or physical-device destination bound to the release build identity."},
-    {"id": "IOS-SECURITY-001", "requirement": "Entitlements, Keychain, ATS, privacy manifests, permissions, deep links, universal links, and local data protection are reviewed."},
-    {"id": "IOS-BUILD-001", "requirement": "An approved macOS/Xcode runner produces a signed archive with source, dependency, signing-identity, and build provenance; proof requires CI-attested xcodebuild archive command evidence with runnerOs=macos plus a GitHub Actions/Xcode Cloud provider receipt."},
-    {"id": "IOS-DISTRIBUTION-001", "conditional": "distribution", "requirement": "TestFlight/App Store upload, beta review, tester access, phased release, version compatibility, and rollback/disable paths are approval-gated when distribution is in scope; proof requires an Apple-hosted App Store Connect/TestFlight provider report plus exact-scope human release approval bound to a token-gated bridge event."},
-    {"id": "IOS-PUSH-001", "conditional": "push", "requirement": "APNs credentials, notification authorization, payload privacy, invalid-token cleanup, rate behavior, and delivery fallback are tested when push is used."}
+    {
+      "id": "IOS-SUPPORT-001",
+      "requirement": "Supported iOS versions, devices, orientations, accessibility modes, and upgrade paths are explicit and tested."
+    },
+    {
+      "id": "IOS-QUALITY-001",
+      "requirement": "Unit, UI, launch, crash, memory, energy, frame-time, poor-network, offline, and background/foreground behavior meet budgets; native proof includes CI-attested xcodebuild test evidence from a commissioned macOS simulator or physical-device destination bound to the release build identity."
+    },
+    {
+      "id": "IOS-SECURITY-001",
+      "requirement": "Entitlements, Keychain, ATS, privacy manifests, permissions, deep links, universal links, and local data protection are reviewed."
+    },
+    {
+      "id": "IOS-BUILD-001",
+      "requirement": "An approved macOS/Xcode runner produces a signed archive with source, dependency, signing-identity, and build provenance; proof requires CI-attested xcodebuild archive command evidence with runnerOs=macos plus a GitHub Actions/Xcode Cloud provider receipt."
+    },
+    {
+      "id": "IOS-DISTRIBUTION-001",
+      "conditional": "distribution",
+      "requirement": "TestFlight/App Store upload, beta review, tester access, phased release, version compatibility, and rollback/disable paths are approval-gated when distribution is in scope; proof requires an Apple-hosted App Store Connect/TestFlight provider report plus exact-scope human release approval bound to a token-gated bridge event."
+    },
+    {
+      "id": "IOS-PUSH-001",
+      "conditional": "push",
+      "requirement": "APNs credentials, notification authorization, payload privacy, invalid-token cleanup, rate behavior, and delivery fallback are tested when push is used."
+    }
   ]
 }

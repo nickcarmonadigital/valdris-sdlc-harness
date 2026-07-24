@@ -14,18 +14,18 @@ lane -> stage -> gate -> artifact -> finish-line validator -> answer contract
 
 These components generalize to any software team:
 
-| Universal component | Why it generalizes |
-|---|---|
-| Root map | front door for agents |
-| Context router | source-of-truth and lane routing |
-| Workspace context | lane contracts |
-| Stage folders | SDLC state machine |
-| Run packet template | durable per-work artifact bundle |
-| Proof, RCA, smoke, red-zone, and review gates | mechanical enforcement |
-| Answer contract | consistent final answer shape |
-| Code-intelligence integration pattern | code-graph grounding |
-| ADR and self-heal pattern | durable decision and correction loop |
-| Prompt-library pattern | anti-skip workflow invocation layer |
+| Universal component                           | Why it generalizes                   |
+| --------------------------------------------- | ------------------------------------ |
+| Root map                                      | front door for agents                |
+| Context router                                | source-of-truth and lane routing     |
+| Workspace context                             | lane contracts                       |
+| Stage folders                                 | SDLC state machine                   |
+| Run packet template                           | durable per-work artifact bundle     |
+| Proof, RCA, smoke, red-zone, and review gates | mechanical enforcement               |
+| Answer contract                               | consistent final answer shape        |
+| Code-intelligence integration pattern         | code-graph grounding                 |
+| ADR and self-heal pattern                     | durable decision and correction loop |
+| Prompt-library pattern                        | anti-skip workflow invocation layer  |
 
 ## What is project-specific
 
