@@ -358,7 +358,11 @@ record(
   /gitleaks\/gitleaks-action@/.test(workflow),
   "gitleaks action is not configured",
 );
-for (const controlId of ["CI-SUPPLYCHAIN-001", "SEC-VULNERABILITY-001"])
+for (const controlId of [
+  "CI-SUPPLYCHAIN-001",
+  "SEC-SECRETS-001",
+  "SEC-VULNERABILITY-001",
+])
   record(
     `Gitleaks allowlist anchors ${controlId}`,
     gitleaksConfig.includes(`'''^${controlId}$'''`) &&
