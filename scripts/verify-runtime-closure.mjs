@@ -5,7 +5,10 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { assertAcceptedInventory } from "./run-acceptance.mjs";
+import {
+  assertAcceptedInventory,
+  childEnvironment,
+} from "./run-acceptance.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -38,6 +41,30 @@ try {
 } finally {
   rmSync(inventoryFixture, { recursive: true, force: true });
 }
+const reviewTrustPin = "a".repeat(64);
+const authorityTrustPin = "b".repeat(64);
+const githubTokenName = ["GH", "TOKEN"].join("_");
+const awsSecretName = ["AWS", "SECRET", "ACCESS", "KEY"].join("_");
+const ambientEnvironment = {
+  PATH: process.env.PATH || "",
+  VALDRIS_AUTHORITY_TRUST_SHA256: authorityTrustPin,
+};
+ambientEnvironment[githubTokenName] = "must-not-cross-the-acceptance-boundary";
+ambientEnvironment[awsSecretName] = "must-not-cross-the-acceptance-boundary";
+const acceptedChildEnvironment = childEnvironment(
+  reviewTrustPin,
+  ambientEnvironment,
+);
+if (
+  acceptedChildEnvironment.UASH_REVIEW_TRUST_SHA256 !== reviewTrustPin ||
+  acceptedChildEnvironment.VALDRIS_AUTHORITY_TRUST_SHA256 !==
+    authorityTrustPin ||
+  githubTokenName in acceptedChildEnvironment ||
+  awsSecretName in acceptedChildEnvironment
+)
+  throw new Error(
+    "run acceptance did not preserve both commissioned trust pins while stripping ambient credentials",
+  );
 const configuredPortabilityTimeout = process.env.VALDRIS_PORTABILITY_TIMEOUT_MS;
 const portabilityTimeoutMs =
   configuredPortabilityTimeout === undefined
@@ -132,6 +159,7 @@ console.log(
         "release assignment-secret detection",
         "malformed JSON review fail-closed",
         "detached transactional packet-closure acceptance",
+        "review and authority trust-pin propagation without ambient credentials",
         "confirmed child-process teardown and repository hygiene",
       ],
     },

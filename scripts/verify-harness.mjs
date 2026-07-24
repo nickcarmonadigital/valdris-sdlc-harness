@@ -1730,9 +1730,12 @@ try {
         "UASH_REVIEW_TRUST_SHA256: ${{ vars.UASH_REVIEW_TRUST_SHA256 }}",
       ) &&
       generatedAcceptanceWorkflow.includes(
+        "VALDRIS_AUTHORITY_TRUST_SHA256: ${{ vars.VALDRIS_AUTHORITY_TRUST_SHA256 }}",
+      ) &&
+      generatedAcceptanceWorkflow.includes(
         "Require operator-held review trust pin",
       ),
-    "run acceptance must be explicit and protected by the operator-held environment trust pin",
+    "run acceptance must be explicit and receive both operator-held trust pins from the protected environment",
   );
   const sourceInputCheckIndex = generatedAcceptanceWorkflow.indexOf(
     "Validate exact source commit input",

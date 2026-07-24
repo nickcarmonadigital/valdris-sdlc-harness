@@ -7,6 +7,6 @@ useDefault = true
 description = "Exact Valdris assurance control IDs misclassified as generic API keys"
 regexTarget = "match"
 regexes = [
-  '''CI-SUPPLYCHAIN-001''',
-  '''SEC-VULNERABILITY-001''',
+  '''^CI-SUPPLYCHAIN-001$''',
+  '''^SEC-VULNERABILITY-001$''',
 ]

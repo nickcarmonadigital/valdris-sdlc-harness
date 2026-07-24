@@ -102,6 +102,38 @@ function githubApi(api, hostname, deadline, phase, args, tolerate404 = false) {
   return result;
 }
 
+function githubCheckRuns(
+  api,
+  hostname,
+  deadline,
+  phase,
+  repository,
+  commitSha,
+  statusCheck,
+) {
+  const endpoint =
+    `repos/${repository}/commits/${commitSha}/check-runs` +
+    `?check_name=${encodeURIComponent(statusCheck.context)}` +
+    `&app_id=${statusCheck.appId}&filter=latest&per_page=100`;
+  const pages = JSON.parse(
+    githubApi(api, hostname, deadline, phase, [
+      "--paginate",
+      "--slurp",
+      endpoint,
+    ]),
+  );
+  if (
+    !Array.isArray(pages) ||
+    pages.length < 1 ||
+    pages.some(
+      (page) =>
+        !page || typeof page !== "object" || !Array.isArray(page.check_runs),
+    )
+  )
+    throw new Error("GitHub commissioned check response is invalid");
+  return pages.flatMap((page) => page.check_runs);
+}
+
 function sortedUniqueStrings(values) {
   if (!Array.isArray(values) || values.some((value) => !safeIdentifier(value)))
     throw new Error("commissioned GitHub writer restrictions are invalid");
@@ -657,12 +689,16 @@ export function executeGithubProtectedProposal(options) {
     const proposalCommitSha = pullRequest?.head?.sha;
     if (!/^[a-f0-9]{40,64}$/iu.test(proposalCommitSha || ""))
       throw new Error("GitHub resumed proposal commit identity is invalid");
-    const checks = JSON.parse(
-      githubApi(api, hostname, deadline, "resume check evidence", [
-        `repos/${repository}/commits/${proposalCommitSha}/check-runs`,
-      ]),
-    )?.check_runs;
-    const checkMatches = (Array.isArray(checks) ? checks : []).filter(
+    const checks = githubCheckRuns(
+      api,
+      hostname,
+      deadline,
+      "resume check evidence",
+      repository,
+      proposalCommitSha,
+      statusCheck,
+    );
+    const checkMatches = checks.filter(
       (check) =>
         check?.name === statusCheck.context &&
         check?.app?.id === statusCheck.appId &&
@@ -864,12 +900,16 @@ export function executeGithubProtectedProposal(options) {
         throw new Error(
           "GitHub proposal pull request changed before protected merge",
         );
-      const checks = JSON.parse(
-        githubApi(api, hostname, deadline, "commissioned check poll", [
-          `repos/${repository}/commits/${proposalCommitSha}/check-runs`,
-        ]),
-      )?.check_runs;
-      const matches = (Array.isArray(checks) ? checks : []).filter(
+      const checks = githubCheckRuns(
+        api,
+        hostname,
+        deadline,
+        "commissioned check poll",
+        repository,
+        proposalCommitSha,
+        statusCheck,
+      );
+      const matches = checks.filter(
         (check) =>
           check?.name === statusCheck.context &&
           check?.app?.id === statusCheck.appId,
@@ -1218,17 +1258,23 @@ function safeReceiptName(value) {
   return value;
 }
 
+export function isPathContained(parent, child, pathApi = path) {
+  const relative = pathApi.relative(parent, child);
+  return (
+    relative === "" ||
+    (!pathApi.isAbsolute(relative) &&
+      !relative.startsWith(`..${pathApi.sep}`) &&
+      relative !== "..")
+  );
+}
+
 export function assertGithubReceiptRootSeparated(receiptRoot, repoRoot) {
   const receipt = realpathSync(receiptRoot);
   const repository = realpathSync(repoRoot);
-  const contains = (parent, child) => {
-    const relative = path.relative(parent, child);
-    return (
-      relative === "" ||
-      (!relative.startsWith(`..${path.sep}`) && relative !== "..")
-    );
-  };
-  if (contains(receipt, repository) || contains(repository, receipt))
+  if (
+    isPathContained(receipt, repository) ||
+    isPathContained(repository, receipt)
+  )
     throw new Error(
       "GitHub receipt root must be outside and must not contain the repository",
     );

@@ -586,7 +586,7 @@ function Get-RuleView($acl) {
   fileOwnerSid = $fileAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value
   fileSddl = $fileAcl.GetSecurityDescriptorSddlForm($sections)
   fileRules = @(Get-RuleView $fileAcl)
-} | ConvertTo-Json -Compress
+} | ConvertTo-Json -Compress -Depth 5
 `;
   const invoke = ({ reserveCleanup = true } = {}) => {
     const phase = "Windows runtime capsule ACL inspection";
@@ -1508,6 +1508,7 @@ export function materializeRawGitTreeSnapshot({
       const linkTarget = content.toString("utf8");
       if (
         !linkTarget ||
+        linkTarget.includes("\0") ||
         Buffer.from(linkTarget, "utf8").compare(content) !== 0 ||
         Buffer.byteLength(linkTarget) > 100
       )

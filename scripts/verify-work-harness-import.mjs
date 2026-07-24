@@ -262,6 +262,7 @@ const workflow = read(".github/workflows/ci.yml");
 const restrictedAttestationWorkflow = read(
   ".github/workflows/restricted-residue-attestation.yml",
 );
+const gitleaksConfig = read(".gitleaks.toml");
 record(
   "CI covers Linux, Windows, and macOS portability",
   includesEvery(workflow, ["ubuntu-latest", "windows-latest", "macos-latest"]),
@@ -357,6 +358,13 @@ record(
   /gitleaks\/gitleaks-action@/.test(workflow),
   "gitleaks action is not configured",
 );
+for (const controlId of ["CI-SUPPLYCHAIN-001", "SEC-VULNERABILITY-001"])
+  record(
+    `Gitleaks allowlist anchors ${controlId}`,
+    gitleaksConfig.includes(`'''^${controlId}$'''`) &&
+      !gitleaksConfig.includes(`'''${controlId}'''`),
+    "Gitleaks global match allowlist can suppress a larger secret-bearing finding",
+  );
 record(
   "CI rejects high-severity dependency advisories",
   workflowJobRunSteps(workflow, "dependency-audit").includes(

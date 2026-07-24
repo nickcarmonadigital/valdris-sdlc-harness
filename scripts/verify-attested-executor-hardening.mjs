@@ -272,6 +272,7 @@ function git(gitCli, root, args, options = {}) {
     ],
     {
       encoding: options.encoding ?? "utf8",
+      input: options.input,
       env: {
         SystemRoot: process.env.SystemRoot,
         WINDIR: process.env.WINDIR,
@@ -809,6 +810,10 @@ try {
     ),
     "executor lifecycle bypasses commissioned runtime command checks",
   );
+  assert(
+    executorLifecycleSource.includes("ConvertTo-Json -Compress -Depth 5"),
+    "Windows runtime capsule ACL serialization lacks an explicit nested-object depth",
+  );
   for (const [name, value] of Object.entries(previousEnvironment))
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
@@ -861,6 +866,40 @@ try {
     snapshot.manifestSha256 === sha256(canonicalJson(snapshot.manifest)),
     "raw Git tree manifest digest is not canonical",
   );
+  const nulLinkObject = git(
+    gitCliPath,
+    repo,
+    ["hash-object", "-w", "--stdin"],
+    {
+      input: Buffer.from("safe\0evil", "utf8"),
+    },
+  );
+  git(gitCliPath, repo, [
+    "update-index",
+    "--add",
+    "--cacheinfo",
+    `120000,${nulLinkObject},nul-link`,
+  ]);
+  git(gitCliPath, repo, ["commit", "-q", "-m", "NUL symlink adversary"]);
+  expectFailure(
+    "raw-tree NUL symlink",
+    () =>
+      materializeRawGitTreeSnapshot({
+        gitCli: gitCliPath,
+        repoRoot: repo,
+        source: {
+          ...source,
+          commit: git(gitCliPath, repo, ["rev-parse", "HEAD"]),
+          tree: git(gitCliPath, repo, ["rev-parse", "HEAD^{tree}"]),
+        },
+        deadline: createExecutionDeadline(60_000),
+        isolatedHooksRoot: hooks,
+        isolatedGlobalConfig: globalConfig,
+      }),
+    /symbolic link is not representable safely/u,
+  );
+  git(gitCliPath, repo, ["update-index", "--force-remove", "nul-link"]);
+  git(gitCliPath, repo, ["commit", "-q", "-m", "remove NUL symlink"]);
   const worktreeAlias =
     process.platform === "win32" ? repo.toUpperCase() : repo;
   const aliasedWorktree = executorDryRun({

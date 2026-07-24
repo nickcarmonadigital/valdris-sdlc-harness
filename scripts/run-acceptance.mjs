@@ -32,6 +32,7 @@ const MAX_BUNDLE_ENTRIES = 1024;
 const MAX_BUNDLE_DEPTH = 16;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 100 * 1024 * 1024;
+const AUTHORITY_TRUST_ENV = "VALDRIS_AUTHORITY_TRUST_SHA256";
 const SAFE_CHILD_ENV = new Set(
   [
     "APPDATA",
@@ -620,11 +621,17 @@ function withValidationWorktree(repoRoot, head, callback) {
   }
 }
 
-function childEnvironment(trustPin) {
+export function childEnvironment(trustPin, environment = process.env) {
   const env = {};
-  for (const [name, value] of Object.entries(process.env))
+  for (const [name, value] of Object.entries(environment)) {
     if (SAFE_CHILD_ENV.has(name.toLowerCase()) && typeof value === "string")
       env[name] = value;
+    else if (
+      name.toLowerCase() === AUTHORITY_TRUST_ENV.toLowerCase() &&
+      typeof value === "string"
+    )
+      env[AUTHORITY_TRUST_ENV] = value;
+  }
   env.UASH_REVIEW_TRUST_SHA256 = trustPin;
   return env;
 }

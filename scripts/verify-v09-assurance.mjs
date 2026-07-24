@@ -46,6 +46,7 @@ import {
   deterministicBridgeTimestamp,
   executeGithubProtectedProposal,
   githubCliEnvironment,
+  isPathContained,
   reserveGithubReceipt,
   validateGithubAppendOnlyHistory,
   validateGithubProtectionPolicy,
@@ -3062,6 +3063,14 @@ async function main() {
         return { valid: false, problems: [error.message] };
       }
     };
+    if (
+      isPathContained("C:\\repo", "D:\\receipts", path.win32) ||
+      isPathContained("D:\\receipts", "C:\\repo", path.win32) ||
+      !isPathContained("C:\\repo", "C:\\repo\\nested", path.win32)
+    )
+      throw new Error(
+        "GitHub receipt containment mishandles Windows cross-volume paths",
+      );
     const githubProposalNext = {
       schema: "valdris.bridge-head.v1",
       sequence: 1,
@@ -3280,32 +3289,44 @@ async function main() {
         if (
           method === "GET" &&
           endpoint ===
-            `repos/${repository}/commits/${state.proposalCommitSha}/check-runs`
+            `repos/${repository}/commits/${state.proposalCommitSha}/check-runs` +
+              `?check_name=${encodeURIComponent(
+                commissionedGithubProtection.appendOnlyStatusCheck.context,
+              )}` +
+              `&app_id=${commissionedGithubProtection.appendOnlyStatusCheck.appId}` +
+              "&filter=latest&per_page=100"
         ) {
+          if (!args.includes("--paginate") || !args.includes("--slurp"))
+            throw new Error(
+              "commissioned check lookup omitted pagination or page aggregation",
+            );
           if (state.fault === "late-success") state.clock = 31_000;
           const wrongApp = state.fault === "missing-commissioned-check";
           const pending = state.fault === "pending-commissioned-check";
           const failed = state.fault === "failed-commissioned-check";
-          return JSON.stringify({
-            check_runs: [
-              {
-                id: 90,
-                name: commissionedGithubProtection.appendOnlyStatusCheck
-                  .context,
-                app: {
-                  id: wrongApp
-                    ? commissionedGithubProtection.appendOnlyStatusCheck.appId +
-                      1
-                    : commissionedGithubProtection.appendOnlyStatusCheck.appId,
+          return JSON.stringify([
+            {
+              check_runs: [
+                {
+                  id: 90,
+                  name: commissionedGithubProtection.appendOnlyStatusCheck
+                    .context,
+                  app: {
+                    id: wrongApp
+                      ? commissionedGithubProtection.appendOnlyStatusCheck
+                          .appId + 1
+                      : commissionedGithubProtection.appendOnlyStatusCheck
+                          .appId,
+                  },
+                  status: pending ? "in_progress" : "completed",
+                  conclusion: failed ? "failure" : pending ? null : "success",
+                  output: {
+                    summary: JSON.stringify(checkAttestation()),
+                  },
                 },
-                status: pending ? "in_progress" : "completed",
-                conclusion: failed ? "failure" : pending ? null : "success",
-                output: {
-                  summary: JSON.stringify(checkAttestation()),
-                },
-              },
-            ],
-          });
+              ],
+            },
+          ]);
         }
         if (
           method === "PUT" &&
