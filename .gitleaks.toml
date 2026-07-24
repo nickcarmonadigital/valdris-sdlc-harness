@@ -5,7 +5,7 @@ useDefault = true
 
 [allowlist]
 description = "Exact Valdris assurance control IDs misclassified as generic API keys"
-regexTarget = "match"
+regexTarget = "secret"
 regexes = [
   '''^CI-SUPPLYCHAIN-001$''',
   '''^SEC-SECRETS-001$''',

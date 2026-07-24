@@ -358,6 +358,12 @@ record(
   /gitleaks\/gitleaks-action@/.test(workflow),
   "gitleaks action is not configured",
 );
+record(
+  "Gitleaks allowlist targets only extracted secret values",
+  gitleaksConfig.includes('regexTarget = "secret"') &&
+    !gitleaksConfig.includes('regexTarget = "match"'),
+  "Gitleaks allowlist is not scoped to the detector's extracted secret value",
+);
 for (const controlId of [
   "CI-SUPPLYCHAIN-001",
   "SEC-SECRETS-001",
@@ -367,7 +373,7 @@ for (const controlId of [
     `Gitleaks allowlist anchors ${controlId}`,
     gitleaksConfig.includes(`'''^${controlId}$'''`) &&
       !gitleaksConfig.includes(`'''${controlId}'''`),
-    "Gitleaks global match allowlist can suppress a larger secret-bearing finding",
+    "Gitleaks secret-value allowlist is not restricted to one exact control ID",
   );
 record(
   "CI rejects high-severity dependency advisories",
