@@ -959,6 +959,118 @@ function productionReadiness() {
   return s + endSvg();
 }
 
+function proofToDoneFlow() {
+  let s = shell(
+    "Valdris Proof-to-Done Flow",
+    "Every applicable non-review gate produces evidence before the independent reviewer signs the frozen bundle.",
+  );
+  const stages = [
+    {
+      title: ["Implementation", "claim"],
+      sub: "state the claim and scope",
+      color: colors.cyan,
+    },
+    {
+      title: ["Code", "intelligence"],
+      sub: "map code, change, and impact",
+      color: colors.blue,
+    },
+    {
+      title: ["Typed", "evidence"],
+      sub: "bind evidence to controls",
+      color: colors.teal,
+    },
+    {
+      title: ["Control-specific", "validation"],
+      sub: "prove the named control",
+      color: colors.violet,
+    },
+    {
+      title: ["Red Zone", "approval"],
+      sub: "human authority when required",
+      color: colors.amber,
+    },
+    {
+      title: ["Smoke", "testing"],
+      sub: "produce final applicable gate evidence",
+      color: colors.teal,
+    },
+    {
+      title: ["Independent", "review"],
+      sub: "sign the frozen evidence bundle",
+      color: colors.blue,
+    },
+    {
+      title: ["Finish-line", "gate"],
+      sub: "confirm every required criterion",
+      color: colors.cyan,
+    },
+    {
+      title: ["Final run", "packet"],
+      sub: "bind proof, review, and catalogs",
+      color: colors.violet,
+    },
+    {
+      title: ["DONE", "at achieved level"],
+      sub: "state structural, semantic, or authoritative",
+      color: colors.green,
+    },
+  ];
+  const topXs = [50, 354, 658, 962, 1266];
+  const bottomXs = [1266, 962, 658, 354, 50];
+  stages.forEach((stage, index) => {
+    const top = index < 5;
+    const position = top ? index : index - 5;
+    const x = top ? topXs[position] : bottomXs[position];
+    const y = top ? 154 : 390;
+    s += card(x, y, 254, 158, stage.title, {
+      badge: String(index + 1),
+      sub: stage.sub,
+      stroke: stage.color,
+      titleSize: 19,
+      subSize: 13,
+      align: "center",
+      maxChars: 22,
+    });
+    if (top && index < 4)
+      s += lineArrow(x + 254, y + 79, topXs[position + 1] - 10, y + 79);
+    if (!top && index < 9)
+      s += lineArrow(x, y + 79, bottomXs[position + 1] + 264, y + 79);
+  });
+  s += lineArrow(
+    topXs[4] + 127,
+    312,
+    bottomXs[0] + 127,
+    382,
+    colors.amber,
+    "arrowAmber",
+  );
+  s += card(70, 622, 700, 94, "Review comes after all applicable evidence", {
+    sub: "Any later gate or source change makes the signed review stale and requires a new review.",
+    stroke: colors.blue,
+    titleSize: 21,
+    subSize: 14,
+    maxChars: 68,
+  });
+  s += card(830, 622, 700, 94, "DONE is qualified by assurance level", {
+    sub: "Structural proves conformance. Verified behavior requires semantic or authoritative closure.",
+    stroke: colors.green,
+    titleSize: 21,
+    subSize: 14,
+    maxChars: 68,
+  });
+  s += miniCard(
+    70,
+    768,
+    1460,
+    62,
+    "DONE = required gates passed at the achieved assurance level + bound evidence + trusted review + final run packet",
+    colors.green,
+    { size: 18 },
+  );
+  return s + endSvg();
+}
+
 function connectorFlow() {
   let s = shell(
     "Valdris Runtime Connectivity and Event Flow",
@@ -1345,6 +1457,7 @@ function generatedPack() {
 write("request-routing-eight-skill-map.svg", requestRoutingMap());
 write("work-lanes-map.svg", workLanesMap());
 write("assurance-model.svg", assuranceModel());
+write("valdris-proof-to-done-flow.svg", proofToDoneFlow());
 write("repo-operating-map.svg", repoOperatingMap());
 write("flow-monitor-dashboard.svg", flowMonitor());
 write("production-readiness-pack.svg", productionReadiness());

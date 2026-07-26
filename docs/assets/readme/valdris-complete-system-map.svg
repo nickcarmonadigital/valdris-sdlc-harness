@@ -207,6 +207,6 @@
 </g>
 <g id="outcome">
 <rect x="60" y="1010" width="1800" height="50" rx="16" fill="#0C2530" stroke="#34D399" stroke-width="2"/>
-<text x="960" y="1043" fill="#F4F7FB" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="25" font-weight="760" text-anchor="middle" xml:space="preserve"><tspan fill="#34D399" font-weight="840">DONE</tspan><tspan dx="4"> = verified behavior + bound evidence + trusted review + final run packet</tspan></text>
+<text x="960" y="1043" fill="#F4F7FB" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="22" font-weight="760" text-anchor="middle" xml:space="preserve"><tspan fill="#34D399" font-weight="840">DONE</tspan><tspan dx="4"> = required proof passed at the achieved assurance level + bound evidence + trusted review + final run packet</tspan></text>
 </g>
 </svg>

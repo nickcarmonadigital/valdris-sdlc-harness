@@ -23,15 +23,15 @@ or recovery check is still open.
 
 Valdris turns those claims into checks.
 
-| Agent says | Valdris asks for |
-| --- | --- |
-| “I read the code.” | A fresh code map and links to real files |
-| “I fixed the bug.” | A root cause, the code change, and a passing test |
-| “The build passed.” | A saved result tied to the right source commit |
-| “We can ship.” | The required checks, proof, and human approval |
-| “Done.” | A complete run packet with no hidden gaps |
+| Agent says          | Valdris asks for                                  |
+| ------------------- | ------------------------------------------------- |
+| “I read the code.”  | A fresh code map and links to real files          |
+| “I fixed the bug.”  | A root cause, the code change, and a passing test |
+| “The build passed.” | A saved result tied to the right source commit    |
+| “We can ship.”      | The required checks, proof, and human approval    |
+| “Done.”             | A complete run packet with no hidden gaps         |
 
-![Valdris Proof-to-Done Flow, from a candidate implementation claim through evidence, review, gates, and the final run packet](docs/assets/readme/valdris-proof-to-done-flow.png)
+![Valdris Proof-to-Done Flow, with all applicable gate evidence completed before independent review and the final run packet](docs/assets/readme/valdris-proof-to-done-flow.svg)
 
 ## What Valdris does
 
@@ -65,15 +65,15 @@ request
 
 These words have exact jobs in Valdris:
 
-| Term | Plain meaning |
-| --- | --- |
-| **Route** | The locked plan for this request |
-| **Lane** | Project context that loads owners, commands, runtime rules, and gate focus |
-| **Goal loop** | Check the goal, do a small step, test it, and repeat |
-| **Stage** | One ordered part of the work |
-| **Gate** | A rule that can stop the work |
-| **Artifact** | A saved file that proves what happened |
-| **Run packet** | The final set of facts, proof, reviews, and decisions |
+| Term           | Plain meaning                                                              |
+| -------------- | -------------------------------------------------------------------------- |
+| **Route**      | The locked plan for this request                                           |
+| **Lane**       | Project context that loads owners, commands, runtime rules, and gate focus |
+| **Goal loop**  | Check the goal, do a small step, test it, and repeat                       |
+| **Stage**      | One ordered part of the work                                               |
+| **Gate**       | A rule that can stop the work                                              |
+| **Artifact**   | A saved file that proves what happened                                     |
+| **Run packet** | The final set of facts, proof, reviews, and decisions                      |
 
 The route is not free-form agent advice. It binds the request, risk level,
 skills, controls, and source facts. Later findings may add stronger checks. They
@@ -100,21 +100,21 @@ Layer 0 is not a fourteenth production domain.
 After Layer 0, Valdris checks the parts of a real production system that apply
 to the request.
 
-| # | Domain | Simple question |
-| ---: | --- | --- |
-| 1 | Frontend Experience | Does the user-facing part work? |
-| 2 | Backend, API & Business Logic | Do the services and business rules work? |
-| 3 | Data & Storage | Is the data correct, safe, and recoverable? |
-| 4 | Identity, Authorization & Tenant Isolation | Can only the right people reach the right data? |
-| 5 | Hosting & Deployment | Can we deploy it and check its health? |
-| 6 | Cloud Infrastructure & Compute | Are the cloud services set up safely? |
-| 7 | CI/CD, Version Control & Quality | Are changes tested and shipped in a repeatable way? |
-| 8 | Security & Data Protection | Are secrets, packages, and trust limits safe? |
-| 9 | Rate Limiting & Usage Control | Can the system control abuse and sudden traffic? |
-| 10 | Caching & Content Delivery | Is cached data fast, correct, and fresh? |
-| 11 | Scaling & Traffic Management | Can the system grow and handle failure? |
-| 12 | Observability | Can the team see and explain problems? |
-| 13 | Availability, Recovery & Operations | Can the team roll back, restore, and recover? |
+|   # | Domain                                     | Simple question                                     |
+| --: | ------------------------------------------ | --------------------------------------------------- |
+|   1 | Frontend Experience                        | Does the user-facing part work?                     |
+|   2 | Backend, API & Business Logic              | Do the services and business rules work?            |
+|   3 | Data & Storage                             | Is the data correct, safe, and recoverable?         |
+|   4 | Identity, Authorization & Tenant Isolation | Can only the right people reach the right data?     |
+|   5 | Hosting & Deployment                       | Can we deploy it and check its health?              |
+|   6 | Cloud Infrastructure & Compute             | Are the cloud services set up safely?               |
+|   7 | CI/CD, Version Control & Quality           | Are changes tested and shipped in a repeatable way? |
+|   8 | Security & Data Protection                 | Are secrets, packages, and trust limits safe?       |
+|   9 | Rate Limiting & Usage Control              | Can the system control abuse and sudden traffic?    |
+|  10 | Caching & Content Delivery                 | Is cached data fast, correct, and fresh?            |
+|  11 | Scaling & Traffic Management               | Can the system grow and handle failure?             |
+|  12 | Observability                              | Can the team see and explain problems?              |
+|  13 | Availability, Recovery & Operations        | Can the team roll back, restore, and recover?       |
 
 A domain may pass, fail, stay open, or be skipped with a clear reason. Silence
 is not a valid skip.
@@ -146,16 +146,16 @@ skills when the risk calls for them.
 A skill chooses the workflow. A commissioned lane loads project-specific
 context and risk checks. They work together, but they are not the same thing.
 
-| Skill | Use it for |
-| --- | --- |
-| `valdris-intake-route` | A new, unclear, or mixed request |
-| `valdris-bug-rca` | A bug, regression, slow system, or incident |
-| `valdris-feature-delivery` | A feature or full-stack change |
-| `valdris-architecture-refactor` | A design change, migration, or refactor |
-| `valdris-security-audit` | Auth, privacy, security, or compliance |
-| `valdris-platform-release` | Cloud, CI/CD, deploys, rollback, or recovery |
-| `valdris-genai-assurance` | Models, prompts, RAG, agents, tools, or evals |
-| `valdris-proof-handoff` | Final proof, release checks, and handoff |
+| Skill                           | Use it for                                    |
+| ------------------------------- | --------------------------------------------- |
+| `valdris-intake-route`          | A new, unclear, or mixed request              |
+| `valdris-bug-rca`               | A bug, regression, slow system, or incident   |
+| `valdris-feature-delivery`      | A feature or full-stack change                |
+| `valdris-architecture-refactor` | A design change, migration, or refactor       |
+| `valdris-security-audit`        | Auth, privacy, security, or compliance        |
+| `valdris-platform-release`      | Cloud, CI/CD, deploys, rollback, or recovery  |
+| `valdris-genai-assurance`       | Models, prompts, RAG, agents, tools, or evals |
+| `valdris-proof-handoff`         | Final proof, release checks, and handoff      |
 
 The goal lives in a file, not only in chat. It stores checkpoints, limits, stop
 rules, and the current source commit. A stale agent cannot silently replace a
@@ -170,10 +170,10 @@ full contract.
 
 Valdris keeps three kinds of claims separate.
 
-| Level | What it means |
-| --- | --- |
-| **Structural** | The right files, fields, paths, and digests exist |
-| **Semantic** | The evidence proves the control’s real meaning |
+| Level             | What it means                                                             |
+| ----------------- | ------------------------------------------------------------------------- |
+| **Structural**    | The right files, fields, paths, and digests exist                         |
+| **Semantic**      | The evidence proves the control’s real meaning                            |
 | **Authoritative** | Trusted outside execution and rollback-safe provider state back the proof |
 
 A local JSON file can prove structure. It cannot turn itself into an App Store,
@@ -197,12 +197,12 @@ full trust model.
 
 The visualizer uses four clear labels:
 
-| Mode | Meaning |
-| --- | --- |
-| **Blueprint** | A plan or static system map |
-| **Live Run** | Real events from work happening now |
-| **Replay** | Saved events from an older run |
-| **Demo** | Sample data used to show the UI |
+| Mode          | Meaning                             |
+| ------------- | ----------------------------------- |
+| **Blueprint** | A plan or static system map         |
+| **Live Run**  | Real events from work happening now |
+| **Replay**    | Saved events from an older run      |
+| **Demo**      | Sample data used to show the UI     |
 
 Demo data must never pretend to be live data. A live run needs real bridge, API,
 CLI, MCP, or watched-file events.
@@ -246,6 +246,15 @@ The pack holds the project adapter, agent instructions, skills, controls, gates,
 proof rules, and run templates. It also adds bounded front-door blocks to the
 target’s `AGENTS.md` and `CLAUDE.md`.
 
+Review and commit the generated pack before routing. The route binds the
+target’s current commit, so an uncommitted pack cannot support later proof.
+
+```bash
+git -C /path/to/repo status --short
+git -C /path/to/repo add -- .valdris-harness AGENTS.md CLAUDE.md
+git -C /path/to/repo commit -m "chore: commission Valdris harness"
+```
+
 Project facts stay in the generated adapter. The public Valdris core stays
 generic.
 
@@ -254,11 +263,12 @@ the full process.
 
 ## Route the first request
 
-Run the router from this repo:
+Run the committed router from the target repo root:
 
 ```bash
-npm run route:request -- \
-  --repo /path/to/repo \
+cd /path/to/repo
+node .valdris-harness/scripts/route-request.mjs \
+  --repo . \
   --profile enterprise \
   --actor "owner" \
   --request "Build a secure account settings page."
@@ -290,38 +300,38 @@ operator-supervised evidence, not release authority.
 
 ## What is built now
 
-| Area | Status |
-| --- | --- |
-| Project commissioning and generated packs | Built and verified |
-| Request routing and durable goal loop | Built and verified |
-| Layer 0 and 13-domain assurance | Built and verified |
-| Eight workflow skills | Built and verified |
-| Code intelligence and source anchors | Built and verified |
-| Proof, RCA, review, and run-packet gates | Built and verified |
-| QA, break-it testing, and live smoke automation | Partial |
-| AI assurance and initial domain packs | Built and verified |
-| Privacy and clean-room checks | Built and verified |
-| Local connector bridge | Built and verified |
-| Web run visualizer | MVP |
-| Semantic and authoritative assurance | Release candidate |
-| Hosted multi-user service | Future |
+| Area                                            | Status             |
+| ----------------------------------------------- | ------------------ |
+| Project commissioning and generated packs       | Built and verified |
+| Request routing and durable goal loop           | Built and verified |
+| Layer 0 and 13-domain assurance                 | Built and verified |
+| Eight workflow skills                           | Built and verified |
+| Code intelligence and source anchors            | Built and verified |
+| Proof, RCA, review, and run-packet gates        | Built and verified |
+| QA, break-it testing, and live smoke automation | Partial            |
+| AI assurance and initial domain packs           | Built and verified |
+| Privacy and clean-room checks                   | Built and verified |
+| Local connector bridge                          | Built and verified |
+| Web run visualizer                              | MVP                |
+| Semantic and authoritative assurance            | Release candidate  |
+| Hosted multi-user service                       | Future             |
 
 The default trust store is empty. A green local run does not claim trusted
 provider authority.
 
 ## Repository guide
 
-| Path | What lives there |
-| --- | --- |
-| `app/` | Web pages and API routes |
-| `components/` | Run visualizer and control-plane UI |
-| `controls/` | Layer, AI, domain, trust, and policy catalogs |
-| `docs/` | Full system and operating contracts |
-| `knowledge/` | Small agent-facing knowledge map |
-| `lib/` | App and bridge support code |
-| `scripts/` | Gates, runners, generators, and verifiers |
-| `skills/` | The eight Valdris workflow skills |
-| `research/` | Source notes and clean-room research |
+| Path          | What lives there                              |
+| ------------- | --------------------------------------------- |
+| `app/`        | Web pages and API routes                      |
+| `components/` | Run visualizer and control-plane UI           |
+| `controls/`   | Layer, AI, domain, trust, and policy catalogs |
+| `docs/`       | Full system and operating contracts           |
+| `knowledge/`  | Small agent-facing knowledge map              |
+| `lib/`        | App and bridge support code                   |
+| `scripts/`    | Gates, runners, generators, and verifiers     |
+| `skills/`     | The eight Valdris workflow skills             |
+| `research/`   | Source notes and clean-room research          |
 
 Start with:
 

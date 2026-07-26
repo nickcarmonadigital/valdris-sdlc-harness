@@ -16,6 +16,7 @@ The generator in `scripts/render-readme-visuals.mjs` owns:
 - `request-routing-eight-skill-map.svg`
 - `work-lanes-map.svg`
 - `assurance-model.svg`
+- `valdris-proof-to-done-flow.svg`
 - `runtime-connectivity-event-flow.svg`
 - `trust-model.svg`
 - the older supporting repository, commissioning, monitor, and pack maps
@@ -26,7 +27,6 @@ trust rules change, update the generator first and regenerate every SVG.
 ## Curated assets
 
 - `valdris-complete-system-map.svg` is the editable whole-harness overview.
-- `valdris-proof-to-done-flow.png` explains the finish line.
 - `valdris-durable-goal-routing-loop.png` explains durable goal control.
 
 Before changing or replacing a curated asset, verify its labels against:

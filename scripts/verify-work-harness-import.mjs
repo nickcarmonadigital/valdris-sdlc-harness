@@ -457,6 +457,56 @@ for (const proofDocument of [
   );
 }
 
+const publicReadme = read("README.md");
+const commissionedPackCommitIndex = publicReadme.indexOf(
+  'git -C /path/to/repo commit -m "chore: commission Valdris harness"',
+);
+const commissionedRouteIndex = publicReadme.indexOf(
+  "node .valdris-harness/scripts/route-request.mjs",
+);
+record(
+  "README commits the commissioned pack before routing",
+  commissionedPackCommitIndex >= 0 &&
+    commissionedRouteIndex > commissionedPackCommitIndex,
+  "README must review and commit the generated target pack before creating a commit-bound route",
+);
+record(
+  "README routes with the commissioned target runtime",
+  includesEvery(publicReadme, [
+    "Run the committed router from the target repo root",
+    "node .valdris-harness/scripts/route-request.mjs",
+    "--repo .",
+  ]),
+  "README must route from the target root through its committed .valdris-harness runtime",
+);
+
+const proofToDoneVisual = read(
+  "docs/assets/readme/valdris-proof-to-done-flow.svg",
+);
+const proofToDoneOrder = [
+  "Red Zone",
+  "Smoke",
+  "Independent",
+  "Finish-line",
+  "Final run",
+].map((label) => proofToDoneVisual.indexOf(label));
+record(
+  "proof-to-done visual reviews the frozen final evidence set",
+  proofToDoneOrder.every(
+    (position, index) =>
+      position >= 0 && (index === 0 || position > proofToDoneOrder[index - 1]),
+  ),
+  "proof-to-done visual must place Red Zone and smoke evidence before independent review and packet handoff",
+);
+record(
+  "complete system map qualifies DONE by assurance level",
+  includesEvery(read("docs/assets/readme/valdris-complete-system-map.svg"), [
+    "DONE",
+    "achieved assurance level",
+  ]),
+  "primary system map must not present structural DONE as unqualified behavioral proof",
+);
+
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
 for (const relativePath of requiredControls) {
   record(

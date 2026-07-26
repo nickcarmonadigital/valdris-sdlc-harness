@@ -4,6 +4,7 @@
 
 - **Update**: Clarified that the eight workflow skills select phase procedures while commissioned work lanes select project context and risk emphasis; the route can bind both without treating them as one taxonomy.
 - **Update**: Replaced stale public diagrams with source-checked maps for the complete harness, proof-to-done flow, durable goal loop, Layer 0 plus thirteen-domain assurance, runtime connectivity, and structural/semantic/authoritative trust.
+- **Update**: Required commissioned packs to be reviewed and committed before target-local routing, and placed independent review after all applicable technical evidence so later gate or source changes must earn a fresh review.
 
 ## 2026-07-23
 
