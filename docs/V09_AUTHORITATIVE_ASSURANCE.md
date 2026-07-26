@@ -1,8 +1,10 @@
 # Valdris v0.9 Semantic and Authoritative Assurance
 
-Valdris v0.9 adds two stronger claim levels without adding a fourteenth production domain. Layer 0 remains the control plane; orchestration, memory, model routing, agent coordination, proof execution, and interoperability remain cross-cutting concerns over the existing thirteen assurance domains.
+Valdris v0.9 adds two stronger claim levels without adding a fourteenth production domain. Layer 0 remains the foundation assurance plane; orchestration, memory, model routing, agent coordination, proof execution, and interoperability remain cross-cutting concerns over the existing thirteen assurance domains.
 
 The repository is `0.9.0-rc.1` until a commissioned target completes a real provider-backed authoritative run. The default authority trust store is intentionally empty, so this repository cannot certify itself.
+
+![Valdris trust model from structural to semantic to authoritative assurance](assets/readme/trust-model.svg)
 
 ## Claim levels
 

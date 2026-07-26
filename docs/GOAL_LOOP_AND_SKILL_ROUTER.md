@@ -2,6 +2,8 @@
 
 Valdris turns a request into a durable goal, routes it through one primary workflow skill, adds only the supporting skills justified by risk, and blocks completion until stopping conditions and proof gates pass.
 
+![Valdris durable goal and routing control loop](assets/readme/valdris-durable-goal-routing-loop.png)
+
 ## Router
 
 The selectable catalog is intentionally small:

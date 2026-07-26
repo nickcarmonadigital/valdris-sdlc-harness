@@ -2,6 +2,8 @@
 
 The connector contract lets Claude Code, Codex, Hermes, or any future agent runtime appear on the visual board without turning this product into an IDE.
 
+![Valdris runtime connectivity and event flow](assets/readme/runtime-connectivity-event-flow.svg)
+
 ## Core principle
 
 The harness can only show what was explicitly emitted, written, verified, or replayed. It cannot read hidden reasoning or internal IDE state.

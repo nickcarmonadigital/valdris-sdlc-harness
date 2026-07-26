@@ -70,6 +70,9 @@ jobs:
         env:
           VALDRIS_FORMAT_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
 
+      - name: README visual freshness gate
+        run: npm run visuals:gate
+
       - name: Build
         run: npm run build
 

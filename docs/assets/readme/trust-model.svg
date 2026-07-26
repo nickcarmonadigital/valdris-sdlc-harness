@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris Trust Model">
+<defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris Trust Model</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">Assurance strength increases from valid structure, to behavioral proof, to independently attested execution and state.</text>
+<rect x="50" y="142" width="480" height="364" rx="26" fill="#020617" opacity="0.48" stroke="#2dd4bf" stroke-width="1.6"/><text x="76" y="188" text-anchor="start" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="23" font-weight="900">1. Structural assurance</text><g>
+    <rect x="78" y="224" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="290" y="257" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">schema-valid artifacts</text>
+  </g><g>
+    <rect x="78" y="304" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="290" y="337" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">bound run, commit, and environment</text>
+  </g><g>
+    <rect x="78" y="384" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="290" y="417" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">required coverage and digests present</text>
+  </g><line x1="530" y1="326" x2="560" y2="326" stroke="#2dd4bf" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><text x="545" y="302" text-anchor="middle" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="11" font-weight="800">stronger</text><rect x="570" y="142" width="480" height="364" rx="26" fill="#020617" opacity="0.48" stroke="#60a5fa" stroke-width="1.6"/><text x="596" y="188" text-anchor="start" fill="#60a5fa" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="23" font-weight="900">2. Semantic assurance</text><g>
+    <rect x="598" y="224" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="810" y="257" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">control-specific proof adapter</text>
+  </g><g>
+    <rect x="598" y="304" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="810" y="337" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">commissioned acceptance thresholds</text>
+  </g><g>
+    <rect x="598" y="384" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="810" y="417" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">evidence proves intended behavior</text>
+  </g><line x1="1050" y1="326" x2="1080" y2="326" stroke="#60a5fa" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><text x="1065" y="302" text-anchor="middle" fill="#60a5fa" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="11" font-weight="800">stronger</text><rect x="1090" y="142" width="480" height="364" rx="26" fill="#020617" opacity="0.48" stroke="#a78bfa" stroke-width="1.6"/><text x="1116" y="188" text-anchor="start" fill="#a78bfa" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="23" font-weight="900">3. Authoritative assurance</text><g>
+    <rect x="1118" y="224" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="1330" y="257" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">attested proof execution</text>
+  </g><g>
+    <rect x="1118" y="304" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="1330" y="337" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">rollback-resistant provider head</text>
+  </g><g>
+    <rect x="1118" y="384" width="424" height="56" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="1330" y="417" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="15" font-weight="800">signed receipts + independent authority</text>
+  </g><rect x="50" y="548" width="1500" height="218" rx="24" fill="#020617" opacity="0.46" stroke="#f59e0b" stroke-width="1.4"/><text x="76" y="590" text-anchor="start" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="900">Supporting mechanisms</text><g>
+    <rect x="76" y="620" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="211" y="647" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">typed evidence</text>
+  </g><g>
+    <rect x="370" y="620" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="505" y="647" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">artifact binding</text>
+  </g><g>
+    <rect x="664" y="620" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.2" opacity="0.96"/>
+    <text x="799" y="647" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">coverage gates</text>
+  </g><g>
+    <rect x="958" y="620" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="1093" y="647" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">semantic adapters</text>
+  </g><g>
+    <rect x="1252" y="620" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="1387" y="647" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">acceptance policy</text>
+  </g><g>
+    <rect x="76" y="682" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.2" opacity="0.96"/>
+    <text x="211" y="709" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">independent review</text>
+  </g><g>
+    <rect x="370" y="682" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="505" y="709" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">attested execution</text>
+  </g><g>
+    <rect x="664" y="682" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="799" y="709" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">provider receipts</text>
+  </g><g>
+    <rect x="958" y="682" width="270" height="44" rx="14" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.2" opacity="0.96"/>
+    <text x="1093" y="709" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">rollback-resistant state</text>
+  </g><text x="800" y="806" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="17" font-weight="850">Authoritative production claims require the commissioned executor and rollback-resistant provider state together.</text><text x="800" y="850" text-anchor="middle" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="850">Human approval can authorize a decision. It cannot turn missing or failing technical proof into a pass.</text></svg>

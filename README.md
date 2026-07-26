@@ -11,7 +11,7 @@ still write the code. Valdris guides and checks the work around them.
 
 It is not an IDE. It is not a coding agent. It is not a pile of prompts.
 
-![Valdris control-plane overview](docs/assets/valdris-control-plane-overview.svg)
+![Complete map of the seven connected systems in the Valdris SDLC Harness](docs/assets/readme/valdris-complete-system-map.svg)
 
 ## Why Valdris exists
 
@@ -31,9 +31,12 @@ Valdris turns those claims into checks.
 | “We can ship.” | The required checks, proof, and human approval |
 | “Done.” | A complete run packet with no hidden gaps |
 
+![Valdris Proof-to-Done Flow, from a candidate implementation claim through evidence, review, gates, and the final run packet](docs/assets/readme/valdris-proof-to-done-flow.png)
+
 ## What Valdris does
 
-Valdris follows six main steps:
+The map above shows the seven connected parts of the harness. A delivery run
+follows six main steps:
 
 1. **Commission the project.** Learn the repo, team rules, risks, and commands.
 2. **Classify the request.** Decide what kind of work this is and how much proof
@@ -129,10 +132,15 @@ Examples include:
 
 This keeps the Layer 0 plus 13-domain model stable.
 
+![Valdris assurance model showing Layer 0, the 13 production domains, cross-cutting concerns, domain packs, and three proof levels](docs/assets/readme/assurance-model.svg)
+
 ## Eight workflow skills
 
 Valdris chooses one main skill for each phase. It may add up to four support
 skills when the risk calls for them.
+
+A skill chooses the workflow. A commissioned lane loads project-specific
+context and risk checks. They work together, but they are not the same thing.
 
 | Skill | Use it for |
 | --- | --- |
@@ -148,6 +156,8 @@ skills when the risk calls for them.
 The goal lives in a file, not only in chat. It stores checkpoints, limits, stop
 rules, and the current source commit. A stale agent cannot silently replace a
 newer checkpoint.
+
+![Valdris durable goal and routing control loop](docs/assets/readme/valdris-durable-goal-routing-loop.png)
 
 Read [Goal Loop and Skill Router](docs/GOAL_LOOP_AND_SKILL_ROUTER.md) for the
 full contract.
@@ -260,6 +270,15 @@ or another connected runtime performs the build.
 6. **Reviews need separation.** The builder cannot be every reviewer.
 7. **Stronger findings add checks.** They do not weaken the route.
 8. **Outside authority stays outside.** Agents cannot create trusted receipts.
+
+### Protected residue checks
+
+The restricted-residue workflow scans public release surfaces without printing
+the private restricted-value list in normal build logs. Commission it on the
+**protected default branch**. Turn on `prevent-self-review`, require an
+**independent required reviewer**, and pin unattended OIDC trust to
+`job_workflow_ref`. Without those controls, treat the result as
+operator-supervised evidence, not release authority.
 
 ## What is built now
 

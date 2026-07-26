@@ -86,6 +86,7 @@
     "verify:authoritative-release": "node scripts/verify-authoritative-release-gate.mjs",
     "verify:authoritative-release-workflow": "node scripts/verify-authoritative-release-workflow.mjs",
     "render:readme-visuals": "node scripts/render-readme-visuals.mjs",
+    "visuals:gate": "node scripts/render-readme-visuals.mjs --check",
     "bridge:claude": "node scripts/claude-code-bridge.mjs",
     "bridge:emit": "node scripts/uash-emit-event.mjs",
     "proof:write": "node scripts/uash-write-proof.mjs"

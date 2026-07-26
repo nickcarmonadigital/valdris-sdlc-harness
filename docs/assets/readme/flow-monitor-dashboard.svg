@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris SDLC Harness — Visual Flow Monitor">
-  
-  <defs>
+<defs>
     <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
       <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
       <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>

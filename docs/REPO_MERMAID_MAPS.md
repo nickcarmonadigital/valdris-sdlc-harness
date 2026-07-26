@@ -204,69 +204,52 @@ flowchart LR
 
 ---
 
-## 3. Work lanes map
+## 3. Request routing, skills, and work lanes
 
-These are the lanes people should see first when asking, “where does my work go?”
+Valdris uses two related routing tools. Workflow skills choose how a phase is
+performed. Commissioned lanes load project context, owners, commands, and gate
+emphasis. The route binds both without treating them as the same concept.
 
-![Work lanes map](assets/mermaid/work-lanes-map.svg)
+![Request routing and eight-skill map](assets/readme/request-routing-eight-skill-map.svg)
+
+![Valdris work lane families](assets/readme/work-lanes-map.svg)
 
 <details>
-<summary>Mermaid source</summary>
+<summary>Workflow-skill routing source</summary>
 
 ```mermaid
 flowchart TB
-  classDef orient fill:#082f49,stroke:#38bdf8,color:#e0f2fe,stroke-width:2px
-  classDef lane fill:#111827,stroke:#64748b,color:#e5e7eb,stroke-width:1.5px
-  classDef core fill:#172554,stroke:#818cf8,color:#e0e7ff,stroke-width:2px
-  classDef gate fill:#4c0519,stroke:#fb7185,color:#ffe4e6,stroke-width:2px
-  classDef artifact fill:#052e16,stroke:#22c55e,color:#dcfce7,stroke-width:2px
+  classDef route fill:#082f49,stroke:#38bdf8,color:#e0f2fe,stroke-width:2px
+  classDef skill fill:#111827,stroke:#818cf8,color:#e5e7eb,stroke-width:1.5px
+  classDef goal fill:#451a03,stroke:#f59e0b,color:#fef3c7,stroke-width:2px
+  classDef assurance fill:#052e16,stroke:#22c55e,color:#dcfce7,stroke-width:2px
 
-  FD["Front doors: AGENTS.md / CLAUDE.md / Codex prompt"] --> ORIENT["Orient and route: 00_MAP / CONTEXT / project adapter"]
-  ORIENT --> CLASSIFY["Lane classification"]
+  REQUEST["Natural-language request"] --> INTAKE["Authorized intake"]
+  INTAKE --> CLASSIFY["Workload classification"]
+  CLASSIFY --> ROUTE["Immutable route"]
 
-  subgraph LANES["Generated work lanes"]
-    ENG["engineering-default"]
-    DESIGN["system-design"]
-    PROD["production-readiness"]
-    CLOUD["cloud-platform"]
-    QA["qa-release"]
-    INCIDENT["incidents"]
-    DOCS["docs-product"]
-    INFRA["infra"]
-    DATA["data"]
-    SECURITY["security"]
-    RUNTIME["agent-runtime"]
-    SUPPORT["support-triage"]
-    PROVIDER["provider-config"]
-    COMMS["communications"]
-    RAG["rag-kb-evals"]
+  subgraph SKILLS["Eight workflow skills"]
+    INTAKE_SKILL["valdris-intake-route"]
+    BUG["valdris-bug-rca"]
+    FEATURE["valdris-feature-delivery"]
+    ARCH["valdris-architecture-refactor"]
+    SECURITY["valdris-security-audit"]
+    PLATFORM["valdris-platform-release"]
+    GENAI["valdris-genai-assurance"]
+    HANDOFF["valdris-proof-handoff"]
   end
 
-  CLASSIFY --> ENG
-  CLASSIFY --> DESIGN
-  CLASSIFY --> PROD
-  CLASSIFY --> CLOUD
-  CLASSIFY --> QA
-  CLASSIFY --> INCIDENT
-  CLASSIFY --> DOCS
-  CLASSIFY --> INFRA
-  CLASSIFY --> DATA
-  CLASSIFY --> SECURITY
-  CLASSIFY --> RUNTIME
-  CLASSIFY --> SUPPORT
-  CLASSIFY --> PROVIDER
-  CLASSIFY --> COMMS
-  CLASSIFY --> RAG
+  ROUTE --> SKILLS
+  SKILLS --> PHASES["Intake phase → delivery phase → proof-handoff phase"]
+  PHASES --> GOAL["Durable goal: budgets, checkpoints, stop conditions, expected revision"]
+  PHASES --> ASSURANCE["Layer 0 + applicable production domains + concerns + packs"]
+  GOAL --> DONE["Evidence-backed handoff"]
+  ASSURANCE --> DONE
 
-  LANES --> STAGES["Shared stage flow: intake → route → code-intelligence → design anchors → implement → validate → handoff"]
-  STAGES --> GATES["Shared gates: RCA / anchor / Red Zone / proof / smoke / finish-line / self-heal"]
-  GATES --> ARTIFACTS["Run packet artifacts: graph.json / anchors.json / proof.json / smoke_proof.json / final.md"]
-
-  class FD,ORIENT,CLASSIFY orient
-  class ENG,DESIGN,PROD,CLOUD,QA,INCIDENT,DOCS,INFRA,DATA,SECURITY,RUNTIME,SUPPORT,PROVIDER,COMMS,RAG lane
-  class STAGES core
-  class GATES gate
-  class ARTIFACTS artifact
+  class REQUEST,INTAKE,CLASSIFY,ROUTE route
+  class INTAKE_SKILL,BUG,FEATURE,ARCH,SECURITY,PLATFORM,GENAI,HANDOFF skill
+  class PHASES,GOAL goal
+  class ASSURANCE,DONE assurance
 ```
 
 </details>
