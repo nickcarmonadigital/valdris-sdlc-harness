@@ -31,6 +31,10 @@ const PUBLIC_BINARY_ASSETS = new Map([
     "docs/assets/flow-monitor-screenshot.png",
     "df55a27b364f2a0d4151758e71ee9182ea623abbce689fe2ab3b5c6706b75c0c",
   ],
+  [
+    "docs/assets/readme/valdris-durable-goal-routing-loop.png",
+    "5b540dcd945b2859152f24bb2f5ebbfd73e130f9eb087d11f3af22d64af9e055",
+  ],
 ]);
 
 const APPROVED_OPERATIONAL_FIXTURE_PATHS = new Set([

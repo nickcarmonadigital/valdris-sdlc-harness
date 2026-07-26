@@ -4,6 +4,8 @@
 
 Valdris keeps the thirteen production-readiness layer IDs stable and adds **Layer 0: Foundation / Good Looks Like** as a prerequisite assurance overlay. Layer 0 is not a fourteenth production layer. Routing decides whether it applies, and a separate foundation assessment proves whether the commissioned baseline is fit for delivery.
 
+![Valdris assurance model showing Layer 0, the 13 production domains, cross-cutting concerns, domain packs, and proof strength](assets/readme/assurance-model.svg)
+
 The complete classification chain is:
 
 ```text

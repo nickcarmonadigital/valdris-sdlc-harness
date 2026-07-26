@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
+const CHECK = process.argv.includes("--check");
 const OUT_DIR = path.resolve("docs/assets/readme");
-mkdirSync(OUT_DIR, { recursive: true });
+if (!CHECK) mkdirSync(OUT_DIR, { recursive: true });
 
 const W = 1600;
 const H = 900;
@@ -103,7 +104,7 @@ function defs() {
 
 function shell(title, subtitle = "") {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">
-  ${defs()}
+${defs().trim()}
   <rect width="${W}" height="${H}" fill="url(#bgGlow)"/>
   <rect width="${W}" height="${H}" fill="url(#grid)" opacity="0.6"/>
   <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
@@ -213,119 +214,388 @@ function miniCard(x, y, w, h, text, color = colors.cyan, opts = {}) {
 
 function write(name, svg) {
   const file = path.join(OUT_DIR, name);
+  if (CHECK) {
+    if (!existsSync(file) || readFileSync(file, "utf8") !== svg)
+      throw new Error(
+        `${path.relative(process.cwd(), file)} is stale; run npm run render:readme-visuals`,
+      );
+    console.log(`verified ${file}`);
+    return;
+  }
   writeFileSync(file, svg);
   console.log(`wrote ${file}`);
 }
 
-function workLanesMap() {
+function requestRoutingMap() {
   let s = shell(
-    "Valdris SDLC Harness — Work Lanes Map",
-    "Work enters once, routes by lane, then every lane must pass shared gates and artifacts.",
+    "Valdris Request Routing and Eight-Skill Map",
+    "One request becomes an immutable route with one primary workflow skill and the smallest justified support set.",
   );
-  const cx = W / 2;
-  s += card(cx - 270, 122, 540, 78, "Front doors", {
-    sub: "AGENTS.md / CLAUDE.md / Codex prompt",
-    stroke: colors.cyan,
-    fill: "url(#cyanFill)",
-    align: "center",
+  const top = [
+    [
+      "Natural-language request",
+      "human intent and requested outcome",
+      colors.cyan,
+    ],
+    [
+      "Intake + authority boundary",
+      "allowed actions, limits, and exclusions",
+      colors.blue,
+    ],
+    [
+      "Workload classification",
+      "risk, tier, profiles, concerns, and packs",
+      colors.teal,
+    ],
+    [
+      "Immutable route",
+      "one primary skill + no more than four supporting skills",
+      colors.indigo,
+    ],
+  ];
+  top.forEach(([title, sub, color], index) => {
+    const x = 55 + index * 385;
+    s += card(x, 126, 330, 96, title, {
+      sub,
+      stroke: color,
+      titleSize: 18,
+      subSize: 12,
+      align: "center",
+    });
+    if (index < top.length - 1)
+      s += lineArrow(x + 330, 174, x + 375, 174, color);
   });
-  s += lineArrow(cx, 202, cx, 236, colors.cyan);
-  s += card(cx - 270, 238, 540, 78, "Orient + Route", {
-    sub: "00_MAP.md / CONTEXT.md / project adapter",
-    stroke: colors.indigo,
-    fill: "url(#cardFill)",
-    align: "center",
-  });
-  s += lineArrow(cx, 318, cx, 352, colors.cyan);
-  s += card(cx - 270, 354, 540, 72, "Lane Classification", {
-    sub: "choose the right operating lane before work starts",
-    stroke: colors.teal,
-    align: "center",
-  });
-  s += label(80, 472, "Generated Work Lanes", {
-    size: 22,
+
+  s += label(60, 280, "Eight workflow skills", {
+    size: 23,
     color: colors.text,
     weight: 850,
   });
   s += label(
-    80,
-    500,
-    "Different work routes through different lanes before implementation starts.",
-    { size: 15, color: colors.muted, weight: 600 },
+    60,
+    307,
+    "The route selects exactly one primary skill for each phase. Supporting skills add risk coverage without replacing the primary.",
+    { size: 14, color: colors.muted, weight: 600 },
+  );
+  const skills = [
+    ["valdris-intake-route", "new, unclear, or mixed requests", colors.cyan],
+    ["valdris-bug-rca", "bugs, regressions, and incidents", colors.rose],
+    [
+      "valdris-feature-delivery",
+      "features and vertical delivery",
+      colors.green,
+    ],
+    [
+      "valdris-architecture-refactor",
+      "architecture, migration, and refactor",
+      colors.indigo,
+    ],
+    ["valdris-security-audit", "identity, privacy, and security", colors.rose],
+    [
+      "valdris-platform-release",
+      "cloud, delivery, rollback, and recovery",
+      colors.amber,
+    ],
+    [
+      "valdris-genai-assurance",
+      "models, prompts, agents, RAG, and evals",
+      colors.violet,
+    ],
+    [
+      "valdris-proof-handoff",
+      "final proof, readiness, and handoff",
+      colors.teal,
+    ],
+  ];
+  skills.forEach(([title, sub, color], index) => {
+    const col = index % 4;
+    const row = Math.floor(index / 4);
+    s += card(60 + col * 380, 332 + row * 108, 340, 86, title, {
+      sub,
+      stroke: color,
+      titleSize: 16,
+      subSize: 12,
+      align: "center",
+    });
+  });
+
+  s += card(60, 575, 450, 96, "Intake phase", {
+    sub: "validate request, classification, authority, and route",
+    stroke: colors.cyan,
+    align: "center",
+    titleSize: 20,
+    subSize: 13,
+  });
+  s += card(575, 575, 450, 96, "Delivery phase", {
+    sub: "run the selected delivery primary with bounded support",
+    stroke: colors.indigo,
+    align: "center",
+    titleSize: 20,
+    subSize: 13,
+  });
+  s += card(1090, 575, 450, 96, "Proof-handoff phase", {
+    sub: "independently verify the packet and final claim",
+    stroke: colors.teal,
+    align: "center",
+    titleSize: 20,
+    subSize: 13,
+  });
+  s += lineArrow(510, 623, 575, 623, colors.cyan);
+  s += lineArrow(1025, 623, 1090, 623, colors.teal);
+
+  s += card(100, 720, 660, 92, "Durable goal control", {
+    sub: "objective + budgets + checkpoints + stopping conditions + expected revision",
+    stroke: colors.amber,
+    align: "center",
+    titleSize: 21,
+    subSize: 13,
+  });
+  s += card(840, 720, 660, 92, "Additive assurance", {
+    sub: "Layer 0 + applicable production domains + cross-cutting concerns + domain packs",
+    stroke: colors.green,
+    align: "center",
+    titleSize: 21,
+    subSize: 13,
+  });
+  s += label(
+    800,
+    862,
+    "Later discoveries may add controls or raise the tier. They may not weaken the immutable route.",
+    { color: colors.text, size: 16, weight: 800, anchor: "middle" },
+  );
+  return s + endSvg();
+}
+
+function workLanesMap() {
+  let s = shell(
+    "Valdris Work Lane Families",
+    "Workflow skills choose how work proceeds; commissioned lanes load the right project context and gate emphasis.",
+  );
+  s += card(100, 126, 620, 92, "Immutable route + selected workflow skills", {
+    sub: "bind the request, authority, tier, and phase-specific operating procedure",
+    stroke: colors.cyan,
+    align: "center",
+    titleSize: 21,
+    subSize: 13,
+  });
+  s += card(880, 126, 620, 92, "Commissioned lane classification", {
+    sub: "loads the smallest relevant context, owners, commands, and risk checks",
+    stroke: colors.indigo,
+    align: "center",
+    titleSize: 21,
+    subSize: 13,
+  });
+  s += lineArrow(720, 172, 880, 172, colors.cyan);
+
+  s += label(60, 278, "Ten top-level lane families", {
+    size: 23,
+    color: colors.text,
+    weight: 850,
+  });
+  s += label(
+    60,
+    306,
+    "A commissioned project may enable smaller repo-specific lanes inside these families.",
+    { size: 14, color: colors.muted, weight: 650 },
   );
   const lanes = [
-    ["engineering-default", colors.cyan],
-    ["system-design", colors.indigo],
-    ["production-readiness", colors.teal],
-    ["cloud-platform", colors.amber],
-    ["qa-release", colors.green],
-    ["incidents", colors.rose],
-    ["docs-product", colors.blue],
-    ["infra", colors.amber],
-    ["data", colors.teal],
-    ["security", colors.rose],
-    ["agent-runtime", colors.violet],
-    ["support-triage", colors.blue],
-    ["provider-config", colors.amber],
-    ["communications", colors.teal],
-    ["rag-kb-evals", colors.indigo],
+    ["01 Intake / classify", colors.cyan],
+    ["02 Product + app SDLC", colors.green],
+    ["03 System design", colors.indigo],
+    ["04 Cloud / platform engineering", colors.amber],
+    ["05 Data + integrations", colors.teal],
+    ["06 Security + compliance", colors.rose],
+    ["07 QA + release", colors.blue],
+    ["08 Reliability / observability", colors.violet],
+    ["09 Handoff", colors.green],
+    ["10 Harness self-healing", colors.amber],
   ];
-  const startX = 80;
-  const startY = 530;
-  const cw = 282;
-  const ch = 58;
-  const gapX = 18;
-  const gapY = 16;
-  lanes.forEach(([name, color], i) => {
-    const col = i % 5;
-    const row = Math.floor(i / 5);
-    s += miniCard(
-      startX + col * (cw + gapX),
-      startY + row * (ch + gapY),
-      cw,
-      ch,
-      name,
-      color,
-      { size: 17 },
-    );
-    if (row === 0)
-      s += lineArrow(
-        cx,
-        428,
-        startX + col * (cw + gapX) + cw / 2,
-        startY - 8,
-        colors.cyan,
-        "arrow",
-        1.2,
-      );
+  lanes.forEach(([title, color], index) => {
+    const col = index % 5;
+    const row = Math.floor(index / 5);
+    s += miniCard(60 + col * 304, 340 + row * 90, 276, 62, title, color, {
+      size: title.length > 25 ? 13 : 15,
+    });
   });
-  const bottomY = 772;
-  s += card(80, bottomY, 445, 78, "Shared stage flow", {
-    sub: "intake → route → GitNexus → design-anchors → implement → validate → handoff",
-    stroke: colors.cyan,
-    titleSize: 19,
+
+  s += card(80, 570, 430, 112, "Context and ownership", {
+    sub: "repo facts + source order + responsible humans + safe and review-required paths",
+    stroke: colors.blue,
+    align: "center",
+    titleSize: 20,
     subSize: 12,
   });
-  s += card(577, bottomY, 445, 78, "Shared gates", {
-    sub: "RCA / anchor / Red Zone / proof / smoke / finish-line / self-heal",
+  s += card(585, 570, 430, 112, "Gate emphasis", {
+    sub: "design + production + data + security + QA + reliability checks justified by the lane",
     stroke: colors.rose,
+    align: "center",
+    titleSize: 20,
+    subSize: 12,
+  });
+  s += card(1090, 570, 430, 112, "Runtime and model policy", {
+    sub: "context budget + approved tools + runtime adapter + model and escalation rules",
+    stroke: colors.violet,
+    align: "center",
+    titleSize: 20,
+    subSize: 12,
+  });
+
+  s += card(200, 744, 500, 78, "Shared execution stages", {
+    sub: "intake → route → implement → validate → review → release → learn",
+    stroke: colors.cyan,
+    align: "center",
     titleSize: 19,
     subSize: 12,
   });
-  s += card(1075, bottomY, 445, 78, "Run packet artifacts", {
-    sub: "graph/graph.json / design/anchors.json / proof/proof.json / smoke/smoke_proof.json / handoff/final.md",
+  s += card(900, 744, 500, 78, "Evidence-backed finish line", {
+    sub: "required gates + review + approvals + smoke + final run packet",
     stroke: colors.green,
+    align: "center",
     titleSize: 19,
     subSize: 12,
-    maxChars: 34,
   });
-  s += lineArrow(525, bottomY + 39, 577, bottomY + 39, colors.cyan);
-  s += lineArrow(1022, bottomY + 39, 1075, bottomY + 39, colors.cyan);
+  s += lineArrow(700, 783, 900, 783, colors.green);
   s += label(
-    80,
-    875,
-    "Core promise: different kinds of engineering work route through different lanes, but all lanes must leave proof.",
-    { color: colors.muted, size: 15 },
+    800,
+    870,
+    "Skills select the workflow. Lanes select project context and risk emphasis. Neither replaces the other.",
+    { size: 16, color: colors.text, weight: 850, anchor: "middle" },
+  );
+  return s + endSvg();
+}
+
+function assuranceModel() {
+  let s = shell(
+    "Valdris Assurance Model",
+    "Layer 0, thirteen production domains, cross-cutting concerns, domain packs, and proof strength inside the larger harness.",
+  );
+  s += card(530, 120, 540, 82, "Workload classification", {
+    sub: "selects the required foundation, domains, concerns, packs, and tier",
+    stroke: colors.cyan,
+    align: "center",
+    titleSize: 22,
+    subSize: 12,
+  });
+  s += lineArrow(800, 204, 800, 232, colors.cyan);
+  s += card(110, 232, 1380, 82, "Layer 0 — Foundation / Good Looks Like", {
+    sub: "product intent + requirements + acceptance + boundaries + data rules + test strategy + owners + risk",
+    stroke: colors.blue,
+    align: "center",
+    titleSize: 22,
+    subSize: 13,
+  });
+
+  s += `<rect x="50" y="344" width="1030" height="368" rx="24" fill="#020617" opacity="0.46" stroke="${colors.violet}" stroke-width="1.4"/>`;
+  s += label(76, 380, "13 production assurance domains", {
+    size: 21,
+    color: colors.violet,
+    weight: 850,
+  });
+  const domains = [
+    "Frontend Experience",
+    "Backend, API & Business Logic",
+    "Data & Storage",
+    "Identity, Authorization & Tenant Isolation",
+    "Hosting & Deployment",
+    "Cloud Infrastructure & Compute",
+    "CI/CD, Version Control & Quality",
+    "Security & Data Protection",
+    "Rate Limiting & Usage Control",
+    "Caching & Content Delivery",
+    "Scaling & Traffic Management",
+    "Observability",
+    "Availability, Recovery & Operations",
+  ];
+  const domainCard = (x, y, number, title) => {
+    const lines = wrap(title, 18);
+    let text = `<g>
+      <rect x="${x}" y="${y}" width="235" height="70" rx="14" fill="#111827" stroke="${colors.violet}" stroke-width="1.1"/>
+      <circle cx="${x + 22}" cy="${y + 22}" r="13" fill="${colors.violet}" opacity="0.2" stroke="${colors.violet}"/>
+      <text x="${x + 22}" y="${y + 27}" text-anchor="middle" fill="${colors.violet}" font-family="Inter, ui-sans-serif, system-ui" font-size="12" font-weight="900">${number}</text>`;
+    const startY = y + (lines.length === 1 ? 41 : lines.length === 2 ? 32 : 24);
+    lines.slice(0, 3).forEach((line, index) => {
+      text += `<text x="${x + 126}" y="${startY + index * 18}" text-anchor="middle" fill="${colors.text}" font-family="Inter, ui-sans-serif, system-ui" font-size="12.2" font-weight="760">${esc(line)}</text>`;
+    });
+    return `${text}</g>`;
+  };
+  domains.forEach((title, index) => {
+    const col = index % 4;
+    const row = Math.floor(index / 4);
+    s += domainCard(76 + col * 248, 402 + row * 80, index + 1, title);
+  });
+
+  s += `<rect x="1110" y="344" width="440" height="218" rx="24" fill="#020617" opacity="0.46" stroke="${colors.teal}" stroke-width="1.4"/>`;
+  s += label(1136, 380, "Cross-cutting examples", {
+    size: 21,
+    color: colors.teal,
+    weight: 850,
+  });
+  [
+    "Generative AI governance",
+    "Async workflow & orchestration",
+    "Multi-agent execution",
+  ].forEach((text, index) => {
+    s += miniCard(1136, 402 + index * 48, 388, 36, text, colors.teal, {
+      size: 13,
+    });
+  });
+
+  s += `<rect x="1110" y="584" width="440" height="128" rx="24" fill="#020617" opacity="0.46" stroke="${colors.amber}" stroke-width="1.4"/>`;
+  s += label(1136, 620, "Workload-activated domain packs", {
+    size: 19,
+    color: colors.amber,
+    weight: 850,
+  });
+  s += label(
+    1136,
+    654,
+    "Add controls without changing the canonical domain count.",
+    {
+      size: 14,
+      color: colors.text,
+      weight: 700,
+    },
+  );
+  s += label(1136, 681, "A pack is not Layer 14.", {
+    size: 14,
+    color: colors.muted,
+    weight: 700,
+  });
+
+  const levels = [
+    [
+      "Structural assurance",
+      "artifact shape, bindings, and required coverage are valid",
+      colors.teal,
+    ],
+    [
+      "Semantic assurance",
+      "commissioned adapters and thresholds prove intended behavior",
+      colors.blue,
+    ],
+    [
+      "Authoritative assurance",
+      "trusted execution and rollback-resistant provider state attest the result",
+      colors.violet,
+    ],
+  ];
+  levels.forEach(([title, sub, color], index) => {
+    const x = 50 + index * 520;
+    s += card(x, 748, 480, 92, title, {
+      sub,
+      stroke: color,
+      align: "center",
+      titleSize: 19,
+      subSize: 12,
+    });
+    if (index < levels.length - 1)
+      s += lineArrow(x + 480, 794, x + 510, 794, color);
+  });
+  s += label(
+    800,
+    876,
+    "Human approval authorizes a decision. It cannot turn missing or failing technical proof into a pass.",
+    { size: 16, color: colors.amber, weight: 850, anchor: "middle" },
   );
   return s + endSvg();
 }
@@ -689,10 +959,135 @@ function productionReadiness() {
   return s + endSvg();
 }
 
+function proofToDoneFlow() {
+  let s = shell(
+    "Valdris Proof-to-Done Flow",
+    "Every applicable non-review gate produces evidence before the independent reviewer signs the frozen bundle.",
+  );
+  const stages = [
+    {
+      key: "implementation-claim",
+      title: ["Implementation", "claim"],
+      sub: "state the claim and scope",
+      color: colors.cyan,
+    },
+    {
+      key: "code-intelligence",
+      title: ["Code", "intelligence"],
+      sub: "map code, change, and impact",
+      color: colors.blue,
+    },
+    {
+      key: "typed-evidence",
+      title: ["Typed", "evidence"],
+      sub: "bind evidence to controls",
+      color: colors.teal,
+    },
+    {
+      key: "control-validation",
+      title: ["Control-specific", "validation"],
+      sub: "prove the named control",
+      color: colors.violet,
+    },
+    {
+      key: "red-zone-approval",
+      title: ["Red Zone", "approval"],
+      sub: "human authority when required",
+      color: colors.amber,
+    },
+    {
+      key: "smoke-testing",
+      title: ["Smoke", "testing"],
+      sub: "produce final applicable gate evidence",
+      color: colors.teal,
+    },
+    {
+      key: "independent-review",
+      title: ["Independent", "review"],
+      sub: "sign the frozen evidence bundle",
+      color: colors.blue,
+    },
+    {
+      key: "finish-line-gate",
+      title: ["Finish-line", "gate"],
+      sub: "confirm every required criterion",
+      color: colors.cyan,
+    },
+    {
+      key: "final-run-packet",
+      title: ["Final run", "packet"],
+      sub: "bind proof, review, and catalogs",
+      color: colors.violet,
+    },
+    {
+      key: "done",
+      title: ["DONE", "at achieved level"],
+      sub: "state structural, semantic, or authoritative",
+      color: colors.green,
+    },
+  ];
+  const topXs = [50, 354, 658, 962, 1266];
+  const bottomXs = [1266, 962, 658, 354, 50];
+  stages.forEach((stage, index) => {
+    const top = index < 5;
+    const position = top ? index : index - 5;
+    const x = top ? topXs[position] : bottomXs[position];
+    const y = top ? 154 : 390;
+    const next = stages[index + 1]?.key ?? "complete";
+    s += `<g id="proof-stage-${index + 1}" data-contract="proof-to-done.v1" data-key="${stage.key}" data-order="${index + 1}" data-next="${next}" data-x="${x}" data-y="${y}" aria-label="${esc(stage.title.join(" "))}">`;
+    s += card(x, y, 254, 158, stage.title, {
+      badge: String(index + 1),
+      sub: stage.sub,
+      stroke: stage.color,
+      titleSize: 19,
+      subSize: 13,
+      align: "center",
+      maxChars: 22,
+    });
+    s += `</g>`;
+    if (top && index < 4)
+      s += lineArrow(x + 254, y + 79, topXs[position + 1] - 10, y + 79);
+    if (!top && index < 9)
+      s += lineArrow(x, y + 79, bottomXs[position + 1] + 264, y + 79);
+  });
+  s += lineArrow(
+    topXs[4] + 127,
+    312,
+    bottomXs[0] + 127,
+    382,
+    colors.amber,
+    "arrowAmber",
+  );
+  s += card(70, 622, 700, 94, "Review comes after all applicable evidence", {
+    sub: "Any later gate or source change makes the signed review stale and requires a new review.",
+    stroke: colors.blue,
+    titleSize: 21,
+    subSize: 14,
+    maxChars: 68,
+  });
+  s += card(830, 622, 700, 94, "DONE is qualified by assurance level", {
+    sub: "Structural proves conformance. Verified behavior requires semantic or authoritative closure.",
+    stroke: colors.green,
+    titleSize: 21,
+    subSize: 14,
+    maxChars: 68,
+  });
+  s += miniCard(
+    70,
+    768,
+    1460,
+    62,
+    "DONE = required gates passed at the achieved assurance level + bound evidence + trusted review + final run packet",
+    colors.green,
+    { size: 18 },
+  );
+  return s + endSvg();
+}
+
 function connectorFlow() {
   let s = shell(
-    "Valdris SDLC Harness — Connector + Proof Gate Overview",
-    "External agents only become trustworthy when they emit validated events and artifact evidence.",
+    "Valdris Runtime Connectivity and Event Flow",
+    "External coding-agent runtimes perform the work; Valdris validates events, state, authority, evidence, and completion.",
   );
   s += `<rect x="64" y="136" width="300" height="340" rx="26" fill="#020617" opacity="0.46" stroke="${colors.blue}"/>`;
   s += label(92, 176, "External coding agents", {
@@ -700,16 +1095,16 @@ function connectorFlow() {
     color: colors.blue,
     weight: 850,
   });
-  ["Claude Code", "Codex", "Hermes", "future runtime"].forEach(
+  ["Claude Code", "Codex", "Hermes", "custom runtime"].forEach(
     (t, i) =>
       (s += miniCard(96, 216 + i * 60, 236, 42, t, colors.blue, { size: 16 })),
   );
   const steps = [
-    ["CLI emitter / MCP / API / watched artifact", colors.cyan],
-    ["local connector bridge", colors.teal],
-    ["strict event validation", colors.amber],
-    ["event ledger + run packet", colors.green],
-    ["proof gate engine", colors.rose],
+    ["runtime adapter", colors.blue],
+    ["connector bridge", colors.teal],
+    ["real events + artifacts", colors.violet],
+    ["durable state + ledger", colors.amber],
+    ["gate engine", colors.rose],
   ];
   const stepXs = [400, 610, 820, 1030, 1240];
   steps.forEach(([t, color], i) => {
@@ -730,18 +1125,18 @@ function connectorFlow() {
       );
   });
   s += lineArrow(364, 306, 400, 296, colors.blue);
-  s += card(742, 430, 300, 78, "visual run monitor", {
-    sub: "reads events, artifacts, skip/fail state",
+  s += card(742, 430, 300, 78, "operator view + replay", {
+    sub: "reads real events, artifacts, checkpoints, and gate state",
     stroke: colors.cyan,
     titleSize: 20,
   });
   s += arrow(1118, 354, 890, 430, colors.cyan);
   const outcomes = [
-    ["reject: unknown node or bad schema", colors.rose],
-    ["block: finish-line not satisfied", colors.rose],
-    ["block: Red Zone needs human", colors.amber],
-    ["self-heal artifact or PR", colors.amber],
-    ["proof-backed handoff", colors.green],
+    ["reject unknown or malformed events", colors.rose],
+    ["block unsatisfied finish-line gates", colors.rose],
+    ["request human-only authority", colors.amber],
+    ["bind external proof providers", colors.blue],
+    ["final v3 run packet + handoff", colors.green],
   ];
   outcomes.forEach(([t, color], i) => {
     const yy = 476 + i * 56;
@@ -757,7 +1152,7 @@ function connectorFlow() {
     );
   });
   s += card(92, 586, 750, 94, "Run packet ledger", {
-    sub: "run/intake.json / graph/graph.json / design/anchors.json / proof/proof.json / smoke/smoke_proof.json / handoff/final.md",
+    sub: "intake + classification + route + goal + proof + smoke + review + assurance closure + resolved catalog snapshots",
     stroke: colors.green,
     titleSize: 22,
     subSize: 13,
@@ -766,8 +1161,105 @@ function connectorFlow() {
   s += label(
     92,
     752,
-    "No agent can claim done until required events, artifacts, approvals, and smoke checks pass.",
+    "Valdris governs the run. Codex, Claude Code, Hermes, or a commissioned custom runtime performs the engineering actions.",
     { size: 19, color: colors.text, weight: 850 },
+  );
+  return s + endSvg();
+}
+
+function trustModel() {
+  let s = shell(
+    "Valdris Trust Model",
+    "Assurance strength increases from valid structure, to behavioral proof, to independently attested execution and state.",
+  );
+  const levels = [
+    {
+      title: "1. Structural assurance",
+      color: colors.teal,
+      items: [
+        "schema-valid artifacts",
+        "bound run, commit, and environment",
+        "required coverage and digests present",
+      ],
+    },
+    {
+      title: "2. Semantic assurance",
+      color: colors.blue,
+      items: [
+        "control-specific proof adapter",
+        "commissioned acceptance thresholds",
+        "evidence proves intended behavior",
+      ],
+    },
+    {
+      title: "3. Authoritative assurance",
+      color: colors.violet,
+      items: [
+        "attested proof execution",
+        "rollback-resistant provider head",
+        "signed receipts + independent authority",
+      ],
+    },
+  ];
+  levels.forEach((level, index) => {
+    const x = 50 + index * 520;
+    s += `<rect x="${x}" y="142" width="480" height="364" rx="26" fill="#020617" opacity="0.48" stroke="${level.color}" stroke-width="1.6"/>`;
+    s += label(x + 26, 188, level.title, {
+      size: 23,
+      color: level.color,
+      weight: 900,
+    });
+    level.items.forEach((item, itemIndex) => {
+      s += miniCard(x + 28, 224 + itemIndex * 80, 424, 56, item, level.color, {
+        size: 15,
+      });
+    });
+    if (index < levels.length - 1) {
+      s += lineArrow(x + 480, 326, x + 510, 326, level.color);
+      s += label(x + 495, 302, "stronger", {
+        size: 11,
+        color: level.color,
+        weight: 800,
+        anchor: "middle",
+      });
+    }
+  });
+
+  s += `<rect x="50" y="548" width="1500" height="218" rx="24" fill="#020617" opacity="0.46" stroke="${colors.amber}" stroke-width="1.4"/>`;
+  s += label(76, 590, "Supporting mechanisms", {
+    size: 21,
+    color: colors.amber,
+    weight: 900,
+  });
+  const mechanisms = [
+    ["typed evidence", colors.teal],
+    ["artifact binding", colors.teal],
+    ["coverage gates", colors.teal],
+    ["semantic adapters", colors.blue],
+    ["acceptance policy", colors.blue],
+    ["independent review", colors.blue],
+    ["attested execution", colors.violet],
+    ["provider receipts", colors.violet],
+    ["rollback-resistant state", colors.violet],
+  ];
+  mechanisms.forEach(([text, color], index) => {
+    const col = index % 5;
+    const row = Math.floor(index / 5);
+    s += miniCard(76 + col * 294, 620 + row * 62, 270, 44, text, color, {
+      size: 13,
+    });
+  });
+  s += label(
+    800,
+    806,
+    "Authoritative production claims require the commissioned executor and rollback-resistant provider state together.",
+    { size: 17, color: colors.text, weight: 850, anchor: "middle" },
+  );
+  s += label(
+    800,
+    850,
+    "Human approval can authorize a decision. It cannot turn missing or failing technical proof into a pass.",
+    { size: 16, color: colors.amber, weight: 850, anchor: "middle" },
   );
   return s + endSvg();
 }
@@ -844,7 +1336,7 @@ function universalAdapter() {
     subSize: 12,
     maxChars: 28,
   });
-  s += card(720, 624, 280, 102, ["Claude/Codex/Hermes", "run"], {
+  s += card(720, 624, 280, 102, ["Claude Code / Codex /", "Hermes run"], {
     sub: "external runtime, harness-visible events",
     stroke: colors.cyan,
     titleSize: 18,
@@ -975,10 +1467,15 @@ function generatedPack() {
   return s + endSvg();
 }
 
+write("request-routing-eight-skill-map.svg", requestRoutingMap());
 write("work-lanes-map.svg", workLanesMap());
+write("assurance-model.svg", assuranceModel());
+write("valdris-proof-to-done-flow.svg", proofToDoneFlow());
 write("repo-operating-map.svg", repoOperatingMap());
 write("flow-monitor-dashboard.svg", flowMonitor());
 write("production-readiness-pack.svg", productionReadiness());
 write("connector-proof-gate-overview.svg", connectorFlow());
+write("runtime-connectivity-event-flow.svg", connectorFlow());
+write("trust-model.svg", trustModel());
 write("universal-core-project-adapter.svg", universalAdapter());
 write("generated-harness-pack.svg", generatedPack());

@@ -57,6 +57,50 @@ function includesEvery(text, values) {
   return values.every((value) => text.includes(value));
 }
 
+function markdownSection(source, heading) {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  const match = source.match(
+    new RegExp(`^## ${escaped}\\s*$([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))`, "mu"),
+  );
+  return match?.[1] ?? "";
+}
+
+function markdownShellCommands(section) {
+  const commands = [];
+  const fences = section.matchAll(/```(?:bash|sh)\s*\r?\n([\s\S]*?)```/gu);
+  for (const fence of fences) {
+    let current = "";
+    for (const rawLine of fence[1].split(/\r?\n/gu)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      if (line.endsWith("\\")) {
+        current += `${line.slice(0, -1).trim()} `;
+        continue;
+      }
+      commands.push(`${current}${line}`.replace(/\s+/gu, " ").trim());
+      current = "";
+    }
+    if (current.trim()) commands.push(current.replace(/\s+/gu, " ").trim());
+  }
+  return commands;
+}
+
+function proofStageContracts(source) {
+  return [
+    ...source.matchAll(
+      /<g id="proof-stage-(\d+)" data-contract="proof-to-done\.v1" data-key="([a-z0-9-]+)" data-order="(\d+)" data-next="([a-z0-9-]+)" data-x="(\d+)" data-y="(\d+)" aria-label="([^"]+)">/gu,
+    ),
+  ].map((match) => ({
+    id: Number(match[1]),
+    key: match[2],
+    order: Number(match[3]),
+    next: match[4],
+    x: Number(match[5]),
+    y: Number(match[6]),
+    label: match[7],
+  }));
+}
+
 function yamlScalar(value) {
   const scalar = value.replace(/\s+#.*$/u, "").trim();
   if (
@@ -456,6 +500,97 @@ for (const proofDocument of [
     `${proofDocument} proof instructions omit the dependency audit command`,
   );
 }
+
+const publicReadme = read("README.md");
+const commissionSection = markdownSection(
+  publicReadme,
+  "Commission a target repo",
+);
+const routeSection = markdownSection(publicReadme, "Route the first request");
+const commissionCommands = markdownShellCommands(commissionSection);
+const routeCommands = markdownShellCommands(routeSection);
+record(
+  "README reviews, stages, and commits the commissioned pack before routing",
+  commissionSection.includes("Review and commit the generated pack") &&
+    JSON.stringify(commissionCommands) ===
+      JSON.stringify([
+        'npm run commission -- --repo /path/to/repo --project-name "Example" --out /path/to/repo/.valdris-harness --yes',
+        "git -C /path/to/repo status --short",
+        "git -C /path/to/repo add -- .valdris-harness AGENTS.md CLAUDE.md",
+        'git -C /path/to/repo commit -m "chore: commission Valdris harness"',
+      ]) &&
+    publicReadme.indexOf("## Commission a target repo") <
+      publicReadme.indexOf("## Route the first request"),
+  "README must review, stage, and commit the generated target pack and front doors before the routing section",
+);
+record(
+  "README routes with the commissioned target runtime",
+  routeSection.includes("Run the committed router from the target repo root") &&
+    JSON.stringify(routeCommands) ===
+      JSON.stringify([
+        "cd /path/to/repo",
+        'node .valdris-harness/scripts/route-request.mjs --repo . --profile enterprise --actor "owner" --request "Build a secure account settings page."',
+      ]),
+  "README must route from the target root through its committed .valdris-harness runtime",
+);
+
+const proofToDoneVisual = read(
+  "docs/assets/readme/valdris-proof-to-done-flow.svg",
+);
+const proofStages = proofStageContracts(proofToDoneVisual);
+const expectedProofStageKeys = [
+  "implementation-claim",
+  "code-intelligence",
+  "typed-evidence",
+  "control-validation",
+  "red-zone-approval",
+  "smoke-testing",
+  "independent-review",
+  "finish-line-gate",
+  "final-run-packet",
+  "done",
+];
+const expectedProofStageLabels = [
+  "Implementation claim",
+  "Code intelligence",
+  "Typed evidence",
+  "Control-specific validation",
+  "Red Zone approval",
+  "Smoke testing",
+  "Independent review",
+  "Finish-line gate",
+  "Final run packet",
+  "DONE at achieved level",
+];
+record(
+  "proof-to-done visual reviews the frozen final evidence set",
+  proofStages.length === expectedProofStageKeys.length &&
+    proofStages.every(
+      (stage, index) =>
+        stage.id === index + 1 &&
+        stage.order === index + 1 &&
+        stage.key === expectedProofStageKeys[index] &&
+        stage.label === expectedProofStageLabels[index] &&
+        stage.next === (expectedProofStageKeys[index + 1] ?? "complete") &&
+        stage.y === (index < 5 ? 154 : 390) &&
+        (index === 0 ||
+          (index < 5 && stage.x > proofStages[index - 1].x) ||
+          (index === 5 && stage.x === proofStages[index - 1].x) ||
+          (index > 5 && stage.x < proofStages[index - 1].x)),
+    ),
+  "proof-to-done visual must place Red Zone and smoke evidence before independent review and packet handoff",
+);
+const completeMapOutcome =
+  read("docs/assets/readme/valdris-complete-system-map.svg").match(
+    /<g id="outcome">([\s\S]*?)<\/g>/u,
+  )?.[1] ?? "";
+record(
+  "complete system map qualifies DONE by assurance level",
+  /<text\b[^>]*>[\s\S]*?<tspan\b[^>]*>DONE<\/tspan>[\s\S]*?achieved assurance level[\s\S]*?<\/text>/u.test(
+    completeMapOutcome,
+  ),
+  "primary system map must not present structural DONE as unqualified behavioral proof",
+);
 
 const catalogGate = read("scripts/catalog-integrity-gate.mjs");
 for (const relativePath of requiredControls) {

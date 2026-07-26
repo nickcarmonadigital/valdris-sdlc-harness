@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris Proof-to-Done Flow">
+<defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris Proof-to-Done Flow</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">Every applicable non-review gate produces evidence before the independent reviewer signs the frozen bundle.</text>
+<g id="proof-stage-1" data-contract="proof-to-done.v1" data-key="implementation-claim" data-order="1" data-next="code-intelligence" data-x="50" data-y="154" aria-label="Implementation claim"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="50" y="154" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="51" y="155" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="64" y="166" width="34" height="26" rx="13" fill="#38bdf8" opacity="0.14" stroke="#38bdf8" stroke-opacity="0.7"/>
+    <text x="81" y="184" text-anchor="middle" fill="#38bdf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">1</text><text x="177" y="212" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Implementation</text><text x="177" y="235" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">claim</text><text x="177" y="262" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">state the claim and scope</text></g></g><line x1="304" y1="233" x2="344" y2="233" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-2" data-contract="proof-to-done.v1" data-key="code-intelligence" data-order="2" data-next="typed-evidence" data-x="354" data-y="154" aria-label="Code intelligence"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="354" y="154" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="355" y="155" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="368" y="166" width="34" height="26" rx="13" fill="#60a5fa" opacity="0.14" stroke="#60a5fa" stroke-opacity="0.7"/>
+    <text x="385" y="184" text-anchor="middle" fill="#60a5fa" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">2</text><text x="481" y="212" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Code</text><text x="481" y="235" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">intelligence</text><text x="481" y="262" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">map code, change, and impact</text></g></g><line x1="608" y1="233" x2="648" y2="233" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-3" data-contract="proof-to-done.v1" data-key="typed-evidence" data-order="3" data-next="control-validation" data-x="658" data-y="154" aria-label="Typed evidence"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="658" y="154" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.4" opacity="0.96"/>
+    <rect x="659" y="155" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="672" y="166" width="34" height="26" rx="13" fill="#2dd4bf" opacity="0.14" stroke="#2dd4bf" stroke-opacity="0.7"/>
+    <text x="689" y="184" text-anchor="middle" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">3</text><text x="785" y="212" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Typed</text><text x="785" y="235" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">evidence</text><text x="785" y="262" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">bind evidence to controls</text></g></g><line x1="912" y1="233" x2="952" y2="233" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-4" data-contract="proof-to-done.v1" data-key="control-validation" data-order="4" data-next="red-zone-approval" data-x="962" data-y="154" aria-label="Control-specific validation"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="962" y="154" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="963" y="155" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="976" y="166" width="34" height="26" rx="13" fill="#a78bfa" opacity="0.14" stroke="#a78bfa" stroke-opacity="0.7"/>
+    <text x="993" y="184" text-anchor="middle" fill="#a78bfa" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">4</text><text x="1089" y="212" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Control-specific</text><text x="1089" y="235" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">validation</text><text x="1089" y="262" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">prove the named control</text></g></g><line x1="1216" y1="233" x2="1256" y2="233" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-5" data-contract="proof-to-done.v1" data-key="red-zone-approval" data-order="5" data-next="smoke-testing" data-x="1266" data-y="154" aria-label="Red Zone approval"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1266" y="154" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1267" y="155" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="1280" y="166" width="34" height="26" rx="13" fill="#f59e0b" opacity="0.14" stroke="#f59e0b" stroke-opacity="0.7"/>
+    <text x="1297" y="184" text-anchor="middle" fill="#f59e0b" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">5</text><text x="1393" y="212" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Red Zone</text><text x="1393" y="235" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">approval</text><text x="1393" y="262" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">human authority when required</text></g></g><g id="proof-stage-6" data-contract="proof-to-done.v1" data-key="smoke-testing" data-order="6" data-next="independent-review" data-x="1266" data-y="390" aria-label="Smoke testing"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1266" y="390" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1267" y="391" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="1280" y="402" width="34" height="26" rx="13" fill="#2dd4bf" opacity="0.14" stroke="#2dd4bf" stroke-opacity="0.7"/>
+    <text x="1297" y="420" text-anchor="middle" fill="#2dd4bf" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">6</text><text x="1393" y="448" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Smoke</text><text x="1393" y="471" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">testing</text><text x="1393" y="498" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">produce final applicable gate</text><text x="1393" y="516" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">evidence</text></g></g><line x1="1266" y1="469" x2="1226" y2="469" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-7" data-contract="proof-to-done.v1" data-key="independent-review" data-order="7" data-next="finish-line-gate" data-x="962" data-y="390" aria-label="Independent review"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="962" y="390" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="963" y="391" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="976" y="402" width="34" height="26" rx="13" fill="#60a5fa" opacity="0.14" stroke="#60a5fa" stroke-opacity="0.7"/>
+    <text x="993" y="420" text-anchor="middle" fill="#60a5fa" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">7</text><text x="1089" y="448" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Independent</text><text x="1089" y="471" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">review</text><text x="1089" y="498" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">sign the frozen evidence bundle</text></g></g><line x1="962" y1="469" x2="922" y2="469" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-8" data-contract="proof-to-done.v1" data-key="finish-line-gate" data-order="8" data-next="final-run-packet" data-x="658" data-y="390" aria-label="Finish-line gate"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="658" y="390" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="659" y="391" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="672" y="402" width="34" height="26" rx="13" fill="#38bdf8" opacity="0.14" stroke="#38bdf8" stroke-opacity="0.7"/>
+    <text x="689" y="420" text-anchor="middle" fill="#38bdf8" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">8</text><text x="785" y="448" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Finish-line</text><text x="785" y="471" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">gate</text><text x="785" y="498" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">confirm every required criterion</text></g></g><line x1="658" y1="469" x2="618" y2="469" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-9" data-contract="proof-to-done.v1" data-key="final-run-packet" data-order="9" data-next="done" data-x="354" data-y="390" aria-label="Final run packet"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="354" y="390" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="355" y="391" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="368" y="402" width="34" height="26" rx="13" fill="#a78bfa" opacity="0.14" stroke="#a78bfa" stroke-opacity="0.7"/>
+    <text x="385" y="420" text-anchor="middle" fill="#a78bfa" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">9</text><text x="481" y="448" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">Final run</text><text x="481" y="471" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">packet</text><text x="481" y="498" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">bind proof, review, and catalogs</text></g></g><line x1="354" y1="469" x2="314" y2="469" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g id="proof-stage-10" data-contract="proof-to-done.v1" data-key="done" data-order="10" data-next="complete" data-x="50" data-y="390" aria-label="DONE at achieved level"><g><g filter="url(#shadow)" opacity="1">
+    <rect x="50" y="390" width="254" height="158" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="51" y="391" width="252" height="53.720000000000006" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><rect x="64" y="402" width="36" height="26" rx="13" fill="#22c55e" opacity="0.14" stroke="#22c55e" stroke-opacity="0.7"/>
+    <text x="82" y="420" text-anchor="middle" fill="#22c55e" font-family="Inter, ui-sans-serif, system-ui" font-size="13" font-weight="800">10</text><text x="177" y="448" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">DONE</text><text x="177" y="471" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="19" font-weight="800">at achieved level</text><text x="177" y="498" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">state structural, semantic, or</text><text x="177" y="516" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">authoritative</text></g></g><line x1="1393" y1="312" x2="1393" y2="382" stroke="#f59e0b" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrowAmber)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="70" y="622" width="700" height="94" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="71" y="623" width="698" height="31.96" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="90" y="652" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="800">Review comes after all applicable evidence</text><text x="90" y="681" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="600">Any later gate or source change makes the signed review stale and requires a new review.</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="830" y="622" width="700" height="94" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="831" y="623" width="698" height="31.96" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="850" y="652" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="800">DONE is qualified by assurance level</text><text x="850" y="681" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="600">Structural proves conformance. Verified behavior requires semantic or authoritative closure.</text></g><g>
+    <rect x="70" y="768" width="1460" height="62" rx="14" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.2" opacity="0.96"/>
+    <text x="800" y="804" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui" font-size="18" font-weight="800">DONE = required gates passed at the achieved assurance level + bound evidence + trusted review + final run packet</text>
+  </g></svg>

@@ -13,6 +13,18 @@ Valdris SDLC Harness turns agent engineering work into a reviewable run packet. 
 
 The control flow is `authorized intake -> workload classification -> Layer 0 foundation -> one primary workflow skill per phase -> production and domain assurance -> proof handoff`. Classification and foundation are executable gates, not additional selectable skills.
 
+Workflow skills and commissioned lanes have different jobs. A workflow skill
+selects the phase procedure. A lane loads project-specific context, ownership,
+commands, runtime/model policy, and gate emphasis. The immutable route may bind
+both; neither is a substitute for the other.
+
+A commissioned target must review and commit its generated `.valdris-harness`
+pack and front-door files before it creates an immutable route. Routing then
+runs from the target root with the committed target-local router. Independent
+review covers the frozen evidence set after all applicable technical evidence,
+including Red Zone authorization and smoke proof; changing that set requires a
+fresh review.
+
 # Agent Entry Points
 
 Use [Engineering Task Routing](/playbooks/engineering-task-routing.md) for normal tasks. Use [Layer Zero Assurance](/playbooks/layer-zero-assurance.md) to bind classification and resolve foundation requirements before feature or architecture implementation. Use [GitNexus Code Intelligence](/playbooks/gitnexus-code-intelligence.md) before code-impacting claims. Use [Production Readiness 13 Domains](/playbooks/production-readiness-13-layers.md) when production behavior could be affected.

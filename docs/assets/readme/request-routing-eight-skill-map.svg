@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Valdris Request Routing and Eight-Skill Map">
+<defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="80%">
+      <stop offset="0%" stop-color="#0f2f4a" stop-opacity="0.72"/>
+      <stop offset="45%" stop-color="#0b1220" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="1"/>
+    </radialGradient>
+    <linearGradient id="cardFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#172554" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="softFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#020617" stop-opacity="0.96"/>
+    </linearGradient>
+    <linearGradient id="cyanFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0e7490" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="amberFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92400e" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="roseFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0.92"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" opacity="0.85"/>
+    </marker>
+    <marker id="arrowAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" opacity="0.9"/>
+    </marker>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1f2937" stroke-width="1" opacity="0.35"/>
+    </pattern>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bgGlow)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.6"/>
+  <circle cx="1350" cy="-120" r="420" fill="#1d4ed8" opacity="0.14"/>
+  <circle cx="160" cy="900" r="420" fill="#0f766e" opacity="0.13"/>
+  <text x="64" y="64" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="34" font-weight="800">Valdris Request Routing and Eight-Skill Map</text>
+  <text x="66" y="98" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="500">One request becomes an immutable route with one primary workflow skill and the smallest justified support set.</text>
+<g><g filter="url(#shadow)" opacity="1">
+    <rect x="55" y="126" width="330" height="96" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="56" y="127" width="328" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="220" y="156" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Natural-language request</text><text x="220" y="182" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">human intent and requested outcome</text></g><line x1="385" y1="174" x2="430" y2="174" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="440" y="126" width="330" height="96" rx="18" fill="url(#softFill)" stroke="#60a5fa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="441" y="127" width="328" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="605" y="156" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Intake + authority boundary</text><text x="605" y="182" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">allowed actions, limits, and exclusions</text></g><line x1="770" y1="174" x2="815" y2="174" stroke="#60a5fa" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="825" y="126" width="330" height="96" rx="18" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.4" opacity="0.96"/>
+    <rect x="826" y="127" width="328" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="990" y="156" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Workload classification</text><text x="990" y="182" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">risk, tier, profiles, concerns, and packs</text></g><line x1="1155" y1="174" x2="1200" y2="174" stroke="#2dd4bf" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1210" y="126" width="330" height="96" rx="18" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1211" y="127" width="328" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1375" y="156" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="18" font-weight="800">Immutable route</text><text x="1375" y="182" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">one primary skill + no more than four</text><text x="1375" y="199" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">supporting skills</text></g><text x="60" y="280" text-anchor="start" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="23" font-weight="850">Eight workflow skills</text><text x="60" y="307" text-anchor="start" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="14" font-weight="600">The route selects exactly one primary skill for each phase. Supporting skills add risk coverage without replacing the primary.</text><g><g filter="url(#shadow)" opacity="1">
+    <rect x="60" y="332" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="61" y="333" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="230" y="362" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-intake-route</text><text x="230" y="386" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">new, unclear, or mixed requests</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="440" y="332" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.4" opacity="0.96"/>
+    <rect x="441" y="333" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="610" y="362" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-bug-rca</text><text x="610" y="386" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">bugs, regressions, and incidents</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="820" y="332" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="821" y="333" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="990" y="362" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-feature-delivery</text><text x="990" y="386" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">features and vertical delivery</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1200" y="332" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1201" y="333" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1370" y="362" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-architecture-refactor</text><text x="1370" y="386" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">architecture, migration, and refactor</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="60" y="440" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#fb7185" stroke-width="1.4" opacity="0.96"/>
+    <rect x="61" y="441" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="230" y="470" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-security-audit</text><text x="230" y="494" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">identity, privacy, and security</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="440" y="440" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="441" y="441" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="610" y="470" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-platform-release</text><text x="610" y="494" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">cloud, delivery, rollback, and recovery</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="820" y="440" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#a78bfa" stroke-width="1.4" opacity="0.96"/>
+    <rect x="821" y="441" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="990" y="470" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-genai-assurance</text><text x="990" y="494" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">models, prompts, agents, RAG, and evals</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1200" y="440" width="340" height="86" rx="18" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1201" y="441" width="338" height="29.240000000000002" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1370" y="470" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">valdris-proof-handoff</text><text x="1370" y="494" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="12" font-weight="600">final proof, readiness, and handoff</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="60" y="575" width="450" height="96" rx="18" fill="url(#softFill)" stroke="#38bdf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="61" y="576" width="448" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="285" y="605" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">Intake phase</text><text x="285" y="633" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">validate request, classification, authority, and route</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="575" y="575" width="450" height="96" rx="18" fill="url(#softFill)" stroke="#818cf8" stroke-width="1.4" opacity="0.96"/>
+    <rect x="576" y="576" width="448" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="800" y="605" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">Delivery phase</text><text x="800" y="633" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">run the selected delivery primary with bounded support</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="1090" y="575" width="450" height="96" rx="18" fill="url(#softFill)" stroke="#2dd4bf" stroke-width="1.4" opacity="0.96"/>
+    <rect x="1091" y="576" width="448" height="32.64" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1315" y="605" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="20" font-weight="800">Proof-handoff phase</text><text x="1315" y="633" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">independently verify the packet and final claim</text></g><line x1="510" y1="623" x2="575" y2="623" stroke="#38bdf8" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><line x1="1025" y1="623" x2="1090" y2="623" stroke="#2dd4bf" stroke-width="2" stroke-opacity="0.82" marker-end="url(#arrow)"/><g><g filter="url(#shadow)" opacity="1">
+    <rect x="100" y="720" width="660" height="92" rx="18" fill="url(#softFill)" stroke="#f59e0b" stroke-width="1.4" opacity="0.96"/>
+    <rect x="101" y="721" width="658" height="31.28" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="430" y="750" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="800">Durable goal control</text><text x="430" y="779" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">objective + budgets + checkpoints + stopping conditions + expected revision</text></g><g><g filter="url(#shadow)" opacity="1">
+    <rect x="840" y="720" width="660" height="92" rx="18" fill="url(#softFill)" stroke="#22c55e" stroke-width="1.4" opacity="0.96"/>
+    <rect x="841" y="721" width="658" height="31.28" rx="18" fill="#ffffff" opacity="0.035"/>
+  </g><text x="1170" y="750" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="21" font-weight="800">Additive assurance</text><text x="1170" y="779" text-anchor="middle" fill="#94a3b8" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="13" font-weight="600">Layer 0 + applicable production domains + cross-cutting concerns + domain packs</text></g><text x="800" y="862" text-anchor="middle" fill="#e5e7eb" font-family="Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Arial" font-size="16" font-weight="800">Later discoveries may add controls or raise the tier. They may not weaken the immutable route.</text></svg>

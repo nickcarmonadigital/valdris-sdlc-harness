@@ -1,5 +1,11 @@
 # Knowledge Vault Update Log
 
+## 2026-07-26
+
+- **Update**: Clarified that the eight workflow skills select phase procedures while commissioned work lanes select project context and risk emphasis; the route can bind both without treating them as one taxonomy.
+- **Update**: Replaced stale public diagrams with source-checked maps for the complete harness, proof-to-done flow, durable goal loop, Layer 0 plus thirteen-domain assurance, runtime connectivity, and structural/semantic/authoritative trust.
+- **Update**: Required commissioned packs to be reviewed and committed before target-local routing, and placed independent review after all applicable technical evidence so later gate or source changes must earn a fresh review.
+
 ## 2026-07-23
 
 - **Update**: Bound authoritative OCI execution to an explicit trusted-host-operator versus isolated UID/GID 65534 workload policy with no host mounts, network, capsule access, or ambient secrets; a distinct signed authority-separation receipt is now required and same-principal host compromise remains non-authoritative.
