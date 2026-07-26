@@ -68,7 +68,7 @@ These words have exact jobs in Valdris:
 | Term | Plain meaning |
 | --- | --- |
 | **Route** | The locked plan for this request |
-| **Lane** | The kind of work, such as a bug, feature, security review, or release |
+| **Lane** | Project context that loads owners, commands, runtime rules, and gate focus |
 | **Goal loop** | Check the goal, do a small step, test it, and repeat |
 | **Stage** | One ordered part of the work |
 | **Gate** | A rule that can stop the work |
@@ -78,6 +78,10 @@ These words have exact jobs in Valdris:
 The route is not free-form agent advice. It binds the request, risk level,
 skills, controls, and source facts. Later findings may add stronger checks. They
 may not quietly remove checks or lower the risk level.
+
+Work type and lane are not the same. A work type names a shared ability, such as
+bug RCA or feature delivery. A lane adds facts for one project. The generated
+project adapter supplies its lane values.
 
 ### Layer 0 comes first
 
@@ -170,10 +174,14 @@ Valdris keeps three kinds of claims separate.
 | --- | --- |
 | **Structural** | The right files, fields, paths, and digests exist |
 | **Semantic** | The evidence proves the control’s real meaning |
-| **Authoritative** | A trusted outside system or person signed the result |
+| **Authoritative** | Trusted outside execution and rollback-safe provider state back the proof |
 
 A local JSON file can prove structure. It cannot turn itself into an App Store,
 cloud provider, protected CI, or compliance receipt.
+
+Human approval can allow a decision. It cannot replace missing or failed
+technical proof. Authoritative closure also needs signed receipts from
+independently trusted execution and rollback-resistant provider state.
 
 The current package is `0.9.0-rc.1`. Valdris has strong local structural gates.
 It also supports semantic checks for a commissioned target. Authoritative
@@ -337,6 +345,7 @@ npm run build
 npm run knowledge:gate
 npm run skills:gate
 npm run catalog:gate
+npm run dependency:audit
 npm run code-intelligence:scan
 npm run code-intelligence:gate
 npm run verify:harness
