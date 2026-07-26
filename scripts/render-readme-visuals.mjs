@@ -966,51 +966,61 @@ function proofToDoneFlow() {
   );
   const stages = [
     {
+      key: "implementation-claim",
       title: ["Implementation", "claim"],
       sub: "state the claim and scope",
       color: colors.cyan,
     },
     {
+      key: "code-intelligence",
       title: ["Code", "intelligence"],
       sub: "map code, change, and impact",
       color: colors.blue,
     },
     {
+      key: "typed-evidence",
       title: ["Typed", "evidence"],
       sub: "bind evidence to controls",
       color: colors.teal,
     },
     {
+      key: "control-validation",
       title: ["Control-specific", "validation"],
       sub: "prove the named control",
       color: colors.violet,
     },
     {
+      key: "red-zone-approval",
       title: ["Red Zone", "approval"],
       sub: "human authority when required",
       color: colors.amber,
     },
     {
+      key: "smoke-testing",
       title: ["Smoke", "testing"],
       sub: "produce final applicable gate evidence",
       color: colors.teal,
     },
     {
+      key: "independent-review",
       title: ["Independent", "review"],
       sub: "sign the frozen evidence bundle",
       color: colors.blue,
     },
     {
+      key: "finish-line-gate",
       title: ["Finish-line", "gate"],
       sub: "confirm every required criterion",
       color: colors.cyan,
     },
     {
+      key: "final-run-packet",
       title: ["Final run", "packet"],
       sub: "bind proof, review, and catalogs",
       color: colors.violet,
     },
     {
+      key: "done",
       title: ["DONE", "at achieved level"],
       sub: "state structural, semantic, or authoritative",
       color: colors.green,
@@ -1023,6 +1033,8 @@ function proofToDoneFlow() {
     const position = top ? index : index - 5;
     const x = top ? topXs[position] : bottomXs[position];
     const y = top ? 154 : 390;
+    const next = stages[index + 1]?.key ?? "complete";
+    s += `<g id="proof-stage-${index + 1}" data-contract="proof-to-done.v1" data-key="${stage.key}" data-order="${index + 1}" data-next="${next}" data-x="${x}" data-y="${y}" aria-label="${esc(stage.title.join(" "))}">`;
     s += card(x, y, 254, 158, stage.title, {
       badge: String(index + 1),
       sub: stage.sub,
@@ -1032,6 +1044,7 @@ function proofToDoneFlow() {
       align: "center",
       maxChars: 22,
     });
+    s += `</g>`;
     if (top && index < 4)
       s += lineArrow(x + 254, y + 79, topXs[position + 1] - 10, y + 79);
     if (!top && index < 9)
