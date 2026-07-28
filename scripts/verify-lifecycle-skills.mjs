@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {
+  cpSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -47,6 +48,10 @@ function writeCommissionedAdapter(repo, adapterRoot, overrides = {}) {
       implicitInvocation: true,
       workflowCatalogSize: registry.skills.length,
       lifecycleCatalogSize: registry.lifecycleSkills.length,
+      lifecycleRouteCommand:
+        adapterRoot === "."
+          ? 'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"'
+          : 'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"',
       ...overrides,
     },
   };
@@ -93,6 +98,13 @@ const cases = [
   ["Refresh commissioned pack and promote this run", "valdris-trust-improve"],
   ["$valdris-prove-govern, finish this", "valdris-prove-govern"],
   ["$valdris-trust-improve: promote now", "valdris-trust-improve"],
+  [
+    "Do not use $valdris-commission; use $valdris-trust-improve to promote this run",
+    "valdris-trust-improve",
+  ],
+  ["Validate proof/proof.json", "valdris-prove-govern"],
+  ["Check run/mode.json", "valdris-connect-runtime"],
+  ["Inspect runtime-connectivity", "valdris-connect-runtime"],
 ];
 
 for (const [request, expected] of cases) {
@@ -113,6 +125,17 @@ assert(
   ambiguous.selectedSkill === "valdris-route-goal" &&
     ambiguous.reason === "lifecycle ambiguity fallback",
   "ambiguous lifecycle intent must fall back to valdris-route-goal",
+);
+
+const invalidTieBreak = structuredClone(registry);
+invalidTieBreak.lifecycleSelection.tieBreakOrder = [];
+const invalidTieBreakValidation = validateSkillRegistry(invalidTieBreak, ROOT);
+assert(
+  !invalidTieBreakValidation.valid &&
+    invalidTieBreakValidation.problems.some((problem) =>
+      problem.includes("lifecycleSelection.tieBreakOrder"),
+    ),
+  "the registry gate must reject lifecycle tie-break drift",
 );
 
 for (let sequence = 1; sequence <= 7; sequence += 1) {
@@ -292,6 +315,63 @@ try {
   rmSync(writeBoundaryRoot, { recursive: true, force: true });
 }
 
+const projectionRepairRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-projection-repair-"),
+);
+try {
+  cpSync(path.join(ROOT, "skills"), path.join(projectionRepairRoot, "skills"), {
+    recursive: true,
+  });
+  mkdirSync(path.join(projectionRepairRoot, "scripts"));
+  for (const script of ["skill-registry-gate.mjs", "control-gate-lib.mjs"])
+    copyFileSync(
+      path.join(ROOT, "scripts", script),
+      path.join(projectionRepairRoot, "scripts", script),
+    );
+  rmSync(path.join(projectionRepairRoot, "skills", "codex-routing.yaml"));
+  const repairResult = spawnSync(
+    process.execPath,
+    [
+      path.join(projectionRepairRoot, "scripts", "skill-registry-gate.mjs"),
+      "--repo",
+      projectionRepairRoot,
+      "--write-routing",
+    ],
+    { cwd: projectionRepairRoot, encoding: "utf8", timeout: 10_000 },
+  );
+  assert(
+    repairResult.status === 0 &&
+      existsSync(
+        path.join(projectionRepairRoot, "skills", "codex-routing.yaml"),
+      ),
+    `the registry gate must regenerate a missing canonical routing projection: ${repairResult.stdout}${repairResult.stderr}`,
+  );
+} finally {
+  rmSync(projectionRepairRoot, { recursive: true, force: true });
+}
+
+const missingRouteCommandRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-adapter-command-"),
+);
+try {
+  writeCommissionedAdapter(missingRouteCommandRoot, ".", {
+    lifecycleRouteCommand: undefined,
+  });
+  const missingRouteCommandValidation = validateSkillRegistry(
+    registry,
+    missingRouteCommandRoot,
+  );
+  assert(
+    !missingRouteCommandValidation.valid &&
+      missingRouteCommandValidation.problems.some((problem) =>
+        problem.includes("lifecycleRouteCommand"),
+      ),
+    "the registry gate must reject an absent commissioned lifecycle router command",
+  );
+} finally {
+  rmSync(missingRouteCommandRoot, { recursive: true, force: true });
+}
+
 const workflowNames = new Set(registry.skills.map((skill) => skill.name));
 for (const skill of registry.lifecycleSkills) {
   assert(
@@ -339,6 +419,10 @@ console.log(
       boundedDecisionOutputPassed: true,
       commissioningCasesPassed: 4,
       fallbackConfigurationGuardPassed: true,
+      tieBreakContractPassed: true,
+      ownedSurfaceCasesPassed: 3,
+      projectionRepairPassed: true,
+      commissionedRouteCommandGuardPassed: true,
       routingProjectionBoundaryPassed: true,
     },
     null,

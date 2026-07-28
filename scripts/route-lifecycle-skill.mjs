@@ -74,6 +74,21 @@ function scoreSkill(skill, request) {
   };
 }
 
+function ownedSurfaceMatches(skill, request) {
+  const systemForms = [
+    normalize(skill.system),
+    normalize(skill.system).replaceAll("-", " "),
+  ].filter(Boolean);
+  const artifactForms = (skill.requiredOutputs || []).flatMap((output) =>
+    (String(output).match(/[a-z0-9_.-]+\/[a-z0-9_./-]+/gi) || []).map(
+      normalize,
+    ),
+  );
+  return [...new Set([...systemForms, ...artifactForms])].filter((surface) =>
+    request.includes(surface),
+  );
+}
+
 function regularFileWithin(root, target) {
   if (
     !existsSync(target) ||
@@ -126,12 +141,17 @@ function commissionedAdapter(repoRoot, registry, registryText) {
     const assetRoutingText = regularFileWithin(ASSET_ROOT, assetRouting)
       ? readFileSync(assetRouting, "utf8")
       : null;
+    const expectedLifecycleCommand =
+      target === nested
+        ? 'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"'
+        : 'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"';
     const current =
       adapter.schema === "uash.project-adapter.v2" &&
       adapter.skillRouter?.schema === registry.schema &&
       adapter.skillRouter?.registry === "skills/registry.json" &&
       adapter.skillRouter?.codexRouting === "skills/codex-routing.yaml" &&
       adapter.skillRouter?.implicitInvocation === true &&
+      adapter.skillRouter?.lifecycleRouteCommand === expectedLifecycleCommand &&
       adapter.skillRouter?.workflowCatalogSize === currentWorkflowCount &&
       adapter.skillRouter?.lifecycleCatalogSize === currentLifecycleCount &&
       adapterRegistry?.schema === registry.schema &&
@@ -178,6 +198,7 @@ function main() {
   let selected;
   let matchedTriggers = [];
   let matchedPrimaryFor = [];
+  let matchedOwnedSurfaces = [];
   let reason;
 
   if (args.stage) {
@@ -186,38 +207,57 @@ function main() {
       throw new Error(`unknown lifecycle stage or skill: ${args.stage}`);
     reason = "explicit lifecycle stage";
   } else {
-    const explicit = lifecycleSkills.find((skill) =>
-      new RegExp(`(?:^|\\s)${skill.name}(?:\\s|$)`, "i").test(request),
-    );
-    if (explicit) {
-      selected = explicit;
+    const explicit = lifecycleSkills
+      .filter((skill) =>
+        new RegExp(`(?:^|\\s)${skill.name}(?:\\s|$)`, "i").test(request),
+      )
+      .sort((left, right) => right.sequence - left.sequence);
+    if (explicit.length) {
+      selected = explicit[0];
       reason = "explicit lifecycle skill invocation";
     } else {
-      const ranked = lifecycleSkills
-        .map((skill) => scoreSkill(skill, request))
-        .filter((candidate) => candidate.phraseCount > 0)
+      const owned = lifecycleSkills
+        .map((skill) => ({
+          skill,
+          matches: ownedSurfaceMatches(skill, request),
+        }))
+        .filter((candidate) => candidate.matches.length > 0)
         .sort(
           (left, right) =>
             right.skill.sequence - left.skill.sequence ||
-            right.specificity - left.specificity ||
-            right.phraseCount - left.phraseCount ||
             left.skill.name.localeCompare(right.skill.name),
         );
-      if (ranked.length) {
-        selected = ranked[0].skill;
-        matchedTriggers = ranked[0].matchedTriggers;
-        matchedPrimaryFor = ranked[0].matchedPrimaryFor;
-        reason = "deterministic lifecycle trigger match";
+      if (owned.length) {
+        selected = owned[0].skill;
+        matchedOwnedSurfaces = owned[0].matches;
+        reason = "deterministic lifecycle owned-surface match";
       } else {
-        selected = lifecycleSkills.find(
-          (skill) =>
-            skill.name === registry.lifecycleSelection.ambiguityFallback,
-        );
-        if (!selected)
-          throw new Error(
-            `lifecycle ambiguity fallback skill not found in registry: ${registry.lifecycleSelection?.ambiguityFallback}`,
+        const ranked = lifecycleSkills
+          .map((skill) => scoreSkill(skill, request))
+          .filter((candidate) => candidate.phraseCount > 0)
+          .sort(
+            (left, right) =>
+              right.skill.sequence - left.skill.sequence ||
+              right.specificity - left.specificity ||
+              right.phraseCount - left.phraseCount ||
+              left.skill.name.localeCompare(right.skill.name),
           );
-        reason = "lifecycle ambiguity fallback";
+        if (ranked.length) {
+          selected = ranked[0].skill;
+          matchedTriggers = ranked[0].matchedTriggers;
+          matchedPrimaryFor = ranked[0].matchedPrimaryFor;
+          reason = "deterministic lifecycle trigger match";
+        } else {
+          selected = lifecycleSkills.find(
+            (skill) =>
+              skill.name === registry.lifecycleSelection.ambiguityFallback,
+          );
+          if (!selected)
+            throw new Error(
+              `lifecycle ambiguity fallback skill not found in registry: ${registry.lifecycleSelection?.ambiguityFallback}`,
+            );
+          reason = "lifecycle ambiguity fallback";
+        }
       }
     }
   }
@@ -237,6 +277,7 @@ function main() {
     reason,
     matchedTriggers,
     matchedPrimaryFor,
+    matchedOwnedSurfaces,
     requiredInputs: selected.requiredInputs,
     requiredOutputs: selected.requiredOutputs,
     requiredGates: selected.requiredGates,

@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -35,6 +42,12 @@ const REQUIRED_LIFECYCLE_SKILLS = [
   "valdris-execute-workflow",
   "valdris-prove-govern",
   "valdris-trust-improve",
+];
+const REQUIRED_LIFECYCLE_TIE_BREAK_ORDER = [
+  "explicit lifecycle skill invocation",
+  "requested Valdris system or owned artifact",
+  "furthest downstream requested outcome",
+  "route and goal control when lifecycle intent remains ambiguous",
 ];
 
 function allSkills(document) {
@@ -75,6 +88,18 @@ function appendYamlList(lines, key, values, indent = 4) {
   lines.push(`${" ".repeat(indent)}${key}:`);
   for (const value of values || [])
     lines.push(`${" ".repeat(indent + 2)}- ${yamlString(value)}`);
+}
+
+function existingDirectoryWithinRepo(repoRoot, target) {
+  if (
+    !existsSync(repoRoot) ||
+    !existsSync(target) ||
+    lstatSync(target).isSymbolicLink() ||
+    !lstatSync(target).isDirectory()
+  )
+    return false;
+  const relative = path.relative(realpathSync(repoRoot), realpathSync(target));
+  return !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 export function renderCodexRoutingYaml(document, repoRoot) {
@@ -233,6 +258,13 @@ export function validateSkillRegistry(document, repoRoot) {
     problems.push("skill registry lifecycleSelection.maxPrimary must be 1");
   if (!nonEmpty(document.lifecycleSelection?.policy))
     problems.push("skill registry lifecycleSelection.policy is required");
+  if (
+    JSON.stringify(document.lifecycleSelection?.tieBreakOrder) !==
+    JSON.stringify(REQUIRED_LIFECYCLE_TIE_BREAK_ORDER)
+  )
+    problems.push(
+      "skill registry lifecycleSelection.tieBreakOrder must match the executable routing contract",
+    );
   if (document.lifecycleSelection?.ambiguityFallback !== "valdris-route-goal")
     problems.push(
       "skill registry lifecycle ambiguity fallback must be valdris-route-goal",
@@ -460,6 +492,15 @@ export function validateSkillRegistry(document, repoRoot) {
         problems.push(
           "project adapter skillRouter.lifecycleCatalogSize must be 7",
         );
+      if (
+        ![
+          'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"',
+          'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"',
+        ].includes(adapter.skillRouter?.lifecycleRouteCommand)
+      )
+        problems.push(
+          "project adapter skillRouter.lifecycleRouteCommand must invoke the commissioned lifecycle router against the target root",
+        );
     }
   }
   if (
@@ -566,11 +607,14 @@ async function main() {
       const registryRoot = path.resolve(target, "..", "..");
       const canonicalRegistry = path.join(repoRoot, "skills", "registry.json");
       const routingTarget = path.join(repoRoot, "skills", "codex-routing.yaml");
+      const routingParent = path.dirname(routingTarget);
       if (
         path.resolve(target) !== canonicalRegistry ||
         registryRoot !== repoRoot ||
         !existingFileWithinRepo(repoRoot, target) ||
-        !existingFileWithinRepo(repoRoot, routingTarget)
+        !existingDirectoryWithinRepo(repoRoot, routingParent) ||
+        (existsSync(routingTarget) &&
+          !existingFileWithinRepo(repoRoot, routingTarget))
       )
         throw new Error(
           "routing projection write requires the existing canonical skills registry and routing file inside --repo",
