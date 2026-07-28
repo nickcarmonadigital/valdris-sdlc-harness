@@ -4,11 +4,13 @@ import {
   existsSync,
   lstatSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -167,19 +169,9 @@ function explicitInvocationMatches(lifecycleSkills, source) {
     let negative = false;
     for (const match of request.matchAll(matcher)) {
       const before = request.slice(0, match.index);
-      const boundary = Math.max(
-        before.lastIndexOf(";"),
-        before.lastIndexOf(","),
-        before.lastIndexOf("."),
-        before.lastIndexOf(":"),
-        before.lastIndexOf("\n"),
-        before.lastIndexOf(" but "),
-        before.lastIndexOf(" instead "),
-      );
-      const clause = before.slice(Math.max(boundary + 1, before.length - 64));
       if (
-        /\b(?:do\s+not|don't|dont|not|never|avoid|exclude|without)\b/u.test(
-          clause,
+        /(?:^|[\s,;:.])(?:do\s+not|don't|dont|not|never|avoid|exclude|without|rather\s+than)\s+(?:(?:use|using|invoke|select|run|choose)\s+)?$/u.test(
+          before.slice(-96),
         )
       )
         negative = true;
@@ -203,6 +195,110 @@ function regularFileWithin(root, target) {
     return false;
   const relative = path.relative(realpathSync(root), realpathSync(target));
   return !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function gitPath(root, target) {
+  return path.relative(root, target).replaceAll("\\", "/") || ".";
+}
+
+function runGit(repo, args) {
+  return spawnSync("git", ["-C", repo, ...args], {
+    encoding: "utf8",
+    windowsHide: true,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+}
+
+function collectRegularFiles(root) {
+  const files = [];
+  const pending = [root];
+  while (pending.length) {
+    const directory = pending.pop();
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) return null;
+      if (entry.isDirectory()) pending.push(target);
+      else if (entry.isFile()) files.push(target);
+      else return null;
+      if (files.length + pending.length > 10_000) return null;
+    }
+  }
+  return files;
+}
+
+function committedCommissioningSnapshot(repoRoot, adapterRoot) {
+  const topLevel = runGit(repoRoot, ["rev-parse", "--show-toplevel"]);
+  if (topLevel.status !== 0 || !topLevel.stdout.trim())
+    return { current: false, reason: "adapter-uncommitted" };
+  const worktreeRoot = realpathSync(topLevel.stdout.trim());
+  const adapterRelative = path.relative(
+    worktreeRoot,
+    realpathSync(adapterRoot),
+  );
+  if (adapterRelative.startsWith("..") || path.isAbsolute(adapterRelative))
+    return { current: false, reason: "adapter-uncommitted" };
+
+  const targetRootFiles = ["AGENTS.md", "CLAUDE.md"].map((file) =>
+    path.join(worktreeRoot, file),
+  );
+  if (
+    targetRootFiles.some((target) => !regularFileWithin(worktreeRoot, target))
+  )
+    return { current: false, reason: "adapter-uncommitted" };
+
+  const isNestedPack =
+    path.basename(adapterRoot).toLowerCase() === ".valdris-harness";
+  const packFiles = isNestedPack
+    ? collectRegularFiles(adapterRoot)
+    : [
+        path.join(adapterRoot, "project-adapter.json"),
+        path.join(adapterRoot, "skills", "registry.json"),
+        path.join(adapterRoot, "skills", "codex-routing.yaml"),
+      ];
+  if (
+    !packFiles?.length ||
+    packFiles.some((target) => !regularFileWithin(adapterRoot, target))
+  )
+    return { current: false, reason: "adapter-uncommitted" };
+
+  const requiredPaths = [...packFiles, ...targetRootFiles].map((target) =>
+    gitPath(worktreeRoot, target),
+  );
+  const scopePaths = isNestedPack
+    ? [gitPath(worktreeRoot, adapterRoot), "AGENTS.md", "CLAUDE.md"]
+    : [...requiredPaths];
+  const status = runGit(worktreeRoot, [
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=all",
+    "--",
+    ...scopePaths,
+  ]);
+  if (status.status !== 0 || status.stdout.length)
+    return { current: false, reason: "adapter-uncommitted" };
+
+  const tracked = runGit(worktreeRoot, ["ls-files", "-z", "--", ...scopePaths]);
+  const committed = runGit(worktreeRoot, [
+    "ls-tree",
+    "-r",
+    "--name-only",
+    "-z",
+    "HEAD",
+    "--",
+    ...scopePaths,
+  ]);
+  if (tracked.status !== 0 || committed.status !== 0)
+    return { current: false, reason: "adapter-uncommitted" };
+  const trackedPaths = new Set(tracked.stdout.split("\0").filter(Boolean));
+  const committedPaths = new Set(committed.stdout.split("\0").filter(Boolean));
+  if (
+    requiredPaths.some(
+      (target) => !trackedPaths.has(target) || !committedPaths.has(target),
+    )
+  )
+    return { current: false, reason: "adapter-uncommitted" };
+  return { current: true, reason: "adapter-current" };
 }
 
 function commissionedAdapter(repoRoot, registry, registryText) {
@@ -250,7 +346,7 @@ function commissionedAdapter(repoRoot, registry, registryText) {
       path.basename(adapterRoot) === ".valdris-harness"
         ? 'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"'
         : 'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"';
-    const current =
+    const metadataCurrent =
       adapter.schema === "uash.project-adapter.v2" &&
       adapter.skillRouter?.schema === registry.schema &&
       adapter.skillRouter?.registry === "skills/registry.json" &&
@@ -269,10 +365,14 @@ function commissionedAdapter(repoRoot, registry, registryText) {
       assetRoutingText &&
       sha256(adapterRoutingText.replace(/\r\n/g, "\n")) ===
         sha256(assetRoutingText.replace(/\r\n/g, "\n"));
+    const snapshot = metadataCurrent
+      ? committedCommissioningSnapshot(repoRoot, adapterRoot)
+      : { current: false, reason: "adapter-stale" };
+    const current = metadataCurrent && snapshot.current;
     return {
       commissioned: Boolean(current),
       adapterPath: path.relative(repoRoot, target).replaceAll("\\", "/"),
-      reason: current ? "adapter-current" : "adapter-stale",
+      reason: current ? "adapter-current" : snapshot.reason,
     };
   } catch {
     return {

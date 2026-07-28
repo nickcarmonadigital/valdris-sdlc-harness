@@ -62,6 +62,34 @@ function writeCommissionedAdapter(repo, adapterRoot, overrides = {}) {
   );
 }
 
+function initializeCommissioningFixture(repo, { commit = true } = {}) {
+  writeFileSync(path.join(repo, "AGENTS.md"), "# Fixture agents\n");
+  writeFileSync(path.join(repo, "CLAUDE.md"), "# Fixture Claude\n");
+  for (const args of [
+    ["init"],
+    ["config", "user.name", "Valdris Fixture"],
+    ["config", "user.email", "fixture@example.com"],
+    ["add", "--all"],
+  ]) {
+    const result = spawnSync("git", ["-C", repo, ...args], {
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    assert(
+      result.status === 0,
+      `fixture git ${args[0]} failed: ${result.stderr}`,
+    );
+  }
+  if (commit) {
+    const result = spawnSync(
+      "git",
+      ["-C", repo, "commit", "-m", "fixture: commission harness"],
+      { encoding: "utf8", windowsHide: true },
+    );
+    assert(result.status === 0, `fixture git commit failed: ${result.stderr}`);
+  }
+}
+
 function decision(request) {
   const result = run(["--request", request]);
   assert(
@@ -127,6 +155,14 @@ const cases = [
   [
     "Inspect notvaldris-prove-govern and promote this run",
     "valdris-trust-improve",
+  ],
+  [
+    "avoid $valdris-trust-improve and use $valdris-commission",
+    "valdris-commission",
+  ],
+  [
+    "use $valdris-commission rather than $valdris-trust-improve",
+    "valdris-commission",
   ],
 ];
 
@@ -296,6 +332,7 @@ try {
   const rootOnly = path.join(commissioningRoot, "root-only");
   mkdirSync(rootOnly);
   writeCommissionedAdapter(rootOnly, ".");
+  initializeCommissioningFixture(rootOnly);
   const rootDecision = JSON.parse(
     run(["--request", "start a Valdris run"], rootOnly).stdout,
   );
@@ -309,6 +346,7 @@ try {
   const nestedOnly = path.join(commissioningRoot, "nested-only");
   mkdirSync(nestedOnly);
   writeCommissionedAdapter(nestedOnly, ".valdris-harness");
+  initializeCommissioningFixture(nestedOnly);
   const nestedDecision = JSON.parse(
     run(["--request", "start a Valdris run"], nestedOnly).stdout,
   );
@@ -335,6 +373,7 @@ try {
   writeCommissionedAdapter(stale, ".", {
     lifecycleCatalogSize: registry.lifecycleSkills.length - 1,
   });
+  initializeCommissioningFixture(stale);
   const staleDecision = JSON.parse(
     run(["--request", "start a Valdris run"], stale).stdout,
   );
@@ -342,6 +381,33 @@ try {
     staleDecision.commissioned === false &&
       staleDecision.commissioningReason === "adapter-stale",
     "a stale adapter must remain uncommissioned",
+  );
+
+  const uncommitted = path.join(commissioningRoot, "uncommitted");
+  mkdirSync(uncommitted);
+  writeCommissionedAdapter(uncommitted, ".valdris-harness");
+  initializeCommissioningFixture(uncommitted, { commit: false });
+  const uncommittedDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], uncommitted).stdout,
+  );
+  assert(
+    uncommittedDecision.commissioned === false &&
+      uncommittedDecision.commissioningReason === "adapter-uncommitted",
+    "an uncommitted generated pack must not be commissioned",
+  );
+
+  const dirty = path.join(commissioningRoot, "dirty");
+  mkdirSync(dirty);
+  writeCommissionedAdapter(dirty, ".valdris-harness");
+  initializeCommissioningFixture(dirty);
+  writeFileSync(path.join(dirty, "CLAUDE.md"), "# Dirty fixture\n");
+  const dirtyDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], dirty).stdout,
+  );
+  assert(
+    dirtyDecision.commissioned === false &&
+      dirtyDecision.commissioningReason === "adapter-uncommitted",
+    "a dirty target-root loader must invalidate commissioning",
   );
 } finally {
   rmSync(commissioningRoot, { recursive: true, force: true });
@@ -627,12 +693,12 @@ console.log(
       boundedDecisionOutputPassed: true,
       atomicDecisionReplacementPassed: true,
       hardLinkOutputRejected: true,
-      commissioningCasesPassed: 5,
+      commissioningCasesPassed: 7,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,
       phraseBoundaryCasesPassed: 4,
-      negatedInvocationCasesPassed: 4,
+      negatedInvocationCasesPassed: 6,
       routeDependentAssurancePassed: true,
       directPackCommandDiscoveryPassed: true,
       projectionRepairPassed: true,
