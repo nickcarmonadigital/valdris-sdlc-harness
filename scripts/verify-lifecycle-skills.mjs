@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { reviewTrustStoreSha256 } from "./review-gate.mjs";
 import { validateSkillRegistry } from "./skill-registry-gate.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -25,12 +26,33 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function run(args, repo = ROOT, router = ROUTER) {
+function run(args, repo = ROOT, router = ROUTER, environment = {}) {
+  const env = { ...process.env };
+  delete env.UASH_REVIEW_TRUST_SHA256;
+  Object.assign(env, environment);
   return spawnSync(process.execPath, [router, "--repo", repo, ...args], {
     cwd: ROOT,
     encoding: "utf8",
     timeout: 10_000,
+    env,
   });
+}
+
+function operatorTrustEnvironment(repo) {
+  const resolvedRepo = path.resolve(repo);
+  const packRoot =
+    path.basename(resolvedRepo) === ".valdris-harness"
+      ? resolvedRepo
+      : path.join(resolvedRepo, ".valdris-harness");
+  const trust = JSON.parse(
+    readFileSync(
+      path.join(packRoot, "controls", "review-trust.v1.json"),
+      "utf8",
+    ),
+  );
+  return {
+    UASH_REVIEW_TRUST_SHA256: reviewTrustStoreSha256(trust),
+  };
 }
 
 function writeCommissionedAdapter(repo, adapterRoot, overrides = {}) {
@@ -394,8 +416,22 @@ try {
   mkdirSync(nestedOnly);
   initializeCommissioningFixture(nestedOnly);
   generateCommissionedFixture(nestedOnly);
-  const nestedDecision = JSON.parse(
+  const missingPinDecision = JSON.parse(
     run(["--request", "start a Valdris run"], nestedOnly).stdout,
+  );
+  assert(
+    missingPinDecision.commissioned === false &&
+      missingPinDecision.commissioningReason === "adapter-uncommitted",
+    "a generated pack must not commission without an operator-held review trust pin",
+  );
+  const nestedTrustEnvironment = operatorTrustEnvironment(nestedOnly);
+  const nestedDecision = JSON.parse(
+    run(
+      ["--request", "start a Valdris run"],
+      nestedOnly,
+      ROUTER,
+      nestedTrustEnvironment,
+    ).stdout,
   );
   assert(
     nestedDecision.commissioned === true &&
@@ -406,7 +442,12 @@ try {
   );
   const directPackRoot = path.join(nestedOnly, ".valdris-harness");
   const directPackDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], directPackRoot).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      directPackRoot,
+      ROUTER,
+      nestedTrustEnvironment,
+    ).stdout,
   );
   assert(
     directPackDecision.commissioned === true &&
@@ -430,7 +471,12 @@ try {
   fixtureGit(stale, ["add", "--all"]);
   fixtureGit(stale, ["commit", "-m", "fixture: stale adapter"]);
   const staleDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], stale).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      stale,
+      ROUTER,
+      operatorTrustEnvironment(stale),
+    ).stdout,
   );
   assert(
     staleDecision.commissioned === false &&
@@ -443,7 +489,12 @@ try {
   initializeCommissioningFixture(uncommitted);
   generateCommissionedFixture(uncommitted, { commit: false });
   const uncommittedDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], uncommitted).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      uncommitted,
+      ROUTER,
+      operatorTrustEnvironment(uncommitted),
+    ).stdout,
   );
   assert(
     uncommittedDecision.commissioned === false &&
@@ -457,7 +508,12 @@ try {
   generateCommissionedFixture(dirty);
   writeFileSync(path.join(dirty, "CLAUDE.md"), "# Dirty fixture\n");
   const dirtyDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], dirty).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      dirty,
+      ROUTER,
+      operatorTrustEnvironment(dirty),
+    ).stdout,
   );
   assert(
     dirtyDecision.commissioned === false &&
@@ -487,7 +543,12 @@ try {
   fixtureGit(incomplete, ["add", "--all"]);
   fixtureGit(incomplete, ["commit", "-m", "fixture: incomplete pack"]);
   const incompleteDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], incomplete).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      incomplete,
+      ROUTER,
+      operatorTrustEnvironment(incomplete),
+    ).stdout,
   );
   assert(
     incompleteDecision.commissioned === false &&
@@ -501,7 +562,12 @@ try {
   fixtureGit(invalidLoader, ["add", "--all"]);
   fixtureGit(invalidLoader, ["commit", "-m", "fixture: remove loader"]);
   const invalidLoaderDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], invalidLoader).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      invalidLoader,
+      ROUTER,
+      operatorTrustEnvironment(invalidLoader),
+    ).stdout,
   );
   assert(
     invalidLoaderDecision.commissioned === false,
@@ -516,7 +582,12 @@ try {
     ".valdris-harness/scripts/route-lifecycle-skill.mjs",
   ]);
   const concealedDecision = JSON.parse(
-    run(["--request", "start a Valdris run"], concealed).stdout,
+    run(
+      ["--request", "start a Valdris run"],
+      concealed,
+      ROUTER,
+      operatorTrustEnvironment(concealed),
+    ).stdout,
   );
   assert(
     concealedDecision.commissioned === false,
@@ -807,7 +878,7 @@ console.log(
       boundedDecisionOutputPassed: true,
       atomicDecisionReplacementPassed: true,
       hardLinkOutputRejected: true,
-      commissioningCasesPassed: 10,
+      commissioningCasesPassed: 11,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,

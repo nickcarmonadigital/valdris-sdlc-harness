@@ -14,7 +14,6 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validationRuntimeBinding } from "./run-packet-gate.mjs";
-import { reviewTrustStoreSha256 } from "./review-gate.mjs";
 
 const ASSET_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -311,15 +310,8 @@ function committedCommissioningSnapshot(repoRoot, adapterRoot) {
       )
         return { current: false, reason: "adapter-incomplete" };
     }
-    const trust = JSON.parse(
-      readFileSync(
-        path.join(canonicalAdapterRoot, "controls", "review-trust.v1.json"),
-        "utf8",
-      ),
-    );
     validationRuntimeBinding(targetRoot, head.stdout.trim(), {
       runtimeRoot: canonicalAdapterRoot,
-      reviewTrustSha256: reviewTrustStoreSha256(trust),
     });
     return { current: true, reason: "adapter-current" };
   } catch {
