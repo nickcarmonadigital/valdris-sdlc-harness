@@ -19,7 +19,7 @@ This skill owns the **Commissioning** system. Its job is to make a repository re
 
    `npm run commission -- --repo <target> --project-name "<name>" --out <target>/.valdris-harness --yes --force`
 
-   For a recognized generated pack, `--force` automatically imports the existing adapter's stable commissioning answers before replacement. A reviewed `--answers <json>` file overlays only intentional changes. Never use `--force` on an unrecognized directory.
+   For a recognized generated pack, `--force` preserves reviewed commissioning answers and re-detects values that previously came from generated defaults. A reviewed `--answers <json>` file overlays only intentional changes. Never use `--force` on an unrecognized directory.
 
 4. Review `.valdris-harness/commissioning-review.md`, `.valdris-harness/project-adapter.json`, and the bounded loaders added to target-root `AGENTS.md` and `CLAUDE.md`.
 5. Verify the generated workflow and lifecycle registries, all fifteen generated skills, controls, scripts, trust-store placeholders, and portable paths. Run the commissioned portability verifier and the skill-registry, provenance, neutrality, and privacy gates.

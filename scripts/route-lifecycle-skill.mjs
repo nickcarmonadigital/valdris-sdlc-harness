@@ -77,6 +77,12 @@ function isNegatedAt(source, index) {
     .toLowerCase()
     .slice(0, index)
     .slice(-128);
+  if (
+    /(?:^|[\s,;:.])why\s+not\s+(?:(?:use|using|invoke|select|run|choose|inspect|check|validate|read|open|touch|change|create|assemble)\s+)?$/u.test(
+      before,
+    )
+  )
+    return false;
   return /(?:^|[\s,;:.])(?:do\s+not|don't|dont|not|never|avoid|exclude|without|rather\s+than)\s+(?:(?:want|need|plan|intend|try)\s+to\s+)?(?:(?:use|using|invoke|select|run|choose|inspect|check|validate|read|open|touch|change|create|assemble)\s+)?$/u.test(
     before,
   );

@@ -1225,7 +1225,7 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log(
-    `Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional answer overrides. Missing values reuse recognized-pack answers, then defaults.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use preserved answers and defaults for missing values.\n  --force                Refresh a recognized pack while preserving its existing commissioned answers.\n  --print-questions      Print the commissioning question bank and exit.\n`,
+    `Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional reviewed overrides. Prior reviewed answers persist; generated defaults re-detect.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use reviewed answers and current generated defaults.\n  --force                Refresh a recognized pack without resetting reviewed commissioning facts.\n  --print-questions      Print the commissioning question bank and exit.\n`,
   );
 }
 
@@ -1414,12 +1414,15 @@ function defaultFor(question, detected, args) {
 }
 
 async function collectAnswers(args, detected) {
+  const questions = questionList();
+  const questionIds = new Set(questions.map(({ id }) => id));
   const canonicalOut = path.join(
     path.resolve(detected.repoPath),
     ".valdris-harness",
   );
   const requestedOut = path.resolve(args.out || canonicalOut);
   let preserved = {};
+  let preservedSources = {};
   if (
     args.force &&
     requestedOut === canonicalOut &&
@@ -1440,24 +1443,51 @@ async function collectAnswers(args, detected) {
         throw new Error(
           "Refusing --force because the output is not a recognized generated Valdris pack with reusable commissioning answers",
         );
-      const questionIds = new Set(questionList().map(({ id }) => id));
-      preserved = Object.fromEntries(
-        Object.entries(marker.answers).filter(([key]) => questionIds.has(key)),
-      );
+      const previousDetected = {
+        ...(marker.detected || {}),
+        repoPath: detected.repoPath,
+      };
+      for (const question of questions) {
+        if (!Object.hasOwn(marker.answers, question.id)) continue;
+        const source = marker.commissioning?.answerSources?.[question.id];
+        const reviewedSource = source === "reviewed" || source === "explicit";
+        const generatedSource = source === "generated-default";
+        const previousDefault = defaultFor(question, previousDetected, {
+          projectName: null,
+        });
+        if (
+          reviewedSource ||
+          (!generatedSource &&
+            source === undefined &&
+            marker.answers[question.id] !== previousDefault)
+        ) {
+          preserved[question.id] = marker.answers[question.id];
+          preservedSources[question.id] =
+            source === "explicit" ? "explicit" : "reviewed";
+        }
+      }
     }
   }
   const provided = args.answers ? readJsonIfExists(args.answers) : {};
   if (args.answers && !provided)
     throw new Error(`Could not parse answers JSON: ${args.answers}`);
   const answers = { ...preserved, ...(provided ?? {}) };
-  if (args.projectName) answers.project_name = args.projectName;
+  const answerSources = { ...preservedSources };
+  for (const key of Object.keys(provided || {}))
+    if (questionIds.has(key)) answerSources[key] = "reviewed";
+  if (args.projectName) {
+    answers.project_name = args.projectName;
+    answerSources.project_name = "explicit";
+  }
 
   if (args.yes || !process.stdin.isTTY) {
-    for (const question of questionList()) {
-      if (!answers[question.id])
+    for (const question of questions) {
+      if (!answers[question.id]) {
         answers[question.id] = defaultFor(question, detected, args);
+        answerSources[question.id] = "generated-default";
+      }
     }
-    return answers;
+    return { answers, answerSources };
   }
 
   const rl = readline.createInterface({ input, output });
@@ -1469,12 +1499,15 @@ async function collectAnswers(args, detected) {
         const fallback = defaultFor(question, detected, args);
         const response = await rl.question(`${question.label} [${fallback}]: `);
         answers[question.id] = response.trim() || fallback;
+        answerSources[question.id] = response.trim()
+          ? "reviewed"
+          : "generated-default";
       }
     }
   } finally {
     rl.close();
   }
-  return answers;
+  return { answers, answerSources };
 }
 
 function yamlValue(value) {
@@ -2239,7 +2272,7 @@ function renderReviewTrustPinProtocol(adapter) {
   return `\n## Operator-held review trust pin\n\n- Generated trust-store digest: \`${adapter.reviewTrust.generatedDigest}\` using canonical-JSON SHA-256. This commissioning value is informational, not its own authority.\n- Configure the reviewed digest out of band as protected \`UASH_REVIEW_TRUST_SHA256\` before review, packet, bridge, or CI validation.\n- A delivery-agent-controlled shell cannot establish this external trust boundary merely by setting its own environment variable.\n- For governed rotation, a human operator reviews the new store and updates the protected pin before accepting it; validators never learn or auto-update the pin from the checkout under validation.\n`;
 }
 
-function generatePack(args, detected, answers) {
+function generatePack(args, detected, answers, answerSources) {
   const repoRoot = path.resolve(detected.repoPath);
   const canonicalOut = path.join(repoRoot, ".valdris-harness");
   const out = path.resolve(args.out || canonicalOut);
@@ -2299,6 +2332,7 @@ function generatePack(args, detected, answers) {
       questionGroups: QUESTION_GROUPS.length,
       questionCount: questionList().length,
       version: VERSION,
+      answerSources,
     },
     installation: {
       pathBasis: "target-repository-root",
@@ -3400,8 +3434,8 @@ async function main() {
     throw new Error(`Repo path not found: ${requestedRepo}`);
   const repo = fs.realpathSync(requestedRepo);
   const detected = detectRepo(repo);
-  const answers = await collectAnswers(args, detected);
-  const result = generatePack(args, detected, answers);
+  const { answers, answerSources } = await collectAnswers(args, detected);
+  const result = generatePack(args, detected, answers, answerSources);
   console.log(`Generated Valdris SDLC harness pack: ${result.out}`);
   console.log(`Project: ${answers.project_name}`);
   console.log(

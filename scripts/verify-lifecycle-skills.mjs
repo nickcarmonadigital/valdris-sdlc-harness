@@ -253,6 +253,8 @@ const cases = [
     "In the commissioning system, assemble the run packet",
     "valdris-commission",
   ],
+  ["Why not promote this run?", "valdris-trust-improve"],
+  ["Why not connect Codex?", "valdris-connect-runtime"],
   [
     "Do not use $valdris-prove-govern to inspect proof/proof.json",
     "valdris-route-goal",
@@ -727,13 +729,25 @@ try {
       {
         operator_name: "Preserved Operator",
         approval_owner: "Preserved Owner",
-        test_command: "npm run preserved-test",
+        build_command: "npm run preserved-build",
       },
       null,
       2,
     )}\n`,
   );
   generateCommissionedFixture(refresh, { answers: refreshAnswers });
+  writeFileSync(
+    path.join(refresh, "package.json"),
+    `${JSON.stringify(
+      {
+        name: "refresh-fixture",
+        version: "1.0.0",
+        scripts: { test: "node --test" },
+      },
+      null,
+      2,
+    )}\n`,
+  );
   generateCommissionedFixture(refresh, { commit: false, force: true });
   const refreshedAdapterPath = path.join(
     refresh,
@@ -746,8 +760,11 @@ try {
   assert(
     refreshedAdapter.answers.operator_name === "Preserved Operator" &&
       refreshedAdapter.answers.approval_owner === "Preserved Owner" &&
-      refreshedAdapter.answers.test_command === "npm run preserved-test",
-    "a force refresh must automatically preserve stable commissioned answers",
+      refreshedAdapter.answers.build_command === "npm run preserved-build" &&
+      refreshedAdapter.answers.test_command === "npm run test" &&
+      refreshedAdapter.commissioning.answerSources.test_command ===
+        "generated-default",
+    "a force refresh must preserve reviewed answers and re-detect prior generated defaults",
   );
   const overlayAnswers = path.join(commissioningRoot, "overlay-answers.json");
   writeFileSync(
@@ -765,7 +782,8 @@ try {
   assert(
     overlaidAdapter.answers.operator_name === "Preserved Operator" &&
       overlaidAdapter.answers.approval_owner === "Reviewed New Owner" &&
-      overlaidAdapter.answers.test_command === "npm run preserved-test",
+      overlaidAdapter.answers.build_command === "npm run preserved-build" &&
+      overlaidAdapter.answers.test_command === "npm run test",
     "reviewed refresh answers must overlay preserved answers without resetting unrelated facts",
   );
 } finally {
@@ -1014,7 +1032,8 @@ const commissionMarkdown = readFileSync(
 );
 assert(
   commissionMarkdown.includes("--yes --force") &&
-    commissionMarkdown.includes("automatically imports") &&
+    commissionMarkdown.includes("preserves reviewed commissioning answers") &&
+    commissionMarkdown.includes("re-detects values") &&
     commissionMarkdown.includes("--answers <json>") &&
     commissionMarkdown.includes("unrecognized directory"),
   "commissioning refresh must preserve existing answers and require a guarded --force command",
@@ -1063,10 +1082,12 @@ console.log(
       negatedInvocationCasesPassed: 6,
       negatedPlainLanguageCasesPassed: 3,
       coordinatedNegationCasesPassed: 3,
+      whyNotSuggestionCasesPassed: 2,
       ownedSystemPriorityPassed: true,
       trustPinRecoveryReasonPassed: true,
       crlfCommissioningCheckoutPassed: true,
       refreshAnswersPreserved: true,
+      refreshGeneratedDefaultsRedetected: true,
       routeDependentAssurancePassed: true,
       directPackCommandDiscoveryPassed: true,
       projectionRepairPassed: true,
