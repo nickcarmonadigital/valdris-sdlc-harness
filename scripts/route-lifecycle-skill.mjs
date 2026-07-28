@@ -14,6 +14,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { portableManifestSha256 } from "./control-gate-lib.mjs";
+import { REVIEW_TRUST_SHA256_ENV } from "./review-gate.mjs";
 import { validationRuntimeBinding } from "./run-packet-gate.mjs";
 import { validateSkillRegistry } from "./skill-registry-gate.mjs";
 
@@ -167,9 +168,13 @@ function ownedSurfaceMatches(skill, request, ownedNamespaces) {
     normalize(skill.system),
     normalize(skill.system).replaceAll("-", " "),
   ].filter(Boolean);
-  const systemMatches = [...new Set(systemForms)].filter((surface) =>
-    includesPhrase(request, surface),
-  );
+  const systemMatches = [...new Set(systemForms)].filter((surface) => {
+    if (surface.split(" ").length > 1) return includesPhrase(request, surface);
+    return (
+      includesPhrase(request, `${surface} system`) ||
+      includesPhrase(request, `system ${surface}`)
+    );
+  });
   const artifactMatches = [...new Set(outputArtifactPaths(skill))].filter(
     (surface) => includesLiteralSurface(request, surface),
   );
@@ -187,23 +192,37 @@ function ownedSurfaceMatches(skill, request, ownedNamespaces) {
 
 function explicitInvocationMatches(lifecycleSkills, source) {
   const request = String(source || "").toLowerCase();
-  const selected = [];
-  const negated = [];
-  for (const skill of lifecycleSkills) {
-    const matcher = new RegExp(
-      `(?<![a-z0-9-])\\$?${escapeRegExp(skill.name)}(?![a-z0-9-])`,
-      "g",
-    );
-    let lastState = null;
-    for (const match of request.matchAll(matcher)) {
-      if (isNegatedAt(request, match.index)) lastState = "negative";
-      else lastState = "positive";
-    }
-    if (lastState === "positive") selected.push(skill);
-    else if (lastState === "negative") negated.push(skill.name);
+  const names = lifecycleSkills
+    .map((skill) => skill.name)
+    .sort((left, right) => right.length - left.length)
+    .map(escapeRegExp)
+    .join("|");
+  const matcher = new RegExp(`(?<![a-z0-9-])\\$?(${names})(?![a-z0-9-])`, "g");
+  const lastState = new Map();
+  let previousEnd = 0;
+  let previousWasNegative = false;
+  for (const match of request.matchAll(matcher)) {
+    const connector = request.slice(previousEnd, match.index);
+    const connectorResidue = connector
+      .replace(/\b(?:and|or|nor)\b/g, "")
+      .replace(/[,\s]/g, "");
+    const coordinated =
+      previousWasNegative &&
+      connectorResidue === "" &&
+      /,|\b(?:and|or|nor)\b/.test(connector);
+    const negative = isNegatedAt(request, match.index) || coordinated;
+    lastState.set(match[1], negative ? "negative" : "positive");
+    previousWasNegative = negative;
+    previousEnd = match.index + match[0].length;
   }
+  const selected = lifecycleSkills
+    .filter((skill) => lastState.get(skill.name) === "positive")
+    .sort((left, right) => right.sequence - left.sequence);
+  const negated = lifecycleSkills
+    .filter((skill) => lastState.get(skill.name) === "negative")
+    .map((skill) => skill.name);
   return {
-    selected: selected.sort((left, right) => right.sequence - left.sequence),
+    selected,
     negated,
   };
 }
@@ -341,7 +360,9 @@ function committedCommissioningSnapshot(repoRoot, adapterRoot) {
       runtimeRoot: canonicalAdapterRoot,
     });
     return { current: true, reason: "adapter-current" };
-  } catch {
+  } catch (error) {
+    if (String(error?.message || "").includes(REVIEW_TRUST_SHA256_ENV))
+      return { current: false, reason: "adapter-trust-unready" };
     return { current: false, reason: "adapter-uncommitted" };
   }
 }
@@ -489,18 +510,15 @@ function main() {
             right.phraseCount - left.phraseCount ||
             left.skill.name.localeCompare(right.skill.name),
         );
-      if (
-        ranked.length &&
-        (!owned.length || ranked[0].skill.sequence >= owned[0].skill.sequence)
-      ) {
+      if (owned.length) {
+        selected = owned[0].skill;
+        matchedOwnedSurfaces = owned[0].matches;
+        reason = "deterministic lifecycle owned-surface match";
+      } else if (ranked.length) {
         selected = ranked[0].skill;
         matchedTriggers = ranked[0].matchedTriggers;
         matchedPrimaryFor = ranked[0].matchedPrimaryFor;
         reason = "deterministic lifecycle trigger match";
-      } else if (owned.length) {
-        selected = owned[0].skill;
-        matchedOwnedSurfaces = owned[0].matches;
-        reason = "deterministic lifecycle owned-surface match";
       } else {
         selected = lifecycleSkills.find(
           (skill) =>

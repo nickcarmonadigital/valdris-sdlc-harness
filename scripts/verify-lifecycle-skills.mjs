@@ -238,6 +238,22 @@ const cases = [
   ["Do not connect Codex; create the durable goal", "valdris-route-goal"],
   ["Do not inspect proof/proof.json; connect Codex", "valdris-connect-runtime"],
   [
+    "don't use valdris-prove-govern or valdris-trust-improve; create the durable goal",
+    "valdris-route-goal",
+  ],
+  [
+    "avoid valdris-connect-runtime, valdris-prove-govern, and valdris-trust-improve; assure this run",
+    "valdris-assure",
+  ],
+  [
+    "don't use valdris-prove-govern or valdris-trust-improve; use valdris-trust-improve",
+    "valdris-trust-improve",
+  ],
+  [
+    "In the commissioning system, assemble the run packet",
+    "valdris-commission",
+  ],
+  [
     "Do not use $valdris-prove-govern to inspect proof/proof.json",
     "valdris-route-goal",
   ],
@@ -433,8 +449,18 @@ try {
   );
   assert(
     missingPinDecision.commissioned === false &&
-      missingPinDecision.commissioningReason === "adapter-uncommitted",
+      missingPinDecision.commissioningReason === "adapter-trust-unready",
     "a generated pack must not commission without an operator-held review trust pin",
+  );
+  const mismatchedPinDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], nestedOnly, ROUTER, {
+      UASH_REVIEW_TRUST_SHA256: "0".repeat(64),
+    }).stdout,
+  );
+  assert(
+    mismatchedPinDecision.commissioned === false &&
+      mismatchedPinDecision.commissioningReason === "adapter-trust-unready",
+    "a generated pack must identify a mismatched operator trust pin without claiming it is uncommitted",
   );
   const nestedTrustEnvironment = operatorTrustEnvironment(nestedOnly);
   const nestedDecision = JSON.parse(
@@ -976,7 +1002,9 @@ const routeGoalMarkdown = readFileSync(
 );
 assert(
   routeGoalMarkdown.includes(".valdris-harness/scripts/route-request.mjs") &&
-    routeGoalMarkdown.includes("use `scripts/route-request.mjs`"),
+    routeGoalMarkdown.includes("use `scripts/route-request.mjs`") &&
+    routeGoalMarkdown.includes("adapter-trust-unready") &&
+    routeGoalMarkdown.includes("must not be refreshed"),
   "route-goal must document both nested and direct-pack router discovery",
 );
 
@@ -1027,13 +1055,16 @@ console.log(
       boundedDecisionOutputPassed: true,
       atomicDecisionReplacementPassed: true,
       hardLinkOutputRejected: true,
-      commissioningCasesPassed: 14,
+      commissioningCasesPassed: 15,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,
       phraseBoundaryCasesPassed: 4,
       negatedInvocationCasesPassed: 6,
       negatedPlainLanguageCasesPassed: 3,
+      coordinatedNegationCasesPassed: 3,
+      ownedSystemPriorityPassed: true,
+      trustPinRecoveryReasonPassed: true,
       crlfCommissioningCheckoutPassed: true,
       refreshAnswersPreserved: true,
       routeDependentAssurancePassed: true,
