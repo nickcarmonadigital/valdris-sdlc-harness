@@ -9,7 +9,7 @@ This skill owns **Routing and Goal Control**. It decides what Valdris must do an
 
 ## Deterministic flow
 
-1. Require a committed commissioned pack. If `.valdris-harness/project-adapter.json` is absent or stale, stop and hand off to `$valdris-commission`.
+1. Run the lifecycle router and require its commissioning decision to report `commissioned: true` with `commissioningReason: adapter-current`. The router treats `.valdris-harness/project-adapter.json` as authoritative when present and otherwise accepts a current root `project-adapter.json` for a directly opened pack root. If the selected adapter or its bound skill registry and routing projection are absent, invalid, or stale, stop and hand off to `$valdris-commission`.
 2. Capture the exact requested outcome, exclusions, affected users, environment, operator, authority boundary, and measurable stopping condition. Ask only when an answer changes scope, architecture, authority, or proof.
 3. Run the deterministic router from the target root:
 

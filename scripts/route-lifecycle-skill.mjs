@@ -74,6 +74,90 @@ function scoreSkill(skill, request) {
   };
 }
 
+function regularFileWithin(root, target) {
+  if (
+    !existsSync(target) ||
+    lstatSync(target).isSymbolicLink() ||
+    !lstatSync(target).isFile()
+  )
+    return false;
+  const relative = path.relative(realpathSync(root), realpathSync(target));
+  return !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function commissionedAdapter(repoRoot, registry, registryText) {
+  const nested = path.join(
+    repoRoot,
+    ".valdris-harness",
+    "project-adapter.json",
+  );
+  const root = path.join(repoRoot, "project-adapter.json");
+  const target = existsSync(nested) ? nested : existsSync(root) ? root : null;
+  if (!target)
+    return { commissioned: false, adapterPath: null, reason: "adapter-absent" };
+  if (!regularFileWithin(repoRoot, target))
+    return {
+      commissioned: false,
+      adapterPath: path.relative(repoRoot, target).replaceAll("\\", "/"),
+      reason: "adapter-path-invalid",
+    };
+  try {
+    const adapter = JSON.parse(readFileSync(target, "utf8"));
+    const adapterRoot = path.dirname(target);
+    const registryTarget = path.resolve(
+      adapterRoot,
+      adapter.skillRouter?.registry || "",
+    );
+    const routingTarget = path.resolve(
+      adapterRoot,
+      adapter.skillRouter?.codexRouting || "",
+    );
+    const currentWorkflowCount = (registry.skills || []).length;
+    const currentLifecycleCount = (registry.lifecycleSkills || []).length;
+    const adapterRegistryText = regularFileWithin(adapterRoot, registryTarget)
+      ? readFileSync(registryTarget, "utf8")
+      : null;
+    const adapterRegistry =
+      adapterRegistryText && JSON.parse(adapterRegistryText);
+    const assetRouting = path.join(ASSET_ROOT, "skills", "codex-routing.yaml");
+    const adapterRoutingText = regularFileWithin(adapterRoot, routingTarget)
+      ? readFileSync(routingTarget, "utf8")
+      : null;
+    const assetRoutingText = regularFileWithin(ASSET_ROOT, assetRouting)
+      ? readFileSync(assetRouting, "utf8")
+      : null;
+    const current =
+      adapter.schema === "uash.project-adapter.v2" &&
+      adapter.skillRouter?.schema === registry.schema &&
+      adapter.skillRouter?.registry === "skills/registry.json" &&
+      adapter.skillRouter?.codexRouting === "skills/codex-routing.yaml" &&
+      adapter.skillRouter?.implicitInvocation === true &&
+      adapter.skillRouter?.workflowCatalogSize === currentWorkflowCount &&
+      adapter.skillRouter?.lifecycleCatalogSize === currentLifecycleCount &&
+      adapterRegistry?.schema === registry.schema &&
+      (adapterRegistry.skills || []).length === currentWorkflowCount &&
+      (adapterRegistry.lifecycleSkills || []).length ===
+        currentLifecycleCount &&
+      sha256(adapterRegistryText.replace(/\r\n/g, "\n")) ===
+        sha256(registryText.replace(/\r\n/g, "\n")) &&
+      adapterRoutingText &&
+      assetRoutingText &&
+      sha256(adapterRoutingText.replace(/\r\n/g, "\n")) ===
+        sha256(assetRoutingText.replace(/\r\n/g, "\n"));
+    return {
+      commissioned: Boolean(current),
+      adapterPath: path.relative(repoRoot, target).replaceAll("\\", "/"),
+      reason: current ? "adapter-current" : "adapter-stale",
+    };
+  } catch {
+    return {
+      commissioned: false,
+      adapterPath: path.relative(repoRoot, target).replaceAll("\\", "/"),
+      reason: "adapter-invalid",
+    };
+  }
+}
+
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help)
@@ -129,21 +213,24 @@ function main() {
           (skill) =>
             skill.name === registry.lifecycleSelection.ambiguityFallback,
         );
+        if (!selected)
+          throw new Error(
+            `lifecycle ambiguity fallback skill not found in registry: ${registry.lifecycleSelection?.ambiguityFallback}`,
+          );
         reason = "lifecycle ambiguity fallback";
       }
     }
   }
 
   const repoRoot = path.resolve(args.repo);
-  const nestedPack = path.join(repoRoot, ".valdris-harness");
-  const commissioned =
-    existsSync(path.join(repoRoot, "project-adapter.json")) ||
-    existsSync(path.join(nestedPack, "project-adapter.json"));
+  const commissioning = commissionedAdapter(repoRoot, registry, registryText);
   const decision = {
     schema: "valdris.lifecycle-skill-decision.v1",
     registrySha256: sha256(registryText.replace(/\r\n/g, "\n")),
     requestSha256: args.request ? sha256(args.request.trim()) : null,
-    commissioned,
+    commissioned: commissioning.commissioned,
+    commissionedAdapter: commissioning.adapterPath,
+    commissioningReason: commissioning.reason,
     selectedSkill: selected.name,
     sequence: selected.sequence,
     system: selected.system,
@@ -153,6 +240,7 @@ function main() {
     requiredInputs: selected.requiredInputs,
     requiredOutputs: selected.requiredOutputs,
     requiredGates: selected.requiredGates,
+    conditionalGates: selected.conditionalGates,
     next: selected.next,
   };
 

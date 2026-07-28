@@ -140,6 +140,7 @@ export function renderCodexRoutingYaml(document, repoRoot) {
     appendYamlList(lines, "required_inputs", skill.requiredInputs, 4);
     appendYamlList(lines, "required_outputs", skill.requiredOutputs, 4);
     appendYamlList(lines, "required_gates", skill.requiredGates, 4);
+    appendYamlList(lines, "conditional_gates", skill.conditionalGates || [], 4);
     lines.push(`    next: ${skill.next ? yamlString(skill.next) : "null"}`);
   }
   return `${lines.join("\n")}\n`;
@@ -254,6 +255,12 @@ export function validateSkillRegistry(document, repoRoot) {
   const seen = new Set();
   const workflowSeen = new Set();
   const lifecycleSeen = new Set();
+  const knownGateTokens = new Set([
+    ...(document.gatePolicy?.always || []),
+    ...Object.keys(document.gatePolicy || {}).filter(
+      (gate) => gate !== "always",
+    ),
+  ]);
   for (const skill of allSkills(document)) {
     const name = nonEmpty(skill?.name);
     if (!/^[a-z0-9-]+$/.test(name))
@@ -326,6 +333,15 @@ export function validateSkillRegistry(document, repoRoot) {
       for (const field of ["requiredInputs", "requiredOutputs"])
         if (!Array.isArray(skill[field]) || !skill[field].length)
           problems.push(`lifecycle skill ${name}.${field} must be non-empty`);
+      if (!Array.isArray(skill.conditionalGates))
+        problems.push(
+          `lifecycle skill ${name}.conditionalGates must be an array`,
+        );
+      for (const gate of skill.requiredGates || [])
+        if (!knownGateTokens.has(gate))
+          problems.push(
+            `lifecycle skill ${name} has unknown required gate entry ${gate}`,
+          );
     } else if (!Array.isArray(skill.redZoneTriggers)) {
       problems.push(`skill ${name}.redZoneTriggers must be an array`);
     }

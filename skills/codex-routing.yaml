@@ -316,11 +316,12 @@ lifecycle_skills:
       - "bounded target-root AGENTS.md and CLAUDE.md loaders"
       - "generated Codex and Claude skill mirrors"
     required_gates:
-      - "commissioned portability"
       - "skill-registry"
       - "provenance"
       - "neutrality"
       - "privacy"
+    conditional_gates:
+      - "commissioned-portability before a generated pack is handed off"
     next: "valdris-route-goal"
   - sequence: 2
     name: "valdris-route-goal"
@@ -353,6 +354,7 @@ lifecycle_skills:
       - "route"
       - "goal"
       - "skill-registry"
+    conditional_gates: []
     next: "valdris-assure"
   - sequence: 3
     name: "valdris-assure"
@@ -380,9 +382,10 @@ lifecycle_skills:
     required_gates:
       - "foundation"
       - "production"
-      - "ai-assurance when applicable"
-      - "domain-assurance when applicable"
-      - "assurance overlay when stronger controls are added"
+    conditional_gates:
+      - "ai-assurance and eval when the classification contains AI behavior"
+      - "domain-packs when workload signals activate a commissioned pack"
+      - "schema-compat and authoritative-assurance when stronger controls are added"
     next: "valdris-connect-runtime"
   - sequence: 4
     name: "valdris-connect-runtime"
@@ -411,8 +414,9 @@ lifecycle_skills:
       - "real session events and artifacts for Live Run or an explicit local-mode decision"
     required_gates:
       - "context"
-      - "runtime identity when applicable"
-      - "bridge lease and credential boundaries for Live Run"
+    conditional_gates:
+      - "authoritative-assurance runtime identity when semantic or authoritative AI claims are made"
+      - "Live Run bridge lease and credential-boundary verification"
     next: "valdris-execute-workflow"
   - sequence: 5
     name: "valdris-execute-workflow"
@@ -439,10 +443,12 @@ lifecycle_skills:
       - "fresh code-intelligence and trajectory artifacts when applicable"
       - "revision-safe goal checkpoint transitions"
     required_gates:
-      - "code-intelligence when applicable"
+      - "goal"
+    conditional_gates:
+      - "code-intelligence for code, architecture, debugging, refactor, or cross-file claims"
       - "trajectory for multi-checkpoint or agentic work"
-      - "task-specific validation"
-      - "red-zone approval before consequential actions"
+      - "delivery-primary validation selected by the immutable route"
+      - "Red Zone approval before consequential actions"
     next: "valdris-prove-govern"
   - sequence: 6
     name: "valdris-prove-govern"
@@ -472,9 +478,10 @@ lifecycle_skills:
       - "proof"
       - "review"
       - "run-packet"
-      - "smoke when applicable"
-      - "RCA when applicable"
-      - "red-zone and route approval when applicable"
+    conditional_gates:
+      - "smoke for deployed, provider, platform-native, or runtime behavior"
+      - "rca for bug, regression, incident, or self-heal routes"
+      - "Red Zone and route approval for actions that require authority"
     next: "valdris-trust-improve"
   - sequence: 7
     name: "valdris-trust-improve"
@@ -501,8 +508,12 @@ lifecycle_skills:
       - "release/promotion.json when promotion occurs"
       - "learning/feedback-loop.json or self_heal/self_heal_report.md when learning is required"
     required_gates:
-      - "assurance readiness"
-      - "authoritative release when claimed"
-      - "promotion or learning receipt validation when applicable"
-      - "final privacy and handoff checks"
+      - "run-packet"
+      - "proof"
+      - "review"
+      - "privacy"
+    conditional_gates:
+      - "authoritative-assurance before an authoritative claim"
+      - "promotion receipt validation when promotion occurs"
+      - "learning receipt validation when self-healing or lessons are recorded"
     next: null

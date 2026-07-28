@@ -53,7 +53,9 @@
     "restricted-residue": "When a restricted-source convergence or migration manifest is commissioned, scan the repository, release archives, generated packs, knowledge vault, and installed-skill manifest using only the external runtime manifest. Never commit or print its values.",
     "skill-retirement": "Retire old local skills only from an external manifest, dry-run first, and limit apply mode to exact non-symlink direct children of configured Codex or Claude skill roots.",
     "schema-compat": "Imported assurance concepts must map explicitly into Valdris-native schemas. Layer 0 plus the 13 production-assurance domains remain authoritative; new technologies use capability or domain packs unless the canonical taxonomy itself is deliberately versioned.",
+    "intake": "The authorized natural-language request, operator, environment, scope, exclusions, and authority boundary must be captured before route selection.",
     "classification": "Intake creates run/workload-classification.json from the commissioned taxonomy and binds it to the authorized request and route. Delivery must not rely on an absent, stale, rewritten, or unbound classification.",
+    "route": "The immutable route must bind the intake and classification, select one work-type delivery primary, preserve the three phase transitions, and declare applicable gates before implementation.",
     "foundation": "Layer 0 precedes implementation for every non-docs route. All delivery primaries must validate foundation/assessment.json against the required capabilities, effective assurance tier, selected profiles, and proof contract before implementation; audit-only work may report a failing foundation instead of pretending it passed.",
     "code-intelligence": "Required for code, architecture, debugging, refactor, or cross-file claims; docs-only work records a reason.",
     "production": "Required for production-impacting work. The 13 canonical assurance domains are the current shared baseline, not an exhaustive list of literal runtime layers; all begin required, potentially-affected, or not-applicable and must resolve before finish. Asynchronous orchestration is assessed across affected domains as a cross-cutting concern.",
@@ -340,11 +342,13 @@
         "generated Codex and Claude skill mirrors"
       ],
       "requiredGates": [
-        "commissioned portability",
         "skill-registry",
         "provenance",
         "neutrality",
         "privacy"
+      ],
+      "conditionalGates": [
+        "commissioned-portability before a generated pack is handed off"
       ],
       "next": "valdris-route-goal"
     },
@@ -383,6 +387,7 @@
         "goal",
         "skill-registry"
       ],
+      "conditionalGates": [],
       "next": "valdris-assure"
     },
     {
@@ -411,12 +416,11 @@
         "production/layer-assessment.json when applicable",
         "AI and domain assurance artifacts or route-bound non-applicability"
       ],
-      "requiredGates": [
-        "foundation",
-        "production",
-        "ai-assurance when applicable",
-        "domain-assurance when applicable",
-        "assurance overlay when stronger controls are added"
+      "requiredGates": ["foundation", "production"],
+      "conditionalGates": [
+        "ai-assurance and eval when the classification contains AI behavior",
+        "domain-packs when workload signals activate a commissioned pack",
+        "schema-compat and authoritative-assurance when stronger controls are added"
       ],
       "next": "valdris-connect-runtime"
     },
@@ -448,10 +452,10 @@
         "runtime driver state when required",
         "real session events and artifacts for Live Run or an explicit local-mode decision"
       ],
-      "requiredGates": [
-        "context",
-        "runtime identity when applicable",
-        "bridge lease and credential boundaries for Live Run"
+      "requiredGates": ["context"],
+      "conditionalGates": [
+        "authoritative-assurance runtime identity when semantic or authoritative AI claims are made",
+        "Live Run bridge lease and credential-boundary verification"
       ],
       "next": "valdris-execute-workflow"
     },
@@ -482,11 +486,12 @@
         "fresh code-intelligence and trajectory artifacts when applicable",
         "revision-safe goal checkpoint transitions"
       ],
-      "requiredGates": [
-        "code-intelligence when applicable",
+      "requiredGates": ["goal"],
+      "conditionalGates": [
+        "code-intelligence for code, architecture, debugging, refactor, or cross-file claims",
         "trajectory for multi-checkpoint or agentic work",
-        "task-specific validation",
-        "red-zone approval before consequential actions"
+        "delivery-primary validation selected by the immutable route",
+        "Red Zone approval before consequential actions"
       ],
       "next": "valdris-prove-govern"
     },
@@ -517,13 +522,11 @@
         "run/packet.json",
         "applicable approval and smoke artifacts"
       ],
-      "requiredGates": [
-        "proof",
-        "review",
-        "run-packet",
-        "smoke when applicable",
-        "RCA when applicable",
-        "red-zone and route approval when applicable"
+      "requiredGates": ["proof", "review", "run-packet"],
+      "conditionalGates": [
+        "smoke for deployed, provider, platform-native, or runtime behavior",
+        "rca for bug, regression, incident, or self-heal routes",
+        "Red Zone and route approval for actions that require authority"
       ],
       "next": "valdris-trust-improve"
     },
@@ -554,11 +557,11 @@
         "release/promotion.json when promotion occurs",
         "learning/feedback-loop.json or self_heal/self_heal_report.md when learning is required"
       ],
-      "requiredGates": [
-        "assurance readiness",
-        "authoritative release when claimed",
-        "promotion or learning receipt validation when applicable",
-        "final privacy and handoff checks"
+      "requiredGates": ["run-packet", "proof", "review", "privacy"],
+      "conditionalGates": [
+        "authoritative-assurance before an authoritative claim",
+        "promotion receipt validation when promotion occurs",
+        "learning receipt validation when self-healing or lessons are recorded"
       ],
       "next": null
     }

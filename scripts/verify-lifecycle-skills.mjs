@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -21,12 +22,38 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-function run(args, repo = ROOT) {
-  return spawnSync(process.execPath, [ROUTER, "--repo", repo, ...args], {
+function run(args, repo = ROOT, router = ROUTER) {
+  return spawnSync(process.execPath, [router, "--repo", repo, ...args], {
     cwd: ROOT,
     encoding: "utf8",
     timeout: 10_000,
   });
+}
+
+function writeCommissionedAdapter(repo, adapterRoot, overrides = {}) {
+  const root = path.resolve(repo, adapterRoot);
+  mkdirSync(path.join(root, "skills"), { recursive: true });
+  copyFileSync(registryPath, path.join(root, "skills", "registry.json"));
+  copyFileSync(
+    path.join(ROOT, "skills", "codex-routing.yaml"),
+    path.join(root, "skills", "codex-routing.yaml"),
+  );
+  const adapter = {
+    schema: "uash.project-adapter.v2",
+    skillRouter: {
+      schema: registry.schema,
+      registry: "skills/registry.json",
+      codexRouting: "skills/codex-routing.yaml",
+      implicitInvocation: true,
+      workflowCatalogSize: registry.skills.length,
+      lifecycleCatalogSize: registry.lifecycleSkills.length,
+      ...overrides,
+    },
+  };
+  writeFileSync(
+    path.join(root, "project-adapter.json"),
+    `${JSON.stringify(adapter, null, 2)}\n`,
+  );
 }
 
 function decision(request) {
@@ -140,8 +167,95 @@ try {
     persisted.selectedSkill === "valdris-route-goal",
     "persisted lifecycle decision must match stdout routing",
   );
+  assert(
+    persisted.commissioned === false &&
+      persisted.commissioningReason === "adapter-absent",
+    "an absent adapter must remain uncommissioned",
+  );
 } finally {
   rmSync(outputRepo, { recursive: true, force: true });
+}
+
+const commissioningRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-commissioning-"),
+);
+try {
+  const rootOnly = path.join(commissioningRoot, "root-only");
+  mkdirSync(rootOnly);
+  writeCommissionedAdapter(rootOnly, ".");
+  const rootDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], rootOnly).stdout,
+  );
+  assert(
+    rootDecision.commissioned === true &&
+      rootDecision.commissionedAdapter === "project-adapter.json" &&
+      rootDecision.commissioningReason === "adapter-current",
+    "a current root-only adapter must be commissioned",
+  );
+
+  const nestedOnly = path.join(commissioningRoot, "nested-only");
+  mkdirSync(nestedOnly);
+  writeCommissionedAdapter(nestedOnly, ".valdris-harness");
+  const nestedDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], nestedOnly).stdout,
+  );
+  assert(
+    nestedDecision.commissioned === true &&
+      nestedDecision.commissionedAdapter ===
+        ".valdris-harness/project-adapter.json" &&
+      nestedDecision.commissioningReason === "adapter-current",
+    "a current nested-only adapter must be commissioned",
+  );
+
+  const stale = path.join(commissioningRoot, "stale");
+  mkdirSync(stale);
+  writeCommissionedAdapter(stale, ".", {
+    lifecycleCatalogSize: registry.lifecycleSkills.length - 1,
+  });
+  const staleDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], stale).stdout,
+  );
+  assert(
+    staleDecision.commissioned === false &&
+      staleDecision.commissioningReason === "adapter-stale",
+    "a stale adapter must remain uncommissioned",
+  );
+} finally {
+  rmSync(commissioningRoot, { recursive: true, force: true });
+}
+
+const fallbackRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-fallback-"),
+);
+try {
+  mkdirSync(path.join(fallbackRoot, "scripts"));
+  mkdirSync(path.join(fallbackRoot, "skills"));
+  const fallbackRouter = path.join(
+    fallbackRoot,
+    "scripts",
+    "route-lifecycle-skill.mjs",
+  );
+  copyFileSync(ROUTER, fallbackRouter);
+  const invalidRegistry = structuredClone(registry);
+  invalidRegistry.lifecycleSelection.ambiguityFallback = "valdris-missing";
+  writeFileSync(
+    path.join(fallbackRoot, "skills", "registry.json"),
+    `${JSON.stringify(invalidRegistry, null, 2)}\n`,
+  );
+  const fallbackResult = run(
+    ["--request", "unmatched lifecycle operation"],
+    fallbackRoot,
+    fallbackRouter,
+  );
+  assert(
+    fallbackResult.status !== 0 &&
+      fallbackResult.stderr.includes(
+        "lifecycle ambiguity fallback skill not found in registry: valdris-missing",
+      ),
+    "a missing ambiguity fallback must fail with a clear configuration error",
+  );
+} finally {
+  rmSync(fallbackRoot, { recursive: true, force: true });
 }
 
 const writeBoundaryRoot = mkdtempSync(
@@ -223,6 +337,8 @@ console.log(
       ambiguityFallback: ambiguous.selectedSkill,
       traversalRejected: true,
       boundedDecisionOutputPassed: true,
+      commissioningCasesPassed: 4,
+      fallbackConfigurationGuardPassed: true,
       routingProjectionBoundaryPassed: true,
     },
     null,
