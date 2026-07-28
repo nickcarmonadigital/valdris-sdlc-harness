@@ -13,7 +13,9 @@ import {
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { portableManifestSha256 } from "./control-gate-lib.mjs";
 import { validationRuntimeBinding } from "./run-packet-gate.mjs";
+import { validateSkillRegistry } from "./skill-registry-gate.mjs";
 
 const ASSET_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -69,12 +71,31 @@ function normalizePhrase(value) {
     .trim();
 }
 
+function isNegatedAt(source, index) {
+  const before = String(source || "")
+    .toLowerCase()
+    .slice(0, index)
+    .slice(-128);
+  return /(?:^|[\s,;:.])(?:do\s+not|don't|dont|not|never|avoid|exclude|without|rather\s+than)\s+(?:(?:want|need|plan|intend|try)\s+to\s+)?(?:(?:use|using|invoke|select|run|choose|inspect|check|validate|read|open|touch|change|create|assemble)\s+)?$/u.test(
+    before,
+  );
+}
+
+function includesUnnegatedMatch(source, matcher) {
+  for (const match of String(source || "")
+    .toLowerCase()
+    .matchAll(matcher))
+    if (!isNegatedAt(source, match.index)) return true;
+  return false;
+}
+
 function includesPhrase(request, value) {
   const tokens = normalizePhrase(value).split(" ").filter(Boolean);
   if (!tokens.length) return false;
   const phrase = tokens.map(escapeRegExp).join("[^a-z0-9]+");
-  return new RegExp(`(?<![a-z0-9-])${phrase}(?![a-z0-9-])`).test(
-    String(request || "").toLowerCase(),
+  return includesUnnegatedMatch(
+    request,
+    new RegExp(`(?<![a-z0-9-])${phrase}(?![a-z0-9-])`, "g"),
   );
 }
 
@@ -82,7 +103,10 @@ function includesLiteralSurface(request, value) {
   const surface = normalize(value);
   return (
     surface.length > 0 &&
-    new RegExp(`(?:^|\\s)${escapeRegExp(surface)}(?=\\s|$)`).test(request)
+    includesUnnegatedMatch(
+      request,
+      new RegExp(`(?<!\\S)${escapeRegExp(surface)}(?=\\s|$)`, "g"),
+    )
   );
 }
 
@@ -151,7 +175,10 @@ function ownedSurfaceMatches(skill, request, ownedNamespaces) {
   );
   const namespaceMatches = (ownedNamespaces.get(skill.name) || []).filter(
     (namespace) =>
-      new RegExp(`(?:^|\\s)${escapeRegExp(namespace)}`).test(request),
+      includesUnnegatedMatch(
+        request,
+        new RegExp(`(?<!\\S)${escapeRegExp(namespace)}`, "g"),
+      ),
   );
   return [
     ...new Set([...systemMatches, ...artifactMatches, ...namespaceMatches]),
@@ -169,13 +196,7 @@ function explicitInvocationMatches(lifecycleSkills, source) {
     );
     let lastState = null;
     for (const match of request.matchAll(matcher)) {
-      const before = request.slice(0, match.index);
-      if (
-        /(?:^|[\s,;:.])(?:do\s+not|don't|dont|not|never|avoid|exclude|without|rather\s+than)\s+(?:(?:use|using|invoke|select|run|choose)\s+)?$/u.test(
-          before.slice(-96),
-        )
-      )
-        lastState = "negative";
+      if (isNegatedAt(request, match.index)) lastState = "negative";
       else lastState = "positive";
     }
     if (lastState === "positive") selected.push(skill);
@@ -306,10 +327,16 @@ function committedCommissioningSnapshot(repoRoot, adapterRoot) {
       const file = path.join(canonicalAdapterRoot, ...entry.path.split("/"));
       if (
         !/^[a-f0-9]{64}$/.test(entry.sha256 || "") ||
-        sha256(readFileSync(file)) !== entry.sha256
+        portableManifestSha256(readFileSync(file)) !== entry.sha256
       )
         return { current: false, reason: "adapter-incomplete" };
     }
+    const skillValidation = validateSkillRegistry(
+      packRegistry,
+      canonicalAdapterRoot,
+    );
+    if (!skillValidation.valid)
+      return { current: false, reason: "adapter-incomplete" };
     validationRuntimeBinding(targetRoot, head.stdout.trim(), {
       runtimeRoot: canonicalAdapterRoot,
     });

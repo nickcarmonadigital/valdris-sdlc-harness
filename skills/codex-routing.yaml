@@ -380,9 +380,11 @@ lifecycle_skills:
       - "production/layer-assessment.json when applicable"
       - "AI and domain assurance artifacts or route-bound non-applicability"
     required_gates:
+      - "intake"
       - "classification"
       - "route"
       - "goal"
+      - "skill-registry"
     conditional_gates:
       - "foundation for every route whose foundation assessment is applicable"
       - "production for every production-impacting route"

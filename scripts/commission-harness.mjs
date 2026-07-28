@@ -11,6 +11,7 @@ import {
   ROOT_LOADER_START,
   renderRootDiscoveryLoader,
 } from "./discovery-loader-contract.mjs";
+import { portableManifestSha256 } from "./control-gate-lib.mjs";
 
 const VERSION = "0.9.0-rc.1";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -1224,7 +1225,7 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log(
-    `Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional answers JSON file. Missing values are asked interactively.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use defaults for missing answers.\n  --force                Replace an existing recognized .valdris-harness pack.\n  --print-questions      Print the commissioning question bank and exit.\n`,
+    `Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional answer overrides. Missing values reuse recognized-pack answers, then defaults.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use preserved answers and defaults for missing values.\n  --force                Refresh a recognized pack while preserving its existing commissioned answers.\n  --print-questions      Print the commissioning question bank and exit.\n`,
   );
 }
 
@@ -1413,12 +1414,43 @@ function defaultFor(question, detected, args) {
 }
 
 async function collectAnswers(args, detected) {
+  const canonicalOut = path.join(
+    path.resolve(detected.repoPath),
+    ".valdris-harness",
+  );
+  const requestedOut = path.resolve(args.out || canonicalOut);
+  let preserved = {};
+  if (
+    args.force &&
+    requestedOut === canonicalOut &&
+    fs.existsSync(requestedOut)
+  ) {
+    const entries = fs.readdirSync(requestedOut);
+    if (entries.length) {
+      const marker = readJsonIfExists(
+        path.join(requestedOut, "project-adapter.json"),
+      );
+      if (
+        marker?.schema !== "uash.project-adapter.v2" ||
+        !marker?.generatorVersion ||
+        !marker?.answers ||
+        typeof marker.answers !== "object" ||
+        Array.isArray(marker.answers)
+      )
+        throw new Error(
+          "Refusing --force because the output is not a recognized generated Valdris pack with reusable commissioning answers",
+        );
+      const questionIds = new Set(questionList().map(({ id }) => id));
+      preserved = Object.fromEntries(
+        Object.entries(marker.answers).filter(([key]) => questionIds.has(key)),
+      );
+    }
+  }
   const provided = args.answers ? readJsonIfExists(args.answers) : {};
   if (args.answers && !provided)
     throw new Error(`Could not parse answers JSON: ${args.answers}`);
-  const answers = { ...(provided ?? {}) };
-  if (args.projectName && !answers.project_name)
-    answers.project_name = args.projectName;
+  const answers = { ...preserved, ...(provided ?? {}) };
+  if (args.projectName) answers.project_name = args.projectName;
 
   if (args.yes || !process.stdin.isTTY) {
     for (const question of questionList()) {
@@ -1519,7 +1551,7 @@ function commissionedPackManifest(root) {
         if (relative !== "commissioning-manifest.json")
           files.push({
             path: relative,
-            sha256: contentSha256(fs.readFileSync(target)),
+            sha256: portableManifestSha256(fs.readFileSync(target)),
           });
       } else {
         throw new Error(

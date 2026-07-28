@@ -416,7 +416,13 @@
         "production/layer-assessment.json when applicable",
         "AI and domain assurance artifacts or route-bound non-applicability"
       ],
-      "requiredGates": ["classification", "route", "goal"],
+      "requiredGates": [
+        "intake",
+        "classification",
+        "route",
+        "goal",
+        "skill-registry"
+      ],
       "conditionalGates": [
         "foundation for every route whose foundation assessment is applicable",
         "production for every production-impacting route",

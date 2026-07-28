@@ -119,22 +119,28 @@ function initializeCommissioningFixture(repo) {
   }
 }
 
-function generateCommissionedFixture(repo, { commit = true } = {}) {
+function generateCommissionedFixture(
+  repo,
+  { commit = true, answers = null, force = false } = {},
+) {
   const canonicalRepo = realpathSync(repo);
-  const result = spawnSync(
-    process.execPath,
-    [
-      path.join(ROOT, "scripts", "commission-harness.mjs"),
-      "--repo",
-      canonicalRepo,
-      "--out",
-      path.join(canonicalRepo, ".valdris-harness"),
-      "--project-name",
-      "Fixture",
-      "--yes",
-    ],
-    { cwd: ROOT, encoding: "utf8", timeout: 60_000 },
-  );
+  const args = [
+    path.join(ROOT, "scripts", "commission-harness.mjs"),
+    "--repo",
+    canonicalRepo,
+    "--out",
+    path.join(canonicalRepo, ".valdris-harness"),
+    "--project-name",
+    "Fixture",
+    "--yes",
+  ];
+  if (answers) args.push("--answers", answers);
+  if (force) args.push("--force");
+  const result = spawnSync(process.execPath, args, {
+    cwd: ROOT,
+    encoding: "utf8",
+    timeout: 60_000,
+  });
   assert(result.status === 0, `fixture commission failed: ${result.stderr}`);
   if (commit) {
     fixtureGit(repo, ["add", "--all"]);
@@ -228,6 +234,9 @@ const cases = [
     "connect Codex and inspect preproof/results.json",
     "valdris-connect-runtime",
   ],
+  ["Do not promote this run; assemble the run packet", "valdris-prove-govern"],
+  ["Do not connect Codex; create the durable goal", "valdris-route-goal"],
+  ["Do not inspect proof/proof.json; connect Codex", "valdris-connect-runtime"],
   [
     "Do not use $valdris-prove-govern to inspect proof/proof.json",
     "valdris-route-goal",
@@ -260,6 +269,9 @@ const docsAssurance = decision(
 assert(
   !docsAssurance.requiredGates.includes("foundation") &&
     !docsAssurance.requiredGates.includes("production") &&
+    ["intake", "classification", "route", "goal", "skill-registry"].every(
+      (gate) => docsAssurance.requiredGates.includes(gate),
+    ) &&
     docsAssurance.conditionalGates.some((gate) =>
       gate.startsWith("foundation "),
     ) &&
@@ -556,6 +568,91 @@ try {
     "a rewritten manifest must not admit a partial generated pack",
   );
 
+  const missingDescriptors = path.join(
+    commissioningRoot,
+    "missing-descriptors",
+  );
+  cloneCommissioningFixture(nestedOnly, missingDescriptors);
+  const descriptorPaths = [
+    "skills/valdris-commission/agents/openai.yaml",
+    ".agents/skills/valdris-commission/agents/openai.yaml",
+    ".claude/skills/valdris-commission/agents/openai.yaml",
+  ];
+  for (const descriptor of descriptorPaths)
+    rmSync(
+      path.join(
+        missingDescriptors,
+        ".valdris-harness",
+        ...descriptor.split("/"),
+      ),
+    );
+  const descriptorManifestPath = path.join(
+    missingDescriptors,
+    ".valdris-harness",
+    "commissioning-manifest.json",
+  );
+  const descriptorManifest = JSON.parse(
+    readFileSync(descriptorManifestPath, "utf8"),
+  );
+  descriptorManifest.files = descriptorManifest.files.filter(
+    ({ path: file }) => !descriptorPaths.includes(file),
+  );
+  writeFileSync(
+    descriptorManifestPath,
+    `${JSON.stringify(descriptorManifest, null, 2)}\n`,
+  );
+  fixtureGit(missingDescriptors, ["add", "--all"]);
+  fixtureGit(missingDescriptors, [
+    "commit",
+    "-m",
+    "fixture: remove invocation descriptors",
+  ]);
+  const missingDescriptorDecision = JSON.parse(
+    run(
+      ["--request", "start a Valdris run"],
+      missingDescriptors,
+      ROUTER,
+      operatorTrustEnvironment(missingDescriptors),
+    ).stdout,
+  );
+  assert(
+    missingDescriptorDecision.commissioned === false &&
+      missingDescriptorDecision.commissioningReason === "adapter-incomplete",
+    "a rewritten manifest must not admit a pack missing implicit-invocation descriptors",
+  );
+
+  const crlfSource = path.join(commissioningRoot, "crlf-source");
+  cloneCommissioningFixture(nestedOnly, crlfSource);
+  writeFileSync(path.join(crlfSource, ".gitattributes"), "* text eol=crlf\n");
+  fixtureGit(crlfSource, ["add", ".gitattributes"]);
+  fixtureGit(crlfSource, ["commit", "-m", "fixture: require CRLF checkout"]);
+  const crlfCheckout = path.join(commissioningRoot, "crlf-checkout");
+  cloneCommissioningFixture(crlfSource, crlfCheckout);
+  assert(
+    readFileSync(
+      path.join(
+        crlfCheckout,
+        ".valdris-harness",
+        "scripts",
+        "route-lifecycle-skill.mjs",
+      ),
+    ).includes(Buffer.from("\r\n")),
+    "the portability fixture must materialize CRLF runtime text",
+  );
+  const crlfDecision = JSON.parse(
+    run(
+      ["--request", "start a Valdris run"],
+      crlfCheckout,
+      ROUTER,
+      operatorTrustEnvironment(crlfCheckout),
+    ).stdout,
+  );
+  assert(
+    crlfDecision.commissioned === true &&
+      crlfDecision.commissioningReason === "adapter-current",
+    "a clean CRLF checkout must retain its commissioned identity",
+  );
+
   const invalidLoader = path.join(commissioningRoot, "invalid-loader");
   cloneCommissioningFixture(nestedOnly, invalidLoader);
   writeFileSync(path.join(invalidLoader, "AGENTS.md"), "# Missing loader\n");
@@ -592,6 +689,58 @@ try {
   assert(
     concealedDecision.commissioned === false,
     "assume-unchanged must invalidate commissioning even without a content change",
+  );
+
+  const refresh = path.join(commissioningRoot, "refresh");
+  mkdirSync(refresh);
+  initializeCommissioningFixture(refresh);
+  const refreshAnswers = path.join(commissioningRoot, "refresh-answers.json");
+  writeFileSync(
+    refreshAnswers,
+    `${JSON.stringify(
+      {
+        operator_name: "Preserved Operator",
+        approval_owner: "Preserved Owner",
+        test_command: "npm run preserved-test",
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  generateCommissionedFixture(refresh, { answers: refreshAnswers });
+  generateCommissionedFixture(refresh, { commit: false, force: true });
+  const refreshedAdapterPath = path.join(
+    refresh,
+    ".valdris-harness",
+    "project-adapter.json",
+  );
+  const refreshedAdapter = JSON.parse(
+    readFileSync(refreshedAdapterPath, "utf8"),
+  );
+  assert(
+    refreshedAdapter.answers.operator_name === "Preserved Operator" &&
+      refreshedAdapter.answers.approval_owner === "Preserved Owner" &&
+      refreshedAdapter.answers.test_command === "npm run preserved-test",
+    "a force refresh must automatically preserve stable commissioned answers",
+  );
+  const overlayAnswers = path.join(commissioningRoot, "overlay-answers.json");
+  writeFileSync(
+    overlayAnswers,
+    `${JSON.stringify({ approval_owner: "Reviewed New Owner" }, null, 2)}\n`,
+  );
+  generateCommissionedFixture(refresh, {
+    answers: overlayAnswers,
+    commit: false,
+    force: true,
+  });
+  const overlaidAdapter = JSON.parse(
+    readFileSync(refreshedAdapterPath, "utf8"),
+  );
+  assert(
+    overlaidAdapter.answers.operator_name === "Preserved Operator" &&
+      overlaidAdapter.answers.approval_owner === "Reviewed New Owner" &&
+      overlaidAdapter.answers.test_command === "npm run preserved-test",
+    "reviewed refresh answers must overlay preserved answers without resetting unrelated facts",
   );
 } finally {
   rmSync(commissioningRoot, { recursive: true, force: true });
@@ -837,10 +986,10 @@ const commissionMarkdown = readFileSync(
 );
 assert(
   commissionMarkdown.includes("--yes --force") &&
-    commissionMarkdown.includes(
-      "Never use `--force` on an unrecognized directory",
-    ),
-  "commissioning refresh must require an explicit, guarded --force command",
+    commissionMarkdown.includes("automatically imports") &&
+    commissionMarkdown.includes("--answers <json>") &&
+    commissionMarkdown.includes("unrecognized directory"),
+  "commissioning refresh must preserve existing answers and require a guarded --force command",
 );
 
 const assureMarkdown = readFileSync(
@@ -878,12 +1027,15 @@ console.log(
       boundedDecisionOutputPassed: true,
       atomicDecisionReplacementPassed: true,
       hardLinkOutputRejected: true,
-      commissioningCasesPassed: 11,
+      commissioningCasesPassed: 14,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,
       phraseBoundaryCasesPassed: 4,
       negatedInvocationCasesPassed: 6,
+      negatedPlainLanguageCasesPassed: 3,
+      crlfCommissioningCheckoutPassed: true,
+      refreshAnswersPreserved: true,
       routeDependentAssurancePassed: true,
       directPackCommandDiscoveryPassed: true,
       projectionRepairPassed: true,
