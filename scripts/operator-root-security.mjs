@@ -74,7 +74,7 @@ function inspectPosixRoot(realPath) {
   };
 }
 
-function windowsPowerShellPath(environment) {
+export function windowsPowerShellPath(environment) {
   const systemRoot = environment.SystemRoot || environment.WINDIR;
   if (!systemRoot || !path.win32.isAbsolute(systemRoot))
     throw new Error(
