@@ -105,6 +105,9 @@ const cases = [
   ["Validate proof/proof.json", "valdris-prove-govern"],
   ["Check run/mode.json", "valdris-connect-runtime"],
   ["Inspect runtime-connectivity", "valdris-connect-runtime"],
+  ["Validate runtime/driver.json", "valdris-connect-runtime"],
+  ["Analyze upstream events", "valdris-route-goal"],
+  ["Use a mainstream events API", "valdris-route-goal"],
 ];
 
 for (const [request, expected] of cases) {
@@ -125,6 +128,21 @@ assert(
   ambiguous.selectedSkill === "valdris-route-goal" &&
     ambiguous.reason === "lifecycle ambiguity fallback",
   "ambiguous lifecycle intent must fall back to valdris-route-goal",
+);
+
+const docsAssurance = decision(
+  "$valdris-assure resolve assurance for this docs-only route",
+).parsed;
+assert(
+  !docsAssurance.requiredGates.includes("foundation") &&
+    !docsAssurance.requiredGates.includes("production") &&
+    docsAssurance.conditionalGates.some((gate) =>
+      gate.startsWith("foundation "),
+    ) &&
+    docsAssurance.conditionalGates.some((gate) =>
+      gate.startsWith("production "),
+    ),
+  "route-dependent foundation and production gates must remain conditional",
 );
 
 const invalidTieBreak = structuredClone(registry);
@@ -394,6 +412,16 @@ for (const skill of registry.lifecycleSkills) {
     );
 }
 
+const routeGoalMarkdown = readFileSync(
+  path.join(ROOT, "skills", "valdris-route-goal", "SKILL.md"),
+  "utf8",
+);
+assert(
+  routeGoalMarkdown.includes(".valdris-harness/scripts/route-request.mjs") &&
+    routeGoalMarkdown.includes("use `scripts/route-request.mjs`"),
+  "route-goal must document both nested and direct-pack router discovery",
+);
+
 const routing = readFileSync(
   path.join(ROOT, "skills", "codex-routing.yaml"),
   "utf8",
@@ -420,7 +448,10 @@ console.log(
       commissioningCasesPassed: 4,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
-      ownedSurfaceCasesPassed: 3,
+      ownedSurfaceCasesPassed: 4,
+      phraseBoundaryCasesPassed: 2,
+      routeDependentAssurancePassed: true,
+      directPackCommandDiscoveryPassed: true,
       projectionRepairPassed: true,
       commissionedRouteCommandGuardPassed: true,
       routingProjectionBoundaryPassed: true,

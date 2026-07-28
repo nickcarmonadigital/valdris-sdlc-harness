@@ -416,8 +416,10 @@
         "production/layer-assessment.json when applicable",
         "AI and domain assurance artifacts or route-bound non-applicability"
       ],
-      "requiredGates": ["foundation", "production"],
+      "requiredGates": ["classification", "route", "goal"],
       "conditionalGates": [
+        "foundation for every route whose foundation assessment is applicable",
+        "production for every production-impacting route",
         "ai-assurance and eval when the classification contains AI behavior",
         "domain-packs when workload signals activate a commissioned pack",
         "schema-compat and authoritative-assurance when stronger controls are added"
@@ -449,7 +451,7 @@
       ],
       "requiredOutputs": [
         "run/mode.json",
-        "runtime driver state when required",
+        "runtime/driver-state.json when required",
         "real session events and artifacts for Live Run or an explicit local-mode decision"
       ],
       "requiredGates": ["context"],

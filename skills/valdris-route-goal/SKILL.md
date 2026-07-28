@@ -11,9 +11,9 @@ This skill owns **Routing and Goal Control**. It decides what Valdris must do an
 
 1. Run the lifecycle router and require its commissioning decision to report `commissioned: true` with `commissioningReason: adapter-current`. The router treats `.valdris-harness/project-adapter.json` as authoritative when present and otherwise accepts a current root `project-adapter.json` for a directly opened pack root. If the selected adapter or its bound skill registry and routing projection are absent, invalid, or stale, stop and hand off to `$valdris-commission`.
 2. Capture the exact requested outcome, exclusions, affected users, environment, operator, authority boundary, and measurable stopping condition. Ask only when an answer changes scope, architecture, authority, or proof.
-3. Run the deterministic router from the target root:
+3. Run the deterministic router from the target root. Use `.valdris-harness/scripts/route-request.mjs` when `commissionedAdapter` is `.valdris-harness/project-adapter.json`; use `scripts/route-request.mjs` when it is the root `project-adapter.json`:
 
-   `node .valdris-harness/scripts/route-request.mjs --repo . --profile <profile> --actor "<owner>" --request "<request>"`
+   `node <discovered-pack-path>/scripts/route-request.mjs --repo . --profile <profile> --actor "<owner>" --request "<request>"`
 
 4. Validate `run/intake.json`, `run/workload-classification.json`, `run/route.json`, and `goal/goal.json` with the intake, classification, route, goal, and skill-registry gates.
 5. Confirm the route contains exactly three work phases: intake-route, delivery, and proof-handoff. Confirm it selects one delivery primary from the eight work-type skills and no more than four supporting skills.

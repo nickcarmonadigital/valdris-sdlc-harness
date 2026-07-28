@@ -53,12 +53,24 @@ function selectExplicit(lifecycleSkills, stage) {
   );
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function includesPhrase(request, value) {
+  const phrase = normalize(value);
+  return (
+    phrase.length > 0 &&
+    new RegExp(`(?:^|\\s)${escapeRegExp(phrase)}(?=\\s|$)`).test(request)
+  );
+}
+
 function scoreSkill(skill, request) {
   const matchedTriggers = (skill.triggers || []).filter((trigger) =>
-    request.includes(normalize(trigger)),
+    includesPhrase(request, trigger),
   );
   const matchedPrimaryFor = (skill.primaryFor || []).filter((phrase) =>
-    request.includes(normalize(phrase)),
+    includesPhrase(request, phrase),
   );
   const phrases = [...matchedTriggers, ...matchedPrimaryFor];
   return {
@@ -74,19 +86,49 @@ function scoreSkill(skill, request) {
   };
 }
 
-function ownedSurfaceMatches(skill, request) {
-  const systemForms = [
-    normalize(skill.system),
-    normalize(skill.system).replaceAll("-", " "),
-  ].filter(Boolean);
-  const artifactForms = (skill.requiredOutputs || []).flatMap((output) =>
+function outputArtifactPaths(skill) {
+  return (skill.requiredOutputs || []).flatMap((output) =>
     (String(output).match(/[a-z0-9_.-]+\/[a-z0-9_./-]+/gi) || []).map(
       normalize,
     ),
   );
-  return [...new Set([...systemForms, ...artifactForms])].filter((surface) =>
-    request.includes(surface),
+}
+
+function uniqueOwnedNamespaces(lifecycleSkills) {
+  const owners = new Map();
+  for (const skill of lifecycleSkills)
+    for (const artifact of outputArtifactPaths(skill)) {
+      const separator = artifact.indexOf("/");
+      if (separator < 1) continue;
+      const namespace = artifact.slice(0, separator + 1);
+      if (!owners.has(namespace)) owners.set(namespace, new Set());
+      owners.get(namespace).add(skill.name);
+    }
+  return new Map(
+    lifecycleSkills.map((skill) => [
+      skill.name,
+      [...owners.entries()]
+        .filter(
+          ([, namespaceOwners]) =>
+            namespaceOwners.size === 1 && namespaceOwners.has(skill.name),
+        )
+        .map(([namespace]) => namespace),
+    ]),
   );
+}
+
+function ownedSurfaceMatches(skill, request, ownedNamespaces) {
+  const systemForms = [
+    normalize(skill.system),
+    normalize(skill.system).replaceAll("-", " "),
+  ].filter(Boolean);
+  const exactMatches = [
+    ...new Set([...systemForms, ...outputArtifactPaths(skill)]),
+  ].filter((surface) => includesPhrase(request, surface));
+  const namespaceMatches = (ownedNamespaces.get(skill.name) || []).filter(
+    (namespace) => request.includes(namespace),
+  );
+  return [...new Set([...exactMatches, ...namespaceMatches])];
 }
 
 function regularFileWithin(root, target) {
@@ -193,6 +235,7 @@ function main() {
   const lifecycleSkills = registry.lifecycleSkills || [];
   if (lifecycleSkills.length !== 7)
     throw new Error("lifecycle skill registry must contain exactly 7 skills");
+  const ownedNamespaces = uniqueOwnedNamespaces(lifecycleSkills);
 
   const request = normalize(args.request);
   let selected;
@@ -219,7 +262,7 @@ function main() {
       const owned = lifecycleSkills
         .map((skill) => ({
           skill,
-          matches: ownedSurfaceMatches(skill, request),
+          matches: ownedSurfaceMatches(skill, request, ownedNamespaces),
         }))
         .filter((candidate) => candidate.matches.length > 0)
         .sort(
