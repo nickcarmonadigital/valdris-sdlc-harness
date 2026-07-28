@@ -7,6 +7,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -97,14 +98,15 @@ function initializeCommissioningFixture(repo) {
 }
 
 function generateCommissionedFixture(repo, { commit = true } = {}) {
+  const canonicalRepo = realpathSync(repo);
   const result = spawnSync(
     process.execPath,
     [
       path.join(ROOT, "scripts", "commission-harness.mjs"),
       "--repo",
-      repo,
+      canonicalRepo,
       "--out",
-      path.join(repo, ".valdris-harness"),
+      path.join(canonicalRepo, ".valdris-harness"),
       "--project-name",
       "Fixture",
       "--yes",
