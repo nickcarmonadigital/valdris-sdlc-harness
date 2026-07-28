@@ -548,8 +548,19 @@ async function main() {
     const document = readJson(target);
     if (args.writeRouting) {
       const registryRoot = path.resolve(target, "..", "..");
+      const canonicalRegistry = path.join(repoRoot, "skills", "registry.json");
+      const routingTarget = path.join(repoRoot, "skills", "codex-routing.yaml");
+      if (
+        path.resolve(target) !== canonicalRegistry ||
+        registryRoot !== repoRoot ||
+        !existingFileWithinRepo(repoRoot, target) ||
+        !existingFileWithinRepo(repoRoot, routingTarget)
+      )
+        throw new Error(
+          "routing projection write requires the existing canonical skills registry and routing file inside --repo",
+        );
       writeFileSync(
-        path.join(registryRoot, "skills", "codex-routing.yaml"),
+        routingTarget,
         renderCodexRoutingYaml(document, registryRoot),
       );
     }

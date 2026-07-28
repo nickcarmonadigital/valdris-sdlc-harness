@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,6 +15,7 @@ import { validateSkillRegistry } from "./skill-registry-gate.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ROUTER = path.join(ROOT, "scripts", "route-lifecycle-skill.mjs");
+const SKILL_GATE = path.join(ROOT, "scripts", "skill-registry-gate.mjs");
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -55,6 +63,9 @@ const cases = [
     "Make the final trust decision and capture lessons learned",
     "valdris-trust-improve",
   ],
+  ["Refresh commissioned pack and promote this run", "valdris-trust-improve"],
+  ["$valdris-prove-govern, finish this", "valdris-prove-govern"],
+  ["$valdris-trust-improve: promote now", "valdris-trust-improve"],
 ];
 
 for (const [request, expected] of cases) {
@@ -133,6 +144,40 @@ try {
   rmSync(outputRepo, { recursive: true, force: true });
 }
 
+const writeBoundaryRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-write-boundary-"),
+);
+try {
+  const boundedRepo = path.join(writeBoundaryRoot, "repo");
+  const outsideSkills = path.join(writeBoundaryRoot, "outside", "skills");
+  mkdirSync(path.join(boundedRepo, "skills"), { recursive: true });
+  mkdirSync(outsideSkills, { recursive: true });
+  copyFileSync(registryPath, path.join(outsideSkills, "registry.json"));
+  const escapedRouting = path.join(outsideSkills, "codex-routing.yaml");
+  const writeResult = spawnSync(
+    process.execPath,
+    [
+      SKILL_GATE,
+      "--repo",
+      boundedRepo,
+      "--file",
+      "../outside/skills/registry.json",
+      "--write-routing",
+    ],
+    { cwd: ROOT, encoding: "utf8", timeout: 10_000 },
+  );
+  assert(
+    writeResult.status !== 0 &&
+      !existsSync(escapedRouting) &&
+      `${writeResult.stdout}${writeResult.stderr}`.includes(
+        "routing projection write requires",
+      ),
+    "skill registry generator must reject routing writes outside --repo",
+  );
+} finally {
+  rmSync(writeBoundaryRoot, { recursive: true, force: true });
+}
+
 const workflowNames = new Set(registry.skills.map((skill) => skill.name));
 for (const skill of registry.lifecycleSkills) {
   assert(
@@ -178,6 +223,7 @@ console.log(
       ambiguityFallback: ambiguous.selectedSkill,
       traversalRejected: true,
       boundedDecisionOutputPassed: true,
+      routingProjectionBoundaryPassed: true,
     },
     null,
     2,

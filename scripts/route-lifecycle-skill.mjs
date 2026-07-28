@@ -103,9 +103,7 @@ function main() {
     reason = "explicit lifecycle stage";
   } else {
     const explicit = lifecycleSkills.find((skill) =>
-      new RegExp(`(?:^|\\s)\\$?${skill.name}(?:\\s|$)`, "i").test(
-        args.request.trim(),
-      ),
+      new RegExp(`(?:^|\\s)${skill.name}(?:\\s|$)`, "i").test(request),
     );
     if (explicit) {
       selected = explicit;
@@ -116,9 +114,10 @@ function main() {
         .filter((candidate) => candidate.phraseCount > 0)
         .sort(
           (left, right) =>
+            right.skill.sequence - left.skill.sequence ||
             right.specificity - left.specificity ||
             right.phraseCount - left.phraseCount ||
-            right.skill.sequence - left.skill.sequence,
+            left.skill.name.localeCompare(right.skill.name),
         );
       if (ranked.length) {
         selected = ranked[0].skill;
