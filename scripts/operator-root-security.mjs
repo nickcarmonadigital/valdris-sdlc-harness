@@ -80,16 +80,24 @@ function windowsPowerShellPath(environment) {
     throw new Error(
       "SystemRoot is required to inspect a Windows operator root",
     );
-  const candidate = path.win32.join(
-    systemRoot,
-    "System32",
-    "WindowsPowerShell",
-    "v1.0",
-    "powershell.exe",
-  );
-  if (!existsSync(candidate))
+  const programFiles =
+    environment.ProgramFiles || environment.ProgramW6432 || "";
+  const candidates = [
+    programFiles && path.win32.isAbsolute(programFiles)
+      ? path.win32.join(programFiles, "PowerShell", "7", "pwsh.exe")
+      : null,
+    path.win32.join(
+      systemRoot,
+      "System32",
+      "WindowsPowerShell",
+      "v1.0",
+      "powershell.exe",
+    ),
+  ].filter(Boolean);
+  const candidate = candidates.find((file) => existsSync(file));
+  if (!candidate)
     throw new Error(
-      "Windows PowerShell is unavailable for operator-root ACL inspection",
+      "PowerShell is unavailable for Windows operator-root ACL inspection",
     );
   return realpathSync.native(candidate);
 }
@@ -168,6 +176,8 @@ $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentif
       env: {
         SystemRoot: environment.SystemRoot,
         WINDIR: environment.WINDIR,
+        ProgramFiles: environment.ProgramFiles,
+        ProgramW6432: environment.ProgramW6432,
         VALDRIS_OPERATOR_ROOT_TARGET: realPath,
       },
       shell: false,
