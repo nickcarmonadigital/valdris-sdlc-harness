@@ -198,7 +198,11 @@ function regularFileWithin(root, target) {
 }
 
 function gitPath(root, target) {
-  return path.relative(root, target).replaceAll("\\", "/") || ".";
+  return (
+    path
+      .relative(realpathSync(root), realpathSync(target))
+      .replaceAll("\\", "/") || "."
+  );
 }
 
 function runGit(repo, args) {
@@ -231,10 +235,8 @@ function committedCommissioningSnapshot(repoRoot, adapterRoot) {
   if (topLevel.status !== 0 || !topLevel.stdout.trim())
     return { current: false, reason: "adapter-uncommitted" };
   const worktreeRoot = realpathSync(topLevel.stdout.trim());
-  const adapterRelative = path.relative(
-    worktreeRoot,
-    realpathSync(adapterRoot),
-  );
+  const canonicalAdapterRoot = realpathSync(adapterRoot);
+  const adapterRelative = path.relative(worktreeRoot, canonicalAdapterRoot);
   if (adapterRelative.startsWith("..") || path.isAbsolute(adapterRelative))
     return { current: false, reason: "adapter-uncommitted" };
 
@@ -247,17 +249,17 @@ function committedCommissioningSnapshot(repoRoot, adapterRoot) {
     return { current: false, reason: "adapter-uncommitted" };
 
   const isNestedPack =
-    path.basename(adapterRoot).toLowerCase() === ".valdris-harness";
+    path.basename(canonicalAdapterRoot).toLowerCase() === ".valdris-harness";
   const packFiles = isNestedPack
-    ? collectRegularFiles(adapterRoot)
+    ? collectRegularFiles(canonicalAdapterRoot)
     : [
-        path.join(adapterRoot, "project-adapter.json"),
-        path.join(adapterRoot, "skills", "registry.json"),
-        path.join(adapterRoot, "skills", "codex-routing.yaml"),
+        path.join(canonicalAdapterRoot, "project-adapter.json"),
+        path.join(canonicalAdapterRoot, "skills", "registry.json"),
+        path.join(canonicalAdapterRoot, "skills", "codex-routing.yaml"),
       ];
   if (
     !packFiles?.length ||
-    packFiles.some((target) => !regularFileWithin(adapterRoot, target))
+    packFiles.some((target) => !regularFileWithin(canonicalAdapterRoot, target))
   )
     return { current: false, reason: "adapter-uncommitted" };
 
@@ -265,7 +267,7 @@ function committedCommissioningSnapshot(repoRoot, adapterRoot) {
     gitPath(worktreeRoot, target),
   );
   const scopePaths = isNestedPack
-    ? [gitPath(worktreeRoot, adapterRoot), "AGENTS.md", "CLAUDE.md"]
+    ? [gitPath(worktreeRoot, canonicalAdapterRoot), "AGENTS.md", "CLAUDE.md"]
     : [...requiredPaths];
   const status = runGit(worktreeRoot, [
     "status",
