@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Workflow Execution"
+  short_description: "Execute the routed work in evidence-bearing goal slices"
+  default_prompt: "Use $valdris-execute-workflow to execute or resume the governed Valdris delivery loop."
+
+policy:
+  allow_implicit_invocation: true

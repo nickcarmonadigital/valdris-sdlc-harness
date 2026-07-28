@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Commission"
+  short_description: "Commission a repository into the Valdris control plane"
+  default_prompt: "Use $valdris-commission to commission or refresh Valdris for this repository end to end."
+
+policy:
+  allow_implicit_invocation: true

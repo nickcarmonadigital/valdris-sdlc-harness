@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -11,7 +11,7 @@ import {
   resolveWithinRepo,
 } from "./control-gate-lib.mjs";
 
-export const SKILL_REGISTRY_SCHEMA = "uash.skill-registry.v1";
+export const SKILL_REGISTRY_SCHEMA = "uash.skill-registry.v2";
 const REQUIRED_PHASE_TRANSITIONS = [
   "intake-route",
   "delivery",
@@ -27,6 +27,19 @@ const REQUIRED_PRIMARY_SKILLS = [
   "valdris-genai-assurance",
   "valdris-proof-handoff",
 ];
+const REQUIRED_LIFECYCLE_SKILLS = [
+  "valdris-commission",
+  "valdris-route-goal",
+  "valdris-assure",
+  "valdris-connect-runtime",
+  "valdris-execute-workflow",
+  "valdris-prove-govern",
+  "valdris-trust-improve",
+];
+
+function allSkills(document) {
+  return [...(document.skills || []), ...(document.lifecycleSkills || [])];
+}
 
 function frontmatter(markdown) {
   const match = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
@@ -94,6 +107,41 @@ export function renderCodexRoutingYaml(document, repoRoot) {
     appendYamlList(lines, "conditional_gates", skill.conditionalGates || [], 4);
     appendYamlList(lines, "red_zone_triggers", skill.redZoneTriggers, 4);
   }
+  lines.push("lifecycle_selection:");
+  lines.push(`  max_primary: ${document.lifecycleSelection?.maxPrimary ?? 1}`);
+  lines.push(
+    `  ambiguity_fallback: ${yamlString(document.lifecycleSelection?.ambiguityFallback || "valdris-route-goal")}`,
+  );
+  lines.push(
+    `  policy: ${yamlString(document.lifecycleSelection?.policy || "")}`,
+  );
+  lines.push("  deterministic_sequence: true");
+  appendYamlList(
+    lines,
+    "tie_break_order",
+    document.lifecycleSelection?.tieBreakOrder || [],
+    2,
+  );
+  lines.push("lifecycle_skills:");
+  for (const skill of document.lifecycleSkills || []) {
+    const target = resolveWithinRepo(repoRoot, nonEmpty(skill.path));
+    const metadata =
+      target && existsSync(target)
+        ? frontmatter(readFileSync(target, "utf8"))
+        : {};
+    lines.push(`  - sequence: ${skill.sequence}`);
+    lines.push(`    name: ${yamlString(skill.name)}`);
+    lines.push(`    system: ${yamlString(skill.system)}`);
+    lines.push(`    description: ${yamlString(metadata.description || "")}`);
+    lines.push(`    path: ${yamlString(skill.path)}`);
+    lines.push("    implicit_invocation: true");
+    appendYamlList(lines, "primary_for", skill.primaryFor, 4);
+    appendYamlList(lines, "triggers", skill.triggers, 4);
+    appendYamlList(lines, "required_inputs", skill.requiredInputs, 4);
+    appendYamlList(lines, "required_outputs", skill.requiredOutputs, 4);
+    appendYamlList(lines, "required_gates", skill.requiredGates, 4);
+    lines.push(`    next: ${skill.next ? yamlString(skill.next) : "null"}`);
+  }
   return `${lines.join("\n")}\n`;
 }
 
@@ -109,7 +157,7 @@ function validateSkillMirror(document, repoRoot, relativeRoot, problems) {
     problems.push(`${relativeRoot} skill mirror is missing`);
     return;
   }
-  const expected = new Set((document.skills || []).map((skill) => skill.name));
+  const expected = new Set(allSkills(document).map((skill) => skill.name));
   for (const entry of readdirSync(mirrorRoot, { withFileTypes: true })) {
     if (
       entry.isDirectory() &&
@@ -120,7 +168,7 @@ function validateSkillMirror(document, repoRoot, relativeRoot, problems) {
         `${relativeRoot} contains unregistered Valdris skill: ${entry.name}`,
       );
   }
-  for (const skill of document.skills || []) {
+  for (const skill of allSkills(document)) {
     const canonicalTarget = resolveWithinRepo(repoRoot, nonEmpty(skill.path));
     if (!canonicalTarget || !existingFileWithinRepo(repoRoot, canonicalTarget))
       continue;
@@ -169,10 +217,25 @@ export function validateSkillRegistry(document, repoRoot) {
     document.skills.length > 8
   )
     problems.push("skill registry must contain 5-8 selectable skills");
+  if (
+    !Array.isArray(document.lifecycleSkills) ||
+    document.lifecycleSkills.length !== 7
+  )
+    problems.push("skill registry must contain exactly 7 lifecycle skills");
   if (document.selection?.maxPrimary !== 1)
     problems.push("skill registry selection.maxPrimary must be 1");
   if (document.selection?.maxSupporting !== 4)
     problems.push("skill registry selection.maxSupporting must be 4");
+  if (document.lifecycleSelection?.catalogSize !== 7)
+    problems.push("skill registry lifecycleSelection.catalogSize must be 7");
+  if (document.lifecycleSelection?.maxPrimary !== 1)
+    problems.push("skill registry lifecycleSelection.maxPrimary must be 1");
+  if (!nonEmpty(document.lifecycleSelection?.policy))
+    problems.push("skill registry lifecycleSelection.policy is required");
+  if (document.lifecycleSelection?.ambiguityFallback !== "valdris-route-goal")
+    problems.push(
+      "skill registry lifecycle ambiguity fallback must be valdris-route-goal",
+    );
   if (
     JSON.stringify(document.selection?.phaseTransitions) !==
     JSON.stringify(REQUIRED_PHASE_TRANSITIONS)
@@ -189,12 +252,17 @@ export function validateSkillRegistry(document, repoRoot) {
       "skill registry review policy must require independent review for every completion",
     );
   const seen = new Set();
-  for (const skill of document.skills || []) {
+  const workflowSeen = new Set();
+  const lifecycleSeen = new Set();
+  for (const skill of allSkills(document)) {
     const name = nonEmpty(skill?.name);
     if (!/^[a-z0-9-]+$/.test(name))
       problems.push(`skill has invalid name: ${name || "missing"}`);
     if (seen.has(name)) problems.push(`skill duplicated: ${name}`);
     seen.add(name);
+    if ((document.skills || []).includes(skill)) workflowSeen.add(name);
+    if ((document.lifecycleSkills || []).includes(skill))
+      lifecycleSeen.add(name);
     const target = resolveWithinRepo(repoRoot, nonEmpty(skill?.path));
     if (!target || !existingFileWithinRepo(repoRoot, target)) {
       problems.push(
@@ -245,12 +313,7 @@ export function validateSkillRegistry(document, repoRoot) {
           `skill ${name} must allow implicit invocation in agents/openai.yaml`,
         );
     }
-    for (const field of [
-      "primaryFor",
-      "triggers",
-      "requiredGates",
-      "redZoneTriggers",
-    ])
+    for (const field of ["primaryFor", "triggers", "requiredGates"])
       if (!Array.isArray(skill[field]))
         problems.push(`skill ${name}.${field} must be an array`);
     if (!skill.primaryFor?.length)
@@ -259,10 +322,42 @@ export function validateSkillRegistry(document, repoRoot) {
       problems.push(`skill ${name} must declare triggers`);
     if (!skill.requiredGates?.length)
       problems.push(`skill ${name} must declare requiredGates`);
+    if (lifecycleSeen.has(name)) {
+      for (const field of ["requiredInputs", "requiredOutputs"])
+        if (!Array.isArray(skill[field]) || !skill[field].length)
+          problems.push(`lifecycle skill ${name}.${field} must be non-empty`);
+    } else if (!Array.isArray(skill.redZoneTriggers)) {
+      problems.push(`skill ${name}.redZoneTriggers must be an array`);
+    }
   }
   for (const skill of REQUIRED_PRIMARY_SKILLS)
-    if (!seen.has(skill))
+    if (!workflowSeen.has(skill))
       problems.push(`skill registry missing canonical primary skill: ${skill}`);
+  const systems = new Set();
+  for (const [index, name] of REQUIRED_LIFECYCLE_SKILLS.entries()) {
+    const skill = (document.lifecycleSkills || [])[index];
+    if (!lifecycleSeen.has(name))
+      problems.push(`skill registry missing lifecycle skill: ${name}`);
+    if (skill?.name !== name || skill?.sequence !== index + 1)
+      problems.push(`lifecycle skill sequence ${index + 1} must be ${name}`);
+    if (!nonEmpty(skill?.system))
+      problems.push(`lifecycle skill ${name} must declare system`);
+    else if (systems.has(skill.system))
+      problems.push(`lifecycle system duplicated: ${skill.system}`);
+    else systems.add(skill.system);
+    const expectedNext = REQUIRED_LIFECYCLE_SKILLS[index + 1] || null;
+    if ((skill?.next ?? null) !== expectedNext)
+      problems.push(
+        `lifecycle skill ${name}.next must be ${expectedNext || "null"}`,
+      );
+  }
+  if (
+    JSON.stringify(document.lifecycleSelection?.sequence) !==
+    JSON.stringify(REQUIRED_LIFECYCLE_SKILLS)
+  )
+    problems.push(
+      "skill registry lifecycleSelection.sequence must match the canonical seven-skill chain",
+    );
   const proofHandoff = (document.skills || []).find(
     (skill) => skill?.name === "valdris-proof-handoff",
   );
@@ -291,6 +386,13 @@ export function validateSkillRegistry(document, repoRoot) {
     problems.push(
       "skill registry selection.catalogSize must match skills length",
     );
+  if (
+    document.lifecycleSelection?.catalogSize !==
+    (document.lifecycleSkills || []).length
+  )
+    problems.push(
+      "skill registry lifecycleSelection.catalogSize must match lifecycleSkills length",
+    );
   const routingTarget = path.join(repoRoot, "skills", "codex-routing.yaml");
   if (!existingFileWithinRepo(repoRoot, routingTarget)) {
     problems.push("skills/codex-routing.yaml is missing or outside repo");
@@ -318,6 +420,10 @@ export function validateSkillRegistry(document, repoRoot) {
       problems.push("project adapter schema must be uash.project-adapter.v2");
     } else if (adapter.schema === "uash.project-adapter.v2") {
       adapterRequiresMirrors = true;
+      if (adapter.skillRouter?.schema !== SKILL_REGISTRY_SCHEMA)
+        problems.push(
+          `project adapter skillRouter.schema must be ${SKILL_REGISTRY_SCHEMA}`,
+        );
       if (adapter.skillRouter?.registry !== "skills/registry.json")
         problems.push(
           "project adapter skillRouter.registry must be skills/registry.json",
@@ -329,6 +435,14 @@ export function validateSkillRegistry(document, repoRoot) {
       if (adapter.skillRouter?.implicitInvocation !== true)
         problems.push(
           "project adapter skillRouter.implicitInvocation must be true",
+        );
+      if (adapter.skillRouter?.workflowCatalogSize !== 8)
+        problems.push(
+          "project adapter skillRouter.workflowCatalogSize must be 8",
+        );
+      if (adapter.skillRouter?.lifecycleCatalogSize !== 7)
+        problems.push(
+          "project adapter skillRouter.lifecycleCatalogSize must be 7",
         );
     }
   }
@@ -391,19 +505,28 @@ export function validateSkillRegistry(document, repoRoot) {
   return {
     valid: problems.length === 0,
     schema: document.schema,
-    skillCount: seen.size,
-    skills: Array.from(seen),
+    skillCount: workflowSeen.size,
+    lifecycleSkillCount: lifecycleSeen.size,
+    totalSkillCount: seen.size,
+    skills: Array.from(workflowSeen),
+    lifecycleSkills: Array.from(lifecycleSeen),
     problems,
   };
 }
 
 async function main() {
-  const args = parseRepoFileArgs(process.argv.slice(2), {
-    file: "skills/registry.json",
-  });
+  const argv = process.argv.slice(2);
+  const writeRouting = argv.includes("--write-routing");
+  const args = parseRepoFileArgs(
+    argv.filter((arg) => arg !== "--write-routing"),
+    {
+      file: "skills/registry.json",
+    },
+  );
+  args.writeRouting = writeRouting;
   if (args.help)
     return console.log(
-      "Usage: node scripts/skill-registry-gate.mjs --repo . [--file skills/registry.json]",
+      "Usage: node scripts/skill-registry-gate.mjs --repo . [--file skills/registry.json] [--write-routing]",
     );
   const repoRoot = path.resolve(args.repo);
   const requestedTarget = path.resolve(repoRoot, args.file);
@@ -422,9 +545,17 @@ async function main() {
       problems: [`skill registry missing: ${args.file}`],
     });
   try {
+    const document = readJson(target);
+    if (args.writeRouting) {
+      const registryRoot = path.resolve(target, "..", "..");
+      writeFileSync(
+        path.join(registryRoot, "skills", "codex-routing.yaml"),
+        renderCodexRoutingYaml(document, registryRoot),
+      );
+    }
     gateResult(
       args.file,
-      validateSkillRegistry(readJson(target), path.resolve(target, "..", "..")),
+      validateSkillRegistry(document, path.resolve(target, "..", "..")),
     );
   } catch (error) {
     gateResult(args.file, {

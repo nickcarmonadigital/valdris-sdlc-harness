@@ -2088,7 +2088,7 @@ function renderFourRoleProtocol() {
 }
 
 function renderGoalSkillProtocol() {
-  return `\n## Valdris v0.9 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n5. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n6. Treat async workflows, orchestration, memory, model routing, and interop as cross-cutting capabilities over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n7. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed review trust store. For semantic or authoritative claims, also validate \`assurance/authoritative.json\` against the operator-pinned authority trust store before creating \`valdris.run-packet.v3\`. Agents may not add or trust their own key.\n8. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+  return `\n## Valdris v0.9 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`.\n2. Use the seven lifecycle skills to select the owning Valdris control-plane system: commission -> route-goal -> assure -> connect-runtime -> execute-workflow -> prove-govern -> trust-improve. Select exactly one lifecycle skill for the requested system operation.\n3. Inside routed engineering work, use the separate eight-skill work catalog: select one primary work skill for the current intake, delivery, or proof-handoff phase plus the smallest supporting set. Lifecycle skills never replace the route's work primary.\n4. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n5. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n6. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n7. Treat async workflows, orchestration, memory, model routing, and interop as cross-cutting capabilities over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n8. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed review trust store. For semantic or authoritative claims, also validate \`assurance/authoritative.json\` against the operator-pinned authority trust store before creating \`valdris.run-packet.v3\`. Agents may not add or trust their own key.\n9. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
 }
 
 function renderBridgeCredentialBoundary(agentName) {
@@ -2383,13 +2383,16 @@ function generatePack(args, detected, answers) {
         "Valdris gates and human approvals; runtime-native goal/loop state is advisory acceleration only.",
     },
     skillRouter: {
-      schema: "uash.skill-registry.v1",
+      schema: "uash.skill-registry.v2",
       registry: "skills/registry.json",
       codexRouting: "skills/codex-routing.yaml",
       implicitInvocation: true,
-      catalogSize: 8,
+      workflowCatalogSize: 8,
+      lifecycleCatalogSize: 7,
+      lifecycleRouteCommand: `node ${scriptFromRepo}/route-lifecycle-skill.mjs --repo . --request "<request>"`,
       gateCommand: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
-      selection: "One primary skill plus the smallest supporting set.",
+      selection:
+        "One lifecycle skill for the owning system; inside routed work, one primary work skill plus the smallest supporting set.",
     },
     cleanRoomAssurance: {
       provenanceManifest:
@@ -3066,6 +3069,7 @@ function generatePack(args, detected, answers) {
     "workload-classification-gate.mjs",
     "foundation-gate.mjs",
     "route-request.mjs",
+    "route-lifecycle-skill.mjs",
     "route-gate.mjs",
     "production-layer-gate.mjs",
     "ai-assurance-gate.mjs",
@@ -3164,6 +3168,7 @@ function generatePack(args, detected, answers) {
           "foundation:gate": `node scripts/foundation-gate.mjs --repo \"${repoFromPack}\"`,
           "route:gate": `node scripts/route-gate.mjs --repo \"${repoFromPack}\"`,
           "route:request": `node scripts/route-request.mjs --repo \"${repoFromPack}\"`,
+          "lifecycle:route": `node scripts/route-lifecycle-skill.mjs --repo \"${repoFromPack}\"`,
           "goal:transition": `node scripts/goal-transition.mjs --repo \"${repoFromPack}\"`,
           "goal:gate:active": `node scripts/goal-gate.mjs --repo \"${repoFromPack}\" --allow-active`,
           "run:packet:gate": `node scripts/run-packet-gate.mjs --repo \"${repoFromPack}\"`,

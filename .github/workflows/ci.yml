@@ -94,6 +94,9 @@ jobs:
       - name: Skill registry gate
         run: npm run skills:gate
 
+      - name: Deterministic lifecycle skill verifier
+        run: npm run verify:lifecycle-skills
+
       - name: Canonical catalog integrity gate
         run: npm run catalog:gate
 
@@ -232,6 +235,9 @@ jobs:
 
       - name: Full harness and generated skill-pack verifier
         run: npm run verify:harness
+
+      - name: Deterministic lifecycle skill verifier
+        run: npm run verify:lifecycle-skills
 
       - name: Install and verify generated Codex skills
         run: npm run skills:install:codex

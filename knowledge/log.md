@@ -1,5 +1,10 @@
 # Knowledge Vault Update Log
 
+## 2026-07-27
+
+- **Update**: Added seven deterministic lifecycle skills for commissioning, route/goal control, assurance, runtime connectivity, workflow execution, proof/governance, and trust/improvement while preserving the eight work-type skills as a separate catalog.
+- **Update**: Added a machine-validated lifecycle registry projection and deterministic lifecycle router with explicit-stage precedence, checked trigger routing, a route-goal ambiguity fallback, and generated-pack/Codex installation coverage.
+
 ## 2026-07-26
 
 - **Update**: Clarified that the eight workflow skills select phase procedures while commissioned work lanes select project context and risk emphasis; the route can bind both without treating them as one taxonomy.

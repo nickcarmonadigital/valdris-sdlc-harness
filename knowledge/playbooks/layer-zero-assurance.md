@@ -37,7 +37,7 @@ Risk overlays may raise a tier. They must not silently lower a requirement selec
 3. Every non-docs delivery primary is blocked until both classification and foundation gates pass. Ordinary README/copy changes may skip Foundation with a reason; controlled assurance documents may not.
 4. `valdris-proof-handoff` validates classification and foundation artifacts whenever the route requires them, including their bindings, required capabilities, effective assurance tier, profiles, proof, and non-applicability decisions.
 
-Classification and foundation are gates, not selectable skills. The registry must continue to expose exactly eight Valdris workflow skills and one primary per phase.
+Classification and foundation remain gates inside the eight-skill work router, not extra work types. The separate seven-skill lifecycle catalog may select `valdris-assure` as the owning control-plane system; it does not replace the route's one workflow primary per phase.
 
 # Relationship To Production Assurance
 

@@ -1,6 +1,6 @@
 ---
 name: valdris-sdlc-harness
-description: Operate on the Valdris SDLC Harness repository and its commissioning system. Use when Codex is asked to audit, validate, repair, extend, release, or commission the harness itself, its generated packs, UASH bridge, proof gates, knowledge vault, project adapters, or 13-layer control plane. Do not use as the primary workflow for ordinary feature, bug, security, platform, AI, or handoff work inside an already commissioned target repo; let the eight Valdris workflow skills route that work.
+description: Operate on the Valdris SDLC Harness repository and its commissioning system. Use when Codex is asked to audit, validate, repair, extend, release, or commission the harness itself, its generated packs, UASH bridge, proof gates, knowledge vault, project adapters, or Layer 0 plus 13-domain control plane. Do not use as the primary workflow inside an already commissioned target repo; let the seven lifecycle skills select the owning Valdris system and the eight workflow skills route the engineering work.
 ---
 
 # Valdris SDLC Harness

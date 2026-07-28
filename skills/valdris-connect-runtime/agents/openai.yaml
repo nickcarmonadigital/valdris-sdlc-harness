@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Runtime Connectivity"
+  short_description: "Connect agents with truthful events, leases, and identity"
+  default_prompt: "Use $valdris-connect-runtime to establish or verify this Valdris runtime connection."
+
+policy:
+  allow_implicit_invocation: true

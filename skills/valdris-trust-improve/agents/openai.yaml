@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Trust and Improvement"
+  short_description: "Set trust level, authorize promotion, and close learning"
+  default_prompt: "Use $valdris-trust-improve to decide final trust, promotion, handoff, and learning."
+
+policy:
+  allow_implicit_invocation: true

@@ -927,13 +927,18 @@ try {
     "goal loop commissioning missing",
   );
   assert(
-    adapter.skillRouter?.catalogSize === 8,
-    "eight-skill router commissioning missing",
+    adapter.skillRouter?.schema === "uash.skill-registry.v2" &&
+      adapter.skillRouter?.workflowCatalogSize === 8 &&
+      adapter.skillRouter?.lifecycleCatalogSize === 7,
+    "dual skill-catalog commissioning missing",
   );
   assert(
     adapter.skillRouter?.codexRouting === "skills/codex-routing.yaml" &&
-      adapter.skillRouter?.implicitInvocation === true,
-    "Codex YAML skill routing commissioning missing",
+      adapter.skillRouter?.implicitInvocation === true &&
+      adapter.skillRouter?.lifecycleRouteCommand?.includes(
+        "route-lifecycle-skill.mjs",
+      ),
+    "Codex YAML or lifecycle skill routing commissioning missing",
   );
   assert(
     adapter.knowledgeVault?.format === "OKF v0.1",
@@ -2086,6 +2091,40 @@ try {
   await readFile(
     path.join(generatedOut, ".claude", "skills", "codex-routing.yaml"),
     "utf8",
+  );
+  for (const lifecycleSkill of rootSkillRegistry.lifecycleSkills || []) {
+    await readFile(path.join(generatedOut, lifecycleSkill.path), "utf8");
+    await readFile(
+      path.join(
+        generatedOut,
+        ".agents",
+        "skills",
+        lifecycleSkill.name,
+        "SKILL.md",
+      ),
+      "utf8",
+    );
+    await readFile(
+      path.join(
+        generatedOut,
+        ".claude",
+        "skills",
+        lifecycleSkill.name,
+        "SKILL.md",
+      ),
+      "utf8",
+    );
+  }
+  await run(
+    node,
+    [
+      "scripts/route-lifecycle-skill.mjs",
+      "--repo",
+      ".",
+      "--request",
+      "Connect Codex and start Live Run",
+    ],
+    { cwd: generatedOut },
   );
 
   const claudeConnectorDoc = await readFile(
