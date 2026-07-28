@@ -609,9 +609,10 @@ async function main() {
       const routingTarget = path.join(repoRoot, "skills", "codex-routing.yaml");
       const routingParent = path.dirname(routingTarget);
       if (
-        path.resolve(target) !== canonicalRegistry ||
-        registryRoot !== repoRoot ||
         !existingFileWithinRepo(repoRoot, target) ||
+        !existingFileWithinRepo(repoRoot, canonicalRegistry) ||
+        realpathSync(target) !== realpathSync(canonicalRegistry) ||
+        realpathSync(registryRoot) !== realpathSync(repoRoot) ||
         !existingDirectoryWithinRepo(repoRoot, routingParent) ||
         (existsSync(routingTarget) &&
           !existingFileWithinRepo(repoRoot, routingTarget))

@@ -362,7 +362,7 @@ try {
       existsSync(
         path.join(projectionRepairRoot, "skills", "codex-routing.yaml"),
       ),
-    `the registry gate must regenerate a missing canonical routing projection: ${repairResult.stdout}${repairResult.stderr}`,
+    `the registry gate must regenerate a missing canonical routing projection (status=${repairResult.status}, signal=${repairResult.signal}, error=${repairResult.error?.message || "none"}): ${repairResult.stdout}${repairResult.stderr}`,
   );
 } finally {
   rmSync(projectionRepairRoot, { recursive: true, force: true });
