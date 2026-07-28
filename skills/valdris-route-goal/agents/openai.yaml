@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Route and Goal"
+  short_description: "Bind a request to an immutable route and durable goal"
+  default_prompt: "Use $valdris-route-goal to classify this request and create the bound Valdris route and goal."
+
+policy:
+  allow_implicit_invocation: true

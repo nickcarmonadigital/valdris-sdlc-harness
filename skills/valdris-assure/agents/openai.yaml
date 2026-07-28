@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Assurance"
+  short_description: "Resolve Layer 0, all 13 domains, and added controls"
+  default_prompt: "Use $valdris-assure to establish and validate the complete assurance plan for this run."
+
+policy:
+  allow_implicit_invocation: true

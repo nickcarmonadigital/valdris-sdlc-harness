@@ -138,7 +138,40 @@ This keeps the Layer 0 plus 13-domain model stable.
 
 ![Valdris assurance model showing Layer 0, the 13 production domains, cross-cutting concerns, domain packs, and three proof levels](docs/assets/readme/assurance-model.svg)
 
-## Eight workflow skills
+## Fifteen skills in two catalogs
+
+Valdris has two different routing questions:
+
+1. **Which Valdris system owns this step?** Seven lifecycle skills answer this.
+2. **What kind of engineering work is this?** Eight workflow skills answer this.
+
+The catalogs do not compete. A lifecycle skill runs one control-plane system
+end to end. During delivery, the immutable route still selects one workflow
+skill for the actual engineering work.
+
+### Seven lifecycle skills
+
+| Skill                      | Owns                                                     |
+| -------------------------- | -------------------------------------------------------- |
+| `valdris-commission`       | Project discovery, adapter, front doors, portable pack   |
+| `valdris-route-goal`       | Intake, classification, immutable route, durable goal    |
+| `valdris-assure`           | Layer 0, 13 domains, cross-cutting and domain assurance  |
+| `valdris-connect-runtime`  | Codex/Claude/Hermes adapters, live events, replay        |
+| `valdris-execute-workflow` | The routed work skill and budget-controlled goal loop    |
+| `valdris-prove-govern`     | Typed proof, gates, approvals, review, final run packet  |
+| `valdris-trust-improve`    | Trust level, promotion, handoff, self-heal, and learning |
+
+Ask the deterministic lifecycle router which system owns a request:
+
+```bash
+npm run lifecycle:route -- --request "Connect Codex and start a Live Run"
+```
+
+The same request always follows the same checked routing rules. An explicit
+skill or stage wins. An unclear lifecycle request falls back to
+`valdris-route-goal`.
+
+### Eight workflow skills
 
 Valdris chooses one main skill for each phase. It may add up to four support
 skills when the risk calls for them.
@@ -305,6 +338,7 @@ operator-supervised evidence, not release authority.
 | Project commissioning and generated packs       | Built and verified |
 | Request routing and durable goal loop           | Built and verified |
 | Layer 0 and 13-domain assurance                 | Built and verified |
+| Seven deterministic lifecycle skills            | Built and verified |
 | Eight workflow skills                           | Built and verified |
 | Code intelligence and source anchors            | Built and verified |
 | Proof, RCA, review, and run-packet gates        | Built and verified |
@@ -330,7 +364,7 @@ provider authority.
 | `knowledge/`  | Small agent-facing knowledge map              |
 | `lib/`        | App and bridge support code                   |
 | `scripts/`    | Gates, runners, generators, and verifiers     |
-| `skills/`     | The eight Valdris workflow skills             |
+| `skills/`     | Seven lifecycle plus eight workflow skills    |
 | `research/`   | Source notes and clean-room research          |
 
 Start with:

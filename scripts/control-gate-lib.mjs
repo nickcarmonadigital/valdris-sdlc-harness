@@ -95,6 +95,21 @@ export function sha256File(filePath) {
   return createHash("sha256").update(readFileSync(filePath)).digest("hex");
 }
 
+export function portableManifestSha256(content) {
+  const bytes = Buffer.isBuffer(content) ? content : Buffer.from(content);
+  let canonicalBytes = bytes;
+  if (!bytes.includes(0)) {
+    try {
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      if (!/[\u0001-\u0008\u000b\u000c\u000e-\u001f]/u.test(text))
+        canonicalBytes = Buffer.from(text.replace(/\r\n?/g, "\n"), "utf8");
+    } catch {
+      // Binary and non-UTF-8 files retain their exact byte identity.
+    }
+  }
+  return createHash("sha256").update(canonicalBytes).digest("hex");
+}
+
 export function resolveWithinRepo(repoRoot, candidate) {
   const root = path.resolve(repoRoot);
   const target = path.resolve(root, candidate);

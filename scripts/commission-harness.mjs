@@ -11,6 +11,7 @@ import {
   ROOT_LOADER_START,
   renderRootDiscoveryLoader,
 } from "./discovery-loader-contract.mjs";
+import { portableManifestSha256 } from "./control-gate-lib.mjs";
 
 const VERSION = "0.9.0-rc.1";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -1224,7 +1225,7 @@ function parseArgs(argv) {
 
 function printHelp() {
   console.log(
-    `Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional answers JSON file. Missing values are asked interactively.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use defaults for missing answers.\n  --force                Replace an existing recognized .valdris-harness pack.\n  --print-questions      Print the commissioning question bank and exit.\n`,
+    `Universal Agentic SDLC Harness commissioning v${VERSION}\n\nUsage:\n  node scripts/commission-harness.mjs --repo /path/to/repo --project-name "My App" --out /path/to/repo/.valdris-harness\n  node scripts/commission-harness.mjs --print-questions\n\nOptions:\n  --repo <path>          Target Git repository root. Defaults to cwd.\n  --out <path>           Must be <repo>/.valdris-harness. Defaults to that canonical nested path.\n  --answers <json>       Optional reviewed overrides. Prior reviewed answers persist; generated defaults re-detect.\n  --project-name <name>  Project name.\n  --yes                  Non-interactive: use reviewed answers and current generated defaults.\n  --force                Refresh a recognized pack without resetting reviewed commissioning facts.\n  --print-questions      Print the commissioning question bank and exit.\n`,
   );
 }
 
@@ -1413,19 +1414,80 @@ function defaultFor(question, detected, args) {
 }
 
 async function collectAnswers(args, detected) {
+  const questions = questionList();
+  const questionIds = new Set(questions.map(({ id }) => id));
+  const canonicalOut = path.join(
+    path.resolve(detected.repoPath),
+    ".valdris-harness",
+  );
+  const requestedOut = path.resolve(args.out || canonicalOut);
+  let preserved = {};
+  let preservedSources = {};
+  if (
+    args.force &&
+    requestedOut === canonicalOut &&
+    fs.existsSync(requestedOut)
+  ) {
+    const entries = fs.readdirSync(requestedOut);
+    if (entries.length) {
+      const marker = readJsonIfExists(
+        path.join(requestedOut, "project-adapter.json"),
+      );
+      if (
+        marker?.schema !== "uash.project-adapter.v2" ||
+        !marker?.generatorVersion ||
+        !marker?.answers ||
+        typeof marker.answers !== "object" ||
+        Array.isArray(marker.answers)
+      )
+        throw new Error(
+          "Refusing --force because the output is not a recognized generated Valdris pack with reusable commissioning answers",
+        );
+      const previousDetected = {
+        ...(marker.detected || {}),
+        repoPath: detected.repoPath,
+      };
+      for (const question of questions) {
+        if (!Object.hasOwn(marker.answers, question.id)) continue;
+        const source = marker.commissioning?.answerSources?.[question.id];
+        const reviewedSource = source === "reviewed" || source === "explicit";
+        const generatedSource = source === "generated-default";
+        const previousDefault = defaultFor(question, previousDetected, {
+          projectName: null,
+        });
+        if (
+          reviewedSource ||
+          (!generatedSource &&
+            source === undefined &&
+            marker.answers[question.id] !== previousDefault)
+        ) {
+          preserved[question.id] = marker.answers[question.id];
+          preservedSources[question.id] =
+            source === "explicit" ? "explicit" : "reviewed";
+        }
+      }
+    }
+  }
   const provided = args.answers ? readJsonIfExists(args.answers) : {};
   if (args.answers && !provided)
     throw new Error(`Could not parse answers JSON: ${args.answers}`);
-  const answers = { ...(provided ?? {}) };
-  if (args.projectName && !answers.project_name)
+  const answers = { ...preserved, ...(provided ?? {}) };
+  const answerSources = { ...preservedSources };
+  for (const key of Object.keys(provided || {}))
+    if (questionIds.has(key)) answerSources[key] = "reviewed";
+  if (args.projectName) {
     answers.project_name = args.projectName;
+    answerSources.project_name = "explicit";
+  }
 
   if (args.yes || !process.stdin.isTTY) {
-    for (const question of questionList()) {
-      if (!answers[question.id])
+    for (const question of questions) {
+      if (!answers[question.id]) {
         answers[question.id] = defaultFor(question, detected, args);
+        answerSources[question.id] = "generated-default";
+      }
     }
-    return answers;
+    return { answers, answerSources };
   }
 
   const rl = readline.createInterface({ input, output });
@@ -1437,12 +1499,15 @@ async function collectAnswers(args, detected) {
         const fallback = defaultFor(question, detected, args);
         const response = await rl.question(`${question.label} [${fallback}]: `);
         answers[question.id] = response.trim() || fallback;
+        answerSources[question.id] = response.trim()
+          ? "reviewed"
+          : "generated-default";
       }
     }
   } finally {
     rl.close();
   }
-  return answers;
+  return { answers, answerSources };
 }
 
 function yamlValue(value) {
@@ -1504,6 +1569,37 @@ function normalizeGeneratedJsonLineEndings(root) {
 
 function contentSha256(content) {
   return createHash("sha256").update(content).digest("hex");
+}
+
+function commissionedPackManifest(root) {
+  const files = [];
+  const pending = [root];
+  while (pending.length) {
+    const directory = pending.pop();
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+      if (entry.isDirectory()) pending.push(target);
+      else if (entry.isFile()) {
+        const relative = path.relative(root, target).replaceAll("\\", "/");
+        if (relative !== "commissioning-manifest.json")
+          files.push({
+            path: relative,
+            sha256: portableManifestSha256(fs.readFileSync(target)),
+          });
+      } else {
+        throw new Error(
+          `generated pack manifest rejects non-regular path: ${target}`,
+        );
+      }
+    }
+  }
+  files.sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  );
+  return {
+    schema: "valdris.commissioned-pack-manifest.v1",
+    files,
+  };
 }
 
 function canonicalJson(value) {
@@ -2088,7 +2184,7 @@ function renderFourRoleProtocol() {
 }
 
 function renderGoalSkillProtocol() {
-  return `\n## Valdris v0.9 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`; select one primary skill for the current phase plus the smallest supporting set.\n2. Use intake, delivery, and proof-handoff as explicit phase transitions for large work.\n3. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n4. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n5. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n6. Treat async workflows, orchestration, memory, model routing, and interop as cross-cutting capabilities over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n7. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed review trust store. For semantic or authoritative claims, also validate \`assurance/authoritative.json\` against the operator-pinned authority trust store before creating \`valdris.run-packet.v3\`. Agents may not add or trust their own key.\n8. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+  return `\n## Valdris v0.9 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`.\n2. Use the seven lifecycle skills to select the owning Valdris control-plane system: commission -> route-goal -> assure -> connect-runtime -> execute-workflow -> prove-govern -> trust-improve. Select exactly one lifecycle skill for the requested system operation.\n3. Inside routed engineering work, use the separate eight-skill work catalog: select one primary work skill for the current intake, delivery, or proof-handoff phase plus the smallest supporting set. Lifecycle skills never replace the route's work primary.\n4. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n5. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n6. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n7. Treat async workflows, orchestration, memory, model routing, and interop as cross-cutting capabilities over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n8. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed review trust store. For semantic or authoritative claims, also validate \`assurance/authoritative.json\` against the operator-pinned authority trust store before creating \`valdris.run-packet.v3\`. Agents may not add or trust their own key.\n9. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
 }
 
 function renderBridgeCredentialBoundary(agentName) {
@@ -2176,7 +2272,7 @@ function renderReviewTrustPinProtocol(adapter) {
   return `\n## Operator-held review trust pin\n\n- Generated trust-store digest: \`${adapter.reviewTrust.generatedDigest}\` using canonical-JSON SHA-256. This commissioning value is informational, not its own authority.\n- Configure the reviewed digest out of band as protected \`UASH_REVIEW_TRUST_SHA256\` before review, packet, bridge, or CI validation.\n- A delivery-agent-controlled shell cannot establish this external trust boundary merely by setting its own environment variable.\n- For governed rotation, a human operator reviews the new store and updates the protected pin before accepting it; validators never learn or auto-update the pin from the checkout under validation.\n`;
 }
 
-function generatePack(args, detected, answers) {
+function generatePack(args, detected, answers, answerSources) {
   const repoRoot = path.resolve(detected.repoPath);
   const canonicalOut = path.join(repoRoot, ".valdris-harness");
   const out = path.resolve(args.out || canonicalOut);
@@ -2236,6 +2332,7 @@ function generatePack(args, detected, answers) {
       questionGroups: QUESTION_GROUPS.length,
       questionCount: questionList().length,
       version: VERSION,
+      answerSources,
     },
     installation: {
       pathBasis: "target-repository-root",
@@ -2383,13 +2480,16 @@ function generatePack(args, detected, answers) {
         "Valdris gates and human approvals; runtime-native goal/loop state is advisory acceleration only.",
     },
     skillRouter: {
-      schema: "uash.skill-registry.v1",
+      schema: "uash.skill-registry.v2",
       registry: "skills/registry.json",
       codexRouting: "skills/codex-routing.yaml",
       implicitInvocation: true,
-      catalogSize: 8,
+      workflowCatalogSize: 8,
+      lifecycleCatalogSize: 7,
+      lifecycleRouteCommand: `node ${scriptFromRepo}/route-lifecycle-skill.mjs --repo . --request "<request>"`,
       gateCommand: `node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}`,
-      selection: "One primary skill plus the smallest supporting set.",
+      selection:
+        "One lifecycle skill for the owning system; inside routed work, one primary work skill plus the smallest supporting set.",
     },
     cleanRoomAssurance: {
       provenanceManifest:
@@ -3066,6 +3166,7 @@ function generatePack(args, detected, answers) {
     "workload-classification-gate.mjs",
     "foundation-gate.mjs",
     "route-request.mjs",
+    "route-lifecycle-skill.mjs",
     "route-gate.mjs",
     "production-layer-gate.mjs",
     "ai-assurance-gate.mjs",
@@ -3164,6 +3265,7 @@ function generatePack(args, detected, answers) {
           "foundation:gate": `node scripts/foundation-gate.mjs --repo \"${repoFromPack}\"`,
           "route:gate": `node scripts/route-gate.mjs --repo \"${repoFromPack}\"`,
           "route:request": `node scripts/route-request.mjs --repo \"${repoFromPack}\"`,
+          "lifecycle:route": `node scripts/route-lifecycle-skill.mjs --repo \"${repoFromPack}\"`,
           "goal:transition": `node scripts/goal-transition.mjs --repo \"${repoFromPack}\"`,
           "goal:gate:active": `node scripts/goal-gate.mjs --repo \"${repoFromPack}\" --allow-active`,
           "run:packet:gate": `node scripts/run-packet-gate.mjs --repo \"${repoFromPack}\"`,
@@ -3310,6 +3412,10 @@ jobs:
       renderReviewTrustPinProtocol(adapter) +
       renderLayerZeroProtocol(),
   );
+  writePackText(
+    "commissioning-manifest.json",
+    `${JSON.stringify(commissionedPackManifest(out), null, 2)}\n`,
+  );
   installRootDiscoveryLoaders(rootLoaderPlans);
   return { out, adapter, rootLoaderPlans };
 }
@@ -3328,8 +3434,8 @@ async function main() {
     throw new Error(`Repo path not found: ${requestedRepo}`);
   const repo = fs.realpathSync(requestedRepo);
   const detected = detectRepo(repo);
-  const answers = await collectAnswers(args, detected);
-  const result = generatePack(args, detected, answers);
+  const { answers, answerSources } = await collectAnswers(args, detected);
+  const result = generatePack(args, detected, answers, answerSources);
   console.log(`Generated Valdris SDLC harness pack: ${result.out}`);
   console.log(`Project: ${answers.project_name}`);
   console.log(

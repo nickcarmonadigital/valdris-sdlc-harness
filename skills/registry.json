@@ -1,6 +1,6 @@
 {
-  "schema": "uash.skill-registry.v1",
-  "version": "1.0.0",
+  "schema": "uash.skill-registry.v2",
+  "version": "2.0.0",
   "selection": {
     "catalogSize": 8,
     "maxPrimary": 1,
@@ -13,6 +13,27 @@
       "artifact being changed",
       "narrowest matching primaryFor",
       "intake when scope remains ambiguous"
+    ]
+  },
+  "lifecycleSelection": {
+    "catalogSize": 7,
+    "maxPrimary": 1,
+    "policy": "Lifecycle skills select which Valdris control-plane system owns the requested operation. They do not replace the eight work-type skills. Select exactly one lifecycle skill, execute its declared flow in order, and hand off only after its completion criteria are evidenced.",
+    "ambiguityFallback": "valdris-route-goal",
+    "sequence": [
+      "valdris-commission",
+      "valdris-route-goal",
+      "valdris-assure",
+      "valdris-connect-runtime",
+      "valdris-execute-workflow",
+      "valdris-prove-govern",
+      "valdris-trust-improve"
+    ],
+    "tieBreakOrder": [
+      "explicit lifecycle skill invocation",
+      "requested Valdris system or owned artifact",
+      "furthest downstream requested outcome",
+      "route and goal control when lifecycle intent remains ambiguous"
     ]
   },
   "gatePolicy": {
@@ -32,7 +53,9 @@
     "restricted-residue": "When a restricted-source convergence or migration manifest is commissioned, scan the repository, release archives, generated packs, knowledge vault, and installed-skill manifest using only the external runtime manifest. Never commit or print its values.",
     "skill-retirement": "Retire old local skills only from an external manifest, dry-run first, and limit apply mode to exact non-symlink direct children of configured Codex or Claude skill roots.",
     "schema-compat": "Imported assurance concepts must map explicitly into Valdris-native schemas. Layer 0 plus the 13 production-assurance domains remain authoritative; new technologies use capability or domain packs unless the canonical taxonomy itself is deliberately versioned.",
+    "intake": "The authorized natural-language request, operator, environment, scope, exclusions, and authority boundary must be captured before route selection.",
     "classification": "Intake creates run/workload-classification.json from the commissioned taxonomy and binds it to the authorized request and route. Delivery must not rely on an absent, stale, rewritten, or unbound classification.",
+    "route": "The immutable route must bind the intake and classification, select one work-type delivery primary, preserve the three phase transitions, and declare applicable gates before implementation.",
     "foundation": "Layer 0 precedes implementation for every non-docs route. All delivery primaries must validate foundation/assessment.json against the required capabilities, effective assurance tier, selected profiles, and proof contract before implementation; audit-only work may report a failing foundation instead of pretending it passed.",
     "code-intelligence": "Required for code, architecture, debugging, refactor, or cross-file claims; docs-only work records a reason.",
     "production": "Required for production-impacting work. The 13 canonical assurance domains are the current shared baseline, not an exhaustive list of literal runtime layers; all begin required, potentially-affected, or not-applicable and must resolve before finish. Asynchronous orchestration is assessed across affected domains as a cross-cutting concern.",
@@ -288,6 +311,267 @@
         "restricted-residue for clean-room convergence or migration when an external restricted-values manifest is commissioned"
       ],
       "redZoneTriggers": ["approval-override", "accept-residual-risk"]
+    }
+  ],
+  "lifecycleSkills": [
+    {
+      "name": "valdris-commission",
+      "sequence": 1,
+      "system": "commissioning",
+      "path": "skills/valdris-commission/SKILL.md",
+      "primaryFor": [
+        "commission a repository",
+        "refresh a commissioned project pack",
+        "install Valdris front doors"
+      ],
+      "triggers": [
+        "commission Valdris",
+        "set up the harness",
+        "install the harness",
+        "generate project adapter",
+        "refresh commissioned pack"
+      ],
+      "requiredInputs": [
+        "target repository",
+        "commissioning answers or approved conservative defaults"
+      ],
+      "requiredOutputs": [
+        ".valdris-harness/project-adapter.json",
+        ".valdris-harness/commissioning-review.md",
+        "bounded target-root AGENTS.md and CLAUDE.md loaders",
+        "generated Codex and Claude skill mirrors"
+      ],
+      "requiredGates": [
+        "skill-registry",
+        "provenance",
+        "neutrality",
+        "privacy"
+      ],
+      "conditionalGates": [
+        "commissioned-portability before a generated pack is handed off"
+      ],
+      "next": "valdris-route-goal"
+    },
+    {
+      "name": "valdris-route-goal",
+      "sequence": 2,
+      "system": "routing-and-goal-control",
+      "path": "skills/valdris-route-goal/SKILL.md",
+      "primaryFor": [
+        "create deterministic intake and route",
+        "create or inspect a durable goal",
+        "resolve lifecycle ambiguity"
+      ],
+      "triggers": [
+        "route this through Valdris",
+        "create the durable goal",
+        "classify this request",
+        "which Valdris system",
+        "start a Valdris run"
+      ],
+      "requiredInputs": [
+        "committed commissioned pack",
+        "authorized natural-language request",
+        "operator, profile, environment, and authority boundary"
+      ],
+      "requiredOutputs": [
+        "run/intake.json",
+        "run/workload-classification.json",
+        "run/route.json",
+        "goal/goal.json"
+      ],
+      "requiredGates": [
+        "intake",
+        "classification",
+        "route",
+        "goal",
+        "skill-registry"
+      ],
+      "conditionalGates": [],
+      "next": "valdris-assure"
+    },
+    {
+      "name": "valdris-assure",
+      "sequence": 3,
+      "system": "assurance",
+      "path": "skills/valdris-assure/SKILL.md",
+      "primaryFor": [
+        "resolve Layer 0",
+        "classify the 13 production assurance domains",
+        "activate cross-cutting and domain assurance"
+      ],
+      "triggers": [
+        "assure this run",
+        "resolve Layer 0",
+        "check all 13 domains",
+        "set assurance tier",
+        "activate AI or async assurance"
+      ],
+      "requiredInputs": [
+        "bound intake, workload classification, route, and goal",
+        "commissioned catalogs and project adapter"
+      ],
+      "requiredOutputs": [
+        "foundation/assessment.json when applicable",
+        "production/layer-assessment.json when applicable",
+        "AI and domain assurance artifacts or route-bound non-applicability"
+      ],
+      "requiredGates": [
+        "intake",
+        "classification",
+        "route",
+        "goal",
+        "skill-registry"
+      ],
+      "conditionalGates": [
+        "foundation for every route whose foundation assessment is applicable",
+        "production for every production-impacting route",
+        "ai-assurance and eval when the classification contains AI behavior",
+        "domain-packs when workload signals activate a commissioned pack",
+        "schema-compat and authoritative-assurance when stronger controls are added"
+      ],
+      "next": "valdris-connect-runtime"
+    },
+    {
+      "name": "valdris-connect-runtime",
+      "sequence": 4,
+      "system": "runtime-connectivity",
+      "path": "skills/valdris-connect-runtime/SKILL.md",
+      "primaryFor": [
+        "connect an external coding runtime",
+        "establish Live Run telemetry",
+        "inspect or replay runtime events"
+      ],
+      "triggers": [
+        "connect Codex",
+        "connect Claude",
+        "connect Hermes",
+        "start Live Run",
+        "stream events",
+        "replay the run"
+      ],
+      "requiredInputs": [
+        "bound route and goal",
+        "commissioned runtime adapter",
+        "operator-supplied runtime credentials for Live Run"
+      ],
+      "requiredOutputs": [
+        "run/mode.json",
+        "runtime/driver-state.json when required",
+        "real session events and artifacts for Live Run or an explicit local-mode decision"
+      ],
+      "requiredGates": ["context"],
+      "conditionalGates": [
+        "authoritative-assurance runtime identity when semantic or authoritative AI claims are made",
+        "Live Run bridge lease and credential-boundary verification"
+      ],
+      "next": "valdris-execute-workflow"
+    },
+    {
+      "name": "valdris-execute-workflow",
+      "sequence": 5,
+      "system": "workflow-execution",
+      "path": "skills/valdris-execute-workflow/SKILL.md",
+      "primaryFor": [
+        "execute the routed engineering workflow",
+        "run the durable checkpoint loop",
+        "coordinate the selected work-type skill"
+      ],
+      "triggers": [
+        "execute the Valdris workflow",
+        "continue the goal loop",
+        "implement the routed work",
+        "run the next bounded slice",
+        "resume the run"
+      ],
+      "requiredInputs": [
+        "passed route and goal gates",
+        "resolved pre-implementation assurance",
+        "delivery primary selected in run/route.json"
+      ],
+      "requiredOutputs": [
+        "implementation and test evidence for the bounded slice",
+        "fresh code-intelligence and trajectory artifacts when applicable",
+        "revision-safe goal checkpoint transitions"
+      ],
+      "requiredGates": ["goal"],
+      "conditionalGates": [
+        "code-intelligence for code, architecture, debugging, refactor, or cross-file claims",
+        "trajectory for multi-checkpoint or agentic work",
+        "delivery-primary validation selected by the immutable route",
+        "Red Zone approval before consequential actions"
+      ],
+      "next": "valdris-prove-govern"
+    },
+    {
+      "name": "valdris-prove-govern",
+      "sequence": 6,
+      "system": "proof-and-governance",
+      "path": "skills/valdris-prove-govern/SKILL.md",
+      "primaryFor": [
+        "assemble typed proof",
+        "run finish-line gates",
+        "obtain independent review and scoped approvals"
+      ],
+      "triggers": [
+        "prove this run",
+        "run the finish line",
+        "govern this completion",
+        "assemble the run packet",
+        "request independent review"
+      ],
+      "requiredInputs": [
+        "completed bounded implementation",
+        "current route, goal, catalogs, evidence, and gate artifacts"
+      ],
+      "requiredOutputs": [
+        "proof/proof.json",
+        "review/review.json",
+        "run/packet.json",
+        "applicable approval and smoke artifacts"
+      ],
+      "requiredGates": ["proof", "review", "run-packet"],
+      "conditionalGates": [
+        "smoke for deployed, provider, platform-native, or runtime behavior",
+        "rca for bug, regression, incident, or self-heal routes",
+        "Red Zone and route approval for actions that require authority"
+      ],
+      "next": "valdris-trust-improve"
+    },
+    {
+      "name": "valdris-trust-improve",
+      "sequence": 7,
+      "system": "trust-and-improvement",
+      "path": "skills/valdris-trust-improve/SKILL.md",
+      "primaryFor": [
+        "decide structural, semantic, or authoritative trust",
+        "promote or hand off a proved run",
+        "capture self-healing and lessons learned"
+      ],
+      "triggers": [
+        "make the final trust decision",
+        "promote this run",
+        "release and learn",
+        "self-heal the harness",
+        "capture lessons learned"
+      ],
+      "requiredInputs": [
+        "validated final run packet",
+        "commissioned acceptance and authority policies",
+        "provider-backed receipts when stronger trust is claimed"
+      ],
+      "requiredOutputs": [
+        "handoff/final.md",
+        "release/promotion.json when promotion occurs",
+        "learning/feedback-loop.json or self_heal/self_heal_report.md when learning is required"
+      ],
+      "requiredGates": ["run-packet", "proof", "review", "privacy"],
+      "conditionalGates": [
+        "authoritative-assurance before an authoritative claim",
+        "promotion receipt validation when promotion occurs",
+        "learning receipt validation when self-healing or lessons are recorded"
+      ],
+      "next": null
     }
   ]
 }

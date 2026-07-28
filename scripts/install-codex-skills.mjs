@@ -73,7 +73,10 @@ function main() {
   const registry = JSON.parse(
     fs.readFileSync(path.join(ASSET_ROOT, "skills", "registry.json"), "utf8"),
   );
-  const installEntries = registry.skills.map((skill) => ({
+  const installEntries = [
+    ...(registry.skills || []),
+    ...(registry.lifecycleSkills || []),
+  ].map((skill) => ({
     name: skill.name,
     source: path.resolve(ASSET_ROOT, path.dirname(skill.path)),
   }));

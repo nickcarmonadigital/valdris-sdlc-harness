@@ -36,7 +36,14 @@ commission repo/team
 → block done until required proof exists
 ```
 
-Codex discovers each skill from the YAML frontmatter in its `SKILL.md`; every Valdris skill explicitly allows implicit invocation in `agents/openai.yaml`. Use `skills/codex-routing.yaml` as the readable selection projection and `skills/registry.json` as the gate-authoritative registry. For each phase, select exactly one primary skill and at most four supporting skills. Durable loop state lives in `goal/goal.json`; runtime-native goal/loop state is advisory and cannot override Valdris proof gates or human approvals.
+Codex discovers each skill from the YAML frontmatter in its `SKILL.md`; every Valdris skill explicitly allows implicit invocation in `agents/openai.yaml`. Use `skills/codex-routing.yaml` as the readable selection projection and `skills/registry.json` as the gate-authoritative registry.
+
+The registry has two non-competing catalogs:
+
+- Seven lifecycle skills select exactly one owning Valdris system: commission, route-goal, assure, connect-runtime, execute-workflow, prove-govern, or trust-improve.
+- Eight work-type skills select exactly one primary skill per intake, delivery, or proof-handoff phase plus at most four supporting skills.
+
+Use `node scripts/route-lifecycle-skill.mjs --request "<request>"` when the requested Valdris system is not explicit. Lifecycle routing never overrides the work primary bound in `run/route.json`. Durable loop state lives in `goal/goal.json`; runtime-native goal/loop state is advisory and cannot override Valdris proof gates or human approvals.
 
 ## Claude/Codex entrypoints
 

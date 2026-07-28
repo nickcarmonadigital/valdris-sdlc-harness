@@ -29,6 +29,7 @@ import {
   assertOperatorRootSecurity,
   assertOperatorRootUnchanged,
   hardenNewPrivateDirectory,
+  windowsPowerShellPath,
 } from "./operator-root-security.mjs";
 
 const SHA256 = /^[a-f0-9]{64}$/i;
@@ -544,17 +545,7 @@ function windowsRuntimeCapsuleProtection(
     throw new Error(
       "SystemRoot is required to protect a Windows runtime capsule",
     );
-  const powershell = path.join(
-    windowsRoot,
-    "System32",
-    "WindowsPowerShell",
-    "v1.0",
-    "powershell.exe",
-  );
-  if (!existsSync(powershell))
-    throw new Error(
-      "Windows PowerShell is required to protect the runtime capsule",
-    );
+  const powershell = windowsPowerShellPath(environment);
   const icacls = path.join(windowsRoot, "System32", "icacls.exe");
   if (!existsSync(icacls))
     throw new Error("icacls is required to protect the runtime capsule");
@@ -595,6 +586,8 @@ function Get-RuleView($acl) {
       env: {
         SystemRoot: environment.SystemRoot,
         WINDIR: environment.WINDIR,
+        ProgramFiles: environment.ProgramFiles,
+        ProgramW6432: environment.ProgramW6432,
         VALDRIS_RUNTIME_CAPSULE: capsulePath,
         VALDRIS_RUNTIME_CAPSULE_ROOT: capsuleRoot,
       },

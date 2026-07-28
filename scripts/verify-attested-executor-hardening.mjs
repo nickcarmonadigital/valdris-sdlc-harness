@@ -294,58 +294,6 @@ function git(gitCli, root, args, options = {}) {
     : result.stdout;
 }
 
-function secureWindowsDirectory(target) {
-  if (process.platform !== "win32") return;
-  const powershell = path.join(
-    process.env.SystemRoot,
-    "System32",
-    "WindowsPowerShell",
-    "v1.0",
-    "powershell.exe",
-  );
-  const script = String.raw`
-$ErrorActionPreference = 'Stop'
-$target = $env:VALDRIS_TEST_ROOT
-$current = [Security.Principal.WindowsIdentity]::GetCurrent().User
-$acl = Get-Acl -LiteralPath $target
-$acl.SetOwner($current)
-$acl.SetAccessRuleProtection($true, $false)
-foreach ($sid in @($current, [Security.Principal.SecurityIdentifier]'S-1-5-18', [Security.Principal.SecurityIdentifier]'S-1-5-32-544')) {
-  $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-  [void]$acl.AddAccessRule($rule)
-}
-Set-Acl -LiteralPath $target -AclObject $acl
-`;
-  const result = spawnSync(
-    powershell,
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-Command",
-      script,
-    ],
-    {
-      encoding: "utf8",
-      env: {
-        SystemRoot: process.env.SystemRoot,
-        WINDIR: process.env.WINDIR,
-        VALDRIS_TEST_ROOT: target,
-      },
-      shell: false,
-      windowsHide: true,
-    },
-  );
-  if (result.error || result.status !== 0)
-    throw new Error(
-      `failed to create restrictive Windows test root: ${
-        result.error?.message || result.stderr || result.stdout
-      }`,
-    );
-}
-
 function runtimeResult(status, output = "") {
   return {
     status,
@@ -1152,7 +1100,7 @@ try {
   const operatorRoot = path.join(root, "operator-root");
   mkdirSync(operatorRoot, { mode: 0o700 });
   if (process.platform !== "win32") chmodSync(operatorRoot, 0o700);
-  else secureWindowsDirectory(operatorRoot);
+  else hardenNewPrivateDirectory(operatorRoot);
   const operatorIdentity = assertOperatorRootSecurity(operatorRoot);
   assertOperatorRootUnchanged(operatorRoot, operatorIdentity);
   const aliasedOperatorIdentity = assertOperatorRootSecurity(

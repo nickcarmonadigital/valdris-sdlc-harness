@@ -1,0 +1,7 @@
+interface:
+  display_name: "Valdris Proof and Governance"
+  short_description: "Freeze evidence, govern approvals, and build the packet"
+  default_prompt: "Use $valdris-prove-govern to run the finish line and assemble the governed run packet."
+
+policy:
+  allow_implicit_invocation: true

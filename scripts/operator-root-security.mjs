@@ -74,22 +74,30 @@ function inspectPosixRoot(realPath) {
   };
 }
 
-function windowsPowerShellPath(environment) {
+export function windowsPowerShellPath(environment) {
   const systemRoot = environment.SystemRoot || environment.WINDIR;
   if (!systemRoot || !path.win32.isAbsolute(systemRoot))
     throw new Error(
       "SystemRoot is required to inspect a Windows operator root",
     );
-  const candidate = path.win32.join(
-    systemRoot,
-    "System32",
-    "WindowsPowerShell",
-    "v1.0",
-    "powershell.exe",
-  );
-  if (!existsSync(candidate))
+  const programFiles =
+    environment.ProgramFiles || environment.ProgramW6432 || "";
+  const candidates = [
+    programFiles && path.win32.isAbsolute(programFiles)
+      ? path.win32.join(programFiles, "PowerShell", "7", "pwsh.exe")
+      : null,
+    path.win32.join(
+      systemRoot,
+      "System32",
+      "WindowsPowerShell",
+      "v1.0",
+      "powershell.exe",
+    ),
+  ].filter(Boolean);
+  const candidate = candidates.find((file) => existsSync(file));
+  if (!candidate)
     throw new Error(
-      "Windows PowerShell is unavailable for operator-root ACL inspection",
+      "PowerShell is unavailable for Windows operator-root ACL inspection",
     );
   return realpathSync.native(candidate);
 }
@@ -168,6 +176,8 @@ $rules = @($acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentif
       env: {
         SystemRoot: environment.SystemRoot,
         WINDIR: environment.WINDIR,
+        ProgramFiles: environment.ProgramFiles,
+        ProgramW6432: environment.ProgramW6432,
         VALDRIS_OPERATOR_ROOT_TARGET: realPath,
       },
       shell: false,
@@ -375,58 +385,78 @@ export function hardenNewPrivateDirectory(
     throw new Error(
       "new Windows private directory must be empty before ownership hardening",
     );
-  const powershell = windowsPowerShellPath(environment);
-  const script = String.raw`
-$ErrorActionPreference = 'Stop'
-$target = $env:VALDRIS_OPERATOR_ROOT_TARGET
-$current = [Security.Principal.WindowsIdentity]::GetCurrent().User
-$acl = Get-Acl -LiteralPath $target
-$acl.SetOwner($current)
-$acl.SetAccessRuleProtection($true, $false)
-foreach ($sid in @($current, [Security.Principal.SecurityIdentifier]'S-1-5-18', [Security.Principal.SecurityIdentifier]'S-1-5-32-544')) {
-  $rule = New-Object Security.AccessControl.FileSystemAccessRule($sid, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')
-  [void]$acl.AddAccessRule($rule)
-}
-Set-Acl -LiteralPath $target -AclObject $acl
-if (@(Get-ChildItem -LiteralPath $target -Force -ErrorAction Stop).Count -ne 0) {
-  throw "new Windows private directory changed during ownership hardening"
-}
-`;
-  const result = spawnSyncImpl(
-    powershell,
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-Command",
-      script,
-    ],
-    {
+  const systemRoot = environment.SystemRoot || environment.WINDIR;
+  if (!systemRoot || !path.win32.isAbsolute(systemRoot))
+    throw new Error(
+      "SystemRoot is required to harden a Windows private directory",
+    );
+  const whoami = path.win32.join(systemRoot, "System32", "whoami.exe");
+  const icacls = path.win32.join(systemRoot, "System32", "icacls.exe");
+  for (const [binary, label] of [
+    [whoami, "whoami"],
+    [icacls, "icacls"],
+  ])
+    if (!existsSync(binary))
+      throw new Error(
+        `Windows ${label} is unavailable for private-directory hardening`,
+      );
+  const runNative = (command, args, phase) => {
+    const result = spawnSyncImpl(command, args, {
       encoding: "utf8",
       env: {
         SystemRoot: environment.SystemRoot,
         WINDIR: environment.WINDIR,
-        VALDRIS_OPERATOR_ROOT_TARGET: realPath,
       },
       shell: false,
       windowsHide: true,
       maxBuffer: 1_048_576,
-      timeout: windowsOperationTimeout(deadline, deadlinePhase, {
+      timeout: windowsOperationTimeout(deadline, phase, {
         reserveCleanup,
       }),
-    },
+    });
+    assertWindowsOperationDeadline(result, deadline, phase, {
+      reserveCleanup,
+    });
+    if (result.error || result.status !== 0)
+      throw new Error(
+        `failed to harden Windows private directory during ${phase}: ${
+          result.error?.message || result.stderr || result.stdout
+        }`,
+      );
+    if (readdirSync(realPath).length !== 0)
+      throw new Error(
+        "new Windows private directory changed during ownership hardening",
+      );
+    return result;
+  };
+  const identity = runNative(
+    whoami,
+    ["/user", "/fo", "csv", "/nh"],
+    `${deadlinePhase} identity`,
   );
-  assertWindowsOperationDeadline(result, deadline, deadlinePhase, {
-    reserveCleanup,
-  });
-  if (result.error || result.status !== 0)
+  const currentSid = identity.stdout.match(/S-\d(?:-\d+)+/iu)?.[0];
+  if (!currentSid)
     throw new Error(
-      `failed to harden Windows private directory: ${
-        result.error?.message || result.stderr || result.stdout
-      }`,
+      "Windows private-directory hardening could not resolve the current SID",
     );
+  runNative(
+    icacls,
+    [realPath, "/setowner", `*${currentSid}`, "/Q"],
+    `${deadlinePhase} owner`,
+  );
+  runNative(
+    icacls,
+    [
+      realPath,
+      "/inheritance:r",
+      "/grant:r",
+      `*${currentSid}:(OI)(CI)F`,
+      "*S-1-5-18:(OI)(CI)F",
+      "*S-1-5-32-544:(OI)(CI)F",
+      "/Q",
+    ],
+    `${deadlinePhase} permissions`,
+  );
   if (readdirSync(realPath).length !== 0)
     throw new Error(
       "new Windows private directory changed during ownership hardening",

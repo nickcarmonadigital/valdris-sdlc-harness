@@ -1,12 +1,42 @@
-# Goal Loop and Eight-Skill Router
+# Goal Loop and Dual Skill Router
 
-Valdris turns a request into a durable goal, routes it through one primary workflow skill, adds only the supporting skills justified by risk, and blocks completion until stopping conditions and proof gates pass.
+Valdris routes control-plane operations through seven lifecycle skills and engineering work through eight workflow skills. It turns the request into a durable goal, adds only the supporting work skills justified by risk, and blocks completion until stopping conditions and proof gates pass.
 
 ![Valdris durable goal and routing control loop](assets/readme/valdris-durable-goal-routing-loop.png)
 
-## Router
+## Seven lifecycle skills
 
-The selectable catalog is intentionally small:
+The lifecycle catalog answers **which Valdris system owns this operation?**
+
+```text
+valdris-commission
+  -> valdris-route-goal
+  -> valdris-assure
+  -> valdris-connect-runtime
+  -> valdris-execute-workflow
+  -> valdris-prove-govern
+  -> valdris-trust-improve
+```
+
+Each skill owns a deterministic input-to-output contract and a checkable
+completion criterion. An operator may invoke a lifecycle skill directly. For
+natural-language system requests, run:
+
+```bash
+node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"
+```
+
+Explicit skill or stage wins. Otherwise the router uses the registry's exact
+triggers and tie-break rules. It emits no timestamp, so the same registry and
+request produce the same decision. Ambiguous lifecycle intent falls back to
+`valdris-route-goal`.
+
+Lifecycle skills do not replace the work primary in `run/route.json`.
+
+## Eight workflow skills
+
+The workflow catalog answers **what kind of engineering work is this?** It
+remains intentionally small:
 
 | Primary skill                   | Use it for                                                          |
 | ------------------------------- | ------------------------------------------------------------------- |
@@ -21,7 +51,7 @@ The selectable catalog is intentionally small:
 
 Select exactly one primary skill. Add no more than four supporting skills, and only when their risk domain is present. The registry is machine-validated with `npm run skills:gate`.
 
-Codex performs implicit discovery from each skill's `SKILL.md` YAML frontmatter (`name` and `description`), not from an arbitrary global prompt. Each skill also has `agents/openai.yaml` with `policy.allow_implicit_invocation: true`. After discovery, `skills/codex-routing.yaml` gives Codex the complete phase-selection projection; it is generated from and gate-checked against the authoritative `skills/registry.json` plus the current skill descriptions. If the YAML projection drifts, `npm run skills:gate` fails.
+Codex performs implicit discovery from each skill's `SKILL.md` YAML frontmatter (`name` and `description`), not from an arbitrary global prompt. Each skill also has `agents/openai.yaml` with `policy.allow_implicit_invocation: true`. After discovery, `skills/codex-routing.yaml` gives Codex both complete selection projections; it is generated from and gate-checked against the authoritative `skills/registry.json` plus the current skill descriptions. If the YAML projection drifts, `npm run skills:gate` fails.
 
 `run/intake.json` preserves the human request digest, authority boundary, and conservative execution budget. `run/workload-classification.json` deterministically projects task type, effective tier, workload profiles, cross-cutting concerns, domain packs, controlled-document status, and gate applicability. `run/route.json` binds both artifacts to three fixed skill phases, all thirteen initial domain decisions, classifier-derived supporting skills, AI profile/features, domain triggers, and SHA-256 digests for the registry and control catalogs. Intake, classification, and route gates reject rewritten scope, missing trigger-driven packs, phase/skill weakening, and registry/catalog drift.
 
