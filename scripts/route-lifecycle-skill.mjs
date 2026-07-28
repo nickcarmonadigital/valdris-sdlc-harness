@@ -13,6 +13,8 @@ import {
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { validationRuntimeBinding } from "./run-packet-gate.mjs";
+import { reviewTrustStoreSha256 } from "./review-gate.mjs";
 
 const ASSET_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -149,7 +151,8 @@ function ownedSurfaceMatches(skill, request, ownedNamespaces) {
     (surface) => includesLiteralSurface(request, surface),
   );
   const namespaceMatches = (ownedNamespaces.get(skill.name) || []).filter(
-    (namespace) => request.includes(namespace),
+    (namespace) =>
+      new RegExp(`(?:^|\\s)${escapeRegExp(namespace)}`).test(request),
   );
   return [
     ...new Set([...systemMatches, ...artifactMatches, ...namespaceMatches]),
@@ -165,8 +168,7 @@ function explicitInvocationMatches(lifecycleSkills, source) {
       `(?<![a-z0-9-])\\$?${escapeRegExp(skill.name)}(?![a-z0-9-])`,
       "g",
     );
-    let positive = false;
-    let negative = false;
+    let lastState = null;
     for (const match of request.matchAll(matcher)) {
       const before = request.slice(0, match.index);
       if (
@@ -174,11 +176,11 @@ function explicitInvocationMatches(lifecycleSkills, source) {
           before.slice(-96),
         )
       )
-        negative = true;
-      else positive = true;
+        lastState = "negative";
+      else lastState = "positive";
     }
-    if (positive) selected.push(skill);
-    else if (negative) negated.push(skill.name);
+    if (lastState === "positive") selected.push(skill);
+    else if (lastState === "negative") negated.push(skill.name);
   }
   return {
     selected: selected.sort((left, right) => right.sequence - left.sequence),
@@ -195,14 +197,6 @@ function regularFileWithin(root, target) {
     return false;
   const relative = path.relative(realpathSync(root), realpathSync(target));
   return !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
-function gitPath(root, target) {
-  return (
-    path
-      .relative(realpathSync(root), realpathSync(target))
-      .replaceAll("\\", "/") || "."
-  );
 }
 
 function runGit(repo, args) {
@@ -231,76 +225,106 @@ function collectRegularFiles(root) {
 }
 
 function committedCommissioningSnapshot(repoRoot, adapterRoot) {
-  const topLevel = runGit(repoRoot, ["rev-parse", "--show-toplevel"]);
-  if (topLevel.status !== 0 || !topLevel.stdout.trim())
-    return { current: false, reason: "adapter-uncommitted" };
-  const worktreeRoot = realpathSync(topLevel.stdout.trim());
   const canonicalAdapterRoot = realpathSync(adapterRoot);
-  const adapterRelative = path.relative(worktreeRoot, canonicalAdapterRoot);
-  if (adapterRelative.startsWith("..") || path.isAbsolute(adapterRelative))
+  if (path.basename(canonicalAdapterRoot) !== ".valdris-harness")
+    return { current: false, reason: "adapter-noncanonical" };
+  const targetRoot = path.dirname(canonicalAdapterRoot);
+  const head = runGit(targetRoot, ["rev-parse", "HEAD"]);
+  if (head.status !== 0 || !/^[a-f0-9]{40,64}$/i.test(head.stdout.trim()))
     return { current: false, reason: "adapter-uncommitted" };
 
-  const targetRootFiles = ["AGENTS.md", "CLAUDE.md"].map((file) =>
-    path.join(worktreeRoot, file),
+  const manifestPath = path.join(
+    canonicalAdapterRoot,
+    "commissioning-manifest.json",
   );
-  if (
-    targetRootFiles.some((target) => !regularFileWithin(worktreeRoot, target))
-  )
+  if (!regularFileWithin(canonicalAdapterRoot, manifestPath))
     return { current: false, reason: "adapter-uncommitted" };
-
-  const isNestedPack =
-    path.basename(canonicalAdapterRoot).toLowerCase() === ".valdris-harness";
-  const packFiles = isNestedPack
-    ? collectRegularFiles(canonicalAdapterRoot)
-    : [
-        path.join(canonicalAdapterRoot, "project-adapter.json"),
+  try {
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    const liveFiles = collectRegularFiles(canonicalAdapterRoot)
+      .map((file) =>
+        path.relative(canonicalAdapterRoot, file).replaceAll("\\", "/"),
+      )
+      .filter((file) => file !== "commissioning-manifest.json")
+      .sort();
+    const packRegistry = JSON.parse(
+      readFileSync(
         path.join(canonicalAdapterRoot, "skills", "registry.json"),
-        path.join(canonicalAdapterRoot, "skills", "codex-routing.yaml"),
-      ];
-  if (
-    !packFiles?.length ||
-    packFiles.some((target) => !regularFileWithin(canonicalAdapterRoot, target))
-  )
-    return { current: false, reason: "adapter-uncommitted" };
-
-  const requiredPaths = [...packFiles, ...targetRootFiles].map((target) =>
-    gitPath(worktreeRoot, target),
-  );
-  const scopePaths = isNestedPack
-    ? [gitPath(worktreeRoot, canonicalAdapterRoot), "AGENTS.md", "CLAUDE.md"]
-    : [...requiredPaths];
-  const status = runGit(worktreeRoot, [
-    "status",
-    "--porcelain=v1",
-    "-z",
-    "--untracked-files=all",
-    "--",
-    ...scopePaths,
-  ]);
-  if (status.status !== 0 || status.stdout.length)
-    return { current: false, reason: "adapter-uncommitted" };
-
-  const tracked = runGit(worktreeRoot, ["ls-files", "-z", "--", ...scopePaths]);
-  const committed = runGit(worktreeRoot, [
-    "ls-tree",
-    "-r",
-    "--name-only",
-    "-z",
-    "HEAD",
-    "--",
-    ...scopePaths,
-  ]);
-  if (tracked.status !== 0 || committed.status !== 0)
-    return { current: false, reason: "adapter-uncommitted" };
-  const trackedPaths = new Set(tracked.stdout.split("\0").filter(Boolean));
-  const committedPaths = new Set(committed.stdout.split("\0").filter(Boolean));
-  if (
-    requiredPaths.some(
-      (target) => !trackedPaths.has(target) || !committedPaths.has(target),
+        "utf8",
+      ),
+    );
+    const skillNames = [
+      ...(packRegistry.skills || []),
+      ...(packRegistry.lifecycleSkills || []),
+    ].map(({ name }) => name);
+    const requiredFiles = [
+      "AGENTS.md",
+      "CLAUDE.md",
+      "commissioning-review.md",
+      "package.json",
+      "project-adapter.json",
+      "skills/registry.json",
+      "skills/codex-routing.yaml",
+      ...[
+        "route-lifecycle-skill.mjs",
+        "skill-registry-gate.mjs",
+        "run-packet-gate.mjs",
+        "proof-runner.mjs",
+        "review-gate.mjs",
+        "goal-gate.mjs",
+        "route-gate.mjs",
+        "foundation-gate.mjs",
+        "production-layer-gate.mjs",
+        "ai-assurance-gate.mjs",
+        "authoritative-assurance-gate.mjs",
+        "enterprise-ai-gate-all.mjs",
+      ].map((file) => `scripts/${file}`),
+      ...[
+        "assurance-execution-policy.v1.json",
+        "authoritative-assurance.v1.json",
+        "authority-trust.v1.json",
+        "clean-room-behaviors.v1.json",
+        "foundation-layer.v1.json",
+        "genai-assurance.v1.json",
+        "production-layers.v2.json",
+        "review-trust.v1.json",
+        "workload-taxonomy.v1.json",
+      ].map((file) => `controls/${file}`),
+      ...skillNames.flatMap((name) => [
+        `skills/${name}/SKILL.md`,
+        `.agents/skills/${name}/SKILL.md`,
+        `.claude/skills/${name}/SKILL.md`,
+      ]),
+    ];
+    if (
+      manifest.schema !== "valdris.commissioned-pack-manifest.v1" ||
+      requiredFiles.some((file) => !liveFiles.includes(file)) ||
+      JSON.stringify(manifest.files.map((entry) => entry.path)) !==
+        JSON.stringify(liveFiles)
     )
-  )
+      return { current: false, reason: "adapter-incomplete" };
+    for (const entry of manifest.files) {
+      const file = path.join(canonicalAdapterRoot, ...entry.path.split("/"));
+      if (
+        !/^[a-f0-9]{64}$/.test(entry.sha256 || "") ||
+        sha256(readFileSync(file)) !== entry.sha256
+      )
+        return { current: false, reason: "adapter-incomplete" };
+    }
+    const trust = JSON.parse(
+      readFileSync(
+        path.join(canonicalAdapterRoot, "controls", "review-trust.v1.json"),
+        "utf8",
+      ),
+    );
+    validationRuntimeBinding(targetRoot, head.stdout.trim(), {
+      runtimeRoot: canonicalAdapterRoot,
+      reviewTrustSha256: reviewTrustStoreSha256(trust),
+    });
+    return { current: true, reason: "adapter-current" };
+  } catch {
     return { current: false, reason: "adapter-uncommitted" };
-  return { current: true, reason: "adapter-current" };
+  }
 }
 
 function commissionedAdapter(repoRoot, registry, registryText) {
@@ -422,7 +446,9 @@ function main() {
       selected = explicit.selected[0];
       reason = "explicit lifecycle skill invocation";
     } else {
+      const negatedNames = new Set(ignoredNegatedSkills);
       const owned = lifecycleSkills
+        .filter((skill) => !negatedNames.has(skill.name))
         .map((skill) => ({
           skill,
           matches: ownedSurfaceMatches(skill, request, ownedNamespaces),
@@ -433,37 +459,39 @@ function main() {
             right.skill.sequence - left.skill.sequence ||
             left.skill.name.localeCompare(right.skill.name),
         );
-      if (owned.length) {
+      const ranked = lifecycleSkills
+        .filter((skill) => !negatedNames.has(skill.name))
+        .map((skill) => scoreSkill(skill, request))
+        .filter((candidate) => candidate.phraseCount > 0)
+        .sort(
+          (left, right) =>
+            right.skill.sequence - left.skill.sequence ||
+            right.specificity - left.specificity ||
+            right.phraseCount - left.phraseCount ||
+            left.skill.name.localeCompare(right.skill.name),
+        );
+      if (
+        ranked.length &&
+        (!owned.length || ranked[0].skill.sequence >= owned[0].skill.sequence)
+      ) {
+        selected = ranked[0].skill;
+        matchedTriggers = ranked[0].matchedTriggers;
+        matchedPrimaryFor = ranked[0].matchedPrimaryFor;
+        reason = "deterministic lifecycle trigger match";
+      } else if (owned.length) {
         selected = owned[0].skill;
         matchedOwnedSurfaces = owned[0].matches;
         reason = "deterministic lifecycle owned-surface match";
       } else {
-        const ranked = lifecycleSkills
-          .map((skill) => scoreSkill(skill, request))
-          .filter((candidate) => candidate.phraseCount > 0)
-          .sort(
-            (left, right) =>
-              right.skill.sequence - left.skill.sequence ||
-              right.specificity - left.specificity ||
-              right.phraseCount - left.phraseCount ||
-              left.skill.name.localeCompare(right.skill.name),
+        selected = lifecycleSkills.find(
+          (skill) =>
+            skill.name === registry.lifecycleSelection.ambiguityFallback,
+        );
+        if (!selected)
+          throw new Error(
+            `lifecycle ambiguity fallback skill not found in registry: ${registry.lifecycleSelection?.ambiguityFallback}`,
           );
-        if (ranked.length) {
-          selected = ranked[0].skill;
-          matchedTriggers = ranked[0].matchedTriggers;
-          matchedPrimaryFor = ranked[0].matchedPrimaryFor;
-          reason = "deterministic lifecycle trigger match";
-        } else {
-          selected = lifecycleSkills.find(
-            (skill) =>
-              skill.name === registry.lifecycleSelection.ambiguityFallback,
-          );
-          if (!selected)
-            throw new Error(
-              `lifecycle ambiguity fallback skill not found in registry: ${registry.lifecycleSelection?.ambiguityFallback}`,
-            );
-          reason = "lifecycle ambiguity fallback";
-        }
+        reason = "lifecycle ambiguity fallback";
       }
     }
   }

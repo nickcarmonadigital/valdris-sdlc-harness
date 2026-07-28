@@ -1506,6 +1506,37 @@ function contentSha256(content) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+function commissionedPackManifest(root) {
+  const files = [];
+  const pending = [root];
+  while (pending.length) {
+    const directory = pending.pop();
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const target = path.join(directory, entry.name);
+      if (entry.isDirectory()) pending.push(target);
+      else if (entry.isFile()) {
+        const relative = path.relative(root, target).replaceAll("\\", "/");
+        if (relative !== "commissioning-manifest.json")
+          files.push({
+            path: relative,
+            sha256: contentSha256(fs.readFileSync(target)),
+          });
+      } else {
+        throw new Error(
+          `generated pack manifest rejects non-regular path: ${target}`,
+        );
+      }
+    }
+  }
+  files.sort((left, right) =>
+    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
+  );
+  return {
+    schema: "valdris.commissioned-pack-manifest.v1",
+    files,
+  };
+}
+
 function canonicalJson(value) {
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   if (value && typeof value === "object") {
@@ -3314,6 +3345,10 @@ jobs:
     ) +
       renderReviewTrustPinProtocol(adapter) +
       renderLayerZeroProtocol(),
+  );
+  writePackText(
+    "commissioning-manifest.json",
+    `${JSON.stringify(commissionedPackManifest(out), null, 2)}\n`,
   );
   installRootDiscoveryLoaders(rootLoaderPlans);
   return { out, adapter, rootLoaderPlans };

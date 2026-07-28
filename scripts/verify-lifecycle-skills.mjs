@@ -62,31 +62,59 @@ function writeCommissionedAdapter(repo, adapterRoot, overrides = {}) {
   );
 }
 
-function initializeCommissioningFixture(repo, { commit = true } = {}) {
-  writeFileSync(path.join(repo, "AGENTS.md"), "# Fixture agents\n");
-  writeFileSync(path.join(repo, "CLAUDE.md"), "# Fixture Claude\n");
+function fixtureGit(repo, args) {
+  const result = spawnSync("git", ["-C", repo, ...args], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert(
+    result.status === 0,
+    `fixture git ${args[0]} failed: ${result.stderr}`,
+  );
+}
+
+function cloneCommissioningFixture(source, target) {
+  const result = spawnSync("git", ["clone", "--quiet", source, target], {
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  assert(result.status === 0, `fixture git clone failed: ${result.stderr}`);
+  fixtureGit(target, ["config", "user.name", "Valdris Fixture"]);
+  fixtureGit(target, ["config", "user.email", "fixture@example.com"]);
+}
+
+function initializeCommissioningFixture(repo) {
+  writeFileSync(path.join(repo, "README.md"), "# Fixture\n");
   for (const args of [
     ["init"],
     ["config", "user.name", "Valdris Fixture"],
     ["config", "user.email", "fixture@example.com"],
     ["add", "--all"],
+    ["commit", "-m", "fixture: baseline"],
   ]) {
-    const result = spawnSync("git", ["-C", repo, ...args], {
-      encoding: "utf8",
-      windowsHide: true,
-    });
-    assert(
-      result.status === 0,
-      `fixture git ${args[0]} failed: ${result.stderr}`,
-    );
+    fixtureGit(repo, args);
   }
+}
+
+function generateCommissionedFixture(repo, { commit = true } = {}) {
+  const result = spawnSync(
+    process.execPath,
+    [
+      path.join(ROOT, "scripts", "commission-harness.mjs"),
+      "--repo",
+      repo,
+      "--out",
+      path.join(repo, ".valdris-harness"),
+      "--project-name",
+      "Fixture",
+      "--yes",
+    ],
+    { cwd: ROOT, encoding: "utf8", timeout: 60_000 },
+  );
+  assert(result.status === 0, `fixture commission failed: ${result.stderr}`);
   if (commit) {
-    const result = spawnSync(
-      "git",
-      ["-C", repo, "commit", "-m", "fixture: commission harness"],
-      { encoding: "utf8", windowsHide: true },
-    );
-    assert(result.status === 0, `fixture git commit failed: ${result.stderr}`);
+    fixtureGit(repo, ["add", "--all"]);
+    fixtureGit(repo, ["commit", "-m", "fixture: commission harness"]);
   }
 }
 
@@ -163,6 +191,22 @@ const cases = [
   [
     "use $valdris-commission rather than $valdris-trust-improve",
     "valdris-commission",
+  ],
+  [
+    "Validate the authoritative assurance receipt and promote this run",
+    "valdris-trust-improve",
+  ],
+  [
+    "Use $valdris-trust-improve? Actually do not use $valdris-trust-improve; use $valdris-commission",
+    "valdris-commission",
+  ],
+  [
+    "connect Codex and inspect preproof/results.json",
+    "valdris-connect-runtime",
+  ],
+  [
+    "Do not use $valdris-prove-govern to inspect proof/proof.json",
+    "valdris-route-goal",
   ],
 ];
 
@@ -331,22 +375,23 @@ const commissioningRoot = mkdtempSync(
 try {
   const rootOnly = path.join(commissioningRoot, "root-only");
   mkdirSync(rootOnly);
-  writeCommissionedAdapter(rootOnly, ".");
   initializeCommissioningFixture(rootOnly);
+  writeCommissionedAdapter(rootOnly, ".");
+  fixtureGit(rootOnly, ["add", "--all"]);
+  fixtureGit(rootOnly, ["commit", "-m", "fixture: root-only adapter"]);
   const rootDecision = JSON.parse(
     run(["--request", "start a Valdris run"], rootOnly).stdout,
   );
   assert(
-    rootDecision.commissioned === true &&
-      rootDecision.commissionedAdapter === "project-adapter.json" &&
-      rootDecision.commissioningReason === "adapter-current",
-    "a current root-only adapter must be commissioned",
+    rootDecision.commissioned === false &&
+      rootDecision.commissioningReason === "adapter-noncanonical",
+    "a root-only adapter must not bypass the canonical nested pack",
   );
 
   const nestedOnly = path.join(commissioningRoot, "nested-only");
   mkdirSync(nestedOnly);
-  writeCommissionedAdapter(nestedOnly, ".valdris-harness");
   initializeCommissioningFixture(nestedOnly);
+  generateCommissionedFixture(nestedOnly);
   const nestedDecision = JSON.parse(
     run(["--request", "start a Valdris run"], nestedOnly).stdout,
   );
@@ -355,7 +400,7 @@ try {
       nestedDecision.commissionedAdapter ===
         ".valdris-harness/project-adapter.json" &&
       nestedDecision.commissioningReason === "adapter-current",
-    "a current nested-only adapter must be commissioned",
+    `a current nested-only adapter must be commissioned: ${JSON.stringify(nestedDecision)}`,
   );
   const directPackRoot = path.join(nestedOnly, ".valdris-harness");
   const directPackDecision = JSON.parse(
@@ -370,10 +415,18 @@ try {
 
   const stale = path.join(commissioningRoot, "stale");
   mkdirSync(stale);
-  writeCommissionedAdapter(stale, ".", {
-    lifecycleCatalogSize: registry.lifecycleSkills.length - 1,
-  });
   initializeCommissioningFixture(stale);
+  generateCommissionedFixture(stale);
+  const staleAdapterPath = path.join(
+    stale,
+    ".valdris-harness",
+    "project-adapter.json",
+  );
+  const staleAdapter = JSON.parse(readFileSync(staleAdapterPath, "utf8"));
+  staleAdapter.skillRouter.lifecycleCatalogSize -= 1;
+  writeFileSync(staleAdapterPath, `${JSON.stringify(staleAdapter, null, 2)}\n`);
+  fixtureGit(stale, ["add", "--all"]);
+  fixtureGit(stale, ["commit", "-m", "fixture: stale adapter"]);
   const staleDecision = JSON.parse(
     run(["--request", "start a Valdris run"], stale).stdout,
   );
@@ -385,8 +438,8 @@ try {
 
   const uncommitted = path.join(commissioningRoot, "uncommitted");
   mkdirSync(uncommitted);
-  writeCommissionedAdapter(uncommitted, ".valdris-harness");
-  initializeCommissioningFixture(uncommitted, { commit: false });
+  initializeCommissioningFixture(uncommitted);
+  generateCommissionedFixture(uncommitted, { commit: false });
   const uncommittedDecision = JSON.parse(
     run(["--request", "start a Valdris run"], uncommitted).stdout,
   );
@@ -398,8 +451,8 @@ try {
 
   const dirty = path.join(commissioningRoot, "dirty");
   mkdirSync(dirty);
-  writeCommissionedAdapter(dirty, ".valdris-harness");
   initializeCommissioningFixture(dirty);
+  generateCommissionedFixture(dirty);
   writeFileSync(path.join(dirty, "CLAUDE.md"), "# Dirty fixture\n");
   const dirtyDecision = JSON.parse(
     run(["--request", "start a Valdris run"], dirty).stdout,
@@ -409,6 +462,64 @@ try {
       dirtyDecision.commissioningReason === "adapter-uncommitted",
     "a dirty target-root loader must invalidate commissioning",
   );
+
+  const incomplete = path.join(commissioningRoot, "incomplete");
+  cloneCommissioningFixture(nestedOnly, incomplete);
+  const omittedSkill = ".agents/skills/valdris-commission/SKILL.md";
+  rmSync(path.join(incomplete, ".valdris-harness", ...omittedSkill.split("/")));
+  const incompleteManifestPath = path.join(
+    incomplete,
+    ".valdris-harness",
+    "commissioning-manifest.json",
+  );
+  const incompleteManifest = JSON.parse(
+    readFileSync(incompleteManifestPath, "utf8"),
+  );
+  incompleteManifest.files = incompleteManifest.files.filter(
+    ({ path: file }) => file !== omittedSkill,
+  );
+  writeFileSync(
+    incompleteManifestPath,
+    `${JSON.stringify(incompleteManifest, null, 2)}\n`,
+  );
+  fixtureGit(incomplete, ["add", "--all"]);
+  fixtureGit(incomplete, ["commit", "-m", "fixture: incomplete pack"]);
+  const incompleteDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], incomplete).stdout,
+  );
+  assert(
+    incompleteDecision.commissioned === false &&
+      incompleteDecision.commissioningReason === "adapter-incomplete",
+    "a rewritten manifest must not admit a partial generated pack",
+  );
+
+  const invalidLoader = path.join(commissioningRoot, "invalid-loader");
+  cloneCommissioningFixture(nestedOnly, invalidLoader);
+  writeFileSync(path.join(invalidLoader, "AGENTS.md"), "# Missing loader\n");
+  fixtureGit(invalidLoader, ["add", "--all"]);
+  fixtureGit(invalidLoader, ["commit", "-m", "fixture: remove loader"]);
+  const invalidLoaderDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], invalidLoader).stdout,
+  );
+  assert(
+    invalidLoaderDecision.commissioned === false,
+    "a committed invalid discovery loader must invalidate commissioning",
+  );
+
+  const concealed = path.join(commissioningRoot, "concealed");
+  cloneCommissioningFixture(nestedOnly, concealed);
+  fixtureGit(concealed, [
+    "update-index",
+    "--assume-unchanged",
+    ".valdris-harness/scripts/route-lifecycle-skill.mjs",
+  ]);
+  const concealedDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], concealed).stdout,
+  );
+  assert(
+    concealedDecision.commissioned === false,
+    "assume-unchanged must invalidate commissioning even without a content change",
+  );
 } finally {
   rmSync(commissioningRoot, { recursive: true, force: true });
 }
@@ -417,14 +528,15 @@ const fallbackRoot = mkdtempSync(
   path.join(tmpdir(), "valdris-lifecycle-fallback-"),
 );
 try {
-  mkdirSync(path.join(fallbackRoot, "scripts"));
+  cpSync(path.join(ROOT, "scripts"), path.join(fallbackRoot, "scripts"), {
+    recursive: true,
+  });
   mkdirSync(path.join(fallbackRoot, "skills"));
   const fallbackRouter = path.join(
     fallbackRoot,
     "scripts",
     "route-lifecycle-skill.mjs",
   );
-  copyFileSync(ROUTER, fallbackRouter);
   const invalidRegistry = structuredClone(registry);
   invalidRegistry.lifecycleSelection.ambiguityFallback = "valdris-missing";
   writeFileSync(
@@ -693,7 +805,7 @@ console.log(
       boundedDecisionOutputPassed: true,
       atomicDecisionReplacementPassed: true,
       hardLinkOutputRejected: true,
-      commissioningCasesPassed: 7,
+      commissioningCasesPassed: 10,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,

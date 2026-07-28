@@ -487,7 +487,8 @@ export function validationRuntimeBinding(
       sha256: sha256(bytes),
     };
   });
-  const reviewTrustSha256 = requiredReviewTrustSha256();
+  const reviewTrustSha256 =
+    options.reviewTrustSha256 || requiredReviewTrustSha256();
   const reviewTrustRelativePath = "controls/review-trust.v1.json";
   const committedReviewTrustBytes = committedRuntimeBlob(
     reviewTrustRelativePath,
