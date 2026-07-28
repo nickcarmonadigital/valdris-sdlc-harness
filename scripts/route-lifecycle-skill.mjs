@@ -1,10 +1,12 @@
 #!/usr/bin/env node
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   existsSync,
   lstatSync,
   readFileSync,
   realpathSync,
+  renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -57,11 +59,29 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function normalizePhrase(value) {
+  return normalize(value)
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function includesPhrase(request, value) {
-  const phrase = normalize(value);
+  const normalizedRequest = normalizePhrase(request);
+  const phrase = normalizePhrase(value);
   return (
     phrase.length > 0 &&
-    new RegExp(`(?:^|\\s)${escapeRegExp(phrase)}(?=\\s|$)`).test(request)
+    new RegExp(`(?:^|\\s)${escapeRegExp(phrase)}(?=\\s|$)`).test(
+      normalizedRequest,
+    )
+  );
+}
+
+function includesLiteralSurface(request, value) {
+  const surface = normalize(value);
+  return (
+    surface.length > 0 &&
+    new RegExp(`(?:^|\\s)${escapeRegExp(surface)}(?=\\s|$)`).test(request)
   );
 }
 
@@ -122,13 +142,53 @@ function ownedSurfaceMatches(skill, request, ownedNamespaces) {
     normalize(skill.system),
     normalize(skill.system).replaceAll("-", " "),
   ].filter(Boolean);
-  const exactMatches = [
-    ...new Set([...systemForms, ...outputArtifactPaths(skill)]),
-  ].filter((surface) => includesPhrase(request, surface));
+  const systemMatches = [...new Set(systemForms)].filter((surface) =>
+    includesPhrase(request, surface),
+  );
+  const artifactMatches = [...new Set(outputArtifactPaths(skill))].filter(
+    (surface) => includesLiteralSurface(request, surface),
+  );
   const namespaceMatches = (ownedNamespaces.get(skill.name) || []).filter(
     (namespace) => request.includes(namespace),
   );
-  return [...new Set([...exactMatches, ...namespaceMatches])];
+  return [
+    ...new Set([...systemMatches, ...artifactMatches, ...namespaceMatches]),
+  ];
+}
+
+function explicitInvocationMatches(lifecycleSkills, source) {
+  const request = String(source || "").toLowerCase();
+  const selected = [];
+  const negated = [];
+  for (const skill of lifecycleSkills) {
+    const matcher = new RegExp(`\\$?${escapeRegExp(skill.name)}`, "g");
+    let positive = false;
+    let negative = false;
+    for (const match of request.matchAll(matcher)) {
+      const before = request.slice(0, match.index);
+      const boundary = Math.max(
+        before.lastIndexOf(";"),
+        before.lastIndexOf(","),
+        before.lastIndexOf("."),
+        before.lastIndexOf(":"),
+        before.lastIndexOf("\n"),
+        before.lastIndexOf(" but "),
+        before.lastIndexOf(" instead "),
+      );
+      const clause = before.slice(Math.max(boundary + 1, before.length - 64));
+      if (
+        /\b(?:do\s+not|don't|dont|never|avoid|exclude|without)\b/u.test(clause)
+      )
+        negative = true;
+      else positive = true;
+    }
+    if (positive) selected.push(skill);
+    else if (negative) negated.push(skill.name);
+  }
+  return {
+    selected: selected.sort((left, right) => right.sequence - left.sequence),
+    negated,
+  };
 }
 
 function regularFileWithin(root, target) {
@@ -242,6 +302,7 @@ function main() {
   let matchedTriggers = [];
   let matchedPrimaryFor = [];
   let matchedOwnedSurfaces = [];
+  let ignoredNegatedSkills = [];
   let reason;
 
   if (args.stage) {
@@ -250,13 +311,10 @@ function main() {
       throw new Error(`unknown lifecycle stage or skill: ${args.stage}`);
     reason = "explicit lifecycle stage";
   } else {
-    const explicit = lifecycleSkills
-      .filter((skill) =>
-        new RegExp(`(?:^|\\s)${skill.name}(?:\\s|$)`, "i").test(request),
-      )
-      .sort((left, right) => right.sequence - left.sequence);
-    if (explicit.length) {
-      selected = explicit[0];
+    const explicit = explicitInvocationMatches(lifecycleSkills, args.request);
+    ignoredNegatedSkills = explicit.negated;
+    if (explicit.selected.length) {
+      selected = explicit.selected[0];
       reason = "explicit lifecycle skill invocation";
     } else {
       const owned = lifecycleSkills
@@ -321,6 +379,7 @@ function main() {
     matchedTriggers,
     matchedPrimaryFor,
     matchedOwnedSurfaces,
+    ignoredNegatedSkills,
     requiredInputs: selected.requiredInputs,
     requiredOutputs: selected.requiredOutputs,
     requiredGates: selected.requiredGates,
@@ -350,9 +409,28 @@ function main() {
       !realParent.startsWith(`${realRepo}${path.sep}`)
     )
       throw new Error("--output parent resolves outside --repo");
-    if (existsSync(output) && lstatSync(output).isSymbolicLink())
-      throw new Error("--output must not be a symbolic link");
-    writeFileSync(output, serialized, { flag: "w" });
+    if (existsSync(output)) {
+      const outputStat = lstatSync(output);
+      if (outputStat.isSymbolicLink())
+        throw new Error("--output must not be a symbolic link");
+      if (!outputStat.isFile())
+        throw new Error("--output must be a regular file");
+      if (outputStat.nlink > 1)
+        throw new Error("--output must not be a hard link");
+    }
+    const temporaryOutput = path.join(
+      outputParent,
+      `.lifecycle-skill-decision.${process.pid}.${randomUUID()}.tmp`,
+    );
+    try {
+      writeFileSync(temporaryOutput, serialized, {
+        flag: "wx",
+        mode: 0o600,
+      });
+      renameSync(temporaryOutput, output);
+    } finally {
+      if (existsSync(temporaryOutput)) rmSync(temporaryOutput, { force: true });
+    }
   }
   process.stdout.write(serialized);
 }

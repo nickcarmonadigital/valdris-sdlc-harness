@@ -3,6 +3,7 @@ import {
   cpSync,
   copyFileSync,
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -108,6 +109,12 @@ const cases = [
   ["Validate runtime/driver.json", "valdris-connect-runtime"],
   ["Analyze upstream events", "valdris-route-goal"],
   ["Use a mainstream events API", "valdris-route-goal"],
+  ["Connect Codex/Claude to this run", "valdris-connect-runtime"],
+  ["Please set-up the harness", "valdris-commission"],
+  [
+    "Do not use $valdris-trust-improve; use $valdris-commission to refresh the pack",
+    "valdris-commission",
+  ],
 ];
 
 for (const [request, expected] of cases) {
@@ -213,8 +220,60 @@ try {
       persisted.commissioningReason === "adapter-absent",
     "an absent adapter must remain uncommissioned",
   );
+  const replacementResult = run(
+    [
+      "--request",
+      "prove this run",
+      "--output",
+      "run/lifecycle-skill-decision.json",
+    ],
+    outputRepo,
+  );
+  assert(
+    replacementResult.status === 0 &&
+      JSON.parse(
+        readFileSync(
+          path.join(outputRepo, "run", "lifecycle-skill-decision.json"),
+          "utf8",
+        ),
+      ).selectedSkill === "valdris-prove-govern",
+    `lifecycle decision replacement must be atomic and portable: ${replacementResult.stderr}`,
+  );
 } finally {
   rmSync(outputRepo, { recursive: true, force: true });
+}
+
+const hardLinkRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-hard-link-"),
+);
+try {
+  const hardLinkRepo = path.join(hardLinkRoot, "repo");
+  const hardLinkOutput = path.join(
+    hardLinkRepo,
+    "run",
+    "lifecycle-skill-decision.json",
+  );
+  const outside = path.join(hardLinkRoot, "outside.json");
+  mkdirSync(path.dirname(hardLinkOutput), { recursive: true });
+  writeFileSync(outside, "outside-must-not-change\n");
+  linkSync(outside, hardLinkOutput);
+  const hardLinkResult = run(
+    [
+      "--request",
+      "start a Valdris run",
+      "--output",
+      "run/lifecycle-skill-decision.json",
+    ],
+    hardLinkRepo,
+  );
+  assert(
+    hardLinkResult.status !== 0 &&
+      hardLinkResult.stderr.includes("--output must not be a hard link") &&
+      readFileSync(outside, "utf8") === "outside-must-not-change\n",
+    "lifecycle decision output must not follow a hard link outside --repo",
+  );
+} finally {
+  rmSync(hardLinkRoot, { recursive: true, force: true });
 }
 
 const commissioningRoot = mkdtempSync(
@@ -364,6 +423,58 @@ try {
       ),
     `the registry gate must regenerate a missing canonical routing projection (status=${repairResult.status}, signal=${repairResult.signal}, error=${repairResult.error?.message || "none"}): ${repairResult.stdout}${repairResult.stderr}`,
   );
+  const repairedRoutingPath = path.join(
+    projectionRepairRoot,
+    "skills",
+    "codex-routing.yaml",
+  );
+  const repairedRouting = readFileSync(repairedRoutingPath, "utf8");
+  const outsideRouting = path.join(
+    projectionRepairRoot,
+    "outside-routing.yaml",
+  );
+  rmSync(repairedRoutingPath);
+  writeFileSync(outsideRouting, "outside-routing-must-not-change\n");
+  linkSync(outsideRouting, repairedRoutingPath);
+  const hardLinkedProjectionResult = spawnSync(
+    process.execPath,
+    [
+      path.join(projectionRepairRoot, "scripts", "skill-registry-gate.mjs"),
+      "--repo",
+      projectionRepairRoot,
+      "--write-routing",
+    ],
+    { cwd: projectionRepairRoot, encoding: "utf8", timeout: 10_000 },
+  );
+  assert(
+    hardLinkedProjectionResult.status !== 0 &&
+      readFileSync(outsideRouting, "utf8") ===
+        "outside-routing-must-not-change\n",
+    "routing projection writes must reject a multiply linked destination",
+  );
+  rmSync(repairedRoutingPath);
+  writeFileSync(repairedRoutingPath, repairedRouting);
+  const invalidProjectionRegistry = structuredClone(registry);
+  invalidProjectionRegistry.lifecycleSelection.tieBreakOrder = [];
+  writeFileSync(
+    path.join(projectionRepairRoot, "skills", "registry.json"),
+    `${JSON.stringify(invalidProjectionRegistry, null, 2)}\n`,
+  );
+  const invalidProjectionResult = spawnSync(
+    process.execPath,
+    [
+      path.join(projectionRepairRoot, "scripts", "skill-registry-gate.mjs"),
+      "--repo",
+      projectionRepairRoot,
+      "--write-routing",
+    ],
+    { cwd: projectionRepairRoot, encoding: "utf8", timeout: 10_000 },
+  );
+  assert(
+    invalidProjectionResult.status !== 0 &&
+      readFileSync(repairedRoutingPath, "utf8") === repairedRouting,
+    "an invalid registry must not rewrite the last valid routing projection",
+  );
 } finally {
   rmSync(projectionRepairRoot, { recursive: true, force: true });
 }
@@ -388,6 +499,30 @@ try {
   );
 } finally {
   rmSync(missingRouteCommandRoot, { recursive: true, force: true });
+}
+
+const mismatchedNestedCommandRoot = mkdtempSync(
+  path.join(tmpdir(), "valdris-lifecycle-nested-command-"),
+);
+try {
+  writeCommissionedAdapter(mismatchedNestedCommandRoot, ".valdris-harness", {
+    lifecycleRouteCommand:
+      'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"',
+  });
+  const nestedPack = path.join(mismatchedNestedCommandRoot, ".valdris-harness");
+  const mismatchedNestedValidation = validateSkillRegistry(
+    registry,
+    nestedPack,
+  );
+  assert(
+    !mismatchedNestedValidation.valid &&
+      mismatchedNestedValidation.problems.some((problem) =>
+        problem.includes("physical pack location"),
+      ),
+    "the registry gate must reject a root command in a nested commissioned pack",
+  );
+} finally {
+  rmSync(mismatchedNestedCommandRoot, { recursive: true, force: true });
 }
 
 const workflowNames = new Set(registry.skills.map((skill) => skill.name));
@@ -445,15 +580,21 @@ console.log(
       ambiguityFallback: ambiguous.selectedSkill,
       traversalRejected: true,
       boundedDecisionOutputPassed: true,
+      atomicDecisionReplacementPassed: true,
+      hardLinkOutputRejected: true,
       commissioningCasesPassed: 4,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,
-      phraseBoundaryCasesPassed: 2,
+      phraseBoundaryCasesPassed: 4,
+      negatedInvocationPassed: true,
       routeDependentAssurancePassed: true,
       directPackCommandDiscoveryPassed: true,
       projectionRepairPassed: true,
+      hardLinkProjectionRejected: true,
+      invalidRegistryProjectionPreserved: true,
       commissionedRouteCommandGuardPassed: true,
+      physicalRouteCommandAlignmentPassed: true,
       routingProjectionBoundaryPassed: true,
     },
     null,

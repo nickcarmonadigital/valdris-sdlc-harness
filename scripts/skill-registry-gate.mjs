@@ -1,10 +1,13 @@
 #!/usr/bin/env node
+import { randomUUID } from "node:crypto";
 import {
   existsSync,
   lstatSync,
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import path from "node:path";
@@ -100,6 +103,19 @@ function existingDirectoryWithinRepo(repoRoot, target) {
     return false;
   const relative = path.relative(realpathSync(repoRoot), realpathSync(target));
   return !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
+function replaceFileAtomically(target, contents) {
+  const temporary = path.join(
+    path.dirname(target),
+    `.codex-routing.${process.pid}.${randomUUID()}.tmp`,
+  );
+  try {
+    writeFileSync(temporary, contents, { flag: "wx", mode: 0o600 });
+    renameSync(temporary, target);
+  } finally {
+    if (existsSync(temporary)) rmSync(temporary, { force: true });
+  }
 }
 
 export function renderCodexRoutingYaml(document, repoRoot) {
@@ -227,7 +243,11 @@ function validateSkillMirror(document, repoRoot, relativeRoot, problems) {
   }
 }
 
-export function validateSkillRegistry(document, repoRoot) {
+export function validateSkillRegistry(
+  document,
+  repoRoot,
+  { skipRoutingProjection = false } = {},
+) {
   const problems = [];
   if (!document || typeof document !== "object" || Array.isArray(document))
     return {
@@ -441,18 +461,20 @@ export function validateSkillRegistry(document, repoRoot) {
     problems.push(
       "skill registry lifecycleSelection.catalogSize must match lifecycleSkills length",
     );
-  const routingTarget = path.join(repoRoot, "skills", "codex-routing.yaml");
-  if (!existingFileWithinRepo(repoRoot, routingTarget)) {
-    problems.push("skills/codex-routing.yaml is missing or outside repo");
-  } else if (!problems.some((problem) => problem.includes("skill path"))) {
-    const expectedRouting = renderCodexRoutingYaml(document, repoRoot);
-    if (
-      readFileSync(routingTarget, "utf8").replace(/\r\n/g, "\n") !==
-      expectedRouting
-    )
-      problems.push(
-        "skills/codex-routing.yaml is stale relative to skills/registry.json or SKILL.md metadata",
-      );
+  if (!skipRoutingProjection) {
+    const routingTarget = path.join(repoRoot, "skills", "codex-routing.yaml");
+    if (!existingFileWithinRepo(repoRoot, routingTarget)) {
+      problems.push("skills/codex-routing.yaml is missing or outside repo");
+    } else if (!problems.some((problem) => problem.includes("skill path"))) {
+      const expectedRouting = renderCodexRoutingYaml(document, repoRoot);
+      if (
+        readFileSync(routingTarget, "utf8").replace(/\r\n/g, "\n") !==
+        expectedRouting
+      )
+        problems.push(
+          "skills/codex-routing.yaml is stale relative to skills/registry.json or SKILL.md metadata",
+        );
+    }
   }
   const adapterTarget = path.join(repoRoot, "project-adapter.json");
   const hasAgentMirror = existsSync(path.join(repoRoot, ".agents", "skills"));
@@ -492,14 +514,16 @@ export function validateSkillRegistry(document, repoRoot) {
         problems.push(
           "project adapter skillRouter.lifecycleCatalogSize must be 7",
         );
+      const expectedLifecycleRouteCommand =
+        path.basename(path.resolve(repoRoot)) === ".valdris-harness"
+          ? 'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"'
+          : 'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"';
       if (
-        ![
-          'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"',
-          'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"',
-        ].includes(adapter.skillRouter?.lifecycleRouteCommand)
+        adapter.skillRouter?.lifecycleRouteCommand !==
+        expectedLifecycleRouteCommand
       )
         problems.push(
-          "project adapter skillRouter.lifecycleRouteCommand must invoke the commissioned lifecycle router against the target root",
+          `project adapter skillRouter.lifecycleRouteCommand must match its physical pack location: ${expectedLifecycleRouteCommand}`,
         );
     }
   }
@@ -603,6 +627,7 @@ async function main() {
     });
   try {
     const document = readJson(target);
+    const validationRoot = path.resolve(target, "..", "..");
     if (args.writeRouting) {
       const registryRoot = path.resolve(target, "..", "..");
       const canonicalRegistry = path.join(repoRoot, "skills", "registry.json");
@@ -615,20 +640,22 @@ async function main() {
         realpathSync(registryRoot) !== realpathSync(repoRoot) ||
         !existingDirectoryWithinRepo(repoRoot, routingParent) ||
         (existsSync(routingTarget) &&
-          !existingFileWithinRepo(repoRoot, routingTarget))
+          (!existingFileWithinRepo(repoRoot, routingTarget) ||
+            lstatSync(routingTarget).nlink > 1))
       )
         throw new Error(
           "routing projection write requires the existing canonical skills registry and routing file inside --repo",
         );
-      writeFileSync(
+      const preflight = validateSkillRegistry(document, validationRoot, {
+        skipRoutingProjection: true,
+      });
+      if (!preflight.valid) return gateResult(args.file, preflight);
+      replaceFileAtomically(
         routingTarget,
         renderCodexRoutingYaml(document, registryRoot),
       );
     }
-    gateResult(
-      args.file,
-      validateSkillRegistry(document, path.resolve(target, "..", "..")),
-    );
+    gateResult(args.file, validateSkillRegistry(document, validationRoot));
   } catch (error) {
     gateResult(args.file, {
       valid: false,
