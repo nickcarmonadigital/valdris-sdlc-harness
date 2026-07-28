@@ -115,6 +115,19 @@ const cases = [
     "Do not use $valdris-trust-improve; use $valdris-commission to refresh the pack",
     "valdris-commission",
   ],
+  ["Use $valdris-commission, not $valdris-trust-improve", "valdris-commission"],
+  [
+    "Use $valdris-trust-improve, not $valdris-commission",
+    "valdris-trust-improve",
+  ],
+  [
+    "Inspect valdris-commissioning metadata and promote this run",
+    "valdris-trust-improve",
+  ],
+  [
+    "Inspect notvaldris-prove-govern and promote this run",
+    "valdris-trust-improve",
+  ],
 ];
 
 for (const [request, expected] of cases) {
@@ -305,6 +318,16 @@ try {
         ".valdris-harness/project-adapter.json" &&
       nestedDecision.commissioningReason === "adapter-current",
     "a current nested-only adapter must be commissioned",
+  );
+  const directPackRoot = path.join(nestedOnly, ".valdris-harness");
+  const directPackDecision = JSON.parse(
+    run(["--request", "start a Valdris run"], directPackRoot).stdout,
+  );
+  assert(
+    directPackDecision.commissioned === true &&
+      directPackDecision.commissionedAdapter === "project-adapter.json" &&
+      directPackDecision.commissioningReason === "adapter-current",
+    "a generated nested pack opened at its own root must remain commissioned",
   );
 
   const stale = path.join(commissioningRoot, "stale");
@@ -557,6 +580,28 @@ assert(
   "route-goal must document both nested and direct-pack router discovery",
 );
 
+const commissionMarkdown = readFileSync(
+  path.join(ROOT, "skills", "valdris-commission", "SKILL.md"),
+  "utf8",
+);
+assert(
+  commissionMarkdown.includes("--yes --force") &&
+    commissionMarkdown.includes(
+      "Never use `--force` on an unrecognized directory",
+    ),
+  "commissioning refresh must require an explicit, guarded --force command",
+);
+
+const assureMarkdown = readFileSync(
+  path.join(ROOT, "skills", "valdris-assure", "SKILL.md"),
+  "utf8",
+);
+assert(
+  assureMarkdown.includes("classification.requiredGates.foundation") &&
+    assureMarkdown.includes("including for controlled docs routes"),
+  "foundation assurance must follow the route gate instead of the docs-only label",
+);
+
 const routing = readFileSync(
   path.join(ROOT, "skills", "codex-routing.yaml"),
   "utf8",
@@ -582,12 +627,12 @@ console.log(
       boundedDecisionOutputPassed: true,
       atomicDecisionReplacementPassed: true,
       hardLinkOutputRejected: true,
-      commissioningCasesPassed: 4,
+      commissioningCasesPassed: 5,
       fallbackConfigurationGuardPassed: true,
       tieBreakContractPassed: true,
       ownedSurfaceCasesPassed: 4,
       phraseBoundaryCasesPassed: 4,
-      negatedInvocationPassed: true,
+      negatedInvocationCasesPassed: 4,
       routeDependentAssurancePassed: true,
       directPackCommandDiscoveryPassed: true,
       projectionRepairPassed: true,

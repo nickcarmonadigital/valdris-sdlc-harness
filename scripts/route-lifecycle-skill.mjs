@@ -67,13 +67,11 @@ function normalizePhrase(value) {
 }
 
 function includesPhrase(request, value) {
-  const normalizedRequest = normalizePhrase(request);
-  const phrase = normalizePhrase(value);
-  return (
-    phrase.length > 0 &&
-    new RegExp(`(?:^|\\s)${escapeRegExp(phrase)}(?=\\s|$)`).test(
-      normalizedRequest,
-    )
+  const tokens = normalizePhrase(value).split(" ").filter(Boolean);
+  if (!tokens.length) return false;
+  const phrase = tokens.map(escapeRegExp).join("[^a-z0-9]+");
+  return new RegExp(`(?<![a-z0-9-])${phrase}(?![a-z0-9-])`).test(
+    String(request || "").toLowerCase(),
   );
 }
 
@@ -161,7 +159,10 @@ function explicitInvocationMatches(lifecycleSkills, source) {
   const selected = [];
   const negated = [];
   for (const skill of lifecycleSkills) {
-    const matcher = new RegExp(`\\$?${escapeRegExp(skill.name)}`, "g");
+    const matcher = new RegExp(
+      `(?<![a-z0-9-])\\$?${escapeRegExp(skill.name)}(?![a-z0-9-])`,
+      "g",
+    );
     let positive = false;
     let negative = false;
     for (const match of request.matchAll(matcher)) {
@@ -177,7 +178,9 @@ function explicitInvocationMatches(lifecycleSkills, source) {
       );
       const clause = before.slice(Math.max(boundary + 1, before.length - 64));
       if (
-        /\b(?:do\s+not|don't|dont|never|avoid|exclude|without)\b/u.test(clause)
+        /\b(?:do\s+not|don't|dont|not|never|avoid|exclude|without)\b/u.test(
+          clause,
+        )
       )
         negative = true;
       else positive = true;
@@ -244,7 +247,7 @@ function commissionedAdapter(repoRoot, registry, registryText) {
       ? readFileSync(assetRouting, "utf8")
       : null;
     const expectedLifecycleCommand =
-      target === nested
+      path.basename(adapterRoot) === ".valdris-harness"
         ? 'node .valdris-harness/scripts/route-lifecycle-skill.mjs --repo . --request "<request>"'
         : 'node scripts/route-lifecycle-skill.mjs --repo . --request "<request>"';
     const current =

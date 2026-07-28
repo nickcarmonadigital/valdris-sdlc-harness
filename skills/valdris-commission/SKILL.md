@@ -11,11 +11,15 @@ This skill owns the **Commissioning** system. Its job is to make a repository re
 
 1. Confirm the target repository and keep all project-specific facts in its generated adapter. Do not add customer, company, provider, topology, credential, or private incident facts to the public Valdris core.
 2. Inspect the target's existing `AGENTS.md`, `CLAUDE.md`, source-of-truth files, branch policy, validation commands, deployment boundaries, risk paths, and operator authority. Reuse stable answers from an existing commissioned pack.
-3. Run the canonical commission command from the Valdris source:
+3. For a fresh install, run the canonical commission command from the Valdris source:
 
    `npm run commission -- --repo <target> --project-name "<name>" --out <target>/.valdris-harness --yes`
 
-   Supply reviewed answers when conservative defaults would change scope, authority, architecture, or proof.
+   To refresh an existing pack, first verify that `.valdris-harness` is a reviewed, generated Valdris pack and preserve its stable commissioned answers. Then run the explicit replacement form:
+
+   `npm run commission -- --repo <target> --project-name "<name>" --out <target>/.valdris-harness --yes --force`
+
+   Never use `--force` on an unrecognized directory. Supply reviewed answers when conservative defaults would change scope, authority, architecture, or proof.
 
 4. Review `.valdris-harness/commissioning-review.md`, `.valdris-harness/project-adapter.json`, and the bounded loaders added to target-root `AGENTS.md` and `CLAUDE.md`.
 5. Verify the generated workflow and lifecycle registries, all fifteen generated skills, controls, scripts, trust-store placeholders, and portable paths. Run the commissioned portability verifier and the skill-registry, provenance, neutrality, and privacy gates.
