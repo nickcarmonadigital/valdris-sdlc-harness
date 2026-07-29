@@ -4,6 +4,8 @@
 
 Valdris keeps the thirteen production-readiness layer IDs stable and adds **Layer 0: Foundation / Good Looks Like** as a prerequisite assurance overlay. Layer 0 is not a fourteenth production layer. Routing decides whether it applies, and a separate foundation assessment proves whether the commissioned baseline is fit for delivery.
 
+The thirteen-domain baseline is adapted from the 13-layer T1 Foundation / CADE curriculum taught by [Matt Murphy and The Faction](https://mattmurphy.ai/community/). Valdris names the independently authored software implementation around that baseline; it does not rename or claim authorship of the source curriculum, redistribute course materials, or imply affiliation or endorsement.
+
 ![Valdris assurance model showing Layer 0, the 13 production domains, cross-cutting concerns, domain packs, and proof strength](assets/readme/assurance-model.svg)
 
 The complete classification chain is:

@@ -97,6 +97,15 @@ Layer 0 is not a fourteenth production domain.
 
 ### The 13 assurance domains
 
+**Credit and naming:** The 13-domain baseline below comes from the 13-layer
+T1 Foundation / CADE curriculum taught by
+[Matt Murphy and The Faction](https://mattmurphy.ai/community/). **Valdris SDLC
+Harness** is the name of this software control plane; it is not a rename of, or
+claim of authorship over, the 13 Layers curriculum. Valdris independently adds
+executable controls, gates, evidence schemas, routing, and `SKILL.md` workflows
+around that baseline. It does not redistribute The Faction's lessons, exams, or
+course kits.
+
 After Layer 0, Valdris checks the parts of a real production system that apply
 to the request.
 

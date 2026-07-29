@@ -1,5 +1,21 @@
 # Third-Party Notices
 
+## Conceptual acknowledgement: The Faction's 13-layer CADE curriculum
+
+The 13-domain production-assurance baseline in Valdris is adapted from the
+13-layer T1 Foundation / CADE curriculum taught by Matt Murphy and The Faction.
+
+Source: <https://mattmurphy.ai/community/>
+
+**Valdris SDLC Harness** is the name of the independently authored software
+control plane around that baseline. It is not a rename of, or claim of
+authorship over, The Faction's curriculum. This repository does not redistribute
+The Faction's lessons, exams, PDFs, or course kits. No affiliation or
+endorsement is implied.
+
+This acknowledgement records conceptual provenance; it is not a software
+license notice for The Faction's course materials.
+
 ## 13 Layers SDLC Harness
 
 Source: <https://github.com/nickcarmonadigital/13-layers-sdlc-harness>
