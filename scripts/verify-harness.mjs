@@ -685,8 +685,8 @@ try {
   ]);
   const questionGroups = JSON.parse(questions.stdout);
   assert(
-    questionGroups.length === 31,
-    `expected 31 commissioning groups, got ${questionGroups.length}`,
+    questionGroups.length === 32,
+    `expected 32 commissioning groups, got ${questionGroups.length}`,
   );
 
   await mkdir(generatedTarget, { recursive: true });
@@ -791,11 +791,11 @@ try {
     "generator version mismatch",
   );
   assert(
-    adapter.commissioning?.questionGroups === 31,
+    adapter.commissioning?.questionGroups === 32,
     "commissioning group count mismatch",
   );
   assert(
-    adapter.commissioning?.questionCount === 158,
+    adapter.commissioning?.questionCount === 165,
     "commissioning question count mismatch",
   );
   assert(
@@ -849,6 +849,37 @@ try {
       "workload-classification-gate.mjs",
     ) && adapter.workloadTaxonomy?.enforcement === "gate",
     "workload classification gate enforcement missing from adapter",
+  );
+  assert(
+    adapter.technicalCommunication?.policySchema ===
+      "valdris.terminology-policy.v1" &&
+      adapter.technicalCommunication?.policy ===
+        "policies/technical-communication.v1.json" &&
+      adapter.technicalCommunication?.appliesTo ===
+        "All technical and operational agent output.",
+    "technical-communication policy or scope missing from adapter",
+  );
+  assert(
+    adapter.technicalCommunication?.targetStandard?.name === "ASD-STE100" &&
+      adapter.technicalCommunication?.targetStandard?.issue === "9" &&
+      adapter.technicalCommunication?.targetStandard?.conformanceStatus ===
+        "not-verified",
+    "ASD-STE100 Issue 9 target or conformance boundary missing from adapter",
+  );
+  assert(
+    adapter.technicalCommunication?.materialClassification
+      ?.requiredForRoutineCommunication === false &&
+      adapter.technicalCommunication?.materialClassification?.checkCommand?.includes(
+        "classification-record-check.mjs",
+      ),
+    "material classification must be optional for routine communication",
+  );
+  assert(
+    !adapter.terminologyAssurance &&
+      !adapter.technicalCommunication?.routeGate &&
+      !adapter.technicalCommunication?.gateCommand &&
+      !adapter.technicalCommunication?.enforcement,
+    "technical communication must not be modeled as an assurance or route gate",
   );
   assert(
     adapter.foundationAssurance?.schema === "uash.foundation-assessment.v1",
@@ -1340,6 +1371,85 @@ try {
     path.join(generatedOut, "docs", "Codex Runtime Prompt.md"),
     "utf8",
   );
+  const generatedTerminologyPolicy = JSON.parse(
+    await readFile(
+      path.join(generatedOut, "policies", "technical-communication.v1.json"),
+      "utf8",
+    ),
+  );
+  const generatedTerminologyTemplate = JSON.parse(
+    await readFile(
+      path.join(
+        generatedOut,
+        "classification",
+        "classification-record.template.json",
+      ),
+      "utf8",
+    ),
+  );
+  const generatedTerminologyDoc = await readFile(
+    path.join(generatedOut, "docs", "ONTOLOGY_AND_TECHNICAL_ENGLISH.md"),
+    "utf8",
+  );
+  await readFile(
+    path.join(
+      generatedOut,
+      "docs",
+      "ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md",
+    ),
+    "utf8",
+  );
+  for (const [label, content] of [
+    ["AGENTS", generatedAgents],
+    ["CLAUDE", generatedClaude],
+    ["Claude command", generatedClaudeCommand],
+    ["Codex prompt", generatedCodexPrompt],
+  ])
+    assert(
+      content.includes(
+        "Ontology-grounded terminology and controlled technical English",
+      ) &&
+        content.includes("Routine communication does not require") &&
+        content.includes("direct authoritative sources") &&
+        content.includes("ASD-STE100 Issue 9") &&
+        !content.includes("gateApplicability.terminology"),
+      `generated ${label} front door missing ontology/terminology protocol`,
+    );
+  assert(
+    generatedTerminologyPolicy.schema === "valdris.terminology-policy.v1" &&
+      generatedTerminologyPolicy.formal_asd_ste100_compliance === false &&
+      generatedTerminologyPolicy.communication_profile?.target_standard
+        ?.name === "ASD-STE100" &&
+      generatedTerminologyPolicy.communication_profile?.target_standard
+        ?.issue === "9" &&
+      generatedTerminologyPolicy.record_use
+        ?.required_for_routine_communication === false,
+    "generated terminology policy missing schema or formal-claim boundary",
+  );
+  assert(
+    generatedTerminologyTemplate.schema ===
+      "valdris.ontology-classification.v1" &&
+      generatedTerminologyTemplate.classificationStatus === "not_established",
+    "generated classification template must be structurally honest and unresolved",
+  );
+  assert(
+    generatedTerminologyDoc.includes("Commissioned ontology sources:") &&
+      generatedTerminologyDoc.includes("Technical-English profile:") &&
+      generatedTerminologyDoc.includes(
+        "ASD-STE100 Issue 9 is the target authoring standard",
+      ) &&
+      generatedTerminologyDoc.includes(
+        "Routine communication does not require a classification record",
+      ),
+    "generated terminology policy doc missing commissioned project inputs",
+  );
+  await run(node, [
+    path.join(generatedOut, "scripts", "classification-record-check.mjs"),
+    "--repo",
+    generatedOut,
+    "--file",
+    "classification/classification-record.template.json",
+  ]);
   const generatedEventEmitter = await readFile(
     path.join(generatedOut, "scripts", "uash-emit-event.mjs"),
     "utf8",
@@ -1494,6 +1604,14 @@ try {
     "commissioning review must print the candidate trust digest without making the generated repository its authority",
   );
   assert(
+    generatedCommissioningReview.includes(
+      "Technical communication: cross-cutting authoring behavior",
+    ) &&
+      !generatedCommissioningReview.includes("Terminology assurance") &&
+      !generatedCommissioningReview.includes("route gate"),
+    "commissioning review must describe technical communication as authoring behavior, not assurance or a route gate",
+  );
+  assert(
     generatedRunTemplate.includes("run/workload-classification.json") &&
       generatedRunTemplate.includes("foundation/assessment.json"),
     "generated run template missing Layer 0 artifacts",
@@ -1633,9 +1751,26 @@ try {
     path.join(generatedOut, "controls", "workload-taxonomy.v1.json"),
     "utf8",
   );
-  await readFile(
-    path.join(generatedOut, "controls", "foundation-layer.v1.json"),
-    "utf8",
+  const generatedFoundationCatalog = JSON.parse(
+    await readFile(
+      path.join(generatedOut, "controls", "foundation-layer.v1.json"),
+      "utf8",
+    ),
+  );
+  const forbiddenFoundationCommunicationTerms = [
+    "ontology-grounded classification",
+    "controlled technical english",
+    "technical communication",
+  ];
+  assert(
+    !generatedFoundationCatalog.controls?.some((control) =>
+      forbiddenFoundationCommunicationTerms.some((term) =>
+        String(control?.requirement || "")
+          .toLowerCase()
+          .includes(term),
+      ),
+    ),
+    "technical communication must not be a Layer 0 control",
   );
   await readFile(
     path.join(generatedOut, "controls", "production-layers.v2.json"),
@@ -1833,6 +1968,7 @@ try {
       generatedPackage.scripts?.["schema:compat:gate"] &&
       generatedPackage.scripts?.["intake:gate"] &&
       generatedPackage.scripts?.["classification:gate"] &&
+      !generatedPackage.scripts?.["terminology:gate"] &&
       generatedPackage.scripts?.["foundation:gate"] &&
       generatedPackage.scripts?.["route:request"] &&
       generatedPackage.scripts?.["goal:transition"] &&
@@ -1861,6 +1997,8 @@ try {
     "generated proof:run must target the commissioned repository instead of the pack directory",
   );
   for (const script of [
+    "terminology-policy-lib.mjs",
+    "classification-record-check.mjs",
     "operating-contracts-lib.mjs",
     "operating-contract-gate.mjs",
     "interop-conformance-runner.mjs",
@@ -1993,7 +2131,7 @@ try {
     "operating intelligence root doc missing paper-gap patterns or executable context-quality contract",
   );
   assert(
-    rootTestDayGates.includes("31 groups / 158 questions") &&
+    rootTestDayGates.includes("32 groups / 165 questions") &&
       rootTestDayGates.includes("main updated"),
     "test-day acceptance gates doc missing update criteria",
   );
@@ -2443,6 +2581,16 @@ try {
     assert(
       route.schema === "uash.route.v2",
       `${id} request did not generate route v2`,
+    );
+    assert(
+      !Object.prototype.hasOwnProperty.call(
+        route.gateApplicability || {},
+        "terminology",
+      ) &&
+        !existsSync(
+          path.join(routeRoot, "classification", "classification.json"),
+        ),
+      `${id} request created a terminology route gate or routine classification record`,
     );
     assert(
       classification.schema === "uash.workload-classification.v1",

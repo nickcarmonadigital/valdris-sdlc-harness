@@ -2,8 +2,8 @@
 
 The commissioning interview turns a repo/team into a project-specific Valdris SDLC Harness adapter.
 
-- **Question groups:** 31
-- **Questions:** 158
+- **Question groups:** 32
+- **Questions:** 165
 - **Executable source of truth:** `scripts/commission-harness.mjs --print-questions`
 - **Verification:** `npm run verify:harness` asserts the expanded bank, generated adapter fields, and generated docs.
 
@@ -43,7 +43,8 @@ GitNexus/code-intelligence indexing should pre-fill code-derived facts. The huma
 28. **Production-agent lifecycle** — agent definition, lifecycle states, promotion gates, observability, rollback owner.
 29. **Team harness registry** — harness/prompt/eval/connector owners, approval, drift checks.
 30. **Human-agent operating protocol** — decision owner, reviewers, escalation, SLA, contact channels, approval contract.
-31. **Apple / iOS platform commissioning** — Xcode scheme, bundle/team, support matrix, macOS runner, signing/TestFlight owners, StoreKit, and APNs.
+31. **Ontology and technical terminology** — domain ontology sources, controlled vocabulary, qualified terms, authoritative-source escalation, unavailable-web disposition, citations, and the ASD-STE100 Issue 9 target authoring profile.
+32. **Apple / iOS platform commissioning** — Xcode scheme, bundle/team, support matrix, macOS runner, signing/TestFlight owners, StoreKit, and APNs.
 
 ## Why groups 14–16 exist
 
@@ -74,7 +75,7 @@ The expanded generator now emits these additional docs into each commissioned pa
 
 ## Human-facing positioning
 
-The interview is not meant to make users answer 158 questions manually every time. The product should:
+The interview is not meant to make users answer 165 questions manually every time. The product should:
 
 1. scan the repo first,
 2. pre-fill what code can know,

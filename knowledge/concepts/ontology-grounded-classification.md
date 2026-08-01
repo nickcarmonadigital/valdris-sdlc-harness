@@ -11,7 +11,7 @@ timestamp: 2026-08-01T00:00:00Z
 
 Ontology-grounded classification assigns a system, concept, or term to the smallest category whose defining properties are supported by evidence.
 
-# Mandatory Sequence
+# Material Classification Sequence
 
 1. Inspect the direct mechanism and responsibility boundary.
 2. Identify the applicable domain ontology.
@@ -19,16 +19,16 @@ Ontology-grounded classification assigns a system, concept, or term to the small
 4. Use authoritative web verification when local evidence is incomplete.
 5. Separate sourced facts from classification inference.
 6. Select and define one stable term.
-7. Record whether the term is standard, emerging, vendor-specific, internal, or uncertain.
+7. Record whether the term is standard, emerging, vendor-specific, internal, contested, or uncertain.
 8. Preserve uncertainty instead of expanding the label.
 
 # Communication Boundary
 
-Use the STE-inspired profile in the canonical policy. Do not claim formal ASD-STE100 compliance without implementing and verifying the applicable official writing rules and controlled dictionary.
+Use ASD-STE100 Issue 9 as the target authoring standard. Do not claim formal conformance unless the complete applicable official writing rules and controlled dictionary have been checked for the output.
 
 # Structural Proof Boundary
 
-A valid classification record proves that required fields, evidence references, criteria, and fail-closed uncertainty behavior are present. It does not prove that the selected ontology or category is semantically correct.
+The classification-record check proves that required fields, evidence references, criteria, and fail-closed uncertainty behavior are present. It does not prove that the selected ontology or category is semantically correct. Routine communication does not require a classification record.
 
 # Canonical Sources
 

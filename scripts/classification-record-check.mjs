@@ -1,45 +1,66 @@
 #!/usr/bin/env node
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  existingFileWithinRepo,
   gateResult,
   parseRepoFileArgs,
   readJson,
+  resolveWithinRepo,
 } from "./control-gate-lib.mjs";
 import {
   validateClassificationRecord,
   validateTerminologyPolicy,
 } from "./terminology-policy-lib.mjs";
 
-export function validateTerminologyFiles(recordPath, options = {}) {
+export function validateClassificationRecordFiles(recordPath, options = {}) {
   const repoRoot = path.resolve(options.repoRoot || process.cwd());
-  const policyPath = path.resolve(
+  const policyPath = resolveWithinRepo(
     repoRoot,
-    options.policyFile || "controls/terminology-policy.v1.json",
+    options.policyFile || "policies/technical-communication.v1.json",
   );
+  const resolvedRecordPath =
+    typeof recordPath === "string"
+      ? resolveWithinRepo(repoRoot, recordPath)
+      : null;
   const problems = [];
-  if (!existsSync(policyPath))
+  if (!policyPath)
+    return {
+      checked: true,
+      valid: false,
+      structuralOnly: true,
+      problems: ["terminology policy path must stay within the repository"],
+    };
+  if (!resolvedRecordPath)
     return {
       checked: true,
       valid: false,
       structuralOnly: true,
       problems: [
-        `terminology policy missing: ${path.relative(repoRoot, policyPath)}`,
+        "ontology classification record path must stay within the repository",
       ],
     };
-  if (!existsSync(recordPath))
+  if (!existingFileWithinRepo(repoRoot, policyPath))
     return {
       checked: true,
       valid: false,
       structuralOnly: true,
       problems: [
-        `ontology classification record missing: ${path.relative(repoRoot, recordPath)}`,
+        `terminology policy missing or unsafe: ${path.relative(repoRoot, policyPath)}`,
+      ],
+    };
+  if (!existingFileWithinRepo(repoRoot, resolvedRecordPath))
+    return {
+      checked: true,
+      valid: false,
+      structuralOnly: true,
+      problems: [
+        `ontology classification record missing or unsafe: ${path.relative(repoRoot, resolvedRecordPath)}`,
       ],
     };
   try {
     const policy = readJson(policyPath);
-    const record = readJson(recordPath);
+    const record = readJson(resolvedRecordPath);
     problems.push(...validateTerminologyPolicy(policy));
     if (problems.length === 0)
       problems.push(...validateClassificationRecord(record, policy));
@@ -53,7 +74,7 @@ export function validateTerminologyFiles(recordPath, options = {}) {
       termStatus: record.termStatus,
       classificationStatus: record.classificationStatus,
       webVerification: record.webVerification?.status,
-      disclaimer: policy.structural_gate_disclaimer,
+      disclaimer: policy.record_check_disclaimer,
       problems,
     };
   } catch (error) {
@@ -71,17 +92,17 @@ export function validateTerminologyFiles(recordPath, options = {}) {
 async function main() {
   const args = parseRepoFileArgs(process.argv.slice(2), {
     file: "classification/classification.json",
-    catalog: "controls/terminology-policy.v1.json",
+    catalog: "policies/technical-communication.v1.json",
   });
   if (args.help)
     return console.log(
-      "Usage: node scripts/terminology-gate.mjs --repo . [--file classification/classification.json] [--catalog controls/terminology-policy.v1.json]",
+      "Usage: node scripts/classification-record-check.mjs --repo . [--file classification/classification.json] [--catalog policies/technical-communication.v1.json]",
     );
   const repoRoot = path.resolve(args.repo);
-  const target = path.resolve(repoRoot, args.file);
+  const target = resolveWithinRepo(repoRoot, args.file);
   gateResult(
     args.file,
-    validateTerminologyFiles(target, {
+    validateClassificationRecordFiles(target, {
       repoRoot,
       policyFile: args.catalog,
     }),

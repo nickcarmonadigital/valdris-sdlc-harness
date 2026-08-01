@@ -6,6 +6,35 @@ const WEB_VERIFICATION_STATUSES = new Set([
   "blocked",
   "incomplete",
 ]);
+const CLASSIFICATION_STATUSES = [
+  "established",
+  "partially_supported",
+  "unsupported",
+  "contested",
+  "uncertain",
+  "not_established",
+];
+const CRITERION_STATUSES = [
+  "satisfied",
+  "not_satisfied",
+  "unknown",
+  "contested",
+];
+const TERM_STATUSES = [
+  "standard",
+  "emerging",
+  "vendor_specific",
+  "internal",
+  "uncertain",
+];
+const SOURCE_TYPES = [
+  "standard",
+  "official_specification",
+  "official_documentation",
+  "official_repository",
+  "peer_reviewed",
+  "reputable_secondary",
+];
 const DIRECT_WEB_SOURCE_TYPES = new Set([
   "standard",
   "official_specification",
@@ -59,6 +88,32 @@ function validateNonEmptyStringArray(value, label, problems, options = {}) {
   return clean.filter(Boolean);
 }
 
+function validateExactValues(values, expected, label, problems) {
+  const actual = new Set(values);
+  const required = new Set(expected);
+  for (const value of expected)
+    if (!actual.has(value)) problems.push(`${label} missing: ${value}`);
+  for (const value of values)
+    if (!required.has(value))
+      problems.push(`${label} contains unsupported value: ${value}`);
+}
+
+function isSafeRepositoryPath(value) {
+  const clean = nonEmpty(value);
+  if (
+    !clean ||
+    clean.includes("\0") ||
+    clean.startsWith("/") ||
+    clean.startsWith("\\\\") ||
+    /^[A-Za-z]:/.test(clean)
+  )
+    return false;
+  return clean
+    .replaceAll("\\", "/")
+    .split("/")
+    .every((segment) => segment && segment !== "." && segment !== "..");
+}
+
 function collectStrings(value, output = []) {
   if (typeof value === "string") output.push(value);
   else if (Array.isArray(value))
@@ -110,6 +165,12 @@ export function validateTerminologyPolicy(policy) {
       );
   if (!uniqueStrings(procedure))
     problems.push("terminology policy procedure must not contain duplicates");
+  validateExactValues(
+    procedure,
+    CANONICAL_PROCEDURE,
+    "terminology policy procedure",
+    problems,
+  );
 
   const classificationStatuses = validateNonEmptyStringArray(
     policy.classification_statuses,
@@ -131,44 +192,30 @@ export function validateTerminologyPolicy(policy) {
     "terminology policy allowed_source_types",
     problems,
   );
-  for (const required of [
-    "established",
-    "partially_supported",
-    "unsupported",
-    "contested",
-    "uncertain",
-    "not_established",
-  ])
-    if (!classificationStatuses.includes(required))
-      problems.push(
-        `terminology policy classification_statuses missing: ${required}`,
-      );
-  for (const required of ["satisfied", "not_satisfied", "unknown", "contested"])
-    if (!criterionStatuses.includes(required))
-      problems.push(
-        `terminology policy criterion_statuses missing: ${required}`,
-      );
-  for (const required of [
-    "standard",
-    "emerging",
-    "vendor_specific",
-    "internal",
-    "uncertain",
-  ])
-    if (!termStatuses.includes(required))
-      problems.push(`terminology policy term_statuses missing: ${required}`);
-  for (const required of [
-    "standard",
-    "official_specification",
-    "official_documentation",
-    "official_repository",
-    "peer_reviewed",
-    "reputable_secondary",
-  ])
-    if (!sourceTypes.includes(required))
-      problems.push(
-        `terminology policy allowed_source_types missing: ${required}`,
-      );
+  validateExactValues(
+    classificationStatuses,
+    CLASSIFICATION_STATUSES,
+    "terminology policy classification_statuses",
+    problems,
+  );
+  validateExactValues(
+    criterionStatuses,
+    CRITERION_STATUSES,
+    "terminology policy criterion_statuses",
+    problems,
+  );
+  validateExactValues(
+    termStatuses,
+    TERM_STATUSES,
+    "terminology policy term_statuses",
+    problems,
+  );
+  validateExactValues(
+    sourceTypes,
+    SOURCE_TYPES,
+    "terminology policy allowed_source_types",
+    problems,
+  );
 
   if (policy.record_schema !== CLASSIFICATION_SCHEMA)
     problems.push(
@@ -176,6 +223,25 @@ export function validateTerminologyPolicy(policy) {
     );
   if (!nonEmpty(policy.record_template))
     problems.push("terminology policy record_template is required");
+  if (!isObject(policy.record_use))
+    problems.push("terminology policy record_use must be an object");
+  else {
+    validateNonEmptyStringArray(
+      policy.record_use.recommended_for_material_decisions,
+      "terminology policy record_use.recommended_for_material_decisions",
+      problems,
+    );
+    if ("required_for_material_decisions" in policy.record_use)
+      problems.push(
+        "terminology policy must not require records for every material decision",
+      );
+    if (!nonEmpty(policy.record_use.required_when))
+      problems.push("terminology policy record_use.required_when is required");
+    if (policy.record_use.required_for_routine_communication !== false)
+      problems.push(
+        "terminology policy must not require a record for routine communication",
+      );
+  }
   if (!isObject(policy.web_verification))
     problems.push("terminology policy web_verification must be an object");
   else {
@@ -200,6 +266,15 @@ export function validateTerminologyPolicy(policy) {
   if (!isObject(policy.communication_profile))
     problems.push("terminology policy communication_profile must be an object");
   else {
+    if (
+      policy.communication_profile.target_standard?.name !== "ASD-STE100" ||
+      policy.communication_profile.target_standard?.issue !== "9" ||
+      policy.communication_profile.target_standard?.conformance_status !==
+        "not_verified"
+    )
+      problems.push(
+        "communication profile target_standard must select ASD-STE100 Issue 9 with not_verified conformance status",
+      );
     if (policy.communication_profile.formal_asd_ste100_compliance !== false)
       problems.push(
         "communication profile formal_asd_ste100_compliance must be false",
@@ -249,8 +324,8 @@ export function validateTerminologyPolicy(policy) {
     "terminology policy prohibited_claims",
     problems,
   );
-  if (!nonEmpty(policy.structural_gate_disclaimer))
-    problems.push("terminology policy structural_gate_disclaimer is required");
+  if (!nonEmpty(policy.record_check_disclaimer))
+    problems.push("terminology policy record_check_disclaimer is required");
   return problems;
 }
 
@@ -322,7 +397,7 @@ export function validateClassificationRecord(record, policy) {
       problems,
     );
   }
-  validateNonEmptyStringArray(
+  const candidateCategories = validateNonEmptyStringArray(
     record.candidateCategories,
     "classification record candidateCategories",
     problems,
@@ -368,9 +443,9 @@ export function validateClassificationRecord(record, policy) {
         );
     }
     if (item.origin === "local") {
-      if (!nonEmpty(item.repositoryPath))
+      if (!isSafeRepositoryPath(item.repositoryPath))
         problems.push(
-          `local evidence ${id || "missing"} repositoryPath is required`,
+          `local evidence ${id || "missing"} repositoryPath must be a safe repository-relative path`,
         );
       if (!nonEmpty(item.revision))
         problems.push(`local evidence ${id || "missing"} revision is required`);
@@ -455,9 +530,13 @@ export function validateClassificationRecord(record, policy) {
     )
       problems.push("required web verification cannot be not_required");
     if (
-      record.webVerification.required === true &&
-      record.webVerification.status === "completed"
-    ) {
+      record.webVerification.required === false &&
+      new Set(["blocked", "incomplete"]).has(record.webVerification.status)
+    )
+      problems.push(
+        "blocked or incomplete web verification must be marked required",
+      );
+    if (record.webVerification.status === "completed") {
       const directWebEvidence = evidence.filter(
         (item) =>
           item?.origin === "web" &&
@@ -509,6 +588,10 @@ export function validateClassificationRecord(record, policy) {
       );
     if (!nonEmpty(record.selectedCategory))
       problems.push("established classification selectedCategory is required");
+    else if (!candidateCategories.includes(nonEmpty(record.selectedCategory)))
+      problems.push(
+        "established classification selectedCategory must be one of candidateCategories",
+      );
     if (!nonEmpty(record.selectedTerm))
       problems.push("established classification selectedTerm is required");
     if (!nonEmpty(record.plainMeaning))
@@ -520,9 +603,13 @@ export function validateClassificationRecord(record, policy) {
   }
 
   if (
-    new Set(["unsupported", "uncertain", "not_established"]).has(
-      record.classificationStatus,
-    ) &&
+    new Set([
+      "partially_supported",
+      "unsupported",
+      "contested",
+      "uncertain",
+      "not_established",
+    ]).has(record.classificationStatus) &&
     (nonEmpty(record.selectedCategory) || nonEmpty(record.selectedTerm))
   )
     problems.push(

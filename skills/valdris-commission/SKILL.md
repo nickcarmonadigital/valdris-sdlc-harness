@@ -5,7 +5,7 @@ description: Commission or refresh Valdris for a target repository from discover
 
 # Valdris Commission
 
-This skill owns the **Commissioning** system. Its job is to make a repository ready to enter the Valdris control plane. It does not route or implement product work.
+This skill owns the **Commissioning** system. Its job is to make a repository ready to use the Valdris repository-level assurance harness. It does not route or implement product work.
 
 ## Deterministic flow
 

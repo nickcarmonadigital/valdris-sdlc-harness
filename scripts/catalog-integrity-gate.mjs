@@ -14,9 +14,7 @@ export const CANONICAL_CATALOG_SHA256 = Object.freeze({
   "controls/workload-taxonomy.v1.json":
     "1d43a946a5aabe9919d46cdc52591950e85aa238e3d3886c3e6a2d65f157da14",
   "controls/foundation-layer.v1.json":
-    "ee7f4225267757dff95cecea0b0847ae26422154374b0e5bb3be4d73896aa166",
-  "controls/terminology-policy.v1.json":
-    "0049f5be10dd648d53d7404d5b2480ab6e28995db64d3cbf784a8aa1367f378e",
+    "a7403ada1c5dad44e126544337a5c2884ac1eaac43e6f6c2daf1bb2df90b319e",
   "controls/production-layers.v2.json":
     "19bbb930c70eb99093fd2318b9fb45e4fc5543e8158c9c5d2e893c0d708ec3e5",
   "controls/genai-assurance.v1.json":

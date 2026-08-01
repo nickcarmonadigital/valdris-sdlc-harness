@@ -1,6 +1,6 @@
-# Ontology and Technical-English Source Register
+# Ontology and Controlled Technical English Source Register
 
-This register records the authoritative external sources used by the Valdris ontology-grounded classification and STE-inspired communication policy.
+This register records the authoritative external sources used by the Valdris ontology-grounded terminology and controlled technical English policy.
 
 **Access date:** 2026-08-01
 
@@ -12,6 +12,10 @@ This register records the authoritative external sources used by the Valdris ont
 - Prefer standards bodies, official specifications, official project documentation, official source repositories, and peer-reviewed literature.
 - Record sourced facts separately from Valdris classification inference.
 - If evidence remains incomplete, use `uncertain` or `not established`. Do not select a larger term to hide the gap.
+
+## Project attribution boundary
+
+The README preserves the project's supplied attribution of the source model to Matt Murphy and The Faction. The external sources in this register do not independently establish that named attribution. The phrase “T1 Foundation” is a quoted source-model label. It is unrelated to the Valdris `T1` assurance tier, which means “Locally Verified.”
 
 ## Source register
 
@@ -39,7 +43,7 @@ This register records the authoritative external sources used by the Valdris ont
   - The writing rules cover grammar and style.
   - The dictionary specifies approved general words.
   - The standard generally uses one word for one meaning and permits project-specific technical names and technical verbs under defined rules and categories.
-- **Limitations:** Short sentences, a glossary, or one-term-per-meaning guidance alone do not prove formal compliance. Valdris therefore uses `STE-inspired` unless a separate conformance effort implements and verifies the applicable official rules and dictionary.
+- **Limitations:** Short sentences, a glossary, or one-term-per-meaning guidance alone do not prove formal conformance. Valdris selects Issue 9 as the target authoring standard but records conformance as `not_verified` unless the complete applicable official rules and controlled dictionary have been checked for the output.
 
 ### SRC-W3C-OWL-OVERVIEW
 

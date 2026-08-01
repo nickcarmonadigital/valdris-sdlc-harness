@@ -859,7 +859,7 @@ function flowMonitor() {
   s += label(
     96,
     854,
-    "This visual intentionally shows the control plane preventing fake completion — not a magical live dashboard.",
+    "This visual shows the harness blocking unsupported completion. It is not a live dashboard.",
     { size: 15, color: colors.muted },
   );
   return s + endSvg();

@@ -8,11 +8,12 @@ import {
   validateClassificationRecord,
   validateTerminologyPolicy,
 } from "./terminology-policy-lib.mjs";
+import { validateClassificationRecordFiles } from "./classification-record-check.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const policy = JSON.parse(
   readFileSync(
-    path.join(root, "controls", "terminology-policy.v1.json"),
+    path.join(root, "policies", "technical-communication.v1.json"),
     "utf8",
   ),
 );
@@ -112,6 +113,30 @@ assert.deepEqual(validateClassificationRecord(valdrisRecord, policy), []);
 assert.equal(requiresWebVerification(localRecord()), false);
 
 {
+  const result = validateClassificationRecordFiles(
+    path.resolve(root, "..", "outside-classification.json"),
+    { repoRoot: root },
+  );
+  assert.ok(
+    result.problems.includes(
+      "ontology classification record path must stay within the repository",
+    ),
+  );
+}
+
+{
+  const result = validateClassificationRecordFiles(
+    path.join(root, "classification", "valdris-system-classification.v1.json"),
+    { repoRoot: root, policyFile: "../outside-policy.json" },
+  );
+  assert.ok(
+    result.problems.includes(
+      "terminology policy path must stay within the repository",
+    ),
+  );
+}
+
+{
   const record = localRecord();
   record.schema = "wrong";
   expectProblem(record, "schema must be valdris.ontology-classification.v1");
@@ -164,6 +189,19 @@ assert.equal(requiresWebVerification(localRecord()), false);
     required: true,
     status: "completed",
     reason: "fixture",
+  };
+  expectProblem(
+    record,
+    "completed web verification requires direct web evidence",
+  );
+}
+
+{
+  const record = localRecord();
+  record.webVerification = {
+    required: false,
+    status: "completed",
+    reason: "optional lookup",
   };
   expectProblem(
     record,
@@ -230,6 +268,28 @@ assert.equal(requiresWebVerification(localRecord()), false);
   expectProblem(record, "web evidence LOCAL-1 url must use https");
 }
 
+for (const repositoryPath of [
+  "/etc/passwd",
+  "../outside.json",
+  "evidence/../outside.json",
+  ["C:", "Users", "operator", "evidence.json"].join("\\"),
+  "evidence/./source.json",
+  "evidence\0source.json",
+]) {
+  const record = localRecord();
+  record.evidence[0].repositoryPath = repositoryPath;
+  expectProblem(
+    record,
+    "repositoryPath must be a safe repository-relative path",
+  );
+}
+
+{
+  const record = localRecord();
+  record.selectedCategory = "uncandidate category";
+  expectProblem(record, "selectedCategory must be one of candidateCategories");
+}
+
 {
   const record = localRecord();
   record.inferences = [record.sourcedFacts[0]];
@@ -253,11 +313,70 @@ assert.equal(requiresWebVerification(localRecord()), false);
 
 {
   const candidate = clone(policy);
+  candidate.communication_profile.target_standard.issue = "8";
+  expectPolicyProblem(
+    candidate,
+    "target_standard must select ASD-STE100 Issue 9",
+  );
+}
+
+{
+  const candidate = clone(policy);
+  candidate.record_use.required_for_routine_communication = true;
+  expectPolicyProblem(
+    candidate,
+    "must not require a record for routine communication",
+  );
+}
+
+{
+  const candidate = clone(policy);
+  candidate.record_use.required_for_material_decisions = [
+    "public_product_or_system_category",
+  ];
+  expectPolicyProblem(
+    candidate,
+    "must not require records for every material decision",
+  );
+}
+
+{
+  const candidate = clone(policy);
+  candidate.allowed_source_types.push("personal_blog");
+  expectPolicyProblem(
+    candidate,
+    "allowed_source_types contains unsupported value",
+  );
+}
+
+for (const classificationStatus of ["partially_supported", "contested"]) {
+  const record = localRecord();
+  record.classificationStatus = classificationStatus;
+  expectProblem(
+    record,
+    `${classificationStatus} classification cannot select a final category or term`,
+  );
+}
+
+{
+  const record = localRecord();
+  record.termStatus = "contested";
+  expectProblem(record, "classification record termStatus is invalid");
+}
+
+{
+  const candidate = clone(policy);
   candidate.procedure = candidate.procedure.filter(
     (step) =>
       step !== "escalate_unsupported_criteria_to_authoritative_web_sources",
   );
   expectPolicyProblem(candidate, "procedure missing canonical step");
+}
+
+{
+  const candidate = clone(policy);
+  candidate.procedure.push("invent_semantics");
+  expectPolicyProblem(candidate, "procedure contains unsupported value");
 }
 
 console.log("Ontology and terminology policy verification passed");

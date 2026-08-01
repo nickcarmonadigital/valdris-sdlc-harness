@@ -24,11 +24,12 @@ request signals
 | Catalog                              | Schema                               | Purpose                                                                                            |
 | ------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
 | `controls/foundation-layer.v1.json`  | `uash.foundation-control-catalog.v1` | Layer 0 capabilities and controls.                                                                 |
-| `controls/terminology-policy.v1.json` | `valdris.terminology-policy.v1` | Cross-cutting ontology, source-verification, terminology, and STE-inspired communication policy. |
 | `controls/production-layers.v2.json` | `uash.production-control-catalog.v2` | The canonical thirteen layers, capability map, 39 controls, dependencies, and proof-type policies. |
 | `controls/workload-taxonomy.v1.json` | `uash.workload-taxonomy-catalog.v1`  | Assurance tiers, workload profiles, cross-cutting concerns, and the proof axis.                    |
 | `controls/domain-packs/index.json`   | `uash.domain-pack-index.v1`          | Trigger-indexed executable domain catalogs.                                                        |
 | `controls/domain-packs/saas.v1.json` | `uash.domain-control-catalog.v1`     | SaaS and multi-tenant controls.                                                                    |
+
+`policies/technical-communication.v1.json` is a technical-communication reference. It is not an assurance catalog or another layer. It defines the Issue 9 target authoring profile and the evidence rules for material naming decisions.
 
 ## Layer 0: Foundation / Good Looks Like
 
@@ -38,7 +39,7 @@ The catalog contains seven capabilities and sixteen controls:
 
 | Capability                  | Controls                              | Outcome                                                                                                  |
 | --------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Product & Domain            | `FND-PRODUCT-001`, `FND-DOMAIN-001`, `FND-DOMAIN-002`, `FND-DOMAIN-003` | Users, outcomes, scope, ontology-grounded classification, controlled terminology, ownership, and invariants are explicit. |
+| Product & Domain            | `FND-PRODUCT-001`, `FND-DOMAIN-001`   | Users, outcomes, scope, terminology, ownership, and invariants are explicit.                             |
 | Requirements & Acceptance   | `FND-REQ-001`, `FND-ACCEPTANCE-001`   | Requirements, constraints, negative paths, and acceptance conditions are testable.                       |
 | Quality Attributes          | `FND-QUALITY-001`, `FND-FAILURE-001`  | Non-functional targets, failure modes, degradation, and recovery expectations are commissioned.          |
 | Architecture & Boundaries   | `FND-ARCH-001`, `FND-BOUNDARY-001`    | Reference architecture, dependency direction, asynchronous seams, and trust boundaries are clear.        |
@@ -50,9 +51,9 @@ Layer 0 must remain separate from the production layer array so existing adapter
 
 ### Two different classification jobs
 
-Workload classification assigns a request to assurance profiles, concerns, domain packs, controls, and proof strength. Ontology-grounded classification assigns a system, architecture, concept, or term to the smallest category supported by its defining properties. These are separate procedures and produce separate artifacts.
+Workload classification assigns a request to assurance profiles, concerns, domain packs, controls, and proof strength. Ontology-grounded classification assigns a system, architecture, concept, or term to the smallest category supported by its defining properties. These are separate procedures.
 
-`FND-DOMAIN-002` and `FND-DOMAIN-003` bind the second procedure into Layer 0 without creating another production domain. The canonical method is `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md`; its machine-readable policy is `controls/terminology-policy.v1.json`. When local evidence does not support a decisive category property, the agent must inspect authoritative web sources and record uncertainty rather than guess.
+Ontology-grounded terminology and controlled technical English govern agent speech and writing. They are not Layer 0 controls and do not create another production domain. The canonical method is `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md`; its machine-readable policy is `policies/technical-communication.v1.json`.
 
 ## Production capability map
 

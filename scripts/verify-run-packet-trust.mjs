@@ -18,10 +18,25 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { reviewAttestationPayload } from "./review-gate.mjs";
-import { routeRequiredGates, routeRequiresRca } from "./run-packet-gate.mjs";
+import {
+  resolvedCatalogSnapshots,
+  routeRequiredGates,
+  routeRequiresRca,
+} from "./run-packet-gate.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PRE_V3_RUNTIME_COMMIT = "ea09ce53f3258e365a0ba160f16d61e3e6a9e2fc";
+
+const nonAssuranceSnapshot = resolvedCatalogSnapshots().find(
+  ({ path: value }) =>
+    /(?:terminology|technical-communication|classification-record)/i.test(
+      value,
+    ),
+);
+if (nonAssuranceSnapshot)
+  throw new Error(
+    `technical communication must not enter run-packet catalog snapshots: ${nonAssuranceSnapshot.path}`,
+  );
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);

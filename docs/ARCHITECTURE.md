@@ -68,21 +68,22 @@ Local runner daemon / worktree watcher
 
 The workflow engine owns control flow. The model proposes actions or writes artifacts. The harness validates whether required gates are satisfied.
 
-## Ontology and terminology assurance
+## Technical communication
 
-Material product, system, architecture, taxonomy, and controlled-documentation claims use this conditional path:
+Ontology-grounded terminology and controlled technical English govern how repository agents speak and write. This is not an architecture layer, route gate, packet namespace, or product capability.
+
+All technical and operational output uses one stable term for one meaning, direct sentences, and explicit uncertainty. A material public, architectural, legal, safety, or standards naming decision uses this procedure:
 
 ```text
-direct mechanism and evidence
-    -> domain ontology and candidate categories
-    -> decisive criteria
+direct mechanism and repository evidence
+    -> applicable domain ontology
+    -> explicit candidate-class criteria
     -> authoritative web verification when local support is incomplete
-    -> classification record
-    -> terminology gate
-    -> policy/evidence binding in the run packet
+    -> smallest supported term
+    -> plain definition, term status, and uncertainty
 ```
 
-The external coding agent performs source retrieval through its available tools. Valdris commissions the rule, preserves the source metadata and inference boundary, and rejects structurally unsupported completion. Passing the local terminology gate is structural proof, not semantic or authoritative proof.
+The external coding agent performs source retrieval through its available tools. A material naming decision can use `classification/classification-record.template.json` when it needs an auditable evidence record. Routine communication does not require a classification artifact.
 
 ## Mode principle
 

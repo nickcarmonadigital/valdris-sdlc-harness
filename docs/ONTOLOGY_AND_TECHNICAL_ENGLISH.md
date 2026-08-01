@@ -1,14 +1,14 @@
-# Ontology-Grounded Classification and STE-Inspired Communication
+# Ontology-Grounded Terminology and Controlled Technical English
 
 ## Status
 
-This document is the canonical Valdris policy for system classification, terminology selection, source verification, and direct technical communication.
+This document is the canonical Valdris policy for terminology selection, source verification, and controlled technical communication.
 
-It is a cross-cutting assurance policy. It is not Layer 14, a new production domain, or an optional skill. Every agent front door and commissioned project pack must apply it.
+It governs how agents speak and write. It is not an SDLC layer, production domain, lifecycle stage, skill, gate, product capability, or subsystem. Every agent front door and commissioned project pack must apply it.
 
 ## Purpose
 
-Use evidence and explicit class criteria before selecting a technical label. If local evidence is incomplete, verify the missing facts and class definitions with authoritative web sources. Communicate the result with one stable term per meaning and explicit uncertainty.
+Use direct technical English for all technical and operational output. Use evidence and explicit class criteria when a material term must be selected. If local evidence is incomplete, verify the missing facts and class definitions with authoritative sources. Communicate the result with one stable term per meaning and explicit uncertainty.
 
 ## Exact terms
 
@@ -20,11 +20,13 @@ Use evidence and explicit class criteria before selecting a technical label. If 
 - **Controlled vocabulary:** the approved terms and meanings for a project or domain.
 - **Schema:** the required structure of a record.
 - **Knowledge graph:** actual entities and relationships represented as a graph.
-- **Term status:** whether a term is standard, emerging, vendor-specific, internal, or uncertain.
+- **Term status:** whether a term is standard, emerging, vendor-specific, internal, contested, or uncertain.
 
 Ontology defines available kinds and their relationships. Taxonomy organizes categories. Classification applies criteria. Terminology names the result. Do not use these terms as synonyms.
 
-## Mandatory mechanism-first procedure
+## Material terminology procedure
+
+Use this procedure for a material public, architectural, legal, safety, or standards naming decision. Routine communication does not require a classification record.
 
 1. Inspect the direct source: repository, runtime, specification, documentation, or supplied artifact.
 2. Describe the observable mechanism without using the proposed product label.
@@ -87,13 +89,14 @@ Do not invent a numerical confidence score unless a separate method defines how 
 - `emerging`: domain usage exists, but no stable formal definition controls the complete term.
 - `vendor_specific`: a vendor defines or owns the term for its products or services.
 - `internal`: Valdris or the commissioned project defines the term for internal use.
+- `contested`: authoritative sources use or define the term incompatibly in the applicable context.
 - `uncertain`: the term's status is not established.
 
 A product name and a technical classification can differ. Branding does not prove a category.
 
-## STE-inspired communication profile
+## ASD-STE100 Issue 9 target authoring profile
 
-Valdris uses an STE-inspired profile for ordinary technical communication:
+Valdris uses ASD-STE100 Issue 9 as the target authoring standard for technical and operational communication:
 
 1. Use one approved term for one meaning.
 2. Define an unfamiliar term at first use.
@@ -106,26 +109,27 @@ Valdris uses an STE-inspired profile for ordinary technical communication:
 9. Qualify broad architecture terms with the resource and authority scope they control.
 10. State uncertainty directly.
 
-## ASD-STE100 boundary
+## Conformance boundary
 
-ASD-STE100 is a formal controlled natural language with official writing rules and a controlled dictionary. Valdris does not claim formal conformance merely because it uses short sentences, a glossary, or one-term-per-meaning guidance.
+ASD-STE100 is a formal controlled natural language with official writing rules and a controlled dictionary. Selecting Issue 9 as the target authoring standard does not prove that an output conforms to it.
 
-Use `STE-inspired` unless a separate conformance effort implements and verifies the applicable official rules and dictionary. The combined ontology-plus-STE procedure is a Valdris operating methodology.
+Do not claim formal conformance unless the complete applicable Issue 9 writing rules and controlled dictionary have been checked for the output. Record the conformance status as `not_verified` until that check exists.
 
 See `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md` for direct sources and limitations.
 
-## Applicability
+## Classification-record use
 
-A classification record is required when work changes or introduces:
+A classification record is recommended for material naming decisions such as:
 
 - a public product or system category;
 - architecture terminology or responsibility boundaries;
 - a taxonomy or controlled vocabulary;
 - a claim derived from an external standard or framework;
-- README, public documentation, or generated agent instructions that use a controlled or overloaded term;
 - a term that the commissioned policy requires to be qualified.
 
-Routine code changes that do not alter classification or controlled terminology do not require a record.
+The record is required only when the applicable publication, architecture, legal, safety, standards, or review process requires auditable evidence.
+
+Routine communication, documentation edits, code changes, and instructions do not require a record. If they introduce or change a material classification, apply the preceding record policy.
 
 ## Classification record
 
@@ -153,7 +157,7 @@ Structural validation does not prove semantic correctness. Human or authoritativ
 | Term                                                                             | Plain meaning                                                                                                                                                          | Status                                | Boundary                                                                                                 |
 | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | repository-level SDLC assurance harness for AI coding agents                     | Software that installs repository controls, routes work, records external coding-agent activity as evidence, checks required proof, and blocks unsupported completion. | emerging descriptive compound         | Primary public category; not a formal standards class.                                                   |
-| repository-level policy and evidence control plane around external coding agents | The part that coordinates policy, run state, evidence, gates, and approvals around a defined repository workflow.                                                      | qualified standard architectural term | Secondary description only; always state the controlled scope.                                           |
+| repository-level policy and evidence control plane around external coding agents | The part that coordinates policy, run state, evidence, gates, and approvals around a defined repository workflow.                                                      | emerging qualified description         | Secondary description only; always state the controlled scope. The underlying `control plane` term is standard; this complete Valdris phrase is not. |
 | connector-first                                                                  | Integration design that prioritizes normalized runtime events and artifacts.                                                                                           | Valdris internal                      | Do not use as the primary product category.                                                              |
 | proof-first                                                                      | Operating principle that requires evidence before completion.                                                                                                          | Valdris internal                      | Do not imply that structural evidence alone is semantic or authoritative proof.                          |
 | coding agent                                                                     | External tool that can inspect a repository and perform implementation work.                                                                                           | emerging domain term                  | Claude Code, Codex, Hermes, or another runtime performs implementation; Valdris is not the coding agent. |
@@ -176,9 +180,9 @@ Qualified secondary role:
 
 > Valdris acts as a repository-level policy and evidence control plane around external coding agents.
 
-## Gate boundary
+## Record-check boundary
 
-The terminology gate proves:
+The classification-record check proves:
 
 - required fields exist;
 - evidence references resolve;
@@ -186,6 +190,6 @@ The terminology gate proves:
 - unsupported criteria trigger web verification;
 - blocked or incomplete research fails closed;
 - sourced facts and inference are separate;
-- controlled terms and formal-compliance claims follow policy.
+- controlled terms and formal-conformance claims follow policy.
 
-The gate does not prove that an ontology or classification is semantically correct. Do not report structural validation as authoritative classification proof.
+The check does not prove that an ontology or classification is semantically correct. Do not report structural validation as authoritative classification proof.

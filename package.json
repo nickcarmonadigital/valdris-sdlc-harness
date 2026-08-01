@@ -43,7 +43,7 @@
     "route:request": "node scripts/route-request.mjs",
     "lifecycle:route": "node scripts/route-lifecycle-skill.mjs",
     "classification:gate": "node scripts/workload-classification-gate.mjs --repo .",
-    "terminology:gate": "node scripts/terminology-gate.mjs --repo . --file classification/valdris-system-classification.v1.json --catalog controls/terminology-policy.v1.json",
+    "classification:record:check": "node scripts/classification-record-check.mjs --repo . --file classification/valdris-system-classification.v1.json --catalog policies/technical-communication.v1.json",
     "foundation:gate": "node scripts/foundation-gate.mjs --repo .",
     "goal:gate": "node scripts/goal-gate.mjs --repo .",
     "goal:transition": "node scripts/goal-transition.mjs",

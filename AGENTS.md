@@ -1,6 +1,6 @@
 # Valdris SDLC Harness Agent Instructions
 
-This repo builds the Valdris SDLC Harness: a connector-first control plane and commissioning system for AI-assisted software delivery.
+This repo builds Valdris: a repository-level SDLC assurance harness for AI coding agents.
 
 ## Start here
 
@@ -19,10 +19,22 @@ Before planning or editing, read:
 11. `docs/CONNECTOR_EVENT_CONTRACT.md`
 12. `knowledge/playbooks/clean-room-assurance-import.md`
 13. `docs/import/PRIVATE_WORK_HARNESS_IMPORT_DECISION.md`
+14. `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md`
+15. `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md`
 
 ## Product rule
 
-This is not an IDE and not a prompt library by itself. It is the control plane, commissioning layer, connector bridge, run visualizer, and proof-gate layer around Claude Code, Codex, Hermes, and future coding agents.
+This is not an IDE, coding agent, or prompt library by itself. It installs repository controls, routes work, records coding-agent activity as structured evidence, checks required proof, and blocks completion when required checks or approvals are missing. Its qualified secondary role is a repository-level policy and evidence control plane around Claude Code, Codex, Hermes, and other external coding agents.
+
+## Technical communication
+
+Use `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md` and `policies/technical-communication.v1.json` for all technical and operational output. This behavior governs communication. It is not an SDLC layer, production domain, lifecycle stage, skill, gate, or product capability.
+
+Answer the question first. Use one stable term for one meaning. Define unfamiliar terms once. Use short, direct sentences. Identify the actor, action, object, and condition when they affect meaning. Remove padding, repetition, decorative language, metaphors, analogies, slogans, dense noun chains, and inflated labels.
+
+For a material public, architectural, legal, safety, or standards naming decision, inspect the mechanism and direct evidence, identify the applicable domain ontology, apply explicit category criteria, and open direct authoritative sources when local evidence is incomplete. Separate sourced facts from classification inference. Select the smallest supported term. State uncertainty instead of guessing. Use the classification-record template only when the decision needs an auditable evidence record; routine communication does not require one.
+
+Use ASD-STE100 Issue 9 as the target authoring standard. Do not claim formal conformance unless the complete applicable writing rules and controlled dictionary have been checked for the output.
 
 ## Core loop
 
@@ -71,6 +83,7 @@ Keep universal:
 - Git/worktree- and application-source-bound portable proof, same-command/pre-post/path-bound RCA, Ed25519-attested full-evidence review, and native-validator-bound run-packet contracts
 - structural/semantic/authoritative claim separation, pre-implementation readiness, AI/runtime identity, external authority receipts, and run-packet v3 catalog snapshots
 - typed requirement traceability, registered tool/call evidence, durable memory heads, conditional model-judge calibration, runtime-driver/implementation receipts, reconciled economics, dependency provenance, complete declared MCP/A2A transcripts, and trace-v2 trajectory/decision binding
+- ontology-grounded terminology, authoritative-source escalation, and controlled technical communication
 
 Move into generated adapters:
 
@@ -82,6 +95,7 @@ Move into generated adapters:
 - safe edit paths and review-required paths
 - enabled lanes
 - human answer style
+- domain ontology sources, controlled vocabulary, qualified terms, source escalation, citation policy, and technical-English profile
 - provider/account identities, private topology, customer data, incidents, and real run packets
 
 ## Validation
@@ -96,6 +110,7 @@ npm run build
 npm run knowledge:gate
 npm run skills:gate
 npm run catalog:gate
+npm run verify:terminology
 npm run provenance:gate
 npm run neutrality:gate
 npm run privacy:gate
@@ -116,6 +131,8 @@ npm run skills:install:codex
 npm run skills:check:codex
 npm run worktree:check
 ```
+
+Run `npm run classification:record:check` only when a classification record is introduced or changed. Routine communication does not require a classification record.
 
 The commissioned-portability verifier creates a temporary Git target, generates and commits `.valdris-harness`, retains an iOS-like binary product asset outside the clean-room scope, and executes the generated route, proof, signed-review, and run-packet path.
 

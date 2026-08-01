@@ -1,7 +1,7 @@
 {
   "schema": "valdris.terminology-policy.v1",
   "version": "1.0.0",
-  "title": "Ontology-Grounded Classification and STE-Inspired Communication",
+  "title": "Ontology-Grounded Terminology and Controlled Technical English",
   "canonical_document": "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md",
   "source_register": "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md",
   "cross_cutting": true,
@@ -59,23 +59,25 @@
   },
   "record_schema": "valdris.ontology-classification.v1",
   "record_template": "classification/classification-record.template.json",
-  "applicability": {
-    "required_for": [
+  "record_use": {
+    "recommended_for_material_decisions": [
       "public_product_or_system_category",
       "architecture_terminology_or_responsibility_boundary",
       "taxonomy_or_controlled_vocabulary_change",
       "external_standard_or_framework_claim",
-      "controlled_public_or_agent_instruction_surface",
       "qualified_or_restricted_term"
     ],
-    "not_automatically_required_for": [
-      "routine_bug_fix_without_terminology_change",
-      "dependency_update_without_terminology_change",
-      "implementation_change_without_classification_change"
-    ]
+    "required_when": "The applicable publication, architecture, legal, safety, standards, or review process requires an auditable evidence record.",
+    "required_for_routine_communication": false
   },
   "communication_profile": {
-    "name": "valdris-ste-inspired-v1",
+    "name": "asd-ste100-issue-9-target-v1",
+    "target_standard": {
+      "name": "ASD-STE100",
+      "issue": "9",
+      "publication_date": "2025-01-15",
+      "conformance_status": "not_verified"
+    },
     "formal_asd_ste100_compliance": false,
     "rules": [
       "one_approved_term_per_meaning",
@@ -100,7 +102,7 @@
     {
       "term": "repository-level policy and evidence control plane around external coding agents",
       "meaning": "The part that coordinates policy, run state, evidence, gates, and approvals around a defined repository workflow.",
-      "status": "standard",
+      "status": "emerging",
       "usage": "qualified_secondary_architectural_role"
     },
     {
@@ -146,5 +148,5 @@
     "ASD-STE100 certified",
     "formal ASD-STE100 compliance"
   ],
-  "structural_gate_disclaimer": "Passing the terminology gate proves record structure and fail-closed evidence behavior, not semantic or authoritative correctness."
+  "record_check_disclaimer": "Passing the classification-record check proves record structure and fail-closed evidence behavior, not semantic or authoritative correctness."
 }

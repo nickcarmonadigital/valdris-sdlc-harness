@@ -344,6 +344,45 @@ test("synthetic privacy fixtures pass", (root) => {
   expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
 });
 
+test("privacy ignores Git worktree metadata pointers", (root) => {
+  const privateGitDir = [
+    "",
+    "root",
+    "private",
+    ".git",
+    "worktrees",
+    "fixture",
+  ].join("/");
+  write(root, ".git", `gitdir: ${privateGitDir}\n`);
+  write(root, "README.md", "Synthetic public fixture.\n");
+  expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
+});
+
+test("privacy scans nested .git files", (root) => {
+  const syntheticValue = ["AKIA", "QWERTYUIOPASDFGH"].join("");
+  write(root, "nested/.git", `${syntheticValue}\n`);
+  write(root, "README.md", "Synthetic public fixture.\n");
+  const result = runGate("privacy-gate.mjs", root);
+  expectRedactedFailure(result, "import-privacy", [syntheticValue]);
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "secret" && item.path === "nested/.git",
+    ),
+  );
+});
+
+test("privacy rejects repository-root .git symlinks", (root) => {
+  write(root, "git-pointer-target", "Synthetic target.\n");
+  symlinkSync("git-pointer-target", path.join(root, ".git"));
+  const result = runGate("privacy-gate.mjs", root);
+  expectRedactedFailure(result, "import-privacy");
+  assert.ok(
+    result.payload.findings.some(
+      (item) => item.category === "unapproved-symlink" && item.path === ".git",
+    ),
+  );
+});
+
 test("generated stable graph does not persist its absolute repository root", (root) => {
   write(root, "src/index.js", "export const value = 1;\n");
   const scan = spawnSync(

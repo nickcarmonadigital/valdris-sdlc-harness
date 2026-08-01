@@ -242,9 +242,23 @@ function collectFiles(repo, includes = []) {
   const symlinks = [];
   function visit(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
-      if (entry.isFile() && entry.name.endsWith(".tsbuildinfo")) continue;
       const target = path.join(directory, entry.name);
+      const atRepositoryRoot = path.resolve(directory) === path.resolve(repo);
+      if (entry.name === ".git" && atRepositoryRoot) {
+        if (entry.isDirectory()) continue;
+        if (
+          entry.isFile() &&
+          /^gitdir: [^\r\n]+\r?\n?$/.test(readFileSync(target, "utf8"))
+        )
+          continue;
+      }
+      if (
+        entry.isDirectory() &&
+        IGNORED_DIRS.has(entry.name) &&
+        entry.name !== ".git"
+      )
+        continue;
+      if (entry.isFile() && entry.name.endsWith(".tsbuildinfo")) continue;
       if (entry.isSymbolicLink()) {
         symlinks.push(target);
         continue;
