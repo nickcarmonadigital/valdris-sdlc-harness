@@ -4,7 +4,7 @@ This is the agent-facing OKF bundle for the Valdris SDLC Harness. Start here, ch
 
 # Systems
 
-- [Valdris SDLC Harness](systems/valdris-sdlc-harness.md) - the product/control-plane system this repo implements.
+- [Valdris SDLC Harness](systems/valdris-sdlc-harness.md) - the repository-level SDLC assurance harness this repo implements around external coding agents.
 - [Connector Event Runtime](systems/connector-event-runtime.md) - bridge, events, artifacts, approvals, and finish-line enforcement.
 
 # Playbooks
@@ -23,6 +23,7 @@ This is the agent-facing OKF bundle for the Valdris SDLC Harness. Start here, ch
 - [Proof-First Harness](concepts/proof-first-harness.md) - the core operating principle behind gates and final answers.
 - [OKF Agent Vault](concepts/okf-agent-vault.md) - why this `knowledge/` folder exists and how agents should maintain it.
 - [Typed Evidence](concepts/typed-evidence.md) - the control-level proof contract for enterprise and AI gates.
+- [Ontology-Grounded Classification](concepts/ontology-grounded-classification.md) - classify from mechanism, criteria, and evidence; use authoritative web sources when local support is incomplete.
 
 # Sources
 

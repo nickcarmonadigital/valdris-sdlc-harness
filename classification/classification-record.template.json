@@ -1,0 +1,72 @@
+{
+  "schema": "valdris.ontology-classification.v1",
+  "subject": {
+    "name": "REPLACE WITH SUBJECT",
+    "kind": "system"
+  },
+  "observableMechanism": [
+    "REPLACE WITH AN OBSERVED MECHANISM WITHOUT USING THE PROPOSED LABEL"
+  ],
+  "responsibilityBoundary": {
+    "owns": ["REPLACE WITH OWNED RESPONSIBILITY"],
+    "doesNotOwn": ["REPLACE WITH EXCLUDED RESPONSIBILITY"]
+  },
+  "domain": "REPLACE WITH DOMAIN",
+  "ontology": {
+    "name": "REPLACE WITH APPLICABLE DOMAIN ONTOLOGY",
+    "sourceRefs": ["LOCAL-1"]
+  },
+  "candidateCategories": [
+    "REPLACE WITH CANDIDATE CATEGORY",
+    "REPLACE WITH REJECTED ALTERNATIVE"
+  ],
+  "classCriteria": [
+    {
+      "id": "CRIT-1",
+      "description": "REPLACE WITH A DECISIVE CATEGORY PROPERTY",
+      "decisive": true,
+      "status": "unknown",
+      "evidenceRefs": ["LOCAL-1"]
+    }
+  ],
+  "localEvidenceInspected": true,
+  "webVerification": {
+    "required": true,
+    "status": "incomplete",
+    "reason": "A decisive criterion is not established by the inspected local evidence."
+  },
+  "evidence": [
+    {
+      "id": "LOCAL-1",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "REPLACE WITH PROJECT OR SOURCE OWNER",
+      "title": "REPLACE WITH LOCAL SOURCE TITLE",
+      "url": null,
+      "repositoryPath": "REPLACE/WITH/LOCAL/PATH",
+      "revision": "REPLACE_WITH_COMMIT_OR_CONTENT_DIGEST",
+      "accessedAt": "2026-08-01",
+      "claim": "REPLACE WITH THE FACT SUPPORTED BY THIS SOURCE"
+    }
+  ],
+  "sourcedFacts": [
+    "REPLACE WITH A FACT DIRECTLY SUPPORTED BY AN EVIDENCE ENTRY"
+  ],
+  "inferences": [
+    "No final classification is established while decisive evidence is incomplete."
+  ],
+  "selectedCategory": null,
+  "selectedTerm": null,
+  "plainMeaning": "No final term is established.",
+  "termStatus": "uncertain",
+  "classificationStatus": "not_established",
+  "rejectedTerms": [
+    {
+      "term": "REPLACE WITH AN OVERBROAD OR UNSUPPORTED TERM",
+      "reason": "The available evidence does not establish its decisive properties."
+    }
+  ],
+  "uncertainties": [
+    "REPLACE WITH THE DECISIVE PROPERTY OR SOURCE THAT REMAINS UNRESOLVED"
+  ]
+}

@@ -30,6 +30,8 @@ Layer 0 is not a new connector node and not a fourteenth production domain. Asyn
 
 ## Terminology calibration
 
+This table is a commissioning example, not the complete classification method. The canonical cross-cutting procedure is `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md`. An agent must inspect the mechanism, identify the applicable ontology, apply decisive category criteria, and bind evidence before selecting a term. If local evidence is incomplete, authoritative web verification is mandatory. Sourced facts, Valdris inference, term status, and uncertainty remain separate.
+
 | Operator language                                   | Best term                          | Semantics                                                                               | Taxonomy                                   | Domain-term calibration                                                      |
 | --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
 | “Make my harness universal”                         | Harness commissioning              | Convert repo/team facts into an AI-operable harness pack                                | Internal Developer Platform / Agentic SDLC | Emerging, strong product term                                                |
@@ -69,6 +71,7 @@ These stay the same across repos:
 9. Answer contract: bottom line, why, proof, risk, fix/plan, your call.
 10. Layer 0 workload and foundation assurance: route v2 binds the workload classification, and the foundation gate resolves before implementation.
 11. Production readiness domain pack: 13 full-stack production domains become required/skipped checks after Layer 0.
+12. Ontology and terminology assurance: material system, architecture, product, taxonomy, and controlled-documentation claims use the commissioned terminology policy and a structurally validated classification record.
 
 ### Project adapter
 
@@ -91,6 +94,7 @@ Generated per repo/team:
 15. Blueprint / Live Run / Replay telemetry policy.
 16. Harness self-healing PR policy.
 17. Integration map: GitHub, Linear/Jira, Vercel/AWS/Supabase/etc.
+18. Domain ontology sources, controlled vocabulary, qualified terms, authoritative-source policy, research availability, and citation requirements.
 
 ## Commissioning interview question bank
 

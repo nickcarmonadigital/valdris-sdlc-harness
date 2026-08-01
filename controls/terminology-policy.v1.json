@@ -1,0 +1,150 @@
+{
+  "schema": "valdris.terminology-policy.v1",
+  "version": "1.0.0",
+  "title": "Ontology-Grounded Classification and STE-Inspired Communication",
+  "canonical_document": "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md",
+  "source_register": "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md",
+  "cross_cutting": true,
+  "optional_skill": false,
+  "formal_asd_ste100_compliance": false,
+  "procedure": [
+    "inspect_direct_evidence",
+    "describe_observable_mechanism",
+    "record_responsibility_boundary",
+    "identify_domain_ontology",
+    "list_candidate_categories",
+    "apply_decisive_criteria",
+    "escalate_unsupported_criteria_to_authoritative_web_sources",
+    "separate_sourced_facts_from_inference",
+    "select_smallest_supported_category",
+    "define_selected_term_plainly",
+    "record_term_status_and_uncertainty"
+  ],
+  "classification_statuses": [
+    "established",
+    "partially_supported",
+    "unsupported",
+    "contested",
+    "uncertain",
+    "not_established"
+  ],
+  "criterion_statuses": ["satisfied", "not_satisfied", "unknown", "contested"],
+  "term_statuses": [
+    "standard",
+    "emerging",
+    "vendor_specific",
+    "internal",
+    "uncertain"
+  ],
+  "allowed_source_types": [
+    "standard",
+    "official_specification",
+    "official_documentation",
+    "official_repository",
+    "peer_reviewed",
+    "reputable_secondary"
+  ],
+  "disallowed_evidence_types": [
+    "search_snippet",
+    "generated_summary",
+    "anonymous_page",
+    "unsourced_marketing_claim",
+    "model_confidence"
+  ],
+  "web_verification": {
+    "required_when_decisive_criteria_lack_support": true,
+    "direct_source_required": true,
+    "secondary_only_cannot_establish_decisive_claim": true,
+    "blocked_statuses": ["uncertain", "not_established"]
+  },
+  "record_schema": "valdris.ontology-classification.v1",
+  "record_template": "classification/classification-record.template.json",
+  "applicability": {
+    "required_for": [
+      "public_product_or_system_category",
+      "architecture_terminology_or_responsibility_boundary",
+      "taxonomy_or_controlled_vocabulary_change",
+      "external_standard_or_framework_claim",
+      "controlled_public_or_agent_instruction_surface",
+      "qualified_or_restricted_term"
+    ],
+    "not_automatically_required_for": [
+      "routine_bug_fix_without_terminology_change",
+      "dependency_update_without_terminology_change",
+      "implementation_change_without_classification_change"
+    ]
+  },
+  "communication_profile": {
+    "name": "valdris-ste-inspired-v1",
+    "formal_asd_ste100_compliance": false,
+    "rules": [
+      "one_approved_term_per_meaning",
+      "define_unfamiliar_term_at_first_use",
+      "identify_actor_when_responsibility_matters",
+      "use_direct_declarative_sentences",
+      "prefer_one_primary_action_per_instruction",
+      "use_concrete_verbs_and_named_artifacts",
+      "separate_requirements_recommendations_facts_and_inference",
+      "avoid_unnecessary_jargon_noun_chains_metaphors_and_analogies",
+      "qualify_broad_architecture_terms",
+      "state_uncertainty_directly"
+    ]
+  },
+  "controlled_vocabulary": [
+    {
+      "term": "repository-level SDLC assurance harness for AI coding agents",
+      "meaning": "Software that installs repository controls, routes work, records external coding-agent activity as evidence, checks required proof, and blocks unsupported completion.",
+      "status": "emerging",
+      "usage": "primary_public_category"
+    },
+    {
+      "term": "repository-level policy and evidence control plane around external coding agents",
+      "meaning": "The part that coordinates policy, run state, evidence, gates, and approvals around a defined repository workflow.",
+      "status": "standard",
+      "usage": "qualified_secondary_architectural_role"
+    },
+    {
+      "term": "connector-first",
+      "meaning": "Integration design that prioritizes normalized runtime events and artifacts.",
+      "status": "internal",
+      "usage": "internal_design_only"
+    },
+    {
+      "term": "proof-first",
+      "meaning": "Operating principle that requires evidence before completion.",
+      "status": "internal",
+      "usage": "operating_principle"
+    },
+    {
+      "term": "coding agent",
+      "meaning": "External tool that can inspect a repository and perform implementation work.",
+      "status": "emerging",
+      "usage": "external_runtime_role"
+    },
+    {
+      "term": "Layer 0",
+      "meaning": "Unnumbered foundation assurance that precedes production-domain evaluation.",
+      "status": "internal",
+      "usage": "foundation_assurance"
+    },
+    {
+      "term": "13 production domains",
+      "meaning": "Production-readiness assurance categories derived from the attributed source model.",
+      "status": "internal",
+      "usage": "assurance_taxonomy"
+    }
+  ],
+  "restricted_unqualified_terms": [
+    "control plane",
+    "operating system",
+    "OS",
+    "agent runtime",
+    "platform"
+  ],
+  "prohibited_claims": [
+    "ASD-STE100 compliant",
+    "ASD-STE100 certified",
+    "formal ASD-STE100 compliance"
+  ],
+  "structural_gate_disclaimer": "Passing the terminology gate proves record structure and fail-closed evidence behavior, not semantic or authoritative correctness."
+}

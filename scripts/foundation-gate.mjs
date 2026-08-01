@@ -17,7 +17,7 @@ import {
 export const FOUNDATION_ASSESSMENT_SCHEMA = "uash.foundation-assessment.v1";
 export const FOUNDATION_CATALOG_SCHEMA = "uash.foundation-control-catalog.v1";
 export const CANONICAL_FOUNDATION_CATALOG_SHA256 =
-  "a7403ada1c5dad44e126544337a5c2884ac1eaac43e6f6c2daf1bb2df90b319e";
+  "ee7f4225267757dff95cecea0b0847ae26422154374b0e5bb3be4d73896aa166";
 const ASSET_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
@@ -46,7 +46,12 @@ const CONTROLLED_DOCUMENTATION_REQUIRED_CAPABILITIES = new Set([
   "decisions-ownership-risk",
 ]);
 const FOUNDATION_CONTROL_IDS = Object.freeze({
-  "product-domain": ["FND-PRODUCT-001", "FND-DOMAIN-001"],
+  "product-domain": [
+    "FND-PRODUCT-001",
+    "FND-DOMAIN-001",
+    "FND-DOMAIN-002",
+    "FND-DOMAIN-003",
+  ],
   "requirements-acceptance": ["FND-REQ-001", "FND-ACCEPTANCE-001"],
   "quality-attributes": ["FND-QUALITY-001", "FND-FAILURE-001"],
   "architecture-boundaries": ["FND-ARCH-001", "FND-BOUNDARY-001"],

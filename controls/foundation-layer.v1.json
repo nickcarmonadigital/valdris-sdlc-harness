@@ -22,6 +22,16 @@
           "id": "FND-DOMAIN-001",
           "requirement": "Domain terminology, core entities, ownership boundaries, and business invariants are defined without conflicting meanings.",
           "proofPolicy": { "types": ["artifact"] }
+        },
+        {
+          "id": "FND-DOMAIN-002",
+          "requirement": "Material system, architecture, and product classifications are derived from observable mechanisms, an explicit domain ontology, decisive category criteria, and bound evidence; unsupported criteria trigger authoritative-source research and explicit uncertainty.",
+          "proofPolicy": { "types": ["artifact"] }
+        },
+        {
+          "id": "FND-DOMAIN-003",
+          "requirement": "Controlled technical communication uses one approved term per meaning, defines unfamiliar terms plainly, qualifies broad architecture labels, separates sourced facts from inference, and makes unsupported or contested claims explicit.",
+          "proofPolicy": { "types": ["artifact"] }
         }
       ]
     },

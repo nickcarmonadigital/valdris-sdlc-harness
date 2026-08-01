@@ -1,0 +1,318 @@
+{
+  "schema": "valdris.ontology-classification.v1",
+  "subject": {
+    "name": "Valdris SDLC Harness",
+    "kind": "system"
+  },
+  "observableMechanism": [
+    "Commissions repository-specific controls and agent front doors into a target repository.",
+    "Classifies and routes software-delivery work.",
+    "Receives normalized events and artifacts from external coding-agent runtimes.",
+    "Evaluates required evidence, proof, approval, and finish-line gates.",
+    "Preserves run packets and presents run state without performing the coding-agent implementation itself."
+  ],
+  "responsibilityBoundary": {
+    "owns": [
+      "commissioning",
+      "request and workload routing",
+      "policy and gate evaluation",
+      "normalized evidence collection",
+      "approval boundaries",
+      "run-packet preservation",
+      "run-state presentation"
+    ],
+    "doesNotOwn": [
+      "general-purpose operating-system resource management",
+      "the external coding-agent model or runtime",
+      "all implementation work",
+      "provider-hosted execution infrastructure",
+      "formal ASD-STE100 conformance"
+    ]
+  },
+  "domain": "AI-assisted software delivery assurance",
+  "ontology": {
+    "name": "Repository-level software-delivery system categories",
+    "sourceRefs": [
+      "SRC-W3C-OWL-OVERVIEW",
+      "LOCAL-README",
+      "LOCAL-COMMISSION",
+      "LOCAL-ROUTE",
+      "LOCAL-BRIDGE",
+      "LOCAL-RUN-PACKET"
+    ]
+  },
+  "candidateCategories": [
+    "repository-level SDLC assurance harness for AI coding agents",
+    "repository-level policy and evidence control plane around external coding agents",
+    "coding agent",
+    "agent runtime",
+    "operating system",
+    "connector-first platform"
+  ],
+  "classCriteria": [
+    {
+      "id": "CRIT-REPOSITORY-LEVEL",
+      "description": "The system installs and evaluates controls inside or against a target repository.",
+      "decisive": true,
+      "status": "satisfied",
+      "evidenceRefs": ["LOCAL-COMMISSION", "LOCAL-FOUNDATION-GATE"]
+    },
+    {
+      "id": "CRIT-SDLC",
+      "description": "The system governs multiple software-delivery lifecycle activities rather than one isolated command.",
+      "decisive": true,
+      "status": "satisfied",
+      "evidenceRefs": ["LOCAL-ROUTE", "LOCAL-RUN-PACKET", "SRC-NIST-SSDF"]
+    },
+    {
+      "id": "CRIT-ASSURANCE",
+      "description": "The system requires structured evidence, evaluates gates, and can reject unsupported completion claims.",
+      "decisive": true,
+      "status": "satisfied",
+      "evidenceRefs": ["LOCAL-FOUNDATION-GATE", "LOCAL-RUN-PACKET"]
+    },
+    {
+      "id": "CRIT-HARNESS",
+      "description": "The system wraps external coding-agent execution with repository controls, adapters, evidence, and verification instead of replacing that runtime.",
+      "decisive": true,
+      "status": "satisfied",
+      "evidenceRefs": [
+        "LOCAL-README",
+        "LOCAL-COMMISSION",
+        "LOCAL-BRIDGE",
+        "SRC-ANTHROPIC-CLAUDE-CODE",
+        "SRC-GITHUB-CODING-AGENT"
+      ]
+    },
+    {
+      "id": "CRIT-NOT-CODING-AGENT",
+      "description": "The system itself reads, edits, and implements the target code as the responsible coding runtime.",
+      "decisive": false,
+      "status": "not_satisfied",
+      "evidenceRefs": [
+        "LOCAL-README",
+        "SRC-ANTHROPIC-CLAUDE-CODE",
+        "SRC-GITHUB-CODING-AGENT"
+      ]
+    },
+    {
+      "id": "CRIT-QUALIFIED-CONTROL-PLANE",
+      "description": "The system coordinates defined policy, state, gates, and evidence around external coding-agent work, which supports a qualified secondary control-plane description.",
+      "decisive": false,
+      "status": "satisfied",
+      "evidenceRefs": [
+        "LOCAL-ROUTE",
+        "LOCAL-BRIDGE",
+        "LOCAL-RUN-PACKET",
+        "SRC-K8S-COMPONENTS"
+      ]
+    }
+  ],
+  "localEvidenceInspected": true,
+  "webVerification": {
+    "required": true,
+    "status": "completed",
+    "reason": "Local implementation evidence established the mechanism, but external sources were required to calibrate ontology, controlled-language, coding-agent, SDLC, and control-plane terminology."
+  },
+  "evidence": [
+    {
+      "id": "LOCAL-README",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "Valdris",
+      "title": "README.md",
+      "url": null,
+      "repositoryPath": "README.md",
+      "revision": "5ad6e0eda8fec8717b959a22cd39fca837f29668",
+      "accessedAt": "2026-08-01",
+      "claim": "Defines the product boundary, external-agent role, commissioning flow, proof gates, and run packets."
+    },
+    {
+      "id": "LOCAL-COMMISSION",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "Valdris",
+      "title": "Commissioning generator",
+      "url": null,
+      "repositoryPath": "scripts/commission-harness.mjs",
+      "revision": "5ad6e0eda8fec8717b959a22cd39fca837f29668",
+      "accessedAt": "2026-08-01",
+      "claim": "Generates repository-specific controls, adapters, and agent front doors."
+    },
+    {
+      "id": "LOCAL-ROUTE",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "Valdris",
+      "title": "Request router",
+      "url": null,
+      "repositoryPath": "scripts/route-request.mjs",
+      "revision": "5ad6e0eda8fec8717b959a22cd39fca837f29668",
+      "accessedAt": "2026-08-01",
+      "claim": "Classifies and routes software-delivery requests into controlled work."
+    },
+    {
+      "id": "LOCAL-BRIDGE",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "Valdris",
+      "title": "Claude Code bridge",
+      "url": null,
+      "repositoryPath": "scripts/claude-code-bridge.mjs",
+      "revision": "5ad6e0eda8fec8717b959a22cd39fca837f29668",
+      "accessedAt": "2026-08-01",
+      "claim": "Normalizes external runtime activity and binds it to Valdris gates."
+    },
+    {
+      "id": "LOCAL-FOUNDATION-GATE",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "Valdris",
+      "title": "Foundation gate",
+      "url": null,
+      "repositoryPath": "scripts/foundation-gate.mjs",
+      "revision": "5ad6e0eda8fec8717b959a22cd39fca837f29668",
+      "accessedAt": "2026-08-01",
+      "claim": "Requires foundation-control assessments and bound evidence."
+    },
+    {
+      "id": "LOCAL-RUN-PACKET",
+      "origin": "local",
+      "sourceType": "official_repository",
+      "publisher": "Valdris",
+      "title": "Run-packet gate",
+      "url": null,
+      "repositoryPath": "scripts/run-packet-gate.mjs",
+      "revision": "5ad6e0eda8fec8717b959a22cd39fca837f29668",
+      "accessedAt": "2026-08-01",
+      "claim": "Validates finish-line evidence, trust, approvals, and run-packet integrity."
+    },
+    {
+      "id": "SRC-ASD-STE-HOME",
+      "origin": "web",
+      "sourceType": "standard",
+      "publisher": "ASD STEMG",
+      "title": "ASD-STE100 Home Page",
+      "url": "https://www.asd-ste100.org/",
+      "repositoryPath": null,
+      "revision": "Issue 9, 2025-01-15",
+      "accessedAt": "2026-08-01",
+      "claim": "ASD-STE100 is a controlled natural language and international standard for technical documentation."
+    },
+    {
+      "id": "SRC-ASD-STE-ABOUT",
+      "origin": "web",
+      "sourceType": "standard",
+      "publisher": "ASD STEMG",
+      "title": "About ASD-STE100",
+      "url": "https://www.asd-ste100.org/about.html",
+      "repositoryPath": null,
+      "revision": null,
+      "accessedAt": "2026-08-01",
+      "claim": "ASD-STE100 includes writing rules and a controlled dictionary; one word for one meaning is one of its principles."
+    },
+    {
+      "id": "SRC-W3C-OWL-OVERVIEW",
+      "origin": "web",
+      "sourceType": "standard",
+      "publisher": "W3C",
+      "title": "OWL 2 Web Ontology Language Document Overview",
+      "url": "https://www.w3.org/TR/owl2-overview/",
+      "repositoryPath": null,
+      "revision": "W3C Recommendation, 2012-12-11",
+      "accessedAt": "2026-08-01",
+      "claim": "Ontologies are formalized vocabularies that define terms through domain relationships."
+    },
+    {
+      "id": "SRC-NIST-SSDF",
+      "origin": "web",
+      "sourceType": "standard",
+      "publisher": "NIST",
+      "title": "SP 800-218 Secure Software Development Framework Version 1.1",
+      "url": "https://csrc.nist.gov/pubs/sp/800/218/final",
+      "repositoryPath": null,
+      "revision": "2022-02-03",
+      "accessedAt": "2026-08-01",
+      "claim": "High-level secure software-development practices can be integrated into SDLC implementations and provide a common vocabulary."
+    },
+    {
+      "id": "SRC-K8S-COMPONENTS",
+      "origin": "web",
+      "sourceType": "official_documentation",
+      "publisher": "Kubernetes project",
+      "title": "Kubernetes Components",
+      "url": "https://kubernetes.io/docs/concepts/overview/components/",
+      "repositoryPath": null,
+      "revision": null,
+      "accessedAt": "2026-08-01",
+      "claim": "Kubernetes control-plane components manage overall cluster state and coordinate defined resources."
+    },
+    {
+      "id": "SRC-ANTHROPIC-CLAUDE-CODE",
+      "origin": "web",
+      "sourceType": "official_documentation",
+      "publisher": "Anthropic",
+      "title": "Claude Code overview",
+      "url": "https://docs.anthropic.com/en/docs/claude-code/overview",
+      "repositoryPath": null,
+      "revision": null,
+      "accessedAt": "2026-08-01",
+      "claim": "Claude Code is an agentic coding tool that reads codebases, edits files, runs commands, and integrates with development tools."
+    },
+    {
+      "id": "SRC-GITHUB-CODING-AGENT",
+      "origin": "web",
+      "sourceType": "official_documentation",
+      "publisher": "GitHub",
+      "title": "About GitHub Copilot cloud agent",
+      "url": "https://docs.github.com/en/copilot/concepts/agents/coding-agent/about-coding-agent",
+      "repositoryPath": null,
+      "revision": null,
+      "accessedAt": "2026-08-01",
+      "claim": "A coding agent can research a repository, plan, change code on a branch, and open a pull request."
+    }
+  ],
+  "sourcedFacts": [
+    "ASD-STE100 is a formal controlled natural language with writing rules and a controlled dictionary.",
+    "W3C describes ontologies as formalized domain vocabularies that define terms through relationships.",
+    "NIST describes SSDF as practices integrated into SDLC implementations.",
+    "Kubernetes uses control plane for components that manage overall cluster state.",
+    "Anthropic and GitHub assign repository inspection and code-changing responsibilities to external coding-agent tools."
+  ],
+  "inferences": [
+    "Valdris is best classified as a repository-level SDLC assurance harness for AI coding agents because it surrounds external implementation work with repository controls, routing, evidence, and gates.",
+    "The selected category is an emerging descriptive compound, not a formal class defined by the cited standards.",
+    "Valdris has a qualified secondary role as a repository-level policy and evidence control plane around external coding agents."
+  ],
+  "selectedCategory": "repository-level SDLC assurance harness for AI coding agents",
+  "selectedTerm": "repository-level SDLC assurance harness for AI coding agents",
+  "plainMeaning": "Valdris installs repository controls, routes work, records external coding-agent activity as evidence, checks required proof, and blocks unsupported completion.",
+  "termStatus": "emerging",
+  "classificationStatus": "established",
+  "rejectedTerms": [
+    {
+      "term": "coding agent",
+      "reason": "External tools perform the implementation work; Valdris commissions and verifies the process around them."
+    },
+    {
+      "term": "agent runtime",
+      "reason": "Valdris integrates with runtimes but does not host the general model execution loop."
+    },
+    {
+      "term": "operating system",
+      "reason": "The repository does not manage general compute resources, processes, permissions, and stable system interfaces at operating-system scope."
+    },
+    {
+      "term": "control plane",
+      "reason": "Unqualified usage hides the repository-level policy-and-evidence scope; it is retained only as a qualified secondary architectural description."
+    },
+    {
+      "term": "connector-first platform",
+      "reason": "Connector-first describes an integration design choice rather than the primary product category."
+    }
+  ],
+  "uncertainties": [
+    "No cited authority defines the complete selected compound as a formal standards category.",
+    "The AI coding-agent domain remains emerging and vendor terminology can change."
+  ]
+}
