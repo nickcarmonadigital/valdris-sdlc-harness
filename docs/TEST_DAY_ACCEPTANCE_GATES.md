@@ -6,18 +6,19 @@ This is the repo-facing version of the test-day discussion: Valdris is not “do
 
 ## Test-day gates
 
-| Gate                       | Question                                                                      | Pass signal                                                                                          |
-| -------------------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Commissioning depth        | Did the harness ask enough to know the team/repo/quality bar?                 | `npm run commission:questions` returns 32 groups / 165 questions.                                    |
-| Good-looks-like foundation | Does the generated pack teach architecture/quality/proof before feature work? | Generated docs include Good Looks Like, Code Quality Guardrails, Enterprise Proof Bank.              |
-| GitNexus/code intelligence | Does the run map the repo before cross-file reasoning?                        | `graph/gitnexus.json`, `graph/graph.json`, `graph/freshness.json`, `design/anchors.json` pass gates. |
-| Mode honesty               | Does UI/docs separate Blueprint, Live Run, and Replay?                        | No fake live telemetry; live requires bridge/MCP/API/CLI/watched events.                             |
-| Event contract             | Are skipped/failed/approval/self-heal states explicit?                        | Bridge validates event type, node, status, actor, mode, source, skip/failure/recovery metadata.      |
-| Proof bank                 | Does proof cover enterprise dimensions, not toy demo proof?                   | `proof/proof.json` cites relevant proof-bank dimensions or skip reasons.                             |
-| Red Zone                   | Can an agent approve its own risky action?                                    | No; approval grants/denials require human actor and matching pending scope.                          |
-| Self-heal                  | If the harness failed, does the system force a proposed fix?                  | `self_heal.detected` blocks done until PR/proposal artifact exists.                                  |
-| Finish line                | Can a run mark complete early?                                                | Bridge rejects completion until required artifacts pass or are skipped with reasons.                 |
-| Handoff                    | Can a human make the next decision quickly?                                   | `handoff/final.md` includes bottom line, proof, risk, rollback/next step.                            |
+| Gate                       | Question                                                                      | Pass signal                                                                                                                   |
+| -------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Commissioning depth        | Did the harness ask enough to know the team/repo/quality bar?                 | `npm run commission:questions` returns 32 groups / 165 questions.                                                             |
+| Good-looks-like foundation | Does the generated pack teach architecture/quality/proof before feature work? | Generated docs include Good Looks Like, Code Quality Guardrails, Enterprise Proof Bank.                                       |
+| Terminology classification | Are policy terms, claim boundaries, and changed classification records valid? | `npm run verify:terminology` passes; when a classification record changes, `npm run classification:record:check` also passes. |
+| GitNexus/code intelligence | Does the run map the repo before cross-file reasoning?                        | `graph/gitnexus.json`, `graph/graph.json`, `graph/freshness.json`, `design/anchors.json` pass gates.                          |
+| Mode honesty               | Does UI/docs separate Blueprint, Live Run, and Replay?                        | No fake live telemetry; live requires bridge/MCP/API/CLI/watched events.                                                      |
+| Event contract             | Are skipped/failed/approval/self-heal states explicit?                        | Bridge validates event type, node, status, actor, mode, source, skip/failure/recovery metadata.                               |
+| Proof bank                 | Does proof cover enterprise dimensions, not toy demo proof?                   | `proof/proof.json` cites relevant proof-bank dimensions or skip reasons.                                                      |
+| Red Zone                   | Can an agent approve its own risky action?                                    | No; approval grants/denials require human actor and matching pending scope.                                                   |
+| Self-heal                  | If the harness failed, does the system force a proposed fix?                  | `self_heal.detected` blocks done until PR/proposal artifact exists.                                                           |
+| Finish line                | Can a run mark complete early?                                                | Bridge rejects completion until required artifacts pass or are skipped with reasons.                                          |
+| Handoff                    | Can a human make the next decision quickly?                                   | `handoff/final.md` includes bottom line, proof, risk, rollback/next step.                                                     |
 
 ## Required local verification command set
 
@@ -30,9 +31,11 @@ npm run build
 npm run knowledge:gate
 npm run skills:gate
 npm run catalog:gate
+npm run verify:terminology
 npm run provenance:gate
 npm run neutrality:gate
 npm run privacy:gate
+npm run verify:privacy-boundary
 npm run verify:release-privacy
 npm run privacy:release
 npm run schema:compat:gate
@@ -43,6 +46,8 @@ npm run verify:work-harness-import
 npm run verify:commissioned-portability
 npm run verify:harness
 ```
+
+Run `npm run classification:record:check` when a classification record is introduced or changed. Routine documentation and communication changes do not require a classification record.
 
 `verify:work-harness-import` runs the focused import-boundary, assurance-overlay, portable-execution, proof-security, run-packet-trust, and commissioned-portability adversarial verifiers. The explicit commissioned-portability run remains in this release sequence so commissioning regressions are visible as a first-class acceptance gate.
 

@@ -55,6 +55,21 @@ function runGate(script, repo, extraArgs = []) {
   return { ...result, payload, text };
 }
 
+function git(cwd, args) {
+  const result = spawnSync("git", ["-C", cwd, ...args], {
+    encoding: "utf8",
+    shell: false,
+    windowsHide: true,
+    timeout: 30_000,
+    killSignal: "SIGTERM",
+  });
+  assert.equal(
+    result.status,
+    0,
+    `git ${args.join(" ")} failed: ${result.stderr || result.stdout}`,
+  );
+}
+
 function withRestrictedValues(config, fn) {
   const directory = mkdtempSync(
     path.join(os.tmpdir(), "valdris-restricted-values-"),
@@ -345,17 +360,26 @@ test("synthetic privacy fixtures pass", (root) => {
 });
 
 test("privacy ignores Git worktree metadata pointers", (root) => {
-  const privateGitDir = [
-    "",
-    "root",
-    "private",
-    ".git",
-    "worktrees",
-    "fixture",
-  ].join("/");
-  write(root, ".git", `gitdir: ${privateGitDir}\n`);
-  write(root, "README.md", "Synthetic public fixture.\n");
-  expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
+  const source = `${root}-source`;
+  rmSync(root, { recursive: true, force: true });
+  mkdirSync(source, { recursive: true });
+  try {
+    write(source, "README.md", "Synthetic public fixture.\n");
+    git(source, ["init", "--quiet"]);
+    git(source, ["config", "user.email", "privacy-test@example.invalid"]);
+    git(source, ["config", "user.name", "Privacy Test"]);
+    git(source, ["add", "."]);
+    git(source, ["commit", "--quiet", "-m", "fixture"]);
+    git(source, ["worktree", "add", "--quiet", root, "HEAD"]);
+    expectPass(runGate("privacy-gate.mjs", root), "import-privacy");
+  } finally {
+    spawnSync("git", ["-C", source, "worktree", "remove", "--force", root], {
+      encoding: "utf8",
+      shell: false,
+      windowsHide: true,
+    });
+    rmSync(source, { recursive: true, force: true });
+  }
 });
 
 test("privacy scans nested .git files", (root) => {

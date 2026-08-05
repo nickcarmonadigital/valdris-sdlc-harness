@@ -35,7 +35,7 @@ request signals
 
 Layer 0 answers whether the system has enough shared truth and clean boundaries for delivery to proceed safely. Every non-docs route requires it. Ordinary README/copy documentation can mark it `not-applicable` with a reason; controlled security, privacy, compliance, release, incident, AI-safety, or financial documents require the lightweight product/requirements/ownership-risk review path. When required, `foundation/assessment.json` uses `uash.foundation-assessment.v1`, binds the commissioned catalog through `catalogSha256`, binds the exact classification through `workloadClassificationSha256`, projects its `effectiveTier`, and proves every applicable foundation control.
 
-The catalog contains seven capabilities and sixteen controls:
+The catalog contains seven capabilities and fourteen controls:
 
 | Capability                  | Controls                              | Outcome                                                                                                  |
 | --------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |

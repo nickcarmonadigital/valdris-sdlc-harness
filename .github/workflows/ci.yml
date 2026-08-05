@@ -100,6 +100,9 @@ jobs:
       - name: Canonical catalog integrity gate
         run: npm run catalog:gate
 
+      - name: Ontology and terminology policy verifier
+        run: npm run verify:terminology
+
       - name: Clean-room provenance gate
         run: npm run provenance:gate
 
@@ -108,6 +111,9 @@ jobs:
 
       - name: Privacy boundary gate
         run: npm run privacy:gate
+
+      - name: Privacy traversal boundary verifier
+        run: npm run verify:privacy-boundary
 
       - name: Assurance schema compatibility gate
         run: npm run schema:compat:gate

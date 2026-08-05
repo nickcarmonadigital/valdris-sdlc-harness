@@ -7,6 +7,7 @@ import {
 } from "node:crypto";
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -19,6 +20,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { reviewAttestationPayload } from "./review-gate.mjs";
 import {
+  catalogSnapshotClassification,
   resolvedCatalogSnapshots,
   routeRequiredGates,
   routeRequiresRca,
@@ -27,16 +29,49 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PRE_V3_RUNTIME_COMMIT = "ea09ce53f3258e365a0ba160f16d61e3e6a9e2fc";
 
+// Trust invariant: run packets can bind only the explicit gate-authoritative
+// control, trust, crosswalk, provenance, and workload-taxonomy schemas. General
+// reference, terminology-policy, and classification-record documents are not
+// assurance catalogs, regardless of their path.
 const nonAssuranceSnapshot = resolvedCatalogSnapshots().find(
-  ({ path: value }) =>
-    /(?:terminology|technical-communication|classification-record)/i.test(
-      value,
-    ),
+  ({ document }) =>
+    catalogSnapshotClassification(document).kind !== "assurance-catalog",
 );
 if (nonAssuranceSnapshot)
   throw new Error(
-    `technical communication must not enter run-packet catalog snapshots: ${nonAssuranceSnapshot.path}`,
+    `non-assurance catalog snapshot is not allowed: ${nonAssuranceSnapshot.path}`,
   );
+assert(
+  catalogSnapshotClassification({
+    schema: "valdris.terminology-policy.v1",
+    cross_cutting: true,
+    term_statuses: ["standard"],
+  }).kind === "non-assurance",
+  "terminology policy must remain outside run-packet catalog snapshots",
+);
+assert(
+  catalogSnapshotClassification({
+    schema: "example.reference.v1",
+    assuranceTiers: ["T1"],
+  }).kind === "unsupported",
+  "assurance-shaped fields must not promote an unsupported schema",
+);
+assert(
+  catalogSnapshotClassification({
+    schema: "uash.domain-control-catalog.v1",
+    note: "schema self-identification only",
+  }).kind === "unsupported",
+  "an assurance schema string without the catalog structure must not classify as an assurance catalog",
+);
+assert(
+  catalogSnapshotClassification({
+    schema: "uash.domain-control-catalog.v1",
+    id: "terminology-reference",
+    version: "1",
+    controls: ["not a control record"],
+  }).kind === "unsupported",
+  "an assurance schema with malformed control records must not classify as an assurance catalog",
+);
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -1480,6 +1515,97 @@ function main() {
     const packetPath = path.join(repoRoot, "run", "packet.json");
     const originalPacket = readFileSync(packetPath, "utf8");
 
+    const replacedCatalog = packet.catalogSnapshots[0];
+    const replacedCatalogPath = path.join(repoRoot, replacedCatalog.path);
+    writeJson(replacedCatalogPath, {
+      ...readJson(replacedCatalogPath),
+      description: "replacement-ref catalog substitution",
+    });
+    expectOk(
+      runGit(repoRoot, ["add", replacedCatalog.path]),
+      "replacement-ref fixture git add",
+    );
+    expectOk(
+      runGit(repoRoot, [
+        "commit",
+        "-m",
+        "test: replacement-ref catalog substitution",
+      ]),
+      "replacement-ref fixture git commit",
+    );
+    const replacementCommit = runGit(repoRoot, ["rev-parse", "HEAD"]);
+    expectOk(replacementCommit, "replacement-ref fixture revision");
+    expectOk(
+      runGit(repoRoot, ["reset", "--hard", packet.commit]),
+      "replacement-ref fixture reset",
+    );
+    expectOk(
+      runGit(repoRoot, [
+        "replace",
+        packet.commit,
+        replacementCommit.stdout.trim(),
+      ]),
+      "replacement-ref installation",
+    );
+    try {
+      expectOk(
+        run(runtimeRoot, "run-packet-gate.mjs", ["--repo", repoRoot], repoRoot),
+        "valid packet under a hostile Git replacement ref",
+      );
+    } finally {
+      expectOk(
+        runGit(repoRoot, ["replace", "-d", packet.commit]),
+        "replacement-ref removal",
+      );
+    }
+
+    const gitHelperMarker = path.join(root, "git-helper-executed");
+    const gitHelperScript = path.join(root, "git-helper.mjs");
+    writeFileSync(
+      gitHelperScript,
+      `import { writeFileSync } from "node:fs";\nwriteFileSync(${JSON.stringify(gitHelperMarker)}, "executed\\n");\n`,
+      "utf8",
+    );
+    const gitHelperCommand = `"${process.execPath}" "${gitHelperScript}"`;
+    expectOk(
+      runGit(repoRoot, ["config", "core.fsmonitor", gitHelperCommand]),
+      "configure hostile fsmonitor helper",
+    );
+    expectOk(
+      runGit(repoRoot, ["config", "diff.external", gitHelperCommand]),
+      "configure hostile external diff helper",
+    );
+    try {
+      expectOk(
+        run(
+          runtimeRoot,
+          "run-packet-gate.mjs",
+          ["--repo", repoRoot],
+          repoRoot,
+          {
+            ...process.env,
+            GIT_DIR: path.join(repoRoot, "ambient-redirection.git"),
+            GIT_OBJECT_DIRECTORY: path.join(repoRoot, "ambient-objects"),
+            GIT_CONFIG_COUNT: "2",
+            GIT_CONFIG_KEY_0: "core.fsmonitor",
+            GIT_CONFIG_VALUE_0: gitHelperCommand,
+            GIT_CONFIG_KEY_1: "diff.external",
+            GIT_CONFIG_VALUE_1: gitHelperCommand,
+          },
+        ),
+        "valid packet under hostile ambient Git repository variables",
+      );
+      assert(
+        !existsSync(gitHelperMarker),
+        "packet validation must not execute Git fsmonitor or external diff helpers",
+      );
+    } finally {
+      runGit(repoRoot, ["config", "--unset-all", "core.fsmonitor"]);
+      runGit(repoRoot, ["config", "--unset-all", "diff.external"]);
+      rmSync(gitHelperMarker, { force: true });
+      rmSync(gitHelperScript, { force: true });
+    }
+
     const substitutedCatalog = structuredClone(packet);
     substitutedCatalog.catalogSnapshots[0].document = {
       ...substitutedCatalog.catalogSnapshots[0].document,
@@ -1504,6 +1630,34 @@ function main() {
       "document does not match packet-commit source bytes",
     );
     rmSync(path.join(repoRoot, "run", "substituted-catalog-packet.json"), {
+      force: true,
+    });
+
+    const nonAssuranceCatalog = structuredClone(packet);
+    nonAssuranceCatalog.catalogSnapshots[0].document = {
+      schema: "valdris.terminology-policy.v1",
+      cross_cutting: true,
+      term_statuses: ["standard"],
+    };
+    nonAssuranceCatalog.catalogSnapshots[0].sha256 = sha256(
+      canonicalJson(nonAssuranceCatalog.catalogSnapshots[0].document),
+    );
+    nonAssuranceCatalog.bindings = packetBindings(nonAssuranceCatalog);
+    writeJson(
+      path.join(repoRoot, "run", "non-assurance-catalog-packet.json"),
+      nonAssuranceCatalog,
+    );
+    expectFailure(
+      run(
+        runtimeRoot,
+        "run-packet-gate.mjs",
+        ["--repo", repoRoot, "--file", "run/non-assurance-catalog-packet.json"],
+        repoRoot,
+      ),
+      "packet with a digest-bound terminology document presented as a catalog",
+      "is not an assurance catalog",
+    );
+    rmSync(path.join(repoRoot, "run", "non-assurance-catalog-packet.json"), {
       force: true,
     });
 
@@ -2362,7 +2516,7 @@ function main() {
     );
     console.log(
       JSON.stringify(
-        { ok: true, positiveCases: 9, adversarialRejections: 39 },
+        { ok: true, positiveCases: 11, adversarialRejections: 40 },
         null,
         2,
       ),

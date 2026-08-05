@@ -61,6 +61,19 @@ const INPUT_GATE_SCRIPTS = Object.freeze({
 });
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const RUNTIME_ROOT = path.resolve(SCRIPT_DIR, "..");
+const GIT_REPOSITORY_ENVIRONMENT = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIFF_OPTS",
+  "GIT_DIR",
+  "GIT_EXEC_PATH",
+  "GIT_EXTERNAL_DIFF",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_QUARANTINE_PATH",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_WORK_TREE",
+];
 const ROUTE_GATE_POLICIES = Object.freeze({
   "code-intelligence": {
     path: "graph/graph.json",
@@ -114,6 +127,204 @@ export const BRIDGE_FINISH_LINE_GATE_SCRIPTS = Object.freeze([
   "run-packet-gate.mjs",
   "authoritative-assurance-gate.mjs",
 ]);
+const ASSURANCE_CATALOG_SCHEMAS = new Set([
+  "uash.assurance-execution-policy.v1",
+  "valdris.authoritative-assurance-policy.v1",
+  "valdris.authority-trust.v1",
+  "uash.cross-cutting-capability-catalog.v1",
+  "valdris.clean-room-behavior-catalog.v1",
+  "uash.thirteen-layers-crosswalk.v1",
+  "uash.domain-control-catalog.v1",
+  "uash.domain-pack-index.v1",
+  "uash.foundation-control-catalog.v1",
+  "uash.ai-control-catalog.v1",
+  "uash.production-control-catalog.v2",
+  "valdris.import_provenance/v1",
+  "valdris.review-trust.v1",
+  "uash.workload-taxonomy-catalog.v1",
+]);
+const NON_ASSURANCE_CLASSIFICATION_KINDS = new Set([
+  "classification-record",
+  "reference",
+  "technical-communication",
+  "terminology",
+]);
+
+function nonEmptyArray(value) {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function objectRecord(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function nonEmptyObject(value) {
+  return objectRecord(value) && Object.keys(value).length > 0;
+}
+
+function nonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function nonEmptyRecords(value, predicate) {
+  return (
+    nonEmptyArray(value) &&
+    value.every((item) => objectRecord(item) && predicate(item))
+  );
+}
+
+function controlRecords(value, idField = "id") {
+  return nonEmptyRecords(
+    value,
+    (control) =>
+      nonEmptyString(control[idField]) && nonEmptyString(control.requirement),
+  );
+}
+
+function hasAssuranceCatalogStructure(document, schema) {
+  switch (schema) {
+    case "uash.assurance-execution-policy.v1":
+      return (
+        nonEmptyString(document.version) &&
+        nonEmptyString(document.appliesToCatalog) &&
+        nonEmptyRecords(
+          document.controls,
+          (control) =>
+            nonEmptyString(control.controlId) &&
+            nonEmptyObject(control.requiredEvidence),
+        ) &&
+        nonEmptyArray(document.tierVocabulary)
+      );
+    case "valdris.authoritative-assurance-policy.v1":
+      return (
+        nonEmptyObject(document.assuranceLevels) &&
+        nonEmptyObject(document.schemas) &&
+        nonEmptyObject(document.execution)
+      );
+    case "valdris.authority-trust.v1":
+    case "valdris.review-trust.v1":
+      return (
+        Array.isArray(document.keys) &&
+        document.keys.every(
+          (key) =>
+            objectRecord(key) &&
+            nonEmptyString(key.keyId) &&
+            nonEmptyString(key.publicKeyPem),
+        )
+      );
+    case "uash.cross-cutting-capability-catalog.v1":
+      return (
+        nonEmptyString(document.id) &&
+        nonEmptyString(document.version) &&
+        nonEmptyObject(document.classification) &&
+        controlRecords(document.controls)
+      );
+    case "valdris.clean-room-behavior-catalog.v1":
+      return (
+        nonEmptyString(document.version) &&
+        nonEmptyObject(document.policy) &&
+        nonEmptyRecords(
+          document.behaviors,
+          (behavior) =>
+            nonEmptyString(behavior.id) &&
+            nonEmptyString(behavior.disposition) &&
+            (behavior.disposition === "EXCLUDE"
+              ? nonEmptyString(behavior.exclusionReason)
+              : nonEmptyString(behavior.verification)),
+        )
+      );
+    case "uash.thirteen-layers-crosswalk.v1":
+      return (
+        nonEmptyString(document.version) &&
+        nonEmptyObject(document.source) &&
+        nonEmptyObject(document.target) &&
+        nonEmptyRecords(
+          document.mappings,
+          (mapping) =>
+            nonEmptyString(mapping.sourceControlId) &&
+            nonEmptyArray(mapping.targetControlIds) &&
+            nonEmptyString(mapping.relationship),
+        )
+      );
+    case "uash.domain-control-catalog.v1":
+      return (
+        nonEmptyString(document.id) &&
+        nonEmptyString(document.version) &&
+        controlRecords(document.controls)
+      );
+    case "uash.domain-pack-index.v1":
+      return nonEmptyRecords(
+        document.packs,
+        (pack) =>
+          nonEmptyString(pack.id) &&
+          nonEmptyString(pack.path) &&
+          Array.isArray(pack.triggers),
+      );
+    case "uash.foundation-control-catalog.v1":
+      return (
+        nonEmptyString(document.version) &&
+        objectRecord(document.layer) &&
+        document.layer.id === "foundation" &&
+        document.layer.number === 0 &&
+        nonEmptyRecords(
+          document.capabilities,
+          (capability) =>
+            nonEmptyString(capability.id) &&
+            controlRecords(capability.controls),
+        )
+      );
+    case "uash.ai-control-catalog.v1":
+      return (
+        nonEmptyString(document.version) &&
+        nonEmptyRecords(
+          document.assuranceProfiles,
+          (profile) =>
+            nonEmptyString(profile.id) && nonEmptyString(profile.use),
+        ) &&
+        controlRecords(document.controls)
+      );
+    case "uash.production-control-catalog.v2":
+      return (
+        nonEmptyString(document.version) &&
+        nonEmptyArray(document.profiles) &&
+        nonEmptyRecords(
+          document.layers,
+          (layer) =>
+            nonEmptyString(layer.layer) && controlRecords(layer.controls),
+        ) &&
+        document.layers.length === 13
+      );
+    case "valdris.import_provenance/v1":
+      return (
+        nonEmptyObject(document.source) &&
+        nonEmptyString(document.source.repository) &&
+        nonEmptyString(document.source.commit) &&
+        nonEmptyObject(document.verification) &&
+        document.verification.digestAlgorithm === "sha256" &&
+        nonEmptyString(document.verification.pathBase) &&
+        nonEmptyObject(document.files) &&
+        Object.values(document.files).every(
+          (digest) => typeof digest === "string" && SHA256.test(digest),
+        )
+      );
+    case "uash.workload-taxonomy-catalog.v1":
+      return (
+        nonEmptyString(document.version) &&
+        nonEmptyRecords(
+          document.assuranceTiers,
+          (tier) => nonEmptyString(tier.id) && Number.isInteger(tier.rank),
+        ) &&
+        nonEmptyRecords(
+          document.workloadProfiles,
+          (profile) =>
+            nonEmptyString(profile.id) && nonEmptyString(profile.minimumTier),
+        ) &&
+        nonEmptyObject(document.proofAxis)
+      );
+    default:
+      return false;
+  }
+}
 
 function compareText(left, right) {
   return left < right ? -1 : left > right ? 1 : 0;
@@ -144,17 +355,39 @@ function runtimeFiles(
   return files;
 }
 
+function isolatedGitEnvironment() {
+  const environment = { ...process.env };
+  for (const name of GIT_REPOSITORY_ENVIRONMENT) delete environment[name];
+  for (const name of Object.keys(environment))
+    if (name.startsWith("GIT_CONFIG_")) delete environment[name];
+  environment.GIT_NO_LAZY_FETCH = "1";
+  return environment;
+}
+
 function gitCommand(cwd, args, options = {}) {
-  const result = spawnSync("git", ["-C", cwd, "--literal-pathspecs", ...args], {
-    cwd,
-    encoding: options.binary ? null : "utf8",
-    input: options.input,
-    shell: false,
-    timeout: 30_000,
-    killSignal: "SIGTERM",
-    maxBuffer: 64 * 1024 * 1024,
-    stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
-  });
+  const result = spawnSync(
+    "git",
+    [
+      "--no-replace-objects",
+      "-c",
+      "core.fsmonitor=false",
+      "-C",
+      cwd,
+      "--literal-pathspecs",
+      ...args,
+    ],
+    {
+      cwd,
+      encoding: options.binary ? null : "utf8",
+      env: isolatedGitEnvironment(),
+      input: options.input,
+      shell: false,
+      timeout: 30_000,
+      killSignal: "SIGTERM",
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: [options.input === undefined ? "ignore" : "pipe", "pipe", "pipe"],
+    },
+  );
   if (result.status !== 0) {
     const stderr = Buffer.isBuffer(result.stderr)
       ? result.stderr.toString("utf8")
@@ -676,6 +909,7 @@ export function validationRuntimeBinding(
   ]);
   const diff = gitRaw(runtimeGitRoot, [
     "diff",
+    "--no-ext-diff",
     "--name-only",
     "-z",
     commit,
@@ -1223,6 +1457,34 @@ export function packetBindings(document) {
   return { ...bindings, envelopeSha256 };
 }
 
+export function catalogSnapshotClassification(document) {
+  if (!document || typeof document !== "object" || Array.isArray(document))
+    return { kind: "invalid", schema: null };
+  const schema = typeof document.schema === "string" ? document.schema : null;
+  const declaredKind =
+    typeof document.classification?.kind === "string"
+      ? document.classification.kind
+      : null;
+  const communicationFieldsPresent =
+    document.cross_cutting === true ||
+    "communication_profile" in document ||
+    "formal_asd_ste100_compliance" in document ||
+    "record_schema" in document ||
+    "term_statuses" in document;
+  if (
+    schema === "valdris.terminology-policy.v1" ||
+    schema === "valdris.ontology-classification.v1" ||
+    communicationFieldsPresent ||
+    NON_ASSURANCE_CLASSIFICATION_KINDS.has(declaredKind)
+  )
+    return { kind: "non-assurance", schema, declaredKind };
+  if (!ASSURANCE_CATALOG_SCHEMAS.has(schema))
+    return { kind: "unsupported", schema, declaredKind };
+  if (!hasAssuranceCatalogStructure(document, schema))
+    return { kind: "unsupported", schema, declaredKind };
+  return { kind: "assurance-catalog", schema, declaredKind };
+}
+
 export function resolvedCatalogSnapshots(
   runtimeRoot = RUNTIME_ROOT,
   runtimeBinding = null,
@@ -1237,6 +1499,11 @@ export function resolvedCatalogSnapshots(
     .map((file) => {
       const relativePath = normalizedRelative(runtimeRoot, file);
       const document = readJson(file);
+      const classification = catalogSnapshotClassification(document);
+      if (classification.kind !== "assurance-catalog")
+        throw new Error(
+          `run-packet catalog snapshot source is ${classification.kind}: ${relativePath} (${classification.schema || "missing schema"})`,
+        );
       const committedSource = runtimeBinding?.files?.find(
         (entry) =>
           entry.kind === "control-catalog" && entry.path === relativePath,
@@ -1284,6 +1551,11 @@ function catalogSnapshotProblems(document, repoRoot) {
           `run packet v3 catalogSnapshots contains duplicate ${snapshot.path}`,
         );
       snapshotPaths.add(snapshot.path);
+      const classification = catalogSnapshotClassification(snapshot.document);
+      if (classification.kind !== "assurance-catalog")
+        problems.push(
+          `run packet v3 catalog snapshot ${snapshot.path} is not an assurance catalog: ${classification.kind}`,
+        );
       if (runtimeCatalogs.get(snapshot.path) !== snapshot.sourceSha256)
         problems.push(
           `run packet v3 catalog snapshot ${snapshot.path} does not match its packet-bound validation runtime source`,

@@ -863,7 +863,7 @@ try {
     adapter.technicalCommunication?.targetStandard?.name === "ASD-STE100" &&
       adapter.technicalCommunication?.targetStandard?.issue === "9" &&
       adapter.technicalCommunication?.targetStandard?.conformanceStatus ===
-        "not-verified",
+        "not_verified",
     "ASD-STE100 Issue 9 target or conformance boundary missing from adapter",
   );
   assert(
@@ -1387,6 +1387,16 @@ try {
       "utf8",
     ),
   );
+  const generatedValdrisClassification = JSON.parse(
+    await readFile(
+      path.join(
+        generatedOut,
+        "classification",
+        "valdris-system-classification.v1.json",
+      ),
+      "utf8",
+    ),
+  );
   const generatedTerminologyDoc = await readFile(
     path.join(generatedOut, "docs", "ONTOLOGY_AND_TECHNICAL_ENGLISH.md"),
     "utf8",
@@ -1433,6 +1443,21 @@ try {
     "generated classification template must be structurally honest and unresolved",
   );
   assert(
+    generatedValdrisClassification.schema ===
+      "valdris.ontology-classification.v1" &&
+      generatedValdrisClassification.subject?.name === "Valdris SDLC Harness",
+    "generated pack missing the referenced Valdris classification record",
+  );
+  await run(node, [
+    path.join(generatedOut, "scripts", "classification-record-check.mjs"),
+    "--repo",
+    generatedTarget,
+    "--file",
+    ".valdris-harness/classification/valdris-system-classification.v1.json",
+    "--catalog",
+    ".valdris-harness/policies/technical-communication.v1.json",
+  ]);
+  assert(
     generatedTerminologyDoc.includes("Commissioned ontology sources:") &&
       generatedTerminologyDoc.includes("Technical-English profile:") &&
       generatedTerminologyDoc.includes(
@@ -1443,13 +1468,30 @@ try {
       ),
     "generated terminology policy doc missing commissioned project inputs",
   );
-  await run(node, [
-    path.join(generatedOut, "scripts", "classification-record-check.mjs"),
-    "--repo",
-    generatedOut,
-    "--file",
-    "classification/classification-record.template.json",
-  ]);
+  let unresolvedTemplateRejected = false;
+  try {
+    await run(node, [
+      path.join(generatedOut, "scripts", "classification-record-check.mjs"),
+      "--repo",
+      generatedTarget,
+      "--file",
+      ".valdris-harness/classification/classification-record.template.json",
+      "--catalog",
+      ".valdris-harness/policies/technical-communication.v1.json",
+    ]);
+  } catch (error) {
+    unresolvedTemplateRejected = true;
+    assert(
+      error.message.includes(
+        "not bound to the declared Git revision or SHA-256 digest",
+      ),
+      `generated classification template failed for the wrong reason: ${error.message}`,
+    );
+  }
+  assert(
+    unresolvedTemplateRejected,
+    "generated classification template must not pass as completed evidence",
+  );
   const generatedEventEmitter = await readFile(
     path.join(generatedOut, "scripts", "uash-emit-event.mjs"),
     "utf8",

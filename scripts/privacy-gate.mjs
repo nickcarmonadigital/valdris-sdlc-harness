@@ -26,6 +26,29 @@ const IGNORED_DIRS = new Set([
   "venv",
 ]);
 
+const GIT_REPOSITORY_ENVIRONMENT = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIFF_OPTS",
+  "GIT_DIR",
+  "GIT_EXEC_PATH",
+  "GIT_EXTERNAL_DIFF",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_QUARANTINE_PATH",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_WORK_TREE",
+];
+
+function isolatedGitEnvironment() {
+  const environment = { ...process.env };
+  for (const key of GIT_REPOSITORY_ENVIRONMENT) delete environment[key];
+  for (const key of Object.keys(environment))
+    if (key.startsWith("GIT_CONFIG_")) delete environment[key];
+  environment.GIT_NO_LAZY_FETCH = "1";
+  return environment;
+}
+
 const PUBLIC_BINARY_ASSETS = new Map([
   [
     "docs/assets/flow-monitor-screenshot.png",
@@ -237,27 +260,94 @@ function resolveIncludedPath(repo, value) {
   return { target, normalized: normalize(relative) };
 }
 
+function isVerifiedGitPointer(target, directory) {
+  let pointer;
+  let realTarget;
+  try {
+    const match = /^gitdir: ([^\r\n]+)\r?\n?$/.exec(
+      readFileSync(target, "utf8"),
+    );
+    if (!match) return false;
+    pointer = realpathSync(path.resolve(directory, match[1]));
+    realTarget = realpathSync(target);
+    const backlinkMatch = /^([^\r\n]+)\r?\n?$/.exec(
+      readFileSync(path.join(pointer, "gitdir"), "utf8"),
+    );
+    if (!backlinkMatch) return false;
+    const registeredTarget = realpathSync(
+      path.resolve(pointer, backlinkMatch[1]),
+    );
+    if (
+      path.relative(realTarget, registeredTarget) !== "" ||
+      path.relative(registeredTarget, realTarget) !== ""
+    )
+      return false;
+  } catch {
+    return false;
+  }
+  const result = spawnSync(
+    "git",
+    [
+      "--no-replace-objects",
+      "-c",
+      "core.fsmonitor=false",
+      `--git-dir=${pointer}`,
+      "worktree",
+      "list",
+      "--porcelain",
+      "-z",
+    ],
+    {
+      encoding: "utf8",
+      shell: false,
+      timeout: 30_000,
+      killSignal: "SIGTERM",
+      maxBuffer: 4 * 1024 * 1024,
+      env: isolatedGitEnvironment(),
+    },
+  );
+  if (result.status !== 0) return false;
+  try {
+    const realDirectory = realpathSync(directory);
+    const worktrees = [];
+    for (const field of result.stdout.split("\0")) {
+      if (field.startsWith("worktree "))
+        worktrees.push({ path: field.slice("worktree ".length), bare: false });
+      else if (field === "bare" && worktrees.length > 0)
+        worktrees.at(-1).bare = true;
+    }
+    return worktrees.some((worktree) => {
+      if (worktree.bare) return false;
+      let registered;
+      try {
+        registered = realpathSync(worktree.path);
+      } catch {
+        return false;
+      }
+      return (
+        path.relative(realDirectory, registered) === "" &&
+        path.relative(registered, realDirectory) === ""
+      );
+    });
+  } catch {
+    return false;
+  }
+}
+
+function isExcludedGitMetadata(target, stats) {
+  if (path.basename(target) !== ".git") return false;
+  if (stats.isDirectory()) return true;
+  return stats.isFile() && isVerifiedGitPointer(target, path.dirname(target));
+}
+
 function collectFiles(repo, includes = []) {
   const files = [];
   const symlinks = [];
   function visit(directory) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
       const target = path.join(directory, entry.name);
-      const atRepositoryRoot = path.resolve(directory) === path.resolve(repo);
-      if (entry.name === ".git" && atRepositoryRoot) {
-        if (entry.isDirectory()) continue;
-        if (
-          entry.isFile() &&
-          /^gitdir: [^\r\n]+\r?\n?$/.test(readFileSync(target, "utf8"))
-        )
-          continue;
-      }
-      if (
-        entry.isDirectory() &&
-        IGNORED_DIRS.has(entry.name) &&
-        entry.name !== ".git"
-      )
-        continue;
+      if (isExcludedGitMetadata(target, entry)) continue;
+      if (entry.isDirectory() && IGNORED_DIRS.has(entry.name)) continue;
       if (entry.isFile() && entry.name.endsWith(".tsbuildinfo")) continue;
       if (entry.isSymbolicLink()) {
         symlinks.push(target);
@@ -276,6 +366,8 @@ function collectFiles(repo, includes = []) {
         shell: false,
         timeout: 30_000,
         killSignal: "SIGTERM",
+        maxBuffer: 4 * 1024 * 1024,
+        env: isolatedGitEnvironment(),
       },
     );
     if (worktree.status !== 0) return;
@@ -287,6 +379,8 @@ function collectFiles(repo, includes = []) {
         shell: false,
         timeout: 30_000,
         killSignal: "SIGTERM",
+        maxBuffer: 4 * 1024 * 1024,
+        env: isolatedGitEnvironment(),
       },
     );
     if (tracked.status !== 0)
@@ -299,6 +393,7 @@ function collectFiles(repo, includes = []) {
       if (!relative || relative.startsWith("..") || path.isAbsolute(relative))
         continue;
       const stats = lstatSync(target);
+      if (isExcludedGitMetadata(target, stats)) continue;
       if (stats.isSymbolicLink()) symlinks.push(target);
       else if (stats.isFile()) files.push(target);
     }
@@ -313,6 +408,7 @@ function collectFiles(repo, includes = []) {
       const resolved = resolveIncludedPath(repo, include);
       scope.push(resolved.normalized);
       const stats = lstatSync(resolved.target);
+      if (isExcludedGitMetadata(resolved.target, stats)) continue;
       if (stats.isSymbolicLink()) {
         symlinks.push(resolved.target);
         continue;

@@ -2,6 +2,14 @@
 
 **Status:** Final design after operator correction
 
+## Decision packet
+
+- **Bottom line:** Make ontology-grounded terminology and controlled technical English the default authoring behavior for Valdris repository agents and commissioned agent front doors.
+- **Why:** Agents need one evidence-bound classification method that prevents unsupported categories, inflated labels, and false standards claims.
+- **Proof:** The policy, classification record, generated-pack protocol, and validation scripts must agree on the same terms, statuses, evidence rules, and claim boundaries.
+- **Fix / plan:** Implement the policy and schema, integrate them into commissioning, add deterministic verification, and preserve the method as cross-cutting communication behavior rather than an SDLC layer or gate.
+- **Your call:** Approve this design only if the repository validators and generated-pack checks pass without expanding the product category or formal-conformance claim.
+
 ## Goal
 
 Make ontology-grounded terminology and controlled technical English the default authoring behavior for Valdris repository agents and commissioned agent front doors.
@@ -12,7 +20,7 @@ The behavior must follow this sequence for material naming decisions:
 inspect the subject and direct evidence
 → identify the applicable domain ontology
 → apply explicit category criteria
-→ select the smallest defensible domain term
+→ select the smallest supported domain term
 → define the term plainly when needed
 → distinguish sourced facts from classification inference
 → state uncertainty instead of guessing

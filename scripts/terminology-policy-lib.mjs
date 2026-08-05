@@ -25,6 +25,7 @@ const TERM_STATUSES = [
   "emerging",
   "vendor_specific",
   "internal",
+  "contested",
   "uncertain",
 ];
 const SOURCE_TYPES = [
@@ -42,6 +43,8 @@ const DIRECT_WEB_SOURCE_TYPES = new Set([
   "official_repository",
   "peer_reviewed",
 ]);
+const WINDOWS_RESERVED_PATH_COMPONENT =
+  /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i;
 const CANONICAL_PROCEDURE = [
   "inspect_direct_evidence",
   "describe_observable_mechanism",
@@ -102,16 +105,21 @@ function isSafeRepositoryPath(value) {
   const clean = nonEmpty(value);
   if (
     !clean ||
-    clean.includes("\0") ||
+    /[\\:\u0000-\u001f\u007f]/.test(clean) ||
     clean.startsWith("/") ||
-    clean.startsWith("\\\\") ||
     /^[A-Za-z]:/.test(clean)
   )
     return false;
   return clean
-    .replaceAll("\\", "/")
     .split("/")
-    .every((segment) => segment && segment !== "." && segment !== "..");
+    .every(
+      (segment) =>
+        segment &&
+        segment !== "." &&
+        segment !== ".." &&
+        !/[. ]$/.test(segment) &&
+        !WINDOWS_RESERVED_PATH_COMPONENT.test(segment),
+    );
 }
 
 function collectStrings(value, output = []) {
@@ -121,6 +129,57 @@ function collectStrings(value, output = []) {
   else if (isObject(value))
     for (const item of Object.values(value)) collectStrings(item, output);
   return output;
+}
+
+function containsUnnegatedClaim(value, claim) {
+  const text = nonEmpty(value).toLowerCase();
+  const prohibited = nonEmpty(claim).toLowerCase();
+  if (!text || !prohibited) return false;
+  let index = text.indexOf(prohibited);
+  while (index !== -1) {
+    const prefixWindow = text.slice(Math.max(0, index - 120), index);
+    const boundaries = [
+      ...prefixWindow.matchAll(
+        /[.!?;]|\b(?:but|however|yet)\b|\b(?:and|or)\s+(?=(?:valdris|(?:this|our|the)\s+(?:system|repository|harness|product)|(?:formal\s+)?asd-ste100\s+compliance)\s+(?:is|are|has|have|does|do|can|will|claims?|states?|asserts?)\b)/gi,
+      ),
+    ];
+    const boundary = boundaries.at(-1);
+    const prefix = prefixWindow
+      .slice(boundary ? boundary.index + boundary[0].length : 0)
+      .trimEnd();
+    const suffix = text.slice(
+      index + prohibited.length,
+      index + prohibited.length + 80,
+    );
+    const metalinguistic =
+      /\b(?:rejects?|blocks?|forbids?|detects?|quotes?|mentions?)\s+(?:the\s+)?(?:phrase|term|label|claim|wording|string)\b[^.!?]*$/i.test(
+        prefix,
+      ) ||
+      /\b(?:source|supplier|vendor|publisher|document|documentation|article|standard|repository|website|author)\s+(?:claims?|states?|reports?|asserts?)\s+(?:that\s+)?[^.!?]*$/i.test(
+        prefix,
+      ) ||
+      /\baccording\s+to\b[^.!?]*$/i.test(prefix);
+    const syntacticNegation = [
+      /\b(?:is|are|was|were|does|do|did|can|could|will|would|should|must|has|have|had)\s+not\b(?:\s+[\w-]+){0,4}\s*$/,
+      /\b(?:not|never|without|cannot|can't|isn't|aren't|wasn't|weren't|won't|wouldn't|shouldn't|mustn't)\b(?:\s+[\w-]+){0,4}\s*$/,
+    ].some((pattern) => pattern.test(prefix));
+    const affirmingNo =
+      /\bno\s+(?:(?:one|person|reviewer)\s+)?(?:doubts?|questions?)\b[^.!?]*$/i.test(
+        prefix,
+      );
+    const noNegation =
+      !affirmingNo && /\bno\b(?:\s+[\w-]+){0,4}\s*$/.test(prefix);
+    const notOnly = /\bnot\s+only\b[^.!?]*$/i.test(prefix);
+    const postClaimNegation =
+      /^\s+(?:is|are|was|were|has|have|had)\s+not\s+(?:established|verified|demonstrated|confirmed|proven|claimed)\b/i.test(
+        suffix,
+      );
+    const negated =
+      !notOnly && (syntacticNegation || noNegation || postClaimNegation);
+    if (!metalinguistic && !negated) return true;
+    index = text.indexOf(prohibited, index + prohibited.length);
+  }
+  return false;
 }
 
 function isHttpsUrl(value) {
@@ -261,6 +320,17 @@ export function validateTerminologyPolicy(policy) {
       problems.push(
         "terminology policy must reject secondary-only decisive claims",
       );
+    const blockedStatuses = validateNonEmptyStringArray(
+      policy.web_verification.blocked_statuses,
+      "terminology policy web_verification.blocked_statuses",
+      problems,
+    );
+    validateExactValues(
+      blockedStatuses,
+      ["uncertain", "not_established"],
+      "terminology policy web_verification.blocked_statuses",
+      problems,
+    );
   }
 
   if (!isObject(policy.communication_profile))
@@ -331,13 +401,22 @@ export function validateTerminologyPolicy(policy) {
 
 export function requiresWebVerification(record) {
   if (!isObject(record) || !Array.isArray(record.classCriteria)) return true;
+  const evidenceById = new Map(
+    (Array.isArray(record.evidence) ? record.evidence : [])
+      .filter((evidence) => isObject(evidence) && nonEmpty(evidence.id))
+      .map((evidence) => [nonEmpty(evidence.id), evidence]),
+  );
   return record.classCriteria.some((criterion) => {
     if (!isObject(criterion) || criterion.decisive !== true) return false;
-    return (
-      criterion.status !== "satisfied" ||
-      !Array.isArray(criterion.evidenceRefs) ||
-      criterion.evidenceRefs.length === 0
-    );
+    if (!new Set(["satisfied", "not_satisfied"]).has(criterion.status))
+      return true;
+    const refs = Array.isArray(criterion.evidenceRefs)
+      ? criterion.evidenceRefs.map((ref) => nonEmpty(ref)).filter(Boolean)
+      : [];
+    if (refs.length === 0) return true;
+    const evidence = refs.map((ref) => evidenceById.get(ref));
+    if (evidence.some((item) => !item)) return true;
+    return !evidence.every((item) => item.origin === "local");
   });
 }
 
@@ -493,7 +572,7 @@ export function validateClassificationRecord(record, policy) {
         );
     if (
       criterion.decisive === true &&
-      criterion.status === "satisfied" &&
+      new Set(["satisfied", "not_satisfied"]).has(criterion.status) &&
       refs.length > 0 &&
       refs.every(
         (ref) => evidenceById.get(ref)?.sourceType === "reputable_secondary",
@@ -548,13 +627,10 @@ export function validateClassificationRecord(record, policy) {
         );
     }
     if (new Set(["blocked", "incomplete"]).has(record.webVerification.status)) {
-      if (
-        !new Set(["uncertain", "not_established"]).has(
-          record.classificationStatus,
-        )
-      )
+      const blockedStatuses = new Set(policy.web_verification.blocked_statuses);
+      if (!blockedStatuses.has(record.classificationStatus))
         problems.push(
-          "blocked or incomplete web verification requires uncertain or not_established classificationStatus",
+          `blocked or incomplete web verification requires one of the policy blocked statuses: ${[...blockedStatuses].join(", ")}`,
         );
       if (nonEmpty(record.selectedCategory) || nonEmpty(record.selectedTerm))
         problems.push(
@@ -570,10 +646,14 @@ export function validateClassificationRecord(record, policy) {
   if (!termStatuses.has(record.termStatus))
     problems.push("classification record termStatus is invalid");
 
-  if (record.classificationStatus === "established") {
-    const decisive = criteria.filter(
-      (criterion) => criterion?.decisive === true,
+  const decisive = criteria.filter((criterion) => criterion?.decisive === true);
+  if (decisive.length === 0)
+    problems.push(
+      "classification record requires at least one decisive criterion",
     );
+  const decisiveStatuses = decisive.map((criterion) => criterion.status);
+
+  if (record.classificationStatus === "established") {
     if (
       decisive.length === 0 ||
       decisive.some(
@@ -601,6 +681,30 @@ export function validateClassificationRecord(record, policy) {
         "established classification termStatus cannot be uncertain",
       );
   }
+
+  let expectedOutcomeStatuses = [];
+  if (decisiveStatuses.length > 0) {
+    if (decisiveStatuses.includes("contested"))
+      expectedOutcomeStatuses = ["contested"];
+    else if (decisiveStatuses.includes("not_satisfied"))
+      expectedOutcomeStatuses = ["unsupported"];
+    else if (decisiveStatuses.every((status) => status === "satisfied"))
+      expectedOutcomeStatuses = ["established"];
+    else if (
+      decisiveStatuses.includes("satisfied") &&
+      decisiveStatuses.includes("unknown")
+    )
+      expectedOutcomeStatuses = ["partially_supported"];
+    else if (decisiveStatuses.every((status) => status === "unknown"))
+      expectedOutcomeStatuses = ["uncertain", "not_established"];
+  }
+  if (
+    expectedOutcomeStatuses.length > 0 &&
+    !expectedOutcomeStatuses.includes(record.classificationStatus)
+  )
+    problems.push(
+      `classificationStatus ${record.classificationStatus} does not match decisive criterion outcome; expected ${expectedOutcomeStatuses.join(" or ")}`,
+    );
 
   if (
     new Set([
@@ -652,10 +756,22 @@ export function validateClassificationRecord(record, policy) {
       problems.push(
         `classification record rejected term is incomplete: ${term || "missing"}`,
       );
-    if (rejectedNames.has(term))
+    const normalizedTerm = term.toLowerCase();
+    if (rejectedNames.has(normalizedTerm))
       problems.push(`classification record rejected term duplicated: ${term}`);
-    rejectedNames.add(term);
+    rejectedNames.add(normalizedTerm);
   }
+
+  const selectedTerm = nonEmpty(record.selectedTerm);
+  if (selectedTerm && rejectedNames.has(selectedTerm.toLowerCase()))
+    problems.push("classification record selectedTerm cannot also be rejected");
+  const restrictedTerms = new Set(
+    policy.restricted_unqualified_terms.map((term) => term.toLowerCase()),
+  );
+  if (selectedTerm && restrictedTerms.has(selectedTerm.toLowerCase()))
+    problems.push(
+      "classification record selectedTerm cannot use a restricted term without qualification",
+    );
 
   validateNonEmptyStringArray(
     record.uncertainties,
@@ -671,15 +787,22 @@ export function validateClassificationRecord(record, policy) {
       "non-established classification must record at least one uncertainty",
     );
 
-  const prohibitedClaims = policy.prohibited_claims.map((claim) =>
-    claim.toLowerCase(),
-  );
-  for (const statement of collectStrings(record)) {
-    const lower = statement.toLowerCase();
-    const match = prohibitedClaims.find((claim) => lower.includes(claim));
+  const assertionStatements = collectStrings({
+    observableMechanism: record.observableMechanism,
+    ownedResponsibilities: record.responsibilityBoundary?.owns,
+    sourcedFacts: record.sourcedFacts,
+    selectedCategory: record.selectedCategory,
+    selectedTerm: record.selectedTerm,
+    plainMeaning: record.plainMeaning,
+    inferences: record.inferences,
+  });
+  for (const statement of assertionStatements) {
+    const match = policy.prohibited_claims.find((claim) =>
+      containsUnnegatedClaim(statement, claim),
+    );
     if (match)
       problems.push(
-        `prohibited terminology claim found without a proven conformance profile: ${match}`,
+        `prohibited terminology claim found in an assertion without a proven conformance profile: ${match}`,
       );
   }
 

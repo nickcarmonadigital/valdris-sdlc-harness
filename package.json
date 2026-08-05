@@ -17,6 +17,7 @@
     "simulate:agent": "node scripts/simulate-agent-run.mjs",
     "verify:harness": "node scripts/verify-harness.mjs",
     "verify:terminology": "node scripts/verify-terminology-policy.mjs",
+    "verify:privacy-boundary": "node scripts/verify-privacy-boundary.mjs",
     "verify:bridge-security": "node scripts/verify-bridge-security.mjs",
     "verify:bridge-lease": "node scripts/verify-bridge-lease.mjs",
     "verify:bridge-proxy": "node --no-warnings scripts/verify-bridge-proxy.mjs",

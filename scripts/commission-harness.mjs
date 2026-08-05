@@ -12,6 +12,10 @@ import {
   renderRootDiscoveryLoader,
 } from "./discovery-loader-contract.mjs";
 import { portableManifestSha256 } from "./control-gate-lib.mjs";
+import {
+  declaredLocalEvidenceBytes,
+  validateClassificationRecordFiles,
+} from "./classification-record-check.mjs";
 
 const VERSION = "0.9.0-rc.1";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -1621,6 +1625,65 @@ function contentSha256(content) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+function writePortableValdrisClassification(out) {
+  const sourceRecordPath = path.join(
+    HARNESS_ROOT,
+    "classification",
+    "valdris-system-classification.v1.json",
+  );
+  const sourceValidation = validateClassificationRecordFiles(sourceRecordPath, {
+    repoRoot: HARNESS_ROOT,
+  });
+  if (!sourceValidation.valid)
+    throw new Error(
+      `canonical Valdris classification record is invalid: ${sourceValidation.problems.join("; ")}`,
+    );
+  const sourceRecord = JSON.parse(fs.readFileSync(sourceRecordPath, "utf8"));
+  for (const evidence of sourceRecord.evidence || []) {
+    if (evidence?.origin !== "local") continue;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(evidence.id || ""))
+      throw new Error("Valdris classification evidence id is not portable");
+    if (
+      typeof evidence.repositoryPath !== "string" ||
+      /[\\:\u0000-\u001f\u007f]/.test(evidence.repositoryPath) ||
+      path.posix.isAbsolute(evidence.repositoryPath) ||
+      evidence.repositoryPath
+        .split("/")
+        .some((segment) => !segment || segment === "." || segment === "..")
+    )
+      throw new Error(
+        `Valdris classification evidence ${evidence.id} path is not portable`,
+      );
+    const bytes = declaredLocalEvidenceBytes(HARNESS_ROOT, evidence);
+    if (!bytes)
+      throw new Error(
+        `Valdris classification evidence ${evidence.id} bytes are unavailable at the declared revision`,
+      );
+    const portablePath = path.posix.join(
+      ".valdris-harness",
+      "classification",
+      "evidence",
+      evidence.id,
+      path.posix.basename(evidence.repositoryPath),
+    );
+    const target = path.join(
+      out,
+      "classification",
+      "evidence",
+      evidence.id,
+      path.basename(evidence.repositoryPath),
+    );
+    mkdirp(path.dirname(target));
+    fs.writeFileSync(target, bytes);
+    evidence.repositoryPath = portablePath;
+    evidence.revision = `sha256:${contentSha256(bytes)}`;
+  }
+  write(
+    path.join(out, "classification", "valdris-system-classification.v1.json"),
+    JSON.stringify(sourceRecord, null, 2),
+  );
+}
+
 function commissionedPackManifest(root) {
   const files = [];
   const pending = [root];
@@ -2299,10 +2362,10 @@ When a material public, architectural, legal, safety, or standards term must be 
 2. Identify the applicable domain ontology and explicit category criteria.
 3. If local evidence cannot establish a criterion or term status, open direct authoritative sources.
 4. Separate sourced facts from classification inference and corroborate contested claims.
-5. Select the smallest supported standard term, define it plainly, and state its status and uncertainty.
+5. Select the smallest supported term or category, define it plainly, and state its status and uncertainty.
 6. If evidence remains incomplete, conclude \`uncertain\` or \`not_established\`. Do not guess.
 
-Use \`docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md\` and \`policies/technical-communication.v1.json\`. For a material naming decision that needs an audit record, start from \`classification/classification-record.template.json\` and check it with \`node ${paths.scriptFromRepo}/classification-record-check.mjs --repo . --file <record-path> --catalog ${paths.packFromRepo}/policies/technical-communication.v1.json\`. Routine communication does not require a classification record.
+Use \`${paths.packFromRepo}/docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md\` and \`${paths.packFromRepo}/policies/technical-communication.v1.json\`. For a material naming decision that needs an audit record, start from \`${paths.packFromRepo}/classification/classification-record.template.json\` and check it with \`node ${paths.scriptFromRepo}/classification-record-check.mjs --repo . --file <record-path> --catalog ${paths.packFromRepo}/policies/technical-communication.v1.json\`. Routine communication does not require a classification record.
 
 Commissioned ontology sources: ${answers.domain_ontology_sources}
 
@@ -2501,7 +2564,7 @@ function generatePack(args, detected, answers, answerSources) {
         name: "ASD-STE100",
         issue: "9",
         publicationDate: "2025-01-15",
-        conformanceStatus: "not-verified",
+        conformanceStatus: "not_verified",
       },
       localEvidenceFirst: true,
       authoritativeWebEscalation: answers.authoritative_source_policy,
@@ -3230,6 +3293,7 @@ function generatePack(args, detected, answers, answerSources) {
     ),
     path.join(out, "classification", "classification-record.template.json"),
   );
+  writePortableValdrisClassification(out);
   for (const docName of [
     "ENTERPRISE_CONTROL_MODEL_V2.md",
     "GENERATIVE_AI_ASSURANCE_PACK.md",
