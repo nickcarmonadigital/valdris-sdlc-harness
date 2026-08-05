@@ -25,6 +25,7 @@ const TERM_STATUSES = [
   "emerging",
   "vendor_specific",
   "internal",
+  "contested",
   "uncertain",
 ];
 const SOURCE_TYPES = [

@@ -44,6 +44,28 @@ function plainIdentifier(value: string) {
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
+function plainPublicText(value: string) {
+  const replacements: Array<[RegExp, string]> = [
+    [/\bA2A\b/g, "Agent2Agent protocol"],
+    [/\bAPI\b/g, "application programming interface"],
+    [/\bCI\b/g, "continuous integration"],
+    [/\bDNS\b/g, "Domain Name System"],
+    [/\bIAM\b/g, "identity and access management"],
+    [/\bLLM\b/g, "large language model"],
+    [/\bMCP\b/g, "Model Context Protocol"],
+    [/\bQA\b/g, "quality assurance"],
+    [/\bRAG\b/g, "retrieval-augmented generation"],
+    [/\bRCA\b/g, "root cause analysis"],
+    [/\bRLS\b/g, "row-level security"],
+    [/\bSLO\b/g, "service-level objective"],
+  ];
+
+  return replacements.reduce(
+    (current, [pattern, replacement]) => current.replace(pattern, replacement),
+    value,
+  );
+}
+
 function DetailList({
   title,
   items,
@@ -66,10 +88,10 @@ function DetailList({
           <li key={item}>
             {identifiers ? (
               <>
-                <code>{item}</code> — {plainIdentifier(item)}
+                <code>{item}</code> — {plainPublicText(plainIdentifier(item))}
               </>
             ) : (
-              item
+              plainPublicText(item)
             )}
           </li>
         ))}
@@ -120,7 +142,7 @@ export default async function SkillPage({
         {skill.system ? (
           <section className="docsSystemLabel">
             <span>Owning system</span>
-            <strong>{skill.system}</strong>
+            <strong>{plainIdentifier(skill.system)}</strong>
           </section>
         ) : null}
 
