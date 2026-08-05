@@ -91,8 +91,8 @@ export default function GettingStartedPage() {
         <p>
           Read the repository <code>AGENTS.md</code> before a merge or release.
           Authoritative release remains blocked until a commissioned target has
-          trusted provider keys, protected execution, signed receipts, and a
-          rollback-resistant head.
+          trusted provider keys, protected execution, signed receipts, and
+          externally stored state that cannot be silently moved backward.
         </p>
       </aside>
     </main>

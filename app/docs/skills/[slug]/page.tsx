@@ -24,14 +24,54 @@ export async function generateMetadata({
   };
 }
 
-function DetailList({ title, items }: { title: string; items: string[] }) {
+function plainIdentifier(value: string) {
+  const words = value
+    .replaceAll("_", "-")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => {
+      const expanded: Record<string, string> = {
+        ai: "artificial intelligence",
+        api: "application programming interface",
+        cicd: "continuous integration and delivery",
+        mcp: "Model Context Protocol",
+        rca: "root cause analysis",
+      };
+      return expanded[part.toLowerCase()] ?? part;
+    })
+    .join(" ");
+
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function DetailList({
+  title,
+  items,
+  description,
+  identifiers = false,
+}: {
+  title: string;
+  items: string[];
+  description?: string;
+  identifiers?: boolean;
+}) {
   if (items.length === 0) return null;
+
   return (
     <section className="docsDetailBlock">
       <h2>{title}</h2>
+      {description ? <p>{description}</p> : null}
       <ul>
         {items.map((item) => (
-          <li key={item}>{item}</li>
+          <li key={item}>
+            {identifiers ? (
+              <>
+                <code>{item}</code> — {plainIdentifier(item)}
+              </>
+            ) : (
+              item
+            )}
+          </li>
         ))}
       </ul>
     </section>
@@ -46,6 +86,8 @@ export default async function SkillPage({
   const { slug } = await params;
   const skill = getSkill(slug);
   if (!skill) notFound();
+  const skillType =
+    skill.kind === "lifecycle" ? "lifecycle skill" : "work-type skill";
 
   return (
     <main className="docsArticleShell">
@@ -66,10 +108,10 @@ export default async function SkillPage({
 
       <article className="docsArticle">
         <p className="docsBreadcrumb">
-          <a href="/docs">Docs</a> / {skill.kind} skill
+          <a href="/docs">Docs</a> / {skillType}
         </p>
         <div className="docsArticleTitle">
-          <span>{skill.kind}</span>
+          <span>{skillType}</span>
           <code>{skill.name}</code>
           <h1>{skill.title}</h1>
           <p>{skill.summary}</p>
@@ -86,9 +128,24 @@ export default async function SkillPage({
         <DetailList title="Common triggers" items={skill.triggers} />
         <DetailList title="Required inputs" items={skill.requiredInputs} />
         <DetailList title="Required outputs" items={skill.requiredOutputs} />
-        <DetailList title="Required gates" items={skill.requiredGates} />
-        <DetailList title="Conditional gates" items={skill.conditionalGates} />
-        <DetailList title="Red Zone triggers" items={skill.redZoneTriggers} />
+        <div className="docsDetailGrid">
+          <DetailList
+            identifiers
+            title="Required gate identifiers"
+            items={skill.requiredGates}
+          />
+          <DetailList
+            identifiers
+            title="Conditional gate identifiers"
+            items={skill.conditionalGates}
+          />
+          <DetailList
+            description="A Red Zone trigger identifies high-risk work that requires explicit human approval."
+            identifiers
+            title="Red Zone trigger identifiers"
+            items={skill.redZoneTriggers}
+          />
+        </div>
 
         {skill.next ? (
           <section className="docsNextSkill">

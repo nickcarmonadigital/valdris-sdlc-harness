@@ -52,11 +52,11 @@ const workflowSummaries: Record<string, string> = {
   "valdris-security-audit":
     "Test security, privacy, authorization, and tenant-isolation claims.",
   "valdris-platform-release":
-    "Govern cloud, deployment, rollback, recovery, and release work.",
+    "Govern cloud infrastructure, deployment, rollback, recovery, and release work.",
   "valdris-genai-assurance":
     "Evaluate models, prompts, retrieval, agents, tools, memory, and AI telemetry.",
   "valdris-proof-handoff":
-    "Run finish-line checks and hand off an evidence-backed result.",
+    "Validate required evidence and hand off a supported result.",
 };
 
 const skillTitles: Record<string, string> = {
@@ -64,8 +64,9 @@ const skillTitles: Record<string, string> = {
   "valdris-prove-govern": "Prove and Govern",
   "valdris-trust-improve": "Trust and Improve",
   "valdris-intake-route": "Intake and Route",
-  "valdris-bug-rca": "Bug RCA",
-  "valdris-genai-assurance": "GenAI Assurance",
+  "valdris-bug-rca": "Bug Root Cause Analysis",
+  "valdris-platform-release": "Cloud Infrastructure and Release",
+  "valdris-genai-assurance": "Generative AI Assurance",
 };
 
 function titleFromName(name: string) {
@@ -141,54 +142,55 @@ export const ontologyTerms = [
     term: "Ontology",
     meaning:
       "An explicit model of the kinds of things in a domain, their defining properties, and their relationships.",
-    status: "standard domain term",
+    status: "standard",
   },
   {
     term: "Taxonomy",
     meaning: "The category hierarchy within an ontology.",
-    status: "standard domain term",
+    status: "standard",
   },
   {
     term: "Classification",
     meaning:
       "Assignment of a specific thing to the category whose defining properties it satisfies.",
-    status: "standard domain term",
+    status: "standard",
   },
   {
     term: "Terminology",
     meaning: "The selected word or phrase for a category.",
-    status: "standard domain term",
+    status: "standard",
   },
   {
     term: "Controlled vocabulary",
     meaning: "The approved terms and meanings for a project or domain.",
-    status: "standard domain term",
+    status: "standard",
   },
   {
     term: "Schema",
     meaning: "The required structure of a record.",
-    status: "standard domain term",
+    status: "standard",
   },
   {
     term: "Knowledge graph",
     meaning: "Actual entities and relationships represented as a graph.",
-    status: "standard domain term",
+    status: "standard",
   },
 ];
 
 export const proofLevels = [
   {
     name: "Structural",
-    meaning: "The required files, fields, paths, and digests exist.",
+    meaning: "Required artifacts, schemas, bindings, and coverage are valid.",
   },
   {
     name: "Semantic",
-    meaning: "The evidence supports the control's intended meaning.",
+    meaning:
+      "Commissioned adapters and thresholds prove the intended behavior.",
   },
   {
     name: "Authoritative",
     meaning:
-      "Trusted outside execution and rollback-resistant provider state support the proof.",
+      "An independent trusted runner, provider, signer, or authority attests the result with rollback-resistant state.",
   },
 ];
 
@@ -200,7 +202,8 @@ export const runtimeCards = [
   },
   {
     name: "Codex",
-    entry: "AGENTS.md, Codex runtime prompt, and OpenAI skill sidecars",
+    entry:
+      "AGENTS.md, the Codex runtime prompt, and OpenAI skill metadata files",
     role: "External coding agent",
   },
   {

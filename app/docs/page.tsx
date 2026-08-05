@@ -20,11 +20,14 @@ export default function DocsPage() {
             <p className="docsKicker">
               Public documentation · {packageVersion}
             </p>
-            <h1>Repository assurance for AI coding agents.</h1>
+            <h1>
+              Repository-level SDLC assurance harness for AI coding agents.
+            </h1>
             <p className="docsHeroLede">
               Valdris installs repository controls, routes work, records
               external coding-agent activity as evidence, checks required proof,
-              and blocks unsupported completion.
+              and blocks unsupported completion. SDLC means software development
+              lifecycle.
             </p>
             <div className="docsHeroActions">
               <a className="docsPrimaryButton" href="#install">
@@ -75,7 +78,7 @@ export default function DocsPage() {
           </div>
           <div>
             <strong>8</strong>
-            <span>workflow skills</span>
+            <span>work-type skills</span>
           </div>
           <div>
             <strong>13</strong>
@@ -142,14 +145,14 @@ export default function DocsPage() {
         </div>
       </section>
 
-      <section className="docsContentSection docsDarkSection" id="workflows">
+      <section className="docsContentSection docsDarkSection" id="work-types">
         <div className="docsSectionHeading">
           <div>
-            <p className="docsKicker">02 · Engineering workflows</p>
-            <h2>Route each phase to one primary workflow.</h2>
+            <p className="docsKicker">02 · Work-type skills</p>
+            <h2>Route each phase to one primary work-type skill.</h2>
           </div>
           <p>
-            Workflow skills classify the engineering work. They do not replace
+            Work-type skills classify the engineering work. They do not replace
             the seven lifecycle systems.
           </p>
         </div>
@@ -157,7 +160,7 @@ export default function DocsPage() {
           {workflowSkills.map((skill) => (
             <a href={`/docs/skills/${skill.name}`} key={skill.name}>
               <div className="docsCardTopline">
-                <span>workflow</span>
+                <span>work type</span>
                 <b>{String(skill.sequence).padStart(2, "0")}</b>
               </div>
               <code>{skill.name}</code>
@@ -222,8 +225,10 @@ export default function DocsPage() {
             <h2>The coding agent implements. Valdris governs the run.</h2>
           </div>
           <p>
-            Live Run requires real connector, API, CLI, MCP, or watched-artifact
-            events. Static documentation cannot prove live execution.
+            Live Run requires real events from a connector, application
+            programming interface, command-line tool, Model Context Protocol
+            server, or watched artifact. Static documentation cannot prove live
+            execution.
           </p>
         </div>
         <div className="docsRuntimeGrid">

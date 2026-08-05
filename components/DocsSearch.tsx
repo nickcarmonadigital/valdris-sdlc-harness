@@ -32,11 +32,11 @@ export function DocsSearch({ skills }: { skills: SkillCard[] }) {
       <div className="docsSectionHeading">
         <div>
           <p className="docsKicker">Skill reference</p>
-          <h2 id="explore-skills">Find the owning workflow</h2>
+          <h2 id="explore-skills">Find the owning work-type skill</h2>
         </div>
         <p>
           Search by outcome, risk, artifact, or skill name. Lifecycle skills own
-          Valdris systems. Workflow skills own engineering work.
+          Valdris systems. Work-type skills own engineering work.
         </p>
       </div>
 
@@ -59,7 +59,7 @@ export function DocsSearch({ skills }: { skills: SkillCard[] }) {
               onClick={() => setKind(value)}
               type="button"
             >
-              {value}
+              {value === "workflow" ? "work type" : value}
             </button>
           ))}
         </div>
@@ -77,7 +77,9 @@ export function DocsSearch({ skills }: { skills: SkillCard[] }) {
             key={skill.name}
           >
             <div className="docsCardTopline">
-              <span>{skill.kind}</span>
+              <span>
+                {skill.kind === "workflow" ? "work type" : "lifecycle"}
+              </span>
               <b>{String(skill.sequence).padStart(2, "0")}</b>
             </div>
             <code>{skill.name}</code>

@@ -29,8 +29,9 @@ export default function GlossaryPage() {
             <h2>Approved public and internal terms</h2>
           </div>
           <p>
-            Status identifies whether a term is standard, emerging, or internal.
-            Usage identifies where the term belongs.
+            Status identifies whether a term is standard, emerging,
+            vendor-specific, internal, or uncertain. Usage identifies where the
+            term belongs.
           </p>
         </div>
         <div className="docsTermList">

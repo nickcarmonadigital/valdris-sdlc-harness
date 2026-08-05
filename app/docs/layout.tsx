@@ -33,7 +33,7 @@ export default function DocsLayout({
         </a>
         <nav aria-label="Documentation navigation">
           <a href="/docs#lifecycle">Lifecycle</a>
-          <a href="/docs#workflows">Workflows</a>
+          <a href="/docs#work-types">Work types</a>
           <a href="/docs/assurance">Assurance</a>
           <a href="/docs/glossary">Glossary</a>
         </nav>
