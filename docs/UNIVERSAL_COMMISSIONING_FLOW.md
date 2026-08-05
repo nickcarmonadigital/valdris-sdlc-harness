@@ -30,6 +30,8 @@ Layer 0 is not a new connector node and not a fourteenth production domain. Asyn
 
 ## Terminology calibration
 
+This table is a commissioning example, not the complete classification method. The canonical cross-cutting procedure is `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md`. An agent must inspect the mechanism, identify the applicable ontology, apply decisive category criteria, and bind evidence before selecting a term. If local evidence is incomplete, authoritative web verification is mandatory. Sourced facts, Valdris inference, term status, and uncertainty remain separate.
+
 | Operator language                                   | Best term                          | Semantics                                                                               | Taxonomy                                   | Domain-term calibration                                                      |
 | --------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
 | “Make my harness universal”                         | Harness commissioning              | Convert repo/team facts into an AI-operable harness pack                                | Internal Developer Platform / Agentic SDLC | Emerging, strong product term                                                |
@@ -69,6 +71,7 @@ These stay the same across repos:
 9. Answer contract: bottom line, why, proof, risk, fix/plan, your call.
 10. Layer 0 workload and foundation assurance: route v2 binds the workload classification, and the foundation gate resolves before implementation.
 11. Production readiness domain pack: 13 full-stack production domains become required/skipped checks after Layer 0.
+12. Technical communication: all agent front doors apply the commissioned ontology-grounded terminology and controlled technical-English profile. A material naming decision uses a classification record only when it needs an auditable evidence trail.
 
 ### Project adapter
 
@@ -91,6 +94,7 @@ Generated per repo/team:
 15. Blueprint / Live Run / Replay telemetry policy.
 16. Harness self-healing PR policy.
 17. Integration map: GitHub, Linear/Jira, Vercel/AWS/Supabase/etc.
+18. Domain ontology sources, controlled vocabulary, qualified terms, authoritative-source policy, research availability, and citation requirements.
 
 ## Commissioning interview question bank
 
@@ -102,13 +106,13 @@ npm run commission:questions
 
 Current expanded bank:
 
-- **31 question groups**
-- **158 questions**
+- **32 question groups**
+- **165 questions**
 - **Full index:** [`docs/COMMISSIONING_QUESTION_BANK.md`](COMMISSIONING_QUESTION_BANK.md)
 
-The first 13 groups commission the base control-plane skeleton: operator style, project identity, source of truth, repo/architecture, branch/deploy, validation, Red Zone, lanes, system design, production readiness, cloud/platform, QA/release, and modes/self-healing.
+The first 13 groups commission the base assurance-harness configuration: operator style, project identity, source of truth, repo/architecture, branch/deploy, validation, Red Zone, lanes, system design, production readiness, cloud/platform, QA/release, and modes/self-healing.
 
-Groups 14–30 commission the operating-intelligence layer, and group 31 captures Apple/iOS platform facts:
+Groups 14–30 commission operating intelligence, group 31 commissions ontology/terminology policy, and group 32 captures Apple/iOS platform facts:
 
 1. Good looks like / foundation blueprint.
 2. Anti-spaghetti code quality guardrails.
@@ -127,6 +131,7 @@ Groups 14–30 commission the operating-intelligence layer, and group 31 capture
 15. Production-agent lifecycle.
 16. Team harness registry.
 17. Human-agent operating protocol.
+18. Ontology and technical terminology.
 
 The product UX should not force users to answer 150 blank fields manually. GitNexus/code-intelligence indexing should pre-fill code-derived facts, defaults should teach what good looks like, and humans should only confirm operating facts code cannot know.
 
@@ -181,7 +186,7 @@ Generated `AGENTS.md` should tell Codex:
 
 1. **Local commissioning CLI** - implemented now as `npm run commission`.
 2. **Repo scanner / code intelligence** - GitNexus-backed index is now preferred via `scripts/code-intelligence-scan.mjs`; local static graph remains disclosed fallback. Extend with GitHub workflows, Python/Rust/Go, Docker, infra, tests.
-3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, workload/foundation catalogs and gates, map/router, validation/red-zone docs, run template, review packet.
+3. **Generated harness pack** - implemented now: `project-adapter.json`, `project.yaml`, front doors, workload/foundation catalogs and gates, technical-communication policy, optional classification template, map/router, validation/red-zone docs, run template, and review packet.
 4. **Claude/Codex command templates** - implemented now: generated Claude slash command plus Codex runtime prompt/front door.
 5. **Gate script portability** - implemented: generated packs carry classification, Layer 0 foundation, production, AI/domain, and finish-line gate scripts plus controls, skills, package scripts, and a CI workflow template. v0.8 supports one layout: a committed `.valdris-harness` directory in the target Git worktree, invoked as `node .valdris-harness/scripts/<gate> --repo .` from the target root.
 6. **UI commissioning surface** - next: render the question groups in the web app and store adapter drafts.
@@ -193,7 +198,7 @@ A repo is commissioned only when:
 
 - `.valdris-harness/project-adapter.json` exists and validates.
 - the complete `.valdris-harness` runtime and review trust store are committed in the target Git worktree before proof execution;
-- `workloadTaxonomy` and `foundationAssurance` point to packaged catalogs, artifacts, and executable gates.
+- `workloadTaxonomy` and `foundationAssurance` point to packaged catalogs, artifacts, and executable gates. `technicalCommunication` points to the policy, source register, commissioned vocabulary, Issue 9 target profile, and optional material-classification template.
 - `.valdris-harness/AGENTS.md` and `.valdris-harness/CLAUDE.md` are generated, and bounded discovery-loader blocks are created or safely merged into target-root `AGENTS.md` and `CLAUDE.md`; unsafe files or malformed/duplicate loader markers block commissioning. Immediately before installation, commissioning revalidates both original loader digests, stages both replacements in the target directory, and rolls back the first replacement if the second cannot be installed. The successful loaders are committed with the pack.
 - Claude slash-command and Codex runtime prompt front doors are generated.
 - Validation commands are explicit.
@@ -202,7 +207,7 @@ A repo is commissioned only when:
 - Source-of-truth order is explicit.
 - At least one run packet can be created.
 - The portable closure uses `valdris.review.v2` and new `valdris.run-packet.v3`: scout, implementer, verifier, and independent reviewer identities are explicit, evidence-bound, signed, and pairwise distinct on actor, session, and execution IDs; the packet envelope binds `roleProvenanceSha256`, assurance level, and resolved catalogs. Historical v2 packets remain structural evidence only.
-- New route packets generate `uash.route.v2`, bind `run/workload-classification.json`, and enforce Layer 0 foundation assurance before implementation.
+- New route packets generate `uash.route.v2`, bind `run/workload-classification.json`, and enforce Layer 0 foundation assurance before implementation. Routine routes do not carry a terminology gate or classification artifact.
 - A simulated agent run blocks completion when proof is missing.
 
 ## Current proof command

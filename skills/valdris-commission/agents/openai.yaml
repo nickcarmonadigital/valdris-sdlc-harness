@@ -1,6 +1,6 @@
 interface:
   display_name: "Valdris Commission"
-  short_description: "Commission a repository into the Valdris control plane"
+  short_description: "Commission the Valdris assurance harness for a repository"
   default_prompt: "Use $valdris-commission to commission or refresh Valdris for this repository end to end."
 
 policy:

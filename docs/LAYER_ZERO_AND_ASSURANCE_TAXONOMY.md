@@ -29,6 +29,8 @@ request signals
 | `controls/domain-packs/index.json`   | `uash.domain-pack-index.v1`          | Trigger-indexed executable domain catalogs.                                                        |
 | `controls/domain-packs/saas.v1.json` | `uash.domain-control-catalog.v1`     | SaaS and multi-tenant controls.                                                                    |
 
+`policies/technical-communication.v1.json` is a technical-communication reference. It is not an assurance catalog or another layer. It defines the Issue 9 target authoring profile and the evidence rules for material naming decisions.
+
 ## Layer 0: Foundation / Good Looks Like
 
 Layer 0 answers whether the system has enough shared truth and clean boundaries for delivery to proceed safely. Every non-docs route requires it. Ordinary README/copy documentation can mark it `not-applicable` with a reason; controlled security, privacy, compliance, release, incident, AI-safety, or financial documents require the lightweight product/requirements/ownership-risk review path. When required, `foundation/assessment.json` uses `uash.foundation-assessment.v1`, binds the commissioned catalog through `catalogSha256`, binds the exact classification through `workloadClassificationSha256`, projects its `effectiveTier`, and proves every applicable foundation control.
@@ -37,7 +39,7 @@ The catalog contains seven capabilities and fourteen controls:
 
 | Capability                  | Controls                              | Outcome                                                                                                  |
 | --------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Product & Domain            | `FND-PRODUCT-001`, `FND-DOMAIN-001`   | Users, outcomes, scope, language, entities, ownership, and invariants are explicit.                      |
+| Product & Domain            | `FND-PRODUCT-001`, `FND-DOMAIN-001`   | Users, outcomes, scope, terminology, ownership, and invariants are explicit.                             |
 | Requirements & Acceptance   | `FND-REQ-001`, `FND-ACCEPTANCE-001`   | Requirements, constraints, negative paths, and acceptance conditions are testable.                       |
 | Quality Attributes          | `FND-QUALITY-001`, `FND-FAILURE-001`  | Non-functional targets, failure modes, degradation, and recovery expectations are commissioned.          |
 | Architecture & Boundaries   | `FND-ARCH-001`, `FND-BOUNDARY-001`    | Reference architecture, dependency direction, asynchronous seams, and trust boundaries are clear.        |
@@ -46,6 +48,12 @@ The catalog contains seven capabilities and fourteen controls:
 | Decisions, Ownership & Risk | `FND-DECISION-001`, `FND-RISK-001`    | Decisions, owners, Red Zone authority, escalation, runbooks, and residual risk are reviewable.           |
 
 Layer 0 must remain separate from the production layer array so existing adapters, run packets, bridge policies, diagrams, and validators retain the canonical thirteen IDs. Foundation enforcement is additive: legacy adapters may treat the blueprint as policy, while commissioned adapters can require the separate gate.
+
+### Two different classification jobs
+
+Workload classification assigns a request to assurance profiles, concerns, domain packs, controls, and proof strength. Ontology-grounded classification assigns a system, architecture, concept, or term to the smallest category supported by its defining properties. These are separate procedures.
+
+Ontology-grounded terminology and controlled technical English govern agent speech and writing. They are not Layer 0 controls and do not create another production domain. The canonical method is `docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md`; its machine-readable policy is `policies/technical-communication.v1.json`.
 
 ## Production capability map
 

@@ -18,6 +18,19 @@ export const EXECUTION_INPUTS_SCHEMA = "valdris.proof-execution-inputs.v1";
 const IDENTIFIER = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$/;
 const SHA256 = /^[a-f0-9]{64}$/i;
 const GIT_OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
+const GIT_REPOSITORY_ENVIRONMENT = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIFF_OPTS",
+  "GIT_DIR",
+  "GIT_EXEC_PATH",
+  "GIT_EXTERNAL_DIFF",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_QUARANTINE_PATH",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_WORK_TREE",
+];
 const SECRET_NAME =
   /(?:^|_)(?:api_?key|auth|authorization|credentials?|database_?url|db_?url|dsn|connection_?(?:string|url)|password|private_?key|secret|(?:postgres(?:ql)?|mysql|mariadb|mongo(?:db)?|redis|cache|mssql)_?(?:url|dsn))(?:_|$)/i;
 const TOKEN_NAME = /(?:^|_)token(?:_|$)/i;
@@ -348,15 +361,36 @@ function causalInputState(repoRoot, requestedPaths) {
   );
 }
 
+function isolatedGitEnvironment() {
+  const environment = { ...process.env };
+  for (const name of GIT_REPOSITORY_ENVIRONMENT) delete environment[name];
+  for (const name of Object.keys(environment))
+    if (name.startsWith("GIT_CONFIG_")) delete environment[name];
+  environment.GIT_NO_LAZY_FETCH = "1";
+  return environment;
+}
+
 function git(repoRoot, args, options = {}) {
-  const result = spawnSync("git", ["-C", repoRoot, ...args], {
-    encoding: options.encoding ?? null,
-    shell: false,
-    windowsHide: true,
-    timeout: 30_000,
-    killSignal: "SIGTERM",
-    maxBuffer: 64 * 1024 * 1024,
-  });
+  const result = spawnSync(
+    "git",
+    [
+      "--no-replace-objects",
+      "-c",
+      "core.fsmonitor=false",
+      "-C",
+      repoRoot,
+      ...args,
+    ],
+    {
+      encoding: options.encoding ?? null,
+      env: isolatedGitEnvironment(),
+      shell: false,
+      windowsHide: true,
+      timeout: 30_000,
+      killSignal: "SIGTERM",
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
   if (result.error || result.status !== 0) {
     const message = Buffer.isBuffer(result.stderr)
       ? result.stderr.toString("utf8")
@@ -478,6 +512,7 @@ export function trackedSourceState(repoRoot, expectedCommit) {
   ]);
   const diff = git(root, [
     "diff",
+    "--no-ext-diff",
     "--binary",
     "--full-index",
     "HEAD",
@@ -521,6 +556,7 @@ export function applicationSourceState(repoRoot, expectedCommit) {
   ]);
   const diff = git(root, [
     "diff",
+    "--no-ext-diff",
     "--binary",
     "--full-index",
     "HEAD",

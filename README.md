@@ -1,10 +1,10 @@
 # Valdris SDLC Harness
 
-> A proof-first control plane for AI coding agents.
+> A repository-level SDLC assurance harness for AI coding agents.
 
-Valdris helps AI coding agents work on real software projects. It gives each
-agent a clear plan. It tracks the work. It also checks the proof before it lets
-the agent say, “Done.”
+Valdris installs repository controls, routes work, records coding-agent activity
+as structured evidence, checks required proof, and blocks completion when
+required checks or approvals are missing.
 
 Valdris works beside tools such as Claude Code, Codex, and Hermes. Those tools
 still write the code. Valdris guides and checks the work around them.
@@ -83,6 +83,20 @@ Work type and lane are not the same. A work type names a shared ability, such as
 bug RCA or feature delivery. A lane adds facts for one project. The generated
 project adapter supplies its lane values.
 
+### Technical communication
+
+Generated agent instructions use ontology-grounded terminology and controlled
+technical English. Agents inspect the actual mechanism before selecting a
+material domain term. They use authoritative sources when local evidence cannot
+establish the term. They separate sourced facts from classification inference
+and state uncertainty instead of guessing.
+
+ASD-STE100 Issue 9 is the target authoring standard. The repository does not
+claim formal conformance unless the complete applicable writing rules and
+controlled dictionary have been checked for the output. Routine communication
+does not require a classification record. A material naming decision can retain
+one when it needs an auditable evidence trail.
+
 ### Layer 0 comes first
 
 Layer 0 is the foundation check. It asks:
@@ -145,7 +159,7 @@ Valdris has two different routing questions:
 1. **Which Valdris system owns this step?** Seven lifecycle skills answer this.
 2. **What kind of engineering work is this?** Eight workflow skills answer this.
 
-The catalogs do not compete. A lifecycle skill runs one control-plane system
+The catalogs do not compete. A lifecycle skill runs one Valdris lifecycle system
 end to end. During delivery, the immutable route still selects one workflow
 skill for the actual engineering work.
 
@@ -358,7 +372,7 @@ provider authority.
 | Path          | What lives there                              |
 | ------------- | --------------------------------------------- |
 | `app/`        | Web pages and API routes                      |
-| `components/` | Run visualizer and control-plane UI           |
+| `components/` | Run visualizer and harness control surfaces   |
 | `controls/`   | Layer, AI, domain, trust, and policy catalogs |
 | `docs/`       | Full system and operating contracts           |
 | `knowledge/`  | Small agent-facing knowledge map              |
@@ -396,6 +410,16 @@ npm run verify:harness
 ```
 
 The full proof stack and release rules live in [`AGENTS.md`](AGENTS.md).
+
+## Model attribution
+
+Valdris project attribution identifies Matt Murphy and The Faction as the
+developers of the source “13-layer T1 Foundation” and production-readiness
+model. The quoted source label is unrelated to the Valdris `T1` assurance tier,
+which means “Locally Verified.” The repository's local provenance records do not
+independently establish the named attribution. Valdris provides the software
+implementation for repository commissioning, request routing, evidence capture,
+gates, approvals, telemetry, verification, and coding-agent integration.
 
 ## License
 

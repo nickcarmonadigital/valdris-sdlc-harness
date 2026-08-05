@@ -27,8 +27,8 @@ Current verified facts:
   "harnessVerifier": {
     "ok": true,
     "generatorVersion": "0.5.0",
-    "commissioningQuestionGroups": 31,
-    "commissioningQuestions": 158,
+    "commissioningQuestionGroups": 32,
+    "commissioningQuestions": 165,
     "bridgeContractVersion": "uash.connector-events.v0.5",
     "productionLayers": 13,
     "foundationBlueprint": true,
@@ -379,7 +379,7 @@ Current repo status: this layer pack is documented, included in commissioning, a
 | ---------------------------------------- | ------------------------------------------: | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
 | Universal SDLC stage flow                |                                       Built | `lib/run-events.ts`, `lib/control-plane.ts`, connector contract                                              | Real core flow exists                                                                                       |
 | GitNexus/code-intelligence node          |                            Built + verified | `code-intelligence`, `design-anchors`, `npm run code-intelligence:*`                                         | GitNexus preferred backend with disclosed local fallback                                                    |
-| Project commissioning generator          |                            Built + verified | `scripts/commission-harness.mjs`, verifier generated pack                                                    | Expanded to 31 groups / 158 questions including Apple/iOS platform facts                                    |
+| Project commissioning generator          |                            Built + verified | `scripts/commission-harness.mjs`, verifier generated pack                                                    | Expanded to 32 groups / 165 questions including ontology/terminology and Apple/iOS platform facts          |
 | Good-looks-like foundation docs          |                          Built structurally | generated `Good Looks Like Foundation`, `Code Quality Guardrails`, `Enterprise Proof Bank` docs              | Teaches target foundation and anti-spaghetti rules before feature work                                      |
 | Operating-intelligence enforcement core  |                          Built + executable | goal, eval, trajectory, context, skills, typed evidence, production, AI/domain, live-smoke, and waiver gates | Eleven positive gates plus route-conditional code-intelligence/smoke and adversarial negative fixtures pass |
 | Generated agent front doors              |                                       Built | `AGENTS.md`, `CLAUDE.md`, generated pack checks                                                              | Real front-door pattern                                                                                     |

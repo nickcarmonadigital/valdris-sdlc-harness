@@ -12,6 +12,10 @@ import {
   renderRootDiscoveryLoader,
 } from "./discovery-loader-contract.mjs";
 import { portableManifestSha256 } from "./control-gate-lib.mjs";
+import {
+  declaredLocalEvidenceBytes,
+  validateClassificationRecordFiles,
+} from "./classification-record-check.mjs";
 
 const VERSION = "0.9.0-rc.1";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
@@ -1140,6 +1144,56 @@ const QUESTION_GROUPS = [
     ],
   },
   {
+    id: "ontology_terminology",
+    title: "Ontology and technical terminology",
+    questions: [
+      {
+        id: "domain_ontology_sources",
+        label:
+          "Which local or authoritative sources define the domain ontology and category criteria?",
+        default:
+          "repository architecture/domain records first; then standards bodies, official specifications, official documentation/repositories, and peer-reviewed literature",
+      },
+      {
+        id: "controlled_vocabulary",
+        label: "Which domain terms are approved or restricted?",
+        default:
+          "use the repository glossary and commissioned ontology; record one approved term per meaning and do not invent larger labels",
+      },
+      {
+        id: "qualified_terms",
+        label: "Which terms require explicit qualification or criteria?",
+        default:
+          "operating system requires resource/process/state/interface/permission/execution evidence; control plane requires the managed scope; compliance terms require formal proof",
+      },
+      {
+        id: "authoritative_source_policy",
+        label: "How should agents escalate missing classification evidence?",
+        default:
+          "search the web, open the direct authoritative source, record URL/publisher/title/access date/claim, corroborate contested claims, and keep secondary sources non-decisive",
+      },
+      {
+        id: "web_research_availability",
+        label:
+          "What should happen when authoritative web research is unavailable?",
+        default:
+          "record blocked or incomplete research and conclude uncertain or not established; do not guess",
+      },
+      {
+        id: "citation_policy",
+        label: "What citation detail must classification records preserve?",
+        default:
+          "source origin and type, publisher, title, direct URL or repository path, revision when local, access date, supported claim, sourced facts, and separate inference",
+      },
+      {
+        id: "technical_english_profile",
+        label: "Which technical-English profile should agents use?",
+        default:
+          "ASD-STE100 Issue 9 target authoring profile: short direct sentences, one term per meaning, explicit actors/actions/conditions, no metaphor, and no formal conformance claim without a complete rule and dictionary check",
+      },
+    ],
+  },
+  {
     id: "apple_mobile_ios",
     title: "Apple / iOS platform commissioning",
     questions: [
@@ -1571,6 +1625,65 @@ function contentSha256(content) {
   return createHash("sha256").update(content).digest("hex");
 }
 
+function writePortableValdrisClassification(out) {
+  const sourceRecordPath = path.join(
+    HARNESS_ROOT,
+    "classification",
+    "valdris-system-classification.v1.json",
+  );
+  const sourceValidation = validateClassificationRecordFiles(sourceRecordPath, {
+    repoRoot: HARNESS_ROOT,
+  });
+  if (!sourceValidation.valid)
+    throw new Error(
+      `canonical Valdris classification record is invalid: ${sourceValidation.problems.join("; ")}`,
+    );
+  const sourceRecord = JSON.parse(fs.readFileSync(sourceRecordPath, "utf8"));
+  for (const evidence of sourceRecord.evidence || []) {
+    if (evidence?.origin !== "local") continue;
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(evidence.id || ""))
+      throw new Error("Valdris classification evidence id is not portable");
+    if (
+      typeof evidence.repositoryPath !== "string" ||
+      /[\\:\u0000-\u001f\u007f]/.test(evidence.repositoryPath) ||
+      path.posix.isAbsolute(evidence.repositoryPath) ||
+      evidence.repositoryPath
+        .split("/")
+        .some((segment) => !segment || segment === "." || segment === "..")
+    )
+      throw new Error(
+        `Valdris classification evidence ${evidence.id} path is not portable`,
+      );
+    const bytes = declaredLocalEvidenceBytes(HARNESS_ROOT, evidence);
+    if (!bytes)
+      throw new Error(
+        `Valdris classification evidence ${evidence.id} bytes are unavailable at the declared revision`,
+      );
+    const portablePath = path.posix.join(
+      ".valdris-harness",
+      "classification",
+      "evidence",
+      evidence.id,
+      path.posix.basename(evidence.repositoryPath),
+    );
+    const target = path.join(
+      out,
+      "classification",
+      "evidence",
+      evidence.id,
+      path.basename(evidence.repositoryPath),
+    );
+    mkdirp(path.dirname(target));
+    fs.writeFileSync(target, bytes);
+    evidence.repositoryPath = portablePath;
+    evidence.revision = `sha256:${contentSha256(bytes)}`;
+  }
+  write(
+    path.join(out, "classification", "valdris-system-classification.v1.json"),
+    JSON.stringify(sourceRecord, null, 2),
+  );
+}
+
 function commissionedPackManifest(root) {
   const files = [];
   const pending = [root];
@@ -1871,6 +1984,7 @@ function targetRootRuntimePaths(content) {
     .replaceAll("`CONTEXT.md`", "`.valdris-harness/CONTEXT.md`")
     .replaceAll("`docs/", "`.valdris-harness/docs/")
     .replaceAll("`knowledge/", "`.valdris-harness/knowledge/")
+    .replaceAll("`classification/", "`.valdris-harness/classification/")
     .replaceAll("`skills/", "`.valdris-harness/skills/")
     .replaceAll("`controls/", "`.valdris-harness/controls/")
     .replaceAll("`scripts/", "`.valdris-harness/scripts/")
@@ -2184,7 +2298,7 @@ function renderFourRoleProtocol() {
 }
 
 function renderGoalSkillProtocol() {
-  return `\n## Valdris v0.9 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`.\n2. Use the seven lifecycle skills to select the owning Valdris control-plane system: commission -> route-goal -> assure -> connect-runtime -> execute-workflow -> prove-govern -> trust-improve. Select exactly one lifecycle skill for the requested system operation.\n3. Inside routed engineering work, use the separate eight-skill work catalog: select one primary work skill for the current intake, delivery, or proof-handoff phase plus the smallest supporting set. Lifecycle skills never replace the route's work primary.\n4. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n5. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n6. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n7. Treat async workflows, orchestration, memory, model routing, and interop as cross-cutting capabilities over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n8. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed review trust store. For semantic or authoritative claims, also validate \`assurance/authoritative.json\` against the operator-pinned authority trust store before creating \`valdris.run-packet.v3\`. Agents may not add or trust their own key.\n9. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
+  return `\n## Valdris v0.9 goal and skill protocol\n\n1. Discover Codex skills from their \`SKILL.md\` YAML frontmatter, then read \`.valdris-harness/skills/codex-routing.yaml\` and the gate-authoritative \`.valdris-harness/skills/registry.json\`.\n2. Use the seven lifecycle skills to select the owning Valdris lifecycle system: commission -> route-goal -> assure -> connect-runtime -> execute-workflow -> prove-govern -> trust-improve. Select exactly one lifecycle skill for the requested system operation.\n3. Inside routed engineering work, use the separate eight-skill work catalog: select one primary work skill for the current intake, delivery, or proof-handoff phase plus the smallest supporting set. Lifecycle skills never replace the route's work primary.\n4. Store durable multi-checkpoint state in \`goal/goal.json\`; runtime-native goal/loop state is advisory only.\n5. Run provenance, neutrality, pack-scoped privacy, generated-evidence privacy, and schema-compatibility gates before trusting imported or generated assurance content.\n6. Activate the production, AI, eval, trajectory, smoke, RCA, and domain gates only when the adapter and route make them applicable; justify non-applicability.\n7. Treat async workflows, orchestration, memory, model routing, and interop as cross-cutting capabilities over Layer 0 and the thirteen production-assurance domains, never as Layer 14.\n8. Run \`node .valdris-harness/scripts/enterprise-ai-gate-all.mjs --repo .\`, then validate the Ed25519-attested independent review against the committed review trust store. For semantic or authoritative claims, also validate \`assurance/authoritative.json\` against the operator-pinned authority trust store before creating \`valdris.run-packet.v3\`. Agents may not add or trust their own key.\n9. Before live completion, request and receive token-gated human approval with scope \`route\` and artifact \`run/route.json\`; the bridge binds that approval to the route digest.\n\nNo runtime may override a failing Valdris gate or grant its own Red Zone approval.\n`;
 }
 
 function renderBridgeCredentialBoundary(agentName) {
@@ -2227,6 +2341,50 @@ Async and multi-agent orchestration are cross-cutting execution concerns. Route 
 `;
 }
 
+function renderTerminologyProtocol(answers, paths) {
+  return `
+## Ontology-grounded terminology and controlled technical English
+
+This communication profile governs how agents speak and write. It is not an SDLC layer, production domain, lifecycle stage, skill, gate, or product capability.
+
+For all technical and operational output:
+
+1. Answer the user's question first.
+2. Use one stable term for one meaning. Define unfamiliar terms once.
+3. Use short, direct sentences with explicit actors, actions, objects, and conditions when they affect meaning.
+4. Keep one primary instruction or decision in each sentence when practical.
+5. Remove padding, repetition, decorative language, metaphors, analogies, slogans, dense noun chains, and inflated labels.
+6. Preserve necessary technical distinctions and state uncertainty directly.
+
+When a material public, architectural, legal, safety, or standards term must be selected:
+
+1. Inspect the actual mechanism and direct evidence.
+2. Identify the applicable domain ontology and explicit category criteria.
+3. If local evidence cannot establish a criterion or term status, open direct authoritative sources.
+4. Separate sourced facts from classification inference and corroborate contested claims.
+5. Select the smallest supported term or category, define it plainly, and state its status and uncertainty.
+6. If evidence remains incomplete, conclude \`uncertain\` or \`not_established\`. Do not guess.
+
+Use \`${paths.packFromRepo}/docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md\` and \`${paths.packFromRepo}/policies/technical-communication.v1.json\`. For a material naming decision that needs an audit record, start from \`${paths.packFromRepo}/classification/classification-record.template.json\` and check it with \`node ${paths.scriptFromRepo}/classification-record-check.mjs --repo . --file <record-path> --catalog ${paths.packFromRepo}/policies/technical-communication.v1.json\`. Routine communication does not require a classification record.
+
+Commissioned ontology sources: ${answers.domain_ontology_sources}
+
+Commissioned controlled vocabulary: ${answers.controlled_vocabulary}
+
+Qualified terms: ${answers.qualified_terms}
+
+Source escalation: ${answers.authoritative_source_policy}
+
+Unavailable-web rule: ${answers.web_research_availability}
+
+Citation policy: ${answers.citation_policy}
+
+Technical-English profile: ${answers.technical_english_profile}
+
+ASD-STE100 Issue 9 is the target authoring standard. Do not claim formal conformance unless the complete applicable writing rules and controlled dictionary have been checked for the output.
+`;
+}
+
 function renderLayerZeroValidation(paths) {
   return `
 ## Layer 0 validation
@@ -2265,7 +2423,7 @@ function renderReview(adapter) {
     .map(([file, loader]) => `${file} (${loader.action})`)
     .join(
       ", ",
-    )}\n- GitNexus/code intelligence policy: ${answers.code_graph}\n- Code-intelligence backend: GitNexus preferred, local static graph fallback disclosed\n- System Design lane triggers: ${answers.system_design_triggers}\n- Foundation blueprint: ${answers.reference_architecture}\n- Anti-spaghetti guardrails: ${answers.anti_spaghetti_rules}\n- Enterprise proof-bank domain pack: ${answers.domain_pack}\n- Operating intelligence: evals, trajectory, context, skills, memory, tools/hooks, sandbox, model routing, economics, PR agents, MCP/A2A, agent lifecycle\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n- Clean-room privacy scope: \`.valdris-harness\`; generated \`graph/\` and \`design/anchors.json\` are checked separately, while product binaries use the target's reviewed asset policy\n- Signed review trust: configure at least one operator-owned Ed25519 public key in \`.valdris-harness/controls/review-trust.v1.json\`; the generated empty trust store intentionally blocks final completion\n\n## Next gate\n\nReview \`.valdris-harness/project-adapter.json\` plus the bounded Valdris loader blocks installed in target-root \`AGENTS.md\` and \`CLAUDE.md\`, commission the review trust store without exposing the private key to agents, and commit the complete pack and root discovery loaders before handing the repo to Claude Code/Codex.\n`;
+    )}\n- GitNexus/code intelligence policy: ${answers.code_graph}\n- Code-intelligence backend: GitNexus preferred, local static graph fallback disclosed\n- System Design lane triggers: ${answers.system_design_triggers}\n- Foundation blueprint: ${answers.reference_architecture}\n- Anti-spaghetti guardrails: ${answers.anti_spaghetti_rules}\n- Ontology and terminology sources: ${answers.domain_ontology_sources}\n- Technical-English profile: ${answers.technical_english_profile}\n- Technical communication: cross-cutting authoring behavior; authoritative-source escalation; optional evidence record for auditable material naming decisions\n- Enterprise proof-bank domain pack: ${answers.domain_pack}\n- Operating intelligence: evals, trajectory, context, skills, memory, tools/hooks, sandbox, model routing, economics, PR agents, MCP/A2A, agent lifecycle\n- Production layers checked: ${splitList(answers.production_layers).length}\n- Cloud/platform providers: ${answers.cloud_providers}\n- Break-it QA policy: ${answers.break_it_qa_policy}\n- Mode policy: ${answers.telemetry_mode_policy}\n- Self-heal policy: ${answers.self_heal_allowed}\n- Clean-room privacy scope: \`.valdris-harness\`; generated \`graph/\` and \`design/anchors.json\` are checked separately, while product binaries use the target's reviewed asset policy\n- Signed review trust: configure at least one operator-owned Ed25519 public key in \`.valdris-harness/controls/review-trust.v1.json\`; the generated empty trust store intentionally blocks final completion\n\n## Next gate\n\nReview \`.valdris-harness/project-adapter.json\` plus the bounded Valdris loader blocks installed in target-root \`AGENTS.md\` and \`CLAUDE.md\`, commission the review trust store without exposing the private key to agents, and commit the complete pack and root discovery loaders before handing the repo to Claude Code/Codex.\n`;
 }
 
 function renderReviewTrustPinProtocol(adapter) {
@@ -2395,6 +2553,34 @@ function generatePack(args, detected, answers, answerSources) {
       enforcement: "gate",
       policy:
         "Classify workload tier and profiles before route decisions; uncertainty may widen assurance but may not silently downgrade it.",
+    },
+    technicalCommunication: {
+      policySchema: "valdris.terminology-policy.v1",
+      policy: "policies/technical-communication.v1.json",
+      canonicalDocument: "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md",
+      sourceRegister: "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md",
+      appliesTo: "All technical and operational agent output.",
+      targetStandard: {
+        name: "ASD-STE100",
+        issue: "9",
+        publicationDate: "2025-01-15",
+        conformanceStatus: "not_verified",
+      },
+      localEvidenceFirst: true,
+      authoritativeWebEscalation: answers.authoritative_source_policy,
+      unavailableWebDisposition: answers.web_research_availability,
+      citationPolicy: answers.citation_policy,
+      controlledVocabulary: answers.controlled_vocabulary,
+      qualifiedTerms: answers.qualified_terms,
+      technicalEnglishProfile: answers.technical_english_profile,
+      materialClassification: {
+        schema: "valdris.ontology-classification.v1",
+        template: "classification/classification-record.template.json",
+        requiredForRoutineCommunication: false,
+        requiredWhen:
+          "A material public, architectural, legal, safety, or standards naming decision needs an auditable evidence record.",
+        checkCommand: `node ${scriptFromRepo}/classification-record-check.mjs --repo . --file <record-path> --catalog ${packFromRepo}/policies/technical-communication.v1.json`,
+      },
     },
     foundationAssurance: {
       schema: "uash.foundation-assessment.v1",
@@ -2923,6 +3109,7 @@ function generatePack(args, detected, answers, answerSources) {
       skillRetirementDryRun: `node ${scriptFromRepo}/retire-local-skills.mjs --repo ${packFromRepo} --manifest <external-retirement-manifest> --codex-root <local-.codex/skills> --claude-root <local-.claude/skills>`,
       generatedEvidencePrivacy: `node ${scriptFromRepo}/privacy-gate.mjs --repo . --include graph --include design/anchors.json`,
       schemaCompatibility: `node ${scriptFromRepo}/schema-compat-gate.mjs --repo ${packFromRepo}`,
+      materialClassification: `node ${scriptFromRepo}/classification-record-check.mjs --repo . --file <record-path> --catalog ${packFromRepo}/policies/technical-communication.v1.json`,
       classification: `node ${scriptFromRepo}/workload-classification-gate.mjs --repo .`,
       route: `node ${scriptFromRepo}/route-gate.mjs --repo .`,
       foundation: `node ${scriptFromRepo}/foundation-gate.mjs --repo .`,
@@ -2971,6 +3158,7 @@ function generatePack(args, detected, answers, answerSources) {
   writePackText(
     "AGENTS.md",
     renderAgents(answers) +
+      renderTerminologyProtocol(answers, { scriptFromRepo, packFromRepo }) +
       renderGoalSkillProtocol() +
       renderFourRoleProtocol() +
       renderLayerZeroProtocol() +
@@ -2980,6 +3168,7 @@ function generatePack(args, detected, answers, answerSources) {
   writePackText(
     "CLAUDE.md",
     renderClaude(answers) +
+      renderTerminologyProtocol(answers, { scriptFromRepo, packFromRepo }) +
       renderGoalSkillProtocol() +
       renderFourRoleProtocol() +
       renderLayerZeroProtocol() +
@@ -2993,6 +3182,7 @@ function generatePack(args, detected, answers, answerSources) {
       "Claude Code",
     ) +
       renderBridgeCredentialBoundary("Claude Code") +
+      renderTerminologyProtocol(answers, { scriptFromRepo, packFromRepo }) +
       renderGoalSkillProtocol() +
       renderFourRoleProtocol() +
       renderLayerZeroProtocol() +
@@ -3003,6 +3193,7 @@ function generatePack(args, detected, answers, answerSources) {
     "docs/Codex Runtime Prompt.md",
     hardenGeneratedConnectorPrompt(renderCodexPrompt(answers), "Codex") +
       renderBridgeCredentialBoundary("Codex") +
+      renderTerminologyProtocol(answers, { scriptFromRepo, packFromRepo }) +
       renderGoalSkillProtocol() +
       renderFourRoleProtocol() +
       renderLayerZeroProtocol() +
@@ -3075,6 +3266,34 @@ function generatePack(args, detected, answers, answerSources) {
     "docs/Agent Knowledge Vault.md",
     renderAgentKnowledgeVault(answers),
   );
+  writePackText(
+    "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH.md",
+    fs.readFileSync(
+      path.join(HARNESS_ROOT, "docs", "ONTOLOGY_AND_TECHNICAL_ENGLISH.md"),
+      "utf8",
+    ) + renderTerminologyProtocol(answers, { scriptFromRepo, packFromRepo }),
+  );
+  writePackText(
+    "docs/ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md",
+    fs.readFileSync(
+      path.join(
+        HARNESS_ROOT,
+        "docs",
+        "ONTOLOGY_AND_TECHNICAL_ENGLISH_SOURCES.md",
+      ),
+      "utf8",
+    ),
+  );
+  mkdirp(path.join(out, "classification"));
+  fs.copyFileSync(
+    path.join(
+      HARNESS_ROOT,
+      "classification",
+      "classification-record.template.json",
+    ),
+    path.join(out, "classification", "classification-record.template.json"),
+  );
+  writePortableValdrisClassification(out);
   for (const docName of [
     "ENTERPRISE_CONTROL_MODEL_V2.md",
     "GENERATIVE_AI_ASSURANCE_PACK.md",
@@ -3100,6 +3319,7 @@ function generatePack(args, detected, answers, answerSources) {
     "playbooks/semantic-authoritative-assurance.md",
     "concepts/proof-first-harness.md",
     "concepts/typed-evidence.md",
+    "concepts/ontology-grounded-classification.md",
   ]) {
     writePackText(
       path.join("knowledge", relativePath),
@@ -3119,7 +3339,7 @@ function generatePack(args, detected, answers, answerSources) {
   );
   fs.appendFileSync(
     path.join(out, "knowledge", "concepts", "index.md"),
-    "\n* [Typed Evidence](typed-evidence.md) - resolvable proof contract.\n",
+    "\n* [Typed Evidence](typed-evidence.md) - resolvable proof contract.\n* [Ontology-Grounded Classification](ontology-grounded-classification.md) - evidence, category criteria, authoritative-source escalation, and calibrated terminology.\n",
   );
   for (const relativePath of [
     "knowledge/index.md",
@@ -3154,6 +3374,8 @@ function generatePack(args, detected, answers, answerSources) {
     "anchor-gate.mjs",
     "code-intelligence-gate-all.mjs",
     "control-gate-lib.mjs",
+    "terminology-policy-lib.mjs",
+    "classification-record-check.mjs",
     "catalog-integrity-gate.mjs",
     "provenance-gate.mjs",
     "neutrality-gate.mjs",
@@ -3212,6 +3434,9 @@ function generatePack(args, detected, answers, answerSources) {
   fs.cpSync(path.join(HARNESS_ROOT, "controls"), path.join(out, "controls"), {
     recursive: true,
   });
+  fs.cpSync(path.join(HARNESS_ROOT, "policies"), path.join(out, "policies"), {
+    recursive: true,
+  });
   syncValdrisSkillTree(
     path.join(HARNESS_ROOT, "skills"),
     path.join(out, "skills"),
@@ -3226,6 +3451,7 @@ function generatePack(args, detected, answers, answerSources) {
   );
   for (const generatedJsonRoot of [
     "controls",
+    "policies",
     "skills",
     path.join(".agents", "skills"),
     path.join(".claude", "skills"),
@@ -3251,6 +3477,7 @@ function generatePack(args, detected, answers, answerSources) {
           "skills:install:codex": "node scripts/install-codex-skills.mjs",
           "skills:check:codex": "node scripts/install-codex-skills.mjs --check",
           "catalog:gate": "node scripts/catalog-integrity-gate.mjs --repo .",
+
           "provenance:gate": "node scripts/provenance-gate.mjs --repo .",
           "neutrality:gate": "node scripts/neutrality-gate.mjs --repo .",
           "privacy:gate": "node scripts/privacy-gate.mjs --repo .",
@@ -3322,6 +3549,7 @@ jobs:
         run: node ${scriptFromRepo}/skill-registry-gate.mjs --repo ${packFromRepo}
       - name: Validate canonical catalogs
         run: node ${scriptFromRepo}/catalog-integrity-gate.mjs --repo ${packFromRepo}
+
       - name: Validate public-source provenance
         run: node ${scriptFromRepo}/provenance-gate.mjs --repo ${packFromRepo}
       - name: Validate project neutrality

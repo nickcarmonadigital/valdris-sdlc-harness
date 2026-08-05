@@ -34,6 +34,46 @@ const RUNTIME_ROOT = path.resolve(
   "..",
 );
 export const REVIEW_TRUST_SHA256_ENV = "UASH_REVIEW_TRUST_SHA256";
+const GIT_REPOSITORY_ENVIRONMENT = [
+  "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+  "GIT_COMMON_DIR",
+  "GIT_DIFF_OPTS",
+  "GIT_DIR",
+  "GIT_EXEC_PATH",
+  "GIT_EXTERNAL_DIFF",
+  "GIT_INDEX_FILE",
+  "GIT_OBJECT_DIRECTORY",
+  "GIT_QUARANTINE_PATH",
+  "GIT_REPLACE_REF_BASE",
+  "GIT_WORK_TREE",
+];
+
+function exactGit(repoRoot, args) {
+  const environment = { ...process.env };
+  for (const name of GIT_REPOSITORY_ENVIRONMENT) delete environment[name];
+  for (const name of Object.keys(environment))
+    if (name.startsWith("GIT_CONFIG_")) delete environment[name];
+  environment.GIT_NO_LAZY_FETCH = "1";
+  return spawnSync(
+    "git",
+    [
+      "--no-replace-objects",
+      "-c",
+      "core.fsmonitor=false",
+      "-C",
+      repoRoot,
+      ...args,
+    ],
+    {
+      encoding: "utf8",
+      env: environment,
+      shell: false,
+      timeout: 30_000,
+      killSignal: "SIGTERM",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+}
 
 function nonEmpty(value, minimum = 1) {
   return typeof value === "string" && value.trim().length >= minimum;
@@ -418,14 +458,7 @@ function attestationProblems(document, repoRoot, options = {}) {
       `review reviewTrustSha256 must match operator-held ${REVIEW_TRUST_SHA256_ENV}`,
     );
   if (/^[a-f0-9]{40,64}$/i.test(document.commit || "") && trustPath) {
-    const prefixResult = spawnSync("git", ["rev-parse", "--show-prefix"], {
-      cwd: repoRoot,
-      encoding: "utf8",
-      shell: false,
-      timeout: 30_000,
-      killSignal: "SIGTERM",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const prefixResult = exactGit(repoRoot, ["rev-parse", "--show-prefix"]);
     const targetPrefix =
       prefixResult.status === 0
         ? prefixResult.stdout.replace(/\r?\n$/, "").replaceAll("\\", "/")
@@ -433,14 +466,7 @@ function attestationProblems(document, repoRoot, options = {}) {
     const trustGitPath = `${targetPrefix}${trustPathRelative}`;
     const committed =
       prefixResult.status === 0
-        ? spawnSync("git", ["show", `${document.commit}:${trustGitPath}`], {
-            cwd: repoRoot,
-            encoding: "utf8",
-            shell: false,
-            timeout: 30_000,
-            killSignal: "SIGTERM",
-            stdio: ["ignore", "pipe", "pipe"],
-          })
+        ? exactGit(repoRoot, ["show", `${document.commit}:${trustGitPath}`])
         : prefixResult;
     if (committed.status !== 0)
       problems.push("review trust store is not present at the reviewed commit");
