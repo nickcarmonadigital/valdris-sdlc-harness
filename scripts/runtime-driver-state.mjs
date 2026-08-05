@@ -121,22 +121,32 @@ function identityCommand(command, args, maxOutputLength = 512) {
 }
 
 function windowsPowerShell(command) {
-  const executable = process.env.SystemRoot
-    ? path.join(
-        process.env.SystemRoot,
-        "System32",
-        "WindowsPowerShell",
-        "v1.0",
-        "powershell.exe",
-      )
-    : "powershell.exe";
-  return identityCommand(executable, [
-    "-NoLogo",
-    "-NoProfile",
-    "-NonInteractive",
-    "-Command",
-    `$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; ${command}`,
-  ]);
+  const executables = [
+    process.env.SystemRoot
+      ? path.join(
+          process.env.SystemRoot,
+          "System32",
+          "WindowsPowerShell",
+          "v1.0",
+          "powershell.exe",
+        )
+      : null,
+    "pwsh.exe",
+    "powershell.exe",
+  ].filter((candidate, index, candidates) => {
+    return candidate && candidates.indexOf(candidate) === index;
+  });
+  for (const executable of executables) {
+    const output = identityCommand(executable, [
+      "-NoLogo",
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      `$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue'; ${command}`,
+    ]);
+    if (output) return output;
+  }
+  return null;
 }
 
 function windowsSystemTool(name) {
@@ -265,10 +275,15 @@ function localProcessCreationIdentity(pid) {
       : null;
   }
   if (platform() === "win32") {
-    const creationTime = windowsPowerShell(
+    const commands = [
       `$p = [Diagnostics.Process]::GetProcessById(${pid}); $p.StartTime.ToUniversalTime().ToString('o', [Globalization.CultureInfo]::InvariantCulture)`,
-    );
-    return creationTime ? `windows-process-created:${creationTime}` : null;
+      `$p = Get-CimInstance -ClassName Win32_Process -Filter 'ProcessId = ${pid}' -ErrorAction Stop; if ($null -eq $p) { throw 'process unavailable' }; $p.CreationDate.ToUniversalTime().ToString('o', [Globalization.CultureInfo]::InvariantCulture)`,
+    ];
+    for (const command of commands) {
+      const creationTime = windowsPowerShell(command);
+      if (creationTime) return `windows-process-created:${creationTime}`;
+    }
+    return null;
   }
   if (platform() === "darwin") {
     const creationTime = identityCommand("/bin/ps", [
