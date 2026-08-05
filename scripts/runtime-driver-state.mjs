@@ -122,6 +122,7 @@ function identityCommand(command, args, maxOutputLength = 512) {
 
 function windowsPowerShell(command) {
   const executables = [
+    "pwsh.exe",
     process.env.SystemRoot
       ? path.join(
           process.env.SystemRoot,
@@ -131,7 +132,6 @@ function windowsPowerShell(command) {
           "powershell.exe",
         )
       : null,
-    "pwsh.exe",
     "powershell.exe",
   ].filter((candidate, index, candidates) => {
     return candidate && candidates.indexOf(candidate) === index;
