@@ -360,7 +360,7 @@ for (const classificationStatus of ["partially_supported", "contested"]) {
 
 {
   const record = localRecord();
-  record.termStatus = "contested";
+  record.termStatus = "deprecated";
   expectProblem(record, "classification record termStatus is invalid");
 }
 

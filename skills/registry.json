@@ -214,8 +214,8 @@
         "proof"
       ],
       "conditionalGates": [
-        "smoke for deployed, provider-integration, platform-native, or runtime behavior",
-        "domain pack for platform-native distribution or specialized runtime"
+        "smoke for deployed, provider-integration, provider-managed infrastructure, distribution-channel, or runtime behavior",
+        "domain pack for provider-managed infrastructure, distribution-channel, or specialized runtime"
       ],
       "redZoneTriggers": [
         "production-deploy",
@@ -303,7 +303,7 @@
         "production for production impact",
         "ai-assurance and eval for AI impact",
         "trajectory for multi-checkpoint or agentic execution",
-        "smoke for deployed, provider-integration, platform-native, or runtime claims",
+        "smoke for deployed, provider-integration, provider-managed infrastructure, distribution-channel, or runtime claims",
         "authoritative-assurance for semantic or authoritative claims",
         "requirements, runtime driver, dependency provenance, economics, interop, and trace-v2 operating contracts when applicable",
         "commissioned domain packs",
@@ -532,7 +532,7 @@
       ],
       "requiredGates": ["proof", "review", "run-packet"],
       "conditionalGates": [
-        "smoke for deployed, provider, platform-native, or runtime behavior",
+        "smoke for deployed, provider-managed infrastructure, distribution-channel, or runtime behavior",
         "rca for bug, regression, incident, or self-heal routes",
         "Red Zone and route approval for actions that require authority"
       ],
